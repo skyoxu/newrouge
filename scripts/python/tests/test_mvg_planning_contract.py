@@ -159,6 +159,18 @@ class MvgPlanningContractTests(unittest.TestCase):
                 {"capabilities": [{"capability_id": "CAP-A", "requirement_ids": ["RQ-1"]}]}, [])
         self.assertEqual([], errors)
 
+    def test_test_segment_requests_are_one_flow_and_use_its_frozen_test_ids(self):
+        requests = plan_mvg.build_test_segment_requests(
+            [{"scope_id": "flow-a", "task_ids": [7]}, {"scope_id": "flow-b", "task_ids": [8]}],
+            {"test_ids": ["a-test", "b-test"], "test_paths": ["Tests.Godot/tests/a.gd", "Tests.Godot/tests/b.gd"]},
+            {"flows": [
+                {"id": "flow-a", "test_ids": ["a-test"]},
+                {"id": "flow-b", "test_ids": ["b-test"]},
+            ]},
+        )
+        self.assertEqual(["flow-a", "flow-b"], [row["flow_scope_ids"][0] for row in requests])
+        self.assertEqual([["a-test"], ["b-test"]], [row["test_ids"] for row in requests])
+
     def test_correction_prompt_requests_restricted_patch(self):
         prompt = correction_prompt(["coverage_requirement_missing:FR-1"])
         self.assertIn("patch", prompt.lower())

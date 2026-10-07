@@ -1596,6 +1596,41 @@ def build_segment_scope(semantics: dict[str, Any], task_ids: list[int], *, batch
     return scopes
 
 
+def build_test_segment_requests(flow_scopes: list[dict[str, Any]],
+                                planning_scope: dict[str, Any] | None = None,
+                                existing_manifest: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+    """Route each test-generation request to exactly one Capability flow.
+
+    A multi-flow test batch lets a model accidentally copy tests across flow
+    boundaries.  Keeping one flow per request makes the route deterministic and
+    gives frozen manifests their exact incumbent test IDs.
+    """
+    tests_by_flow = {
+        str(row.get("id")): [str(value) for value in (row.get("test_ids") or [])
+                              if str(value).strip()]
+        for row in (existing_manifest or {}).get("flows", [])
+        if isinstance(row, dict) and str(row.get("id") or "").strip()
+    }
+    requests: list[dict[str, Any]] = []
+    for index, scope in enumerate(flow_scopes, start=1):
+        flow_id = str(scope.get("scope_id") or "")
+        frozen_test_ids = tests_by_flow.get(flow_id, []) if planning_scope is not None else []
+        requests.append({
+            "section": "tests",
+            "scope_id": f"tests-{index:02d}",
+            "requirements": [],
+            "requirement_ids": [],
+            "task_ids": sorted({int(task_id) for task_id in scope.get("task_ids", [])
+                                 if type(task_id) is int}),
+            "flow_scope_ids": [flow_id],
+            "allow_exact_flow_id": planning_scope is not None,
+            "allow_exact_test_id": planning_scope is not None,
+            "test_ids": frozen_test_ids if planning_scope is not None else [],
+            "test_paths": sorted(planning_scope.get("test_paths", [])) if planning_scope else [],
+        })
+    return requests
+
+
 def build_manifest_skeleton(run_id: str, flows: list[dict[str, Any]],
                             task_statuses: dict[str, str]) -> dict[str, Any]:
     """Create only the structural manifest envelope; journey semantics stay LLM-owned."""
@@ -1842,16 +1877,12 @@ def invoke_segmented(invoke: Any, run_dir: Path, state: dict[str, Any], attempt:
                          "flow_scope_ids": [scope["scope_id"] for scope in scoped_scopes],
                          "capabilities": [cap for scope in scoped_scopes for cap in scope["capabilities"]]})
 
-    for start in range(0, len(flow_scopes), 3):
-        scoped_scopes = flow_scopes[start:start + 3]
-        requests.append({"section": "tests", "scope_id": f"tests-{start // 3 + 1:02d}",
-                         "requirements": [], "requirement_ids": [],
-                         "task_ids": sorted({task_id for scope in scoped_scopes for task_id in scope["task_ids"]}),
-                          "flow_scope_ids": [scope["scope_id"] for scope in scoped_scopes],
-                          "allow_exact_flow_id": planning_scope is not None,
-                          "allow_exact_test_id": planning_scope is not None,
-                          "test_ids": sorted(planning_scope.get("test_ids", [])) if planning_scope else [],
-                          "test_paths": sorted(planning_scope.get("test_paths", [])) if planning_scope else []})
+    requests.extend(build_test_segment_requests(
+        flow_scopes,
+        planning_scope,
+        load_json(run_dir / "analysis-input/existing-manifest.json", {})
+        if planning_scope is not None else None,
+    ))
 
     def execute_request(index: int, request: dict[str, Any], flow_context: list[dict[str, Any]]) -> tuple[int, dict[str, Any], dict[str, Any]]:
         section = request["section"]
