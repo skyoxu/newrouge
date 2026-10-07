@@ -13,7 +13,7 @@ from pathlib import Path
 
 from _planning_skill_common import atomic_json, file_sha, load_json, normalized_file_sha, repo_path
 from _project_health_planning_inputs import (
-    MainCheckout, TOPOLOGY_ROOT, git, prepare_checkout, task_scope, validate_checkout,
+    LOCAL_DERIVED_TOPOLOGY, MainCheckout, TOPOLOGY_ROOT, git, prepare_checkout, task_scope, validate_checkout,
     workspace_revision,
 )
 
@@ -89,13 +89,23 @@ def _planning_input_fresh(root: Path, job: dict) -> bool:
             # yet present in the local repository. Its absence is part of the
             # prepared identity until the generated result is promoted.
             continue
-        # A dependent MVG job intentionally consumes the selected local
-        # Capability checkout's complete input projection, including its
-        # capability-only Chapter 5 rebind artifacts.
-        path = repo_path(authority_root, relative)
+        # Only local derived Capability projections come from the selected
+        # Capability checkout. All committed source/task evidence must match
+        # the current MVG checkout revision, even when the parent Capability
+        # was generated before a later local commit.
+        is_capability_projection = relative in {
+            f'{TOPOLOGY_ROOT}/{name}' for name in LOCAL_DERIVED_TOPOLOGY
+        }
+        primary_root = (
+            authority_root
+            if authority_root == root or is_capability_projection
+            else checkout
+        )
+        path = repo_path(primary_root, relative)
         if not path.is_file():
-            path = repo_path(checkout, relative)
-        if not path.is_file() and authority_root != root:
+            fallback_root = checkout if primary_root == authority_root else authority_root
+            path = repo_path(fallback_root, relative)
+        if not path.is_file() and primary_root != root and fallback_root != root:
             path = repo_path(root, relative)
         if not path.is_file() or (normalized_file_sha(path) != expected and file_sha(path) != expected):
             return False
@@ -141,7 +151,11 @@ def selected_result(root: Path, action: str) -> dict | None:
 
 
 def execution_root(root: Path, job: dict) -> Path:
-    checkout_id = job.get('checkout_job_id') or job['job_id']
+    # `checkout_job_id` records the selected Capability source for dependent
+    # MVG runs.  It must not identify the physical checkout: each planning job
+    # needs its own revision-bound worktree, otherwise an MVG job can reuse a
+    # Capability worktree at a different commit.
+    checkout_id = job['job_id']
     # Keep the Git worktree outside the repository's long logs path. Windows
     # checkout can otherwise fail on tracked execution-plan filenames before
     # the planner gets a chance to read its actual inputs.
@@ -404,7 +418,11 @@ def run_job(root: Path, job: dict) -> dict:
     try:
         job.update(status='running', message=f'Generating {action} from local workspace {job["revision"][:12]}')
         atomic_json(directory / 'job.json', job)
-        prepare_checkout(root, checkout, job['revision'])
+        derived_source = None
+        if action == 'mvg' and job.get('checkout_job_id'):
+            parent = read_job(root, job['checkout_job_id'])
+            derived_source = execution_root(root, parent)
+        prepare_checkout(root, checkout, job['revision'], derived_source=derived_source)
         validate_checkout(root, checkout, job['revision'])
         runner = runner_path()
         task_args = [value for tid in task_scope(checkout) for value in ('--task-id', tid)]

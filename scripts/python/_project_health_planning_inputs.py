@@ -59,7 +59,7 @@ def require_main(root: Path, revision: str) -> None:
         raise ValueError('Main changed during planning; regenerate against the latest main commit')
 
 
-def hydrate_evidence(source: Path, checkout: Path) -> None:
+def hydrate_evidence(source: Path, checkout: Path, derived_source: Path | None = None) -> None:
     """Evidence is a gate, never a replacement for committed design/task inputs."""
     # repo_path resolves directories, including Windows short-name aliases.
     source = source.resolve()
@@ -67,9 +67,19 @@ def hydrate_evidence(source: Path, checkout: Path) -> None:
     # device's local result into the isolated checkout when it exists; a clean
     # device simply proceeds without a derived baseline.
     for name in LOCAL_DERIVED_TOPOLOGY:
-        local = repo_path(source, f'{TOPOLOGY_ROOT}/{name}')
         target = repo_path(checkout, f'{TOPOLOGY_ROOT}/{name}')
-        if local.is_file() and not target.exists():
+        # A dependent MVG run must consume the exact selected Capability
+        # projection, not whichever derived projection happens to be present
+        # in the current workspace.  `derived_source` is therefore preferred
+        # and is copied even when an old local projection is already present.
+        preferred = (
+            repo_path(derived_source, f'{TOPOLOGY_ROOT}/{name}')
+            if derived_source is not None else None
+        )
+        local = preferred if preferred is not None and preferred.is_file() else repo_path(
+            source, f'{TOPOLOGY_ROOT}/{name}'
+        )
+        if local.is_file() and (derived_source is not None or not target.exists()):
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(local, target)
     for name in ('source-blocks.v1.json', 'semantic-requirements.v1.json'):
@@ -107,13 +117,19 @@ def hydrate_evidence(source: Path, checkout: Path) -> None:
             shutil.copyfile(original, target)
 
 
-def prepare_checkout(root: Path, checkout: Path, revision: str) -> None:
+def prepare_checkout(
+    root: Path,
+    checkout: Path,
+    revision: str,
+    *,
+    derived_source: Path | None = None,
+) -> None:
     if not checkout.exists():
         checkout.parent.mkdir(parents=True, exist_ok=True)
         git(root, 'worktree', 'add', '--detach', str(checkout), revision)
     if git(checkout, 'rev-parse', 'HEAD') != revision:
         raise ValueError('Planning checkout is not the selected local workspace commit')
-    hydrate_evidence(root, checkout)
+    hydrate_evidence(root, checkout, derived_source=derived_source)
 
 
 def task_scope(checkout: Path) -> list[str]:

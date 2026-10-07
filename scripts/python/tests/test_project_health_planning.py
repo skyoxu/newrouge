@@ -35,7 +35,7 @@ class ProjectHealthPlanningTests(unittest.TestCase):
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name) / 'repo'
         build_fixture(self.root)
-        (self.root / '.gitignore').write_text('logs/\n', encoding='utf-8')
+        (self.root / '.gitignore').write_text('logs/\n.serena/\n', encoding='utf-8')
         git(self.root, 'add', '.')
         git(self.root, 'commit', '-m', 'fixture: committed planning inputs')
         git(self.root, 'branch', '-M', 'main')
@@ -86,7 +86,7 @@ class ProjectHealthPlanningTests(unittest.TestCase):
         path = self.root / 'logs/ci/task-generation/semantic-requirements.v1.json'
         doc = load_json(path); doc['requirements'][0]['statement'] = 'Uncommitted semantics'
         atomic_json(path, doc)
-        with self.assertRaisesRegex(ValueError, 'committed main'):
+        with self.assertRaisesRegex(ValueError, 'local authoritative inputs'):
             prepare_checkout(self.root, self.root / 'logs/ci/test-checkout', self.revision)
 
     def test_stale_source_manifest_is_rejected(self):
@@ -110,13 +110,12 @@ class ProjectHealthPlanningTests(unittest.TestCase):
             with self.subTest(manifest=manifest), self.assertRaises(ValueError):
                 planning.create_job(self.root, 'mvg', manifest)
 
-    def test_new_main_during_execution_blocks_publication(self):
+    def test_new_main_commit_with_unchanged_inputs_allows_publication(self):
         job = planning.create_job(self.root, 'capability')
         git(self.root, 'commit', '--allow-empty', '-m', 'fixture: new main')
         result = planning.run_job(self.root, job)
-        self.assertEqual('failed', result['status'])
-        self.assertIn('Main changed', result['message'])
-        self.assertFalse((self.root / planning.JOB_ROOT / 'capability-latest.json').exists())
+        self.assertEqual('completed', result['status'])
+        self.assertIsNotNone(planning.generated_view(self.root, 'capability'))
 
     def test_unowned_checkout_edits_are_rejected(self):
         checkout = self.root / 'logs/ci/test-checkout'
@@ -389,12 +388,21 @@ class ProjectHealthPlanningTests(unittest.TestCase):
             self.assertEqual('local_generated', topology['publication_state'])
             mvg_job = planning.create_job(self.root, 'mvg')
             self.assertEqual(cap_job['job_id'], mvg_job['checkout_job_id'])
+            mvg_checkout = planning.execution_root(self.root, mvg_job)
+            cap_checkout = planning.execution_root(self.root, cap_job)
+            self.assertNotEqual(cap_checkout, mvg_checkout)
             result = planning.run_job(self.root, mvg_job)
             self.assertEqual('completed', result['status'], result)
+            self.assertEqual(self.revision, git(mvg_checkout, 'rev-parse', 'HEAD'))
+            self.assertEqual(
+                (cap_checkout / 'docs/planning/semantic-topology/capabilities.v1.json').read_bytes(),
+                (mvg_checkout / 'docs/planning/semantic-topology/capabilities.v1.json').read_bytes(),
+            )
             # Capability uses five model calls; MVG generation uses three
             # independent five-section candidates plus one selection review.
             self.assertEqual(22, len(invocations))
             overview = planning.generated_view(self.root, 'mvg')
+            self.assertIsNotNone(overview)
             self.assertEqual(1, len(overview['manifests']))
             self.assertEqual('docs/testing/mvg/m1-full.json', overview['manifests'][0]['path'])
             self.assertFalse(overview['runtime_verified'])
@@ -631,6 +639,22 @@ class ProjectHealthPlanningTests(unittest.TestCase):
 
         self.assertIsNotNone(selected)
         self.assertEqual(job_id, selected['job_id'])
+
+    def test_dependent_mvg_job_uses_its_own_revision_checkout(self):
+        capability = {
+            'job_id': 'planning-' + ('a' * 32),
+            'revision': '1' * 40,
+        }
+        mvg = {
+            'job_id': 'planning-' + ('b' * 32),
+            'revision': '2' * 40,
+            'checkout_job_id': capability['job_id'],
+        }
+
+        self.assertNotEqual(
+            planning.execution_root(self.root, capability),
+            planning.execution_root(self.root, mvg),
+        )
 
     def test_failed_cli_json_preserves_error_type_and_attempt_budget(self):
         message = planning.compact_error(json.dumps({
