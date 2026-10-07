@@ -171,6 +171,15 @@ class MvgPlanningContractTests(unittest.TestCase):
         self.assertEqual(["flow-a", "flow-b"], [row["flow_scope_ids"][0] for row in requests])
         self.assertEqual([["a-test"], ["b-test"]], [row["test_ids"] for row in requests])
 
+    def test_tests_prompt_forbids_cross_flow_and_cross_test_copying(self):
+        prompt = plan_mvg.segment_prompt(
+            section="tests", identity="sha256:x", requirements=[], task_ids=[7],
+            flow_context=[{"id": "flow-a", "task_ids": [7]}], scope_id="tests-01",
+            allow_exact_flow_id=True, allow_exact_test_id=True,
+        )
+        self.assertIn("exactly one flow", prompt)
+        self.assertIn("Never emit a test for another flow", prompt)
+
     def test_correction_prompt_requests_restricted_patch(self):
         prompt = correction_prompt(["coverage_requirement_missing:FR-1"])
         self.assertIn("patch", prompt.lower())
