@@ -1544,11 +1544,25 @@ def preserve_frozen_manifest_baseline(proposal: dict[str, Any],
     allowed_flow_ids = [str(value) for value in planning_scope.get("flow_ids", [])]
     allowed_test_ids = set(str(value) for value in planning_scope.get("test_ids", []))
     if allowed_flow_ids:
-        manifest["flows"] = [
-            json.loads(json.dumps(baseline_flows[flow_id]))
-            for flow_id in allowed_flow_ids
-            if flow_id in baseline_flows
-        ]
+        preserved_flows = []
+        candidate_flows = {
+            str(row.get("id")): row
+            for row in manifest.get("flows", [])
+            if isinstance(row, dict) and str(row.get("id") or "").strip()
+        }
+        for flow_id in allowed_flow_ids:
+            baseline_flow = baseline_flows.get(flow_id)
+            if baseline_flow is None:
+                continue
+            merged = json.loads(json.dumps(candidate_flows.get(flow_id, {})))
+            # Keep the cumulative route contract and evidence inventory byte-
+            # stable, while retaining model-owned semantic membership fields
+            # needed to account for the frozen Requirement rows.
+            for key in ("id", "task_ids", "source_paths", "handoffs", "test_ids"):
+                if key in baseline_flow:
+                    merged[key] = json.loads(json.dumps(baseline_flow[key]))
+            preserved_flows.append(merged)
+        manifest["flows"] = preserved_flows
         coverage = manifest.setdefault("coverage", {})
         if isinstance(coverage, dict):
             coverage["required_flow_ids"] = list(allowed_flow_ids)
