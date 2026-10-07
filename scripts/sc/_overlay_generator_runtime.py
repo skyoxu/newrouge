@@ -12,6 +12,40 @@ from _overlay_generator_scaffold import build_scaffold_base_page
 from _overlay_generator_support import parse_prd_docs_csv
 
 
+def write_verified_pages(target_dir: Path, contents: dict[str, bytes], expected: dict[str, bytes | None]) -> None:
+    target_dir.mkdir(parents=True, exist_ok=True)
+    staged: list[tuple[Path, Path]] = []
+    replaced: list[Path] = []
+    try:
+        for name, content in contents.items():
+            target = target_dir / name
+            current = target.read_bytes() if target.exists() else None
+            if current != expected[name]:
+                raise ValueError(f"Overlay source changed before apply: {name}")
+            fd, name_tmp = tempfile.mkstemp(prefix=name + ".", suffix=".tmp", dir=target_dir)
+            os.close(fd)
+            temporary = Path(name_tmp)
+            staged.append((target, temporary))
+            temporary.write_bytes(content)
+        for target, temporary in staged:
+            current = target.read_bytes() if target.exists() else None
+            if current != expected[target.name]:
+                raise ValueError(f"Overlay source changed before apply: {target.name}")
+            os.replace(temporary, target)
+            replaced.append(target)
+    except Exception:
+        for target in reversed(replaced):
+            original = expected[target.name]
+            if original is None:
+                target.unlink(missing_ok=True)
+            else:
+                target.write_bytes(original)
+        raise
+    finally:
+        for _, temporary in staged:
+            temporary.unlink(missing_ok=True)
+
+
 def copy_generated_to_target(generated_dir: Path, target_dir: Path, expected_texts: dict[str, str] | None = None) -> None:
     target_dir.mkdir(parents=True, exist_ok=True)
     staged: list[tuple[Path, Path]] = []

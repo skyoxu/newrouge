@@ -53,6 +53,10 @@ A `logs/ci/knowledge-context/**` shadow bundle is optional routing evidence only
 1. Confirm the Chapter 3.8 triplet baseline is clean before generating overlays.
 2. Before the first overlay/contract write, optionally run the Chapter 4 shadow knowledge preflight from `docs/workflows/knowledge-context-shadow.md`. If it returns `fallback_required`, continue with the direct authoritative sources; do not block Chapter 4 on the shadow layer.
 3. Generate overlay skeletons through batch dry-run, batch simulate, single-page repair for outliers, and limited apply.
+   - Inspect the generated pages and semantic refs; `similarity_ratio` is diagnostic only, never an apply threshold.
+   - Bind the inspected simulation's directory using `--candidate-from` when applying. Read `candidate_bundle_path` / `candidate_manifest_path` from that run's summary; do not choose a directory by modification time.
+   - Apply promotes the saved candidate without another model call. If `candidate_apply_blocked` reports stale/missing evidence, simulate and inspect the affected pages again before applying.
+   - After outlier repair, apply the repaired page from its single-page run and other pages from their inspected batch. Do not silently substitute a newer uninspected candidate.
 4. Do not perform full apply in the first overlay pass, and do not mix acceptance rewrites into overlay generation.
 5. Freeze overlay refs with sync_task_overlay_refs and validate_overlay_execution, then rerun task refs and triplet validators.
 6. Create or adjust contract skeletons under Game.Core/Contracts only, using the workflow contract templates.

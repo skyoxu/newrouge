@@ -1,0 +1,29 @@
+# ADR-0039: Overlay Candidate Promotion and Review Risk Inputs
+
+- Status: Accepted
+- Date: 2026-10-07
+- Context:
+  - Chapter 4 simulate generates candidate pages for inspection, but the previous apply path generated them again. The written pages could differ from the inspected output.
+  - Task view ADR/Overlay/Chapter references are evidence routing metadata. Treating their filenames as risk keywords escalates ordinary implementation work even when it changes no architectural policy.
+- Decision:
+  - Simulate records input hashes, original page hashes/existence, generated page hashes and a candidate manifest under `logs/ci/**`.
+  - Apply promotes those exact candidate bytes without invoking the model. It validates every selected page before the first write and restores originals if replacement fails.
+  - Missing, stale or modified candidates stop apply. There is no generate-and-apply fallback.
+  - The Chapter 4 Skill binds the inspected run/batch through `--candidate-from`. Existing direct commands may consume the recorded per-page pointers for the same source paths, PRD-ID and page mode; they do not scan for the newest log directory.
+  - A failed simulate clears its selected default candidate pointers. Explicit prior runs remain usable only when all their hashes still match.
+  - Text similarity is diagnostic only. New pages and legitimate large changes cannot be rejected merely because their similarity is low.
+  - Risk keyword classification reads task descriptions, titles, ownership and labels/tags. ADR/Overlay/Chapter reference lists alone do not raise the tier.
+  - P0, populated contract references and high-risk descriptive semantics still require `full`. P1 remains at least `targeted`.
+  - Explicit task tier choices remain effective, subject to those risk floors. Conservative validation permits explicit choices when the computed writeback is `auto`; materialized validation still requires the computed effective tier.
+  - Existing explicit `full` values are retained. This change does not bulk rewrite completed task views or alter delivery/security profile defaults.
+- Consequences:
+  - Reviewed candidates can be applied with fewer model calls and without an extra user-facing stage.
+  - Input changes require a fresh simulation and inspection. Old logs without candidate manifests cannot be promoted.
+  - Real task cost savings depend on their descriptive risk and selected tier; removing reference-only escalation does not imply current tasks can all be downgraded.
+- Supersedes: None
+- References:
+  - `workflow.md` Chapter 4
+  - `scripts/sc/_overlay_candidate_store.py`
+  - `scripts/sc/_overlay_candidate_apply.py`
+  - `scripts/sc/_llm_review_tier.py`
+  - `scripts/python/validate_semantic_review_tier.py`

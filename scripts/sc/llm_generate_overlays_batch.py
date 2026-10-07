@@ -20,6 +20,9 @@ from _overlay_generator_batch import (
     resolve_target_pages,
 )
 from _overlay_generator_support import infer_prd_id, load_task_payloads, normalize_relpath, write_json, write_text
+from _overlay_generator_support import discover_companion_docs, parse_prd_docs_csv, validate_required_prd_docs
+from _overlay_candidate_store import build_candidate_inputs, write_candidate_bundle
+from _overlay_candidate_apply import run_candidate_apply
 from _util import ci_dir, repo_root
 
 
@@ -42,8 +45,10 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Single-page generation mode passed through to the child runner.",
     )
     parser.add_argument("--timeout-sec", type=int, default=1200, help="Per-page child timeout in seconds.")
-    parser.add_argument("--dry-run", action="store_true", help="Run child generator in dry-run mode.")
-    parser.add_argument("--apply", action="store_true", help="Run child generator in apply mode.")
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--dry-run", action="store_true", help="Run child generator in dry-run mode.")
+    mode.add_argument("--apply", action="store_true", help="Apply saved simulate candidates without running the model.")
+    parser.add_argument("--candidate-from", default="", help="Optional simulate run/batch directory; recorded candidate pointers are the default.")
     parser.add_argument("--batch-suffix", default="", help="Optional batch output suffix. If omitted, generate a unique suffix.")
     return parser
 
@@ -61,6 +66,9 @@ def _find_page_diff(summary: dict[str, object], page: str) -> dict[str, object]:
 
 def main() -> int:
     args = _build_parser().parse_args()
+    if args.candidate_from and not args.apply:
+        print("SC_LLM_OVERLAY_BATCH status=fail error=candidate_from_requires_apply")
+        return 2
     root = repo_root()
     prd_path = Path(args.prd)
     if not prd_path.is_absolute():
@@ -81,6 +89,19 @@ def main() -> int:
         )
         print(f"SC_LLM_OVERLAY_BATCH status=fail error=no_target_pages prd_id={prd_id} out={batch_out_dir}")
         return 2
+
+    if args.apply:
+        companions = discover_companion_docs(prd_path, repo_root=root, explicit_paths=parse_prd_docs_csv(args.prd_docs))
+        missing = validate_required_prd_docs(prd_id=prd_id, companion_paths=companions, expected_doc_names=parse_prd_docs_csv(args.prd_docs))
+        if missing:
+            write_json(batch_out_dir / "summary.json", {"status": "fail", "error": "missing_required_prd_docs", "missing_required_prd_docs": missing})
+            print(f"SC_LLM_OVERLAY_BATCH status=fail error=missing_required_prd_docs out={batch_out_dir}")
+            return 2
+        return run_candidate_apply(
+            repo_root=root, out_dir=batch_out_dir,
+            context=build_candidate_inputs(repo_root=root, prd_path=prd_path, companion_paths=companions, prd_id=prd_id, page_mode=args.page_mode),
+            pages=pages, candidate_from=args.candidate_from, label="SC_LLM_OVERLAY_BATCH",
+        )
 
     page_logs_dir = batch_out_dir / "page-logs"
     page_logs_dir.mkdir(parents=True, exist_ok=True)
@@ -111,8 +132,6 @@ def main() -> int:
         ]
         if args.dry_run:
             cmd.append("--dry-run")
-        if args.apply:
-            cmd.append("--apply")
 
         proc = subprocess.run(
             cmd,
@@ -155,6 +174,8 @@ def main() -> int:
             "child_out_dir": normalize_relpath(child_out_dir, root=root),
             "child_summary_path": normalize_relpath(child_summary_path, root=root) if child_summary_path.exists() else "",
         }
+        if proc.returncode == 0 and child_status == "ok" and child_summary.get("mode") == "simulate":
+            record.update({key: child_summary[key] for key in ("candidate_manifest_path", "candidate_manifest_sha256") if key in child_summary})
         if proc.returncode != 0 or child_status != "ok":
             failure_count += 1
         results.append(record)
@@ -168,6 +189,9 @@ def main() -> int:
         "batch_out_dir": normalize_relpath(batch_out_dir, root=root),
         "results": results,
     }
+    if not args.dry_run:
+        write_candidate_bundle(repo_root=root, out_dir=batch_out_dir, results=results)
+        summary["candidate_bundle_path"] = normalize_relpath(batch_out_dir / "candidate-bundle.json", root=root)
     write_json(batch_out_dir / "summary.json", summary)
     write_text(batch_out_dir / "report.md", render_batch_report_markdown(summary))
     print(

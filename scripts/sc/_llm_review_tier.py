@@ -183,7 +183,7 @@ def _text_blob(triplet: TaskmasterTriplet | None) -> str:
             value = entry.get(key)
             if isinstance(value, str) and value.strip():
                 parts.append(value.strip().lower())
-        for key in ("labels", "tags", "chapter_refs", "adr_refs", "overlay_refs"):
+        for key in ("labels", "tags"):
             parts.extend(x.lower() for x in _string_list(entry.get(key)))
     return "\n".join(parts)
 

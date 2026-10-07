@@ -213,6 +213,7 @@ Reason:
 - This is the main new harness capability in the branch.
 - The pipeline now produces `execution-context.json`, `repair-guide.json`, `repair-guide.md`, `run-events.jsonl`, `harness-capabilities.json`, approval sidecars, and marathon state.
 - The pipeline also writes `P2/P3/P4` findings into `docs/technical-debt.md` and reads `semantic_review_tier` from task views.
+- Risk keywords come from descriptive task fields and labels/tags, not ADR/Overlay/Chapter reference lists. P0, contract refs and high-risk descriptions retain the `full` floor; explicit task tiers remain valid subject to floors. Do not bulk downgrade existing `full` entries to chase cost savings.
 
 ### Phase 4: `sc-test`, TDD, Acceptance-Test Generation, And C# Conventions Hard Gate
 
@@ -275,6 +276,10 @@ Reason:
 ### Phase 5: Overlay Generation Toolchain
 
 Copy this bundle together:
+
+Simulate records hash-bound candidates; apply reuses the inspected run through `--candidate-from` and never invokes the model again. Copy the candidate helpers together with both entrypoints and the Chapter 4 Skill. Similarity remains diagnostic, not a semantic promotion gate. See ADR-0039 for source drift and review risk boundaries.
+
+Include `scripts/sc/_overlay_generator_execution.py`, `scripts/sc/_overlay_candidate_store.py` and `scripts/sc/_overlay_candidate_apply.py` with this bundle.
 
 1. `scripts/sc/llm_generate_overlays_batch.py`
 2. `scripts/sc/llm_generate_overlays_from_prd.py`

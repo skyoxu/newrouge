@@ -26,6 +26,20 @@ def _write_json(path: Path, payload: object) -> None:
 
 
 class ValidateSemanticReviewTierTests(unittest.TestCase):
+    def test_conservative_validator_should_preserve_explicit_full_for_a_low_risk_task(self) -> None:
+        root = self._fresh_root("validate-explicit-full")
+        master, back, gameplay = self._create_repo(root)
+        backfill_module.main(["--tasks-json-path", str(master), "--tasks-back-path", str(back), "--tasks-gameplay-path", str(gameplay), "--write"])
+        for path in (back, gameplay):
+            payload = json.loads(path.read_text(encoding="utf-8"))
+            payload[0]["semantic_review_tier"] = "full"
+            payload[0]["adr_refs"] = ["ADR-0005"]
+            _write_json(path, payload)
+        self.assertEqual(0, validate_module.main([
+            "--tasks-json-path", str(master), "--tasks-back-path", str(back), "--tasks-gameplay-path", str(gameplay),
+            "--summary-path", str(root / "validate.json"),
+        ]))
+
     def _fresh_root(self, name: str) -> Path:
         root = TEST_TMP_ROOT / f"{name}-{uuid.uuid4().hex}"
         if root.exists():

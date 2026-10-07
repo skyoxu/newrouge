@@ -12,7 +12,7 @@ Rules:
 - Default mode: `--page-mode scaffold`
 - Default timeout: `--timeout-sec 1200`
 - Retry timeout for routing or dense contracts pages: `--timeout-sec 1800`
-- Always pass `--batch-suffix` or `--run-suffix`
+- Suffixes are generated uniquely when omitted; meaningful names are optional for easier lookup
 - Every file listed in `--prd-docs` is treated as required input; a missing file is a hard failure
 
 ## 1. Core Dry-Run
@@ -47,7 +47,7 @@ Example for contracts pages:
 py -3 scripts/sc/llm_generate_overlays_batch.py --prd docs/prd/<prd-main>.md --prd-id PRD-<PRODUCT>-V1 --prd-docs docs/prd/<prd-doc-a>.md,docs/prd/<prd-doc-b>.md,docs/prd/<prd-doc-c>.md --page-family contracts --page-mode scaffold --timeout-sec 1200 --batch-suffix <wave>-contracts-sim
 ```
 
-Recommended order:
+For affected families that actually exist, use this order; do not scan unaffected or absent families:
 
 1. `core`
 2. `contracts`
@@ -65,14 +65,14 @@ py -3 scripts/sc/llm_generate_overlays_from_prd.py --prd docs/prd/<prd-main>.md 
 
 ## 5. Small-Batch Apply
 
-Only apply reviewed pages:
+Only apply reviewed pages. Apply consumes the saved simulation, checks input/source/candidate hashes and never calls the model. The Skill passes the inspected run directory using `--candidate-from`; direct calls may omit it to use recorded candidate pointers for the same inputs and mode. After a single-page repair, use that repaired run for the page.
 
 ```powershell
-py -3 scripts/sc/llm_generate_overlays_batch.py --prd docs/prd/<prd-main>.md --prd-id PRD-<PRODUCT>-V1 --prd-docs docs/prd/<prd-doc-a>.md,docs/prd/<prd-doc-b>.md,docs/prd/<prd-doc-c>.md --pages _index.md,ACCEPTANCE_CHECKLIST.md,08-rules-freeze-and-assertion-routing.md --page-mode scaffold --timeout-sec 1200 --apply --batch-suffix <wave>-apply-core
+py -3 scripts/sc/llm_generate_overlays_batch.py --prd docs/prd/<prd-main>.md --prd-id PRD-<PRODUCT>-V1 --prd-docs docs/prd/<prd-doc-a>.md,docs/prd/<prd-doc-b>.md,docs/prd/<prd-doc-c>.md --pages _index.md,ACCEPTANCE_CHECKLIST.md --page-mode scaffold --apply --candidate-from <reviewed-simulate-run-dir> --batch-suffix <wave>-apply-core
 ```
 
 ## Stop-Loss Rule
 
-- `similarity_ratio >= 0.95`: usually safe for quick review
-- `0.90 <= similarity_ratio < 0.95`: review before apply
-- `similarity_ratio < 0.90`: do not apply directly; rerun single-page repair
+- Similarity describes text changes, not requirement correctness; inspect refs, contracts and semantic coverage before apply
+- A new page has similarity 0; a legitimate large update may also have low similarity and does not require repair solely for its score
+- `candidate_apply_blocked`: simulate and inspect affected pages again; do not bypass source/candidate drift checks

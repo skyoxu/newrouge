@@ -138,10 +138,12 @@ Use the single-page path when:
 
 ### Step 5: Apply in Small Batches
 
-Only apply pages after simulate results are reviewed.
+Only apply pages after simulate results are reviewed. Apply promotes exact saved candidate bytes without another model call. Pass the inspected run directory through `--candidate-from`; the Skill manages this binding. When omitted, the scripts use recorded per-page pointers for the same input paths, PRD-ID and page mode, never the newest directory in `logs/`.
+
+Source/task/companion changes, original page changes and candidate edits stop apply before any selected page is written. Batch apply validates all selected pages first and restores originals on a replacement failure. After outlier repair, bind that single-page run for the repaired page and the inspected batch for other pages.
 
 ```powershell
-py -3 scripts/sc/llm_generate_overlays_batch.py --prd docs/prd/<prd-main>.md --prd-id PRD-<PRODUCT>-V1 --prd-docs docs/prd/<prd-doc-a>.md,docs/prd/<prd-doc-b>.md,docs/prd/<prd-doc-c>.md --pages _index.md,ACCEPTANCE_CHECKLIST.md,08-rules-freeze-and-assertion-routing.md --page-mode scaffold --timeout-sec 1200 --apply --batch-suffix <wave>-apply-core
+py -3 scripts/sc/llm_generate_overlays_batch.py --prd docs/prd/<prd-main>.md --prd-id PRD-<PRODUCT>-V1 --prd-docs docs/prd/<prd-doc-a>.md,docs/prd/<prd-doc-b>.md,docs/prd/<prd-doc-c>.md --pages _index.md,ACCEPTANCE_CHECKLIST.md --page-mode scaffold --apply --candidate-from <reviewed-simulate-run-dir> --batch-suffix <wave>-apply-core
 ```
 
 ## Parameter Recommendations
@@ -173,7 +175,7 @@ Reason:
 
 ### `--batch-suffix` and `--run-suffix`
 
-Always prefer explicit suffixes such as:
+Unique suffixes are automatic when omitted. For easier lookup, optionally use meaningful names such as:
 
 - `<wave>-core-sim`
 - `<wave>-contracts-fix1`
@@ -227,16 +229,16 @@ Important files:
 - `page-prompts/`
 - `page-outputs/`
 
-## Practical Review Thresholds
+## Practical Diff Review
 
-Use these review thresholds as a stop-loss guide:
+Use diff size to prioritize inspection, never to prove semantic correctness:
 
-- `diff_status=unchanged`: normally safe
-- `modified` and `similarity_ratio >= 0.95`: usually small change, quick review
-- `0.90 <= similarity_ratio < 0.95`: manual review required
-- `similarity_ratio < 0.90`: do not apply directly; rerun single-page repair
+- `diff_status=unchanged`: no text change; confirm the PRD change did not require an omitted update
+- `modified`: inspect the actual diff and source/contract/task refs
+- `added`: similarity is 0 by definition; inspect the new page against its requirements
+- Low similarity alone does not require single-page repair; repair an actual semantic or structural defect
 
-These are working thresholds, not hard gates.
+Neither high nor low similarity is an apply verdict.
 
 ## Known Limits
 
@@ -279,4 +281,4 @@ For a new PRD wave, use:
 - repair entry: `scripts/sc/llm_generate_overlays_from_prd.py`
 - default mode: `scaffold`
 - recommended timeout: `1200`
-- recommended suffix strategy: always pass `--batch-suffix` or `--run-suffix`
+- suffix strategy: automatic unique names; meaningful explicit names are optional

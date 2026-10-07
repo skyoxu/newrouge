@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import sys
 from pathlib import Path
@@ -11,26 +10,19 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from _overlay_generator_diff import build_diff_summary, render_diff_summary_markdown
-from _overlay_generator_markdown_patch import apply_scaffold_update_to_existing_markdown
-from _overlay_generator_patch import build_base_page_from_profile, merge_page_patch
 from _overlay_generator_prompting import (
     build_overlay_page_patch_prompt,
     build_overlay_page_prompt,
-    parse_and_validate_page,
-    parse_and_validate_page_patch,
-    run_codex_exec,
 )
 from _overlay_generator_runtime import (
     artifact_name as _artifact_name,
-    copy_generated_to_target as _copy_generated_to_target,
     prepare_page_runtime_state as _prepare_page_runtime_state,
     reset_dir as _reset_dir,
     select_pages as _select_pages,
 )
-from _overlay_generator_scaffold import merge_scaffold_update, select_pages_by_family
+from _overlay_generator_scaffold import select_pages_by_family
 from _overlay_generator_scaffold_prompting import (
     build_overlay_page_scaffold_prompt,
-    parse_and_validate_scaffold_update,
 )
 from _overlay_generator_support import (
     build_default_overlay_profile,
@@ -43,11 +35,13 @@ from _overlay_generator_support import (
     normalize_relpath,
     parse_prd_docs_csv,
     read_text,
-    render_page_markdown,
     validate_required_prd_docs,
     write_json,
     write_text,
 )
+from _overlay_candidate_store import build_candidate_inputs, invalidate_default_candidate, save_candidate
+from _overlay_candidate_apply import run_candidate_apply
+from _overlay_generator_execution import generate_pages
 from _util import ci_dir, repo_root
 
 
@@ -61,8 +55,10 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Additional PRD markdown paths, comma-separated. Example: PRD_V3_TRACEABILITY_MATRIX.md,PRD_V3_RULES_FREEZE.md",
     )
     parser.add_argument("--timeout-sec", type=int, default=900, help="codex exec timeout in seconds.")
-    parser.add_argument("--dry-run", action="store_true", help="Validate inputs and emit prompt/artifacts without calling codex.")
-    parser.add_argument("--apply", action="store_true", help="Write generated pages into docs/architecture/overlays/<PRD-ID>/08.")
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--dry-run", action="store_true", help="Validate inputs and emit prompt/artifacts without calling codex.")
+    mode.add_argument("--apply", action="store_true", help="Apply saved simulate candidates without running the model.")
+    parser.add_argument("--candidate-from", default="", help="Optional simulate run/batch directory. Otherwise use its recorded candidate pointers.")
     parser.add_argument("--page-filter", default="", help="Optional comma-separated overlay filenames to generate, e.g. _index.md,ACCEPTANCE_CHECKLIST.md")
     parser.add_argument(
         "--page-family",
@@ -94,6 +90,9 @@ def _build_output_dir_name(prd_id: str, run_suffix: str) -> str:
 
 def main() -> int:
     args = _build_parser().parse_args()
+    if args.candidate_from and not args.apply:
+        print("SC_LLM_OVERLAY_GEN status=fail error=candidate_from_requires_apply")
+        return 2
     root = repo_root()
     prd_path = Path(args.prd)
     if not prd_path.is_absolute():
@@ -132,6 +131,10 @@ def main() -> int:
         )
         return 2
 
+    candidate_context = build_candidate_inputs(
+        repo_root=root, prd_path=prd_path, companion_paths=companion_paths, prd_id=prd_id, page_mode=args.page_mode,
+    )
+    tasks_json, tasks_back, tasks_gameplay = load_task_payloads(root)
     companion_docs = [
         {
             "path": normalize_relpath(path, root=root),
@@ -159,11 +162,22 @@ def main() -> int:
         print(f"SC_LLM_OVERLAY_GEN status=fail error=page_filter_matched_nothing prd_id={prd_id} out={out_dir}")
         return 2
 
+    if args.apply:
+        return run_candidate_apply(
+            repo_root=root, out_dir=out_dir, context=candidate_context,
+            pages=[str(page['filename']) for page in selected_pages], candidate_from=args.candidate_from,
+            label="SC_LLM_OVERLAY_GEN",
+        )
     task_digest = build_task_digest(prd_id, tasks_json, tasks_back, tasks_gameplay)
     prd_text = read_text(prd_path)
     prompts_dir = out_dir / "page-prompts"
     _reset_dir(prompts_dir)
     current_dir = root / "docs" / "architecture" / "overlays" / prd_id / "08"
+    base_files = {
+        str(page['filename']): (current_dir / str(page['filename'])).read_bytes()
+        if (current_dir / str(page['filename'])).exists() else None
+        for page in selected_pages
+    }
     page_state = _prepare_page_runtime_state(
         selected_pages=selected_pages,
         current_dir=current_dir,
@@ -258,105 +272,16 @@ def main() -> int:
         print(f"SC_LLM_OVERLAY_GEN status=ok mode=dry-run prd_id={prd_id} out={out_dir}")
         return 0
 
-    generated_dir = out_dir / "generated" / prd_id / "08"
-    _reset_dir(generated_dir)
-    run_records: list[dict[str, object]] = []
-    raw_dir = out_dir / "page-outputs"
-    trace_dir = out_dir / "page-traces"
-    meta_dir = out_dir / "page-meta"
-    _reset_dir(raw_dir)
-    _reset_dir(trace_dir)
-    _reset_dir(meta_dir)
-    for page in selected_pages:
-        filename = str(page.get("filename") or "")
-        state = page_state.get(filename) or {}
-        current_page_text = str(state.get("current_page_text") or "")
-        page_context = dict(state.get("page_context") or {})
-        artifact = _artifact_name(filename)
-        prompt_path = prompts_dir / f"{artifact}.prompt.md"
-        last_message_path = raw_dir / f"{artifact}.output.json"
-        rc, trace_out, cmd = run_codex_exec(
-            repo_root=root,
-            prompt=read_text(prompt_path),
-            out_last_message=last_message_path,
-            timeout_sec=int(args.timeout_sec),
-        )
-        write_text(trace_dir / f"{artifact}.trace.log", trace_out)
-        write_json(meta_dir / f"{artifact}.meta.json", {"cmd": cmd, "rc": rc, "filename": filename})
-
-        if rc != 0 or not last_message_path.exists():
-            write_json(
-                out_dir / "summary.json",
-                {
-                    "status": "fail",
-                    "error": "codex_exec_failed",
-                    "prd_id": prd_id,
-                    "failed_page": filename,
-                    "rc": rc,
-                },
-            )
-            print(f"SC_LLM_OVERLAY_GEN status=fail error=codex_exec_failed page={filename} rc={rc} out={out_dir}")
-            return 1
-
-        try:
-            raw_output = read_text(last_message_path)
-            output_markdown = ""
-            if args.page_mode == "scaffold":
-                scaffold_update = parse_and_validate_scaffold_update(
-                    raw_output=raw_output,
-                    expected_filename=filename,
-                )
-                base_page = dict(state.get("scaffold_base_page") or {})
-                parsed_page = merge_scaffold_update(base_page, scaffold_update)
-                if current_page_text.strip():
-                    scaffold_update = dict(scaffold_update)
-                    scaffold_update["strict_incremental_patch"] = True
-                    scaffold_update["expected_sha256"] = (
-                        "sha256:" + hashlib.sha256(current_page_text.replace("\r\n", "\n").replace("\r", "\n").encode("utf-8")).hexdigest()
-                    )
-                    output_markdown = apply_scaffold_update_to_existing_markdown(
-                        current_markdown=current_page_text,
-                        scaffold_update=scaffold_update,
-                    )
-            elif args.page_mode == "patch":
-                patch_payload = parse_and_validate_page_patch(
-                    raw_output=raw_output,
-                    expected_filename=filename,
-                )
-                base_page = build_base_page_from_profile(page, page_context)
-                parsed_page = merge_page_patch(base_page, patch_payload)
-            else:
-                parsed_page = parse_and_validate_page(
-                    raw_output=raw_output,
-                    expected_filename=filename,
-                    expected_page_kind=str(page.get("page_kind") or ""),
-                )
-        except Exception as exc:  # noqa: BLE001
-            write_text(out_dir / f"{artifact}.page-error.txt", str(exc) + "\n")
-            write_json(
-                out_dir / "summary.json",
-                {
-                    "status": "fail",
-                    "error": "invalid_page_output",
-                    "prd_id": prd_id,
-                    "failed_page": filename,
-                    "detail": str(exc),
-                },
-            )
-            print(f"SC_LLM_OVERLAY_GEN status=fail error=invalid_page_output page={filename} out={out_dir}")
-            return 1
-
-        if not output_markdown:
-            output_markdown = render_page_markdown(parsed_page, prd_id=prd_id)
-        write_text(generated_dir / filename, output_markdown)
-        run_records.append(
-            {
-                "filename": filename,
-                "prompt_path": normalize_relpath(prompt_path, root=root),
-                "output_path": normalize_relpath(last_message_path, root=root),
-            }
-        )
-
+    invalidate_default_candidate(root, candidate_context, [str(page['filename']) for page in selected_pages])
+    for artifact in ('candidate.json', 'candidate-pointer.json'):
+        (out_dir / artifact).unlink(missing_ok=True)
+    generated = generate_pages(
+        root=root, out_dir=out_dir, prd_id=prd_id, selected_pages=selected_pages,
+        page_state=page_state, prompts_dir=prompts_dir, page_mode=args.page_mode, timeout_sec=int(args.timeout_sec),
+    )
+    if generated is None:
+        return 1
+    generated_dir, run_records = generated
     existing_dir = current_dir
     diff_scope = {str(page.get("filename") or "") for page in selected_pages}
     comparison = compare_overlay_dirs(generated_dir, existing_dir, include_filenames=diff_scope)
@@ -365,7 +290,7 @@ def main() -> int:
     write_text(out_dir / "diff-summary.md", render_diff_summary_markdown(diff_summary))
     summary = {
         "status": "ok",
-        "mode": "apply" if args.apply else "simulate",
+        "mode": "simulate",
         "prd_id": prd_id,
         "generated_dir": normalize_relpath(generated_dir, root=root),
         "existing_overlay_dir": normalize_relpath(existing_dir, root=root) if existing_dir.exists() else "",
@@ -385,24 +310,21 @@ def main() -> int:
         },
     }
 
-    if args.apply:
-        for page in selected_pages:
-            filename = str(page.get("filename") or "")
-            old = str((page_state.get(filename) or {}).get("current_page_text") or "")
-            target = existing_dir / filename
-            if (target.read_text(encoding="utf-8") if target.exists() else "") != old:
-                raise ValueError(f"overlay source changed before apply: {filename}")
-        _copy_generated_to_target(generated_dir, existing_dir, {
-            str(page.get("filename") or ""): str((page_state.get(str(page.get("filename") or "")) or {}).get("current_page_text") or "")
-            for page in selected_pages
-        })
-        summary["applied_to"] = normalize_relpath(existing_dir, root=root)
+    try:
+        summary.update(save_candidate(
+            repo_root=root, out_dir=out_dir, context=candidate_context,
+            base_files=base_files, generated_dir=generated_dir,
+        ))
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        write_json(out_dir / "summary.json", {"status": "fail", "error": "candidate_save_blocked", "detail": str(exc)})
+        print(f"SC_LLM_OVERLAY_GEN status=fail error=candidate_save_blocked detail={exc} out={out_dir}")
+        return 1
 
     write_json(out_dir / "summary.json", summary)
     write_text(out_dir / "report.md", json.dumps(summary, ensure_ascii=False, indent=2) + "\n")
     print(
         "SC_LLM_OVERLAY_GEN status=ok "
-        f"mode={'apply' if args.apply else 'simulate'} prd_id={prd_id} "
+        f"mode=simulate prd_id={prd_id} "
         f"generated={generated_dir} overlap={comparison['filename_overlap']}/{comparison['existing_count']} out={out_dir}"
     )
     return 0
