@@ -45,3 +45,11 @@ Approval is still local-file based. The pipeline now auto-manages the soft appro
 - Do not use git-tracked files for high-frequency heartbeat events.
 - Use git-tracked files only for durable intent and decisions.
 - Consume stable artifact paths before falling back to broader repo inspection.
+
+## Automatic Recovery Document Binding
+
+- `execution-context.json.paths.latest_execution_plan` and `latest_decision_log` use the same selector as `resume-task`.
+- The selector consumes the existing `Related task id(s)`, `Related run id`, and `Related latest.json` fields. An explicit different task is excluded even if a copied run or pointer link matches.
+- Exact task/run matches precede related task history. Equal bindings use the versioned filename for reproducible ordering; checkout modification times are ignored.
+- README, templates, and unbound documents are excluded. Missing matches leave the existing pointer fields empty instead of selecting an unrelated document.
+- No new command, parameter, sidecar field, or manual association step is required. Related historical documents remain evidence rather than current instructions.
