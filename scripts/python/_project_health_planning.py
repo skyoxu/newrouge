@@ -121,11 +121,19 @@ def _derived_output_is_current(root: Path, job: dict, relative: str) -> bool:
 
 
 def selected_result(root: Path, action: str) -> dict | None:
-    pointer = load_json(root / JOB_ROOT / f'{action}-latest.json', {})
+    latest_pointer_path = root / JOB_ROOT / f'{action}-latest.json'
+    pointer = load_json(latest_pointer_path, {})
+    # A completed local planning result is derived state and its latest pointer
+    # can be lost during an interrupted backup/restore.  Recover only when the
+    # durable attempt pointer identifies a completed, still-fresh result; failed
+    # or incomplete attempts must never become public main data.
+    if not pointer.get('job_id') and not latest_pointer_path.is_file():
+        pointer = load_json(root / JOB_ROOT / f'{action}-attempt.json', {})
     if not pointer.get('job_id'):
         return None
     job = read_job(root, pointer['job_id'])
-    if job['status'] != 'completed' or not _planning_input_fresh(root, job):
+    if (job.get('action') != action or job['status'] != 'completed'
+            or not _planning_input_fresh(root, job)):
         return None
     if file_sha(job_path(root, job['job_id']).parent / 'result.json') != job.get('result_sha256'):
         raise ValueError('Generated planning result identity changed')

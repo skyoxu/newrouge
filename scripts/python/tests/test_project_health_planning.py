@@ -610,6 +610,28 @@ class ProjectHealthPlanningTests(unittest.TestCase):
     def test_failed_cli_json_reports_only_the_specific_reason(self):
         self.assertEqual('Readiness expired', planning.compact_error('{"status":"blocked","reason":"Readiness expired"}'))
 
+    def test_selected_result_recovers_completed_attempt_when_latest_pointer_is_missing(self):
+        job_id = 'planning-' + ('a' * 32)
+        job_dir = self.root / planning.JOB_ROOT / job_id
+        job_dir.mkdir(parents=True)
+        result_path = job_dir / 'result.json'
+        atomic_json(result_path, {'topology': {'nodes': {'capabilities': []}}})
+        job = {
+            'schema_version': 'newrouge.knowledge-planning-job.v1',
+            'job_id': job_id,
+            'action': 'capability',
+            'status': 'completed',
+            'result_sha256': planning.file_sha(result_path),
+        }
+        atomic_json(job_dir / 'job.json', job)
+        atomic_json(self.root / planning.JOB_ROOT / 'capability-attempt.json', {'job_id': job_id})
+
+        with patch.object(planning, '_planning_input_fresh', return_value=True):
+            selected = planning.selected_result(self.root, 'capability')
+
+        self.assertIsNotNone(selected)
+        self.assertEqual(job_id, selected['job_id'])
+
     def test_failed_cli_json_preserves_error_type_and_attempt_budget(self):
         message = planning.compact_error(json.dumps({
             "status": "blocked",
