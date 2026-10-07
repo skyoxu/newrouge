@@ -231,6 +231,42 @@ def mvg_selection_output_schema(*, incumbent_present: bool) -> dict[str, Any]:
     }
 
 
+def mvg_selection_prompt(*, incumbent_present: bool,
+                         planning_scope: dict[str, Any] | None) -> str:
+    """Build the comparative selector prompt with the frozen scope explicit."""
+    scope = planning_scope or {}
+    scope_view = {
+        key: scope.get(key)
+        for key in ("scope_id", "mode", "flow_ids", "requirement_ids", "capability_refs",
+                    "task_ids", "test_ids", "excluded_claims")
+        if scope.get(key) is not None
+    }
+    incumbent_note = (
+        " Also read D.json, which is the current published MVG incumbent and may be retained."
+        if incumbent_present else ""
+    )
+    return f"""You are the independent MVG proposal evaluator.
+Read the prepared analysis-input and anonymous proposal files A.json, B.json, C.json
+under this isolated workspace.{incumbent_note}
+This run has a frozen manifest planning scope. Only the immutable planning scope is required;
+only the immutable planning scope and
+coverage-skeleton rows are required for this comparison. Requirements outside that
+scope are intentionally excluded by excluded_claims and must not be penalized as
+missing coverage. A proposal that widens the scope is blocked; a proposal that
+preserves the exact scope and accounts for every scoped row is complete for this run.
+Frozen planning scope:
+{json.dumps(scope_view, ensure_ascii=False, sort_keys=True)}
+Select one complete proposal; never merge proposals. The exact capabilities.v1.json is
+the only Capability SSoT. GDD, task views, contracts and tests are auxiliary evidence.
+Evaluate in order: Capability membership fidelity, complete in-scope Requirement coverage,
+coherent player journeys and handoffs, ownership/test feasibility, and cumulative
+baseline preservation. A new candidate is not automatically better than the incumbent.
+Return JSON only with schema_version={MVG_SELECTION_SCHEMA!r}, selected={"A|B|C|D|null" if incumbent_present else "A|B|C|null"},
+status=selected|no_valid_winner, candidate_reviews with exactly one row for each available label,
+tradeoffs (non-empty), evidence_refs (paths or Requirement IDs), and rationale (non-empty).
+"""
+
+
 def validate_mvg_selection(result: dict[str, Any], *, candidate_labels: set[str],
                            incumbent_present: bool,
                            alias_mapping: dict[str, str] | None = None) -> list[str]:
@@ -2714,18 +2750,10 @@ Frozen manifest scope:
         shutil.copyfile(workspace_base / label / "proposal.json", selection_dir / f"{alias}.json")
     if incumbent_present and incumbent_proposal is not None:
         atomic_json(selection_dir / "D.json", incumbent_proposal)
-    selection_prompt = f"""You are the independent MVG proposal evaluator.
-Read the prepared analysis-input and anonymous proposal files A.json, B.json, C.json
-under this isolated workspace.{" Also read D.json, which is the current published MVG incumbent and may be retained." if incumbent_present else ""}
-Select one complete proposal; never merge proposals. The exact capabilities.v1.json is
-the only Capability SSoT. GDD, task views, contracts and tests are auxiliary evidence.
-Evaluate in order: Capability membership fidelity, complete Requirement coverage,
-coherent player journeys and handoffs, ownership/test feasibility, and cumulative
-baseline preservation. A new candidate is not automatically better than the incumbent.
-Return JSON only with schema_version={MVG_SELECTION_SCHEMA!r}, selected={"A|B|C|D|null" if incumbent_present else "A|B|C|null"},
-status=selected|no_valid_winner, candidate_reviews with exactly one row for each available label,
-tradeoffs (non-empty), evidence_refs (paths or Requirement IDs), and rationale (non-empty).
-"""
+    selection_prompt = mvg_selection_prompt(
+        incumbent_present=incumbent_present,
+        planning_scope=state.get("planning_scope") if isinstance(state.get("planning_scope"), dict) else None,
+    )
     selection_attempts = state.setdefault("selection_attempts", [])
     selection_result: dict[str, Any] | None = None
     selection_errors: list[str] = []

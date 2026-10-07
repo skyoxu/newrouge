@@ -131,6 +131,19 @@ class MvgPlanningContractTests(unittest.TestCase):
         self.assertIn("mvg_selection_review_incomplete", validate_mvg_selection(
             invalid, candidate_labels={"candidate-1", "candidate-2", "candidate-3"}, incumbent_present=True))
 
+    def test_mvg_selection_prompt_routes_frozen_scope(self):
+        prompt = plan_mvg.mvg_selection_prompt(
+            incumbent_present=True,
+            planning_scope={
+                "scope_id": "m1-player-loop",
+                "requirement_ids": ["FR-1"],
+                "excluded_claims": ["Full M1 remains outside this manifest."],
+            },
+        )
+        self.assertIn("Only the immutable planning scope is required", prompt)
+        self.assertIn("must not be penalized", prompt)
+        self.assertIn("FR-1", prompt)
+
     def test_mvg_selection_cannot_choose_blocked_candidate(self):
         result = {
             "schema_version": plan_mvg.MVG_SELECTION_SCHEMA,
