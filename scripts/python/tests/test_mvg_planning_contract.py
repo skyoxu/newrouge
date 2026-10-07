@@ -21,7 +21,7 @@ from plan_mvg import (
     apply_restricted_patch, is_restricted_patch, validate_restricted_patch_identity,
     SEGMENT_SCHEMA, segment_prompt, validate_segment_identity, merge_planning_segments,
     build_manifest_skeleton, build_flow_scopes, load_reusable_segment, segment_output_schema,
-    bind_manifest_test_ids,
+    bind_manifest_test_ids, preserve_frozen_manifest_baseline,
     _contract_candidates,
     validate_segment_references, validate_segment_routing,
     validate_review_shape, _list_field,
@@ -143,6 +143,23 @@ class MvgPlanningContractTests(unittest.TestCase):
         self.assertIn("Only the immutable planning scope is required", prompt)
         self.assertIn("must not be penalized", prompt)
         self.assertIn("FR-1", prompt)
+
+    def test_frozen_manifest_preserves_existing_flows_and_tests(self):
+        baseline = {
+            "flows": [{"id": "flow-a", "handoffs": [{"producer_task": 1}],
+                       "source_paths": ["Game.Core/A.cs"]}],
+            "tests": [{"id": "test-a", "state": "implemented", "min_tests": 2,
+                       "path": "Tests.Godot/tests/test_a.gd"}],
+        }
+        proposal = {"manifest_candidate": {
+            "flows": [{"id": "flow-a", "handoffs": [{"producer_task": 9}]}],
+            "tests": [{"id": "test-a", "state": "planned", "min_tests": 1}],
+        }, "tests": [{"id": "test-a", "state": "planned", "min_tests": 1}]}
+        result = preserve_frozen_manifest_baseline(
+            proposal, baseline, {"flow_ids": ["flow-a"], "test_ids": ["test-a"]})
+        self.assertEqual(baseline["flows"], result["manifest_candidate"]["flows"])
+        self.assertEqual(baseline["tests"], result["manifest_candidate"]["tests"])
+        self.assertEqual(baseline["tests"], result["tests"])
 
     def test_mvg_selection_cannot_choose_blocked_candidate(self):
         result = {

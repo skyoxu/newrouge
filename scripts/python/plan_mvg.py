@@ -1516,6 +1516,52 @@ def merge_planning_segments(base: dict[str, Any], segments: list[dict[str, Any]]
     return result
 
 
+def preserve_frozen_manifest_baseline(proposal: dict[str, Any],
+                                      baseline: dict[str, Any] | None,
+                                      planning_scope: dict[str, Any] | None) -> dict[str, Any]:
+    """Keep an existing cumulative manifest immutable inside a frozen run.
+
+    Model sections may still provide coverage and explanatory proposal fields,
+    but an existing flow/test is an executable regression baseline. Replacing
+    its handoffs or weakening an implemented test would make a planning run
+    silently rewrite the acceptance contract.
+    """
+    if not isinstance(baseline, dict) or not isinstance(planning_scope, dict):
+        return proposal
+    manifest = proposal.get("manifest_candidate")
+    if not isinstance(manifest, dict):
+        return proposal
+    baseline_flows = {
+        str(row.get("id")): row
+        for row in baseline.get("flows", [])
+        if isinstance(row, dict) and str(row.get("id") or "").strip()
+    }
+    baseline_tests = {
+        str(row.get("id")): row
+        for row in baseline.get("tests", [])
+        if isinstance(row, dict) and str(row.get("id") or "").strip()
+    }
+    allowed_flow_ids = [str(value) for value in planning_scope.get("flow_ids", [])]
+    allowed_test_ids = set(str(value) for value in planning_scope.get("test_ids", []))
+    if allowed_flow_ids:
+        manifest["flows"] = [
+            json.loads(json.dumps(baseline_flows[flow_id]))
+            for flow_id in allowed_flow_ids
+            if flow_id in baseline_flows
+        ]
+        coverage = manifest.setdefault("coverage", {})
+        if isinstance(coverage, dict):
+            coverage["required_flow_ids"] = list(allowed_flow_ids)
+    if allowed_test_ids:
+        manifest["tests"] = [
+            json.loads(json.dumps(baseline_tests[test_id]))
+            for test_id in sorted(allowed_test_ids)
+            if test_id in baseline_tests
+        ]
+        proposal["tests"] = json.loads(json.dumps(manifest["tests"]))
+    return proposal
+
+
 def build_segment_scope(semantics: dict[str, Any], task_ids: list[int], *, batch_size: int = 24,
                         allowed_requirement_ids: set[str] | None = None) -> list[dict[str, Any]]:
     requirements = [str(row.get("requirement_id")) for row in _active_delivery_requirements(semantics)
@@ -2046,6 +2092,11 @@ def invoke_segmented(invoke: Any, run_dir: Path, state: dict[str, Any], attempt:
             assembled["manifest_candidate"]["flows"] = [merged_flows[key] for key in planning_scope["flow_ids"]
                                                           if key in merged_flows]
             assembled["manifest_candidate"].setdefault("coverage", {})["required_flow_ids"] = list(planning_scope["flow_ids"])
+        assembled = preserve_frozen_manifest_baseline(
+            assembled,
+            load_json(run_dir / "analysis-input/existing-manifest.json", None),
+            planning_scope,
+        )
     assembled.setdefault("manifest_candidate", {})["tests"] = assembled.get("tests", [])
     output = workspace / f"proposal-attempt-{attempt}.json"
     atomic_json(output, assembled)
