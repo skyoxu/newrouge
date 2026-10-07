@@ -9,6 +9,7 @@
   - Simulate records input hashes, original page hashes/existence, generated page hashes and a candidate manifest under `logs/ci/**`.
   - Every invocation reserves its own output directory. Reusing a suffix creates another run; it never replaces the inspected candidate or batch bundle. Batch child runs are scoped to the reserved batch run id.
   - Apply promotes those exact candidate bytes without invoking the model. It validates every selected page before the first write and restores originals if replacement fails.
+  - Apply selection comes from the bound manifest/bundle or recorded candidate pointers, including candidate pages not yet present on disk. Explicit filenames take precedence over family selection; a missing requested candidate blocks the entire apply instead of silently shrinking its scope.
   - A valid candidate already matching the target is an idempotent success. Unrelated target changes still block. This also permits recovery after a receipt-write failure without generating another candidate.
   - Receipt persistence failures are reported as `apply_receipt_failed` with the actual successful page count. They must not be reported as candidate preflight failures or trigger a new simulation.
   - Missing, stale or modified candidates stop apply. There is no generate-and-apply fallback.

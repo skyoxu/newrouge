@@ -16,7 +16,7 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any
 
-from _unit_test_evidence import emitted_trx_path
+from _unit_test_evidence import emitted_coverage_path, emitted_trx_path
 
 
 SC_TEST_OUT_RE = re.compile(r"^SC_TEST\s+status=\w+\s+out=(.+)\s*$", re.MULTILINE)
@@ -54,6 +54,7 @@ def _collect_unit_metrics_from_dir(unit_dir: Path) -> dict[str, Any] | None:
         return None
 
     coverage = summary.get("coverage") if isinstance(summary.get("coverage"), dict) else {}
+    coverage_path = emitted_coverage_path(summary)
     trx_path_str = None
     sel = summary.get("artifacts_selected")
     if isinstance(sel, dict):
@@ -62,13 +63,17 @@ def _collect_unit_metrics_from_dir(unit_dir: Path) -> dict[str, Any] | None:
     if unit_dir.parent.name == "unit-artifacts":
         # Archived runs must not follow a live TestResults path overwritten by a later run.
         trx_path = unit_dir / "tests.trx" if emitted_trx_path(summary) is not None else None
+        coverage_path = unit_dir / "coverage.cobertura.xml" if coverage_path is not None else None
+    if coverage_path is None or not coverage_path.is_file():
+        coverage = {}
+        coverage_path = None
 
     counters = _parse_trx_counters(trx_path) if (trx_path and trx_path.exists()) else None
 
     return {
         "unit_dir": str(unit_dir),
         "summary_path": str(summary_path),
-        "threshold_ok": bool(summary.get("threshold_ok")),
+        "threshold_ok": bool(coverage) and bool(summary.get("threshold_ok")),
         "coverage": {
             "line_pct": coverage.get("line_pct"),
             "branch_pct": coverage.get("branch_pct"),
@@ -79,7 +84,7 @@ def _collect_unit_metrics_from_dir(unit_dir: Path) -> dict[str, Any] | None:
         },
         "tests": counters,
         "trx": str(trx_path) if trx_path else None,
-        "coverage_cobertura": (sel.get("coverage") if isinstance(sel, dict) else None),
+        "coverage_cobertura": str(coverage_path) if coverage_path is not None else None,
     }
 
 

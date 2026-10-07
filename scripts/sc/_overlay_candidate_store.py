@@ -5,7 +5,8 @@ import json
 from pathlib import Path
 from typing import Any
 
-from _overlay_generator_support import normalize_relpath, write_json
+from _overlay_generator_scaffold import select_pages_by_family
+from _overlay_generator_support import classify_page_kind, normalize_relpath, write_json
 
 
 def digest(content: bytes) -> str:
@@ -126,12 +127,26 @@ def write_candidate_bundle(*, repo_root: Path, out_dir: Path, results: list[dict
     write_json(artifact_path(repo_root, str(out_dir / "candidate-bundle.json")), {"schema_version": 1, "pages": pages})
 
 
-def resolve_candidate_pages(
-    *, repo_root: Path, context: dict[str, Any], pages: list[str], candidate_from: str = "",
-) -> dict[str, dict[str, Any]]:
-    verify_inputs(repo_root, context)
+def _candidate_manifest(repo_root: Path, context: dict[str, Any], pointer: dict[str, Any]) -> tuple[Path, dict[str, Any]]:
+    manifest = artifact_path(repo_root, str(pointer.get("candidate_manifest_path", "")))
+    manifest_bytes = manifest.read_bytes() if manifest.is_file() else b""
+    if not manifest_bytes or digest(manifest_bytes) != pointer.get("candidate_manifest_sha256"):
+        raise ValueError("Candidate manifest changed or missing")
+    payload = json.loads(manifest_bytes)
+    if not isinstance(payload, dict) or payload.get("schema_version") != 1 or payload.get("status") != "ready":
+        raise ValueError("Candidate manifest is not ready")
+    if payload.get("context") != context:
+        raise ValueError("Candidate inputs changed since simulate")
+    if not isinstance(payload.get("files"), dict):
+        raise ValueError("Invalid candidate manifest files")
+    return manifest, payload
+
+
+def _candidate_pointers(repo_root: Path, context: dict[str, Any], candidate_from: str) -> dict[str, Any]:
     if candidate_from:
         source = artifact_path(repo_root, candidate_from)
+        if not source.exists():
+            raise ValueError("Selected candidate run is missing")
         bundle = source / "candidate-bundle.json" if source.is_dir() else source
         if bundle.name == "candidate-bundle.json" and bundle.exists():
             bundle_payload = read_object(bundle)
@@ -143,11 +158,39 @@ def resolve_candidate_pages(
             pointer = read_object(directory / "candidate-pointer.json")
             if artifact_path(repo_root, pointer.get("candidate_manifest_path", "")) != directory / "candidate.json":
                 raise ValueError("Candidate manifest pointer does not match the selected run")
-            pointers = {name: pointer for name in pages}
+            _, payload = _candidate_manifest(repo_root, context, pointer)
+            pointers = {name: pointer for name in payload["files"]}
     else:
         pointers = read_object(_index_path(repo_root, context)).get("pages", {})
     if not isinstance(pointers, dict):
         raise ValueError("Invalid candidate page pointers")
+    return pointers
+
+
+def select_candidate_pages(
+    *, repo_root: Path, context: dict[str, Any], pages: list[str] | None,
+    candidate_from: str = "", page_family: str = "all",
+) -> list[str]:
+    verify_inputs(repo_root, context)
+    pointers = _candidate_pointers(repo_root, context, candidate_from)
+    if pages is not None:
+        selected = list(dict.fromkeys(page_name(name) for name in pages))
+        for name in selected:
+            if name not in pointers:
+                raise ValueError(f"Candidate missing for page: {name}")
+    else:
+        profile = [{"filename": page_name(name), "page_kind": classify_page_kind(name)} for name in pointers]
+        selected = [str(page["filename"]) for page in select_pages_by_family(profile, page_family)]
+    if not selected:
+        raise ValueError("No selected candidate pages")
+    return selected
+
+
+def resolve_candidate_pages(
+    *, repo_root: Path, context: dict[str, Any], pages: list[str], candidate_from: str = "",
+) -> dict[str, dict[str, Any]]:
+    verify_inputs(repo_root, context)
+    pointers = _candidate_pointers(repo_root, context, candidate_from)
     resolved = {}
     target = overlay_dir(repo_root, context["prd_id"])
     for name in pages:
@@ -155,19 +198,8 @@ def resolve_candidate_pages(
         pointer = pointers.get(name)
         if not isinstance(pointer, dict):
             raise ValueError(f"Candidate missing for page: {name}")
-        manifest = artifact_path(repo_root, str(pointer.get("candidate_manifest_path", "")))
-        manifest_bytes = manifest.read_bytes() if manifest.is_file() else b""
-        if not manifest_bytes or digest(manifest_bytes) != pointer.get("candidate_manifest_sha256"):
-            raise ValueError(f"Candidate manifest changed or missing: {name}")
-        payload = json.loads(manifest_bytes)
-        if not isinstance(payload, dict) or payload.get("schema_version") != 1 or payload.get("status") != "ready":
-            raise ValueError("Candidate manifest is not ready")
-        if payload.get("context") != context:
-            raise ValueError(f"Candidate inputs changed since simulate: {name}")
-        files = payload.get("files")
-        if not isinstance(files, dict):
-            raise ValueError("Invalid candidate manifest files")
-        record = files.get(name)
+        manifest, payload = _candidate_manifest(repo_root, context, pointer)
+        record = payload["files"].get(name)
         if not isinstance(record, dict):
             raise ValueError(f"Candidate missing for page: {name}")
         generated = manifest.parent / "generated" / context["prd_id"] / "08" / name

@@ -68,6 +68,8 @@ py -3 scripts/sc/llm_generate_overlays_from_prd.py --prd docs/prd/<prd-main>.md 
 
 Only apply reviewed pages. Apply consumes the saved simulation, checks input/source/candidate hashes and never calls the model. The Skill passes the inspected run directory using `--candidate-from`; direct calls may omit it to use recorded candidate pointers for the same inputs and mode. After a single-page repair, use that repaired run for the page.
 
+Apply selects from saved candidate pages, so later batches can promote new pages after an earlier subset has been written. Explicit `--pages` / `--page-filter` takes precedence over family selection. If any requested page has no candidate, the whole apply stops before writing.
+
 ```powershell
 py -3 scripts/sc/llm_generate_overlays_batch.py --prd docs/prd/<prd-main>.md --prd-id PRD-<PRODUCT>-V1 --prd-docs docs/prd/<prd-doc-a>.md,docs/prd/<prd-doc-b>.md,docs/prd/<prd-doc-c>.md --pages _index.md,ACCEPTANCE_CHECKLIST.md --page-mode scaffold --apply --candidate-from <reviewed-simulate-run-dir> --batch-suffix <wave>-apply-core
 ```

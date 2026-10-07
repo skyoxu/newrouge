@@ -140,6 +140,8 @@ Use the single-page path when:
 
 Only apply pages after simulate results are reviewed. Apply promotes exact saved candidate bytes without another model call. Pass the inspected run directory through `--candidate-from`; the Skill manages this binding. When omitted, the scripts use recorded per-page pointers for the same input paths, PRD-ID and page mode, never the newest directory in `logs/`.
 
+Apply derives its page list from those candidates, not just current disk files. A candidate page absent from disk remains selectable after an earlier subset is promoted. Explicit `--pages` / `--page-filter` takes precedence over family selection; every requested filename must have a candidate or the entire apply is blocked before writing.
+
 Source/task/companion changes, unrelated original page changes and candidate edits stop apply before any selected page is written. Batch apply validates all selected pages first and restores originals on a replacement failure. After outlier repair, bind that single-page run for the repaired page and the inspected batch for other pages.
 
 Repeating apply with the same valid candidate succeeds without rewriting pages already matching it. `apply_receipt_failed` means the pages were promoted but a result artifact could not be persisted; the error preserves the actual successful page count. Retry apply with that same candidate to reconcile and save the receipt, without another simulate/model call.

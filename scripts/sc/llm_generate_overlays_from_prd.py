@@ -135,6 +135,12 @@ def main() -> int:
     candidate_context = build_candidate_inputs(
         repo_root=root, prd_path=prd_path, companion_paths=companion_paths, prd_id=prd_id, page_mode=args.page_mode,
     )
+    if args.apply:
+        return run_candidate_apply(
+            repo_root=root, out_dir=out_dir, context=candidate_context,
+            pages=parse_prd_docs_csv(args.page_filter) if args.page_filter.strip() else None,
+            candidate_from=args.candidate_from, page_family=args.page_family, label="SC_LLM_OVERLAY_GEN",
+        )
     tasks_json, tasks_back, tasks_gameplay = load_task_payloads(root)
     companion_docs = [
         {
@@ -163,12 +169,6 @@ def main() -> int:
         print(f"SC_LLM_OVERLAY_GEN status=fail error=page_filter_matched_nothing prd_id={prd_id} out={out_dir}")
         return 2
 
-    if args.apply:
-        return run_candidate_apply(
-            repo_root=root, out_dir=out_dir, context=candidate_context,
-            pages=[str(page['filename']) for page in selected_pages], candidate_from=args.candidate_from,
-            label="SC_LLM_OVERLAY_GEN",
-        )
     task_digest = build_task_digest(prd_id, tasks_json, tasks_back, tasks_gameplay)
     prd_text = read_text(prd_path)
     prompts_dir = out_dir / "page-prompts"

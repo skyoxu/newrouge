@@ -261,6 +261,7 @@ Copy this bundle together:
 23. `scripts/sc/_unit_test_evidence.py`
 24. `scripts/sc/tests/test_unit_evidence_recovery.py`
 25. `scripts/sc/_unit_metrics.py`
+26. `scripts/sc/tests/test_unit_coverage_evidence.py`
 
 Also copy this mirror-runtime hardening bundle when the business repo uses `Tests.Godot` + `Game.Godot`:
 
@@ -275,7 +276,7 @@ Reason:
 
 - `llm_generate_tests_from_acceptance_refs.py` is no longer a loose scaffold helper. It enforces red-first behavior, anchor placement, task-scoped verification, and deterministic C# naming/content rules.
 - `scripts/sc/test.py` now depends on helper modules and task-view resolution logic, including template fallback.
-- Copy `_unit_test_evidence.py` with `_sc_test_steps.py`, `_repair_evidence.py` and `_unit_metrics.py`. Each dotnet attempt uses a fresh output directory; saved unit evidence excludes retained TRX files not emitted by that attempt and remains available in pipeline child snapshots. Metrics read the archived TRX rather than a live `TestResults` path.
+- Copy `_unit_test_evidence.py` with `_sc_test_steps.py`, `_repair_evidence.py` and `_unit_metrics.py`. Each dotnet attempt uses a fresh output directory; saved unit evidence excludes retained TRX and Cobertura files not emitted by that attempt and remains available in pipeline child snapshots. Metrics use saved evidence and show no current coverage or threshold pass when the current report is absent.
 
 ### Phase 5: Overlay Generation Toolchain
 
@@ -286,6 +287,8 @@ Simulate records hash-bound candidates; apply reuses the inspected run through `
 Include `scripts/sc/_overlay_generator_execution.py`, `scripts/sc/_overlay_candidate_store.py` and `scripts/sc/_overlay_candidate_apply.py` with this bundle.
 
 The generator runtime reserves immutable run directories even for repeated suffixes. Apply accepts already-promoted candidate bytes and distinguishes `apply_receipt_failed` from preflight failure, so recovery can retry without generating again. Copy `scripts/sc/tests/test_overlay_candidate_recovery.py` with the candidate helpers to verify these boundaries.
+
+Apply selects from the saved candidate manifest/bundle, including pages absent from disk after a partial apply. Copy `scripts/sc/tests/test_overlay_apply_selection.py` to verify staged family/explicit selection and all-or-nothing rejection of missing requested candidates.
 
 1. `scripts/sc/llm_generate_overlays_batch.py`
 2. `scripts/sc/llm_generate_overlays_from_prd.py`

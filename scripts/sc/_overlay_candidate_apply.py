@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from _overlay_candidate_store import overlay_dir, resolve_candidate_pages, verify_inputs
+from _overlay_candidate_store import overlay_dir, resolve_candidate_pages, select_candidate_pages, verify_inputs
 from _overlay_generator_diff import build_diff_summary, render_diff_summary_markdown
 from _overlay_generator_runtime import write_verified_pages
 from _overlay_generator_support import compare_overlay_dirs, normalize_relpath, write_json, write_text
@@ -65,10 +65,15 @@ def apply_candidate_pages(
 
 
 def run_candidate_apply(
-    *, repo_root: Path, out_dir: Path, context: dict[str, Any], pages: list[str], candidate_from: str, label: str,
+    *, repo_root: Path, out_dir: Path, context: dict[str, Any], pages: list[str] | None,
+    candidate_from: str, label: str, page_family: str = "all",
 ) -> int:
+    selected_pages = pages or []
     try:
-        apply_candidate_pages(repo_root=repo_root, out_dir=out_dir, context=context, pages=pages, candidate_from=candidate_from)
+        selected_pages = select_candidate_pages(
+            repo_root=repo_root, context=context, pages=pages, candidate_from=candidate_from, page_family=page_family,
+        )
+        apply_candidate_pages(repo_root=repo_root, out_dir=out_dir, context=context, pages=selected_pages, candidate_from=candidate_from)
     except CandidateReceiptError as exc:
         try:
             write_json(out_dir / "summary.json", exc.summary)
@@ -79,8 +84,8 @@ def run_candidate_apply(
     except (OSError, ValueError, KeyError, TypeError) as exc:
         failure = {
             "status": "fail", "mode": "apply", "error": "candidate_apply_blocked", "detail": str(exc),
-            "prd_id": context["prd_id"], "selected_pages": pages, "model_executed": False,
-            "page_count": len(pages), "success_count": 0, "failure_count": len(pages),
+            "prd_id": context["prd_id"], "selected_pages": selected_pages, "model_executed": False,
+            "page_count": len(selected_pages), "success_count": 0, "failure_count": len(selected_pages),
             "next_action": "Run simulate for the affected pages, review the saved candidates, then apply that run.",
         }
         try:
@@ -89,5 +94,5 @@ def run_candidate_apply(
             pass
         print(f"{label} status=fail error=candidate_apply_blocked detail={exc} out={out_dir}")
         return 1
-    print(f"{label} status=ok mode=apply pages={len(pages)} model_executed=false out={out_dir}")
+    print(f"{label} status=ok mode=apply pages={len(selected_pages)} model_executed=false out={out_dir}")
     return 0

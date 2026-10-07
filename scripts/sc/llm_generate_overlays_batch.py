@@ -83,15 +83,6 @@ def main() -> int:
     batch_suffix = args.batch_suffix or default_batch_suffix()
     batch_out_dir = reserve_output_dir(ci_dir(build_batch_run_name(prd_id, batch_suffix)))
     batch_run_id = (batch_out_dir / "run_id.txt").read_text(encoding="utf-8").strip()
-    pages = resolve_target_pages(repo_root=root, prd_id=prd_id, page_family=args.page_family, pages_csv=args.pages)
-    if not pages:
-        write_json(
-            batch_out_dir / "summary.json",
-            {"status": "fail", "error": "no_target_pages", "prd_id": prd_id, "page_family": args.page_family, "pages": args.pages},
-        )
-        print(f"SC_LLM_OVERLAY_BATCH status=fail error=no_target_pages prd_id={prd_id} out={batch_out_dir}")
-        return 2
-
     if args.apply:
         companions = discover_companion_docs(prd_path, repo_root=root, explicit_paths=parse_prd_docs_csv(args.prd_docs))
         missing = validate_required_prd_docs(prd_id=prd_id, companion_paths=companions, expected_doc_names=parse_prd_docs_csv(args.prd_docs))
@@ -102,8 +93,18 @@ def main() -> int:
         return run_candidate_apply(
             repo_root=root, out_dir=batch_out_dir,
             context=build_candidate_inputs(repo_root=root, prd_path=prd_path, companion_paths=companions, prd_id=prd_id, page_mode=args.page_mode),
-            pages=pages, candidate_from=args.candidate_from, label="SC_LLM_OVERLAY_BATCH",
+            pages=parse_prd_docs_csv(args.pages) if args.pages.strip() else None,
+            candidate_from=args.candidate_from, page_family=args.page_family, label="SC_LLM_OVERLAY_BATCH",
         )
+
+    pages = resolve_target_pages(repo_root=root, prd_id=prd_id, page_family=args.page_family, pages_csv=args.pages)
+    if not pages:
+        write_json(
+            batch_out_dir / "summary.json",
+            {"status": "fail", "error": "no_target_pages", "prd_id": prd_id, "page_family": args.page_family, "pages": args.pages},
+        )
+        print(f"SC_LLM_OVERLAY_BATCH status=fail error=no_target_pages prd_id={prd_id} out={batch_out_dir}")
+        return 2
 
     page_logs_dir = batch_out_dir / "page-logs"
     page_logs_dir.mkdir(parents=True, exist_ok=True)
