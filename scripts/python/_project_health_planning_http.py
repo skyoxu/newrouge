@@ -14,12 +14,7 @@ def start_planning(handler, root, request, operation, guard, state):
         handler.send({'reason': 'Another operation is running'}, 409)
         return
     try:
-        job = create_job(root, request.get('action'), request.get('manifest'))
-        if job['status'] == 'completed':
-            generated_view(root, job['action'])
-            handler.send(public_job(job))
-            operation.release()
-            return
+        job = create_job(root, request.get('action'), request.get('manifest'), fresh=True)
         with guard:
             state.update(active=True, action='planning-' + job['action'], task_ids=[],
                          started_at=datetime.now(timezone.utc).isoformat(), verification_mode='main',

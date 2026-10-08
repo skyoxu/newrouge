@@ -167,7 +167,7 @@ def execution_root(root: Path, job: dict) -> Path:
     return checkout_root / 'nrp' / short_id
 
 
-def create_job(root: Path, action: str, manifest: str | None = None) -> dict:
+def create_job(root: Path, action: str, manifest: str | None = None, *, fresh: bool = False) -> dict:
     if action not in ('capability', 'mvg'):
         raise ValueError('Unknown planning action')
     revision = workspace_revision(root)
@@ -194,7 +194,9 @@ def create_job(root: Path, action: str, manifest: str | None = None) -> dict:
             current_capability_hash = normalized_file_sha(capability_file)
     # Continue the same persisted attempt after a disconnect/restart. Reusing a
     # terminal result also avoids silently paying for another identical review.
-    pointer = load_json(root / JOB_ROOT / f'{action}-attempt.json', {})
+    # A user-initiated page action always requests a fresh generation. Explicit
+    # operator recovery may still resume a durable run independently of clicks.
+    pointer = {} if fresh else load_json(root / JOB_ROOT / f'{action}-attempt.json', {})
     if pointer.get('job_id'):
         prior = read_job(root, pointer['job_id'])
         same_capability = action != 'mvg' or (
@@ -361,7 +363,13 @@ def _mvg_valid_candidates(run_dir: Path, state: dict) -> list[str]:
     for label, record in (state.get('candidate_attempts') or {}).items():
         if label not in {'candidate-1', 'candidate-2', 'candidate-3'} or not isinstance(record, dict):
             continue
-        path = run_dir / 'candidates' / f'{label}.json'
+        # MVG candidate proposals are stored in their isolated candidate
+        # workspace. Keep the historical flat path readable for older runs.
+        paths = (
+            run_dir / 'candidates' / label / 'proposal.json',
+            run_dir / 'candidates' / f'{label}.json',
+        )
+        path = next((candidate_path for candidate_path in paths if candidate_path.is_file()), paths[0])
         validation = record.get('validation') or {}
         if (record.get('status') == 'valid' and path.is_file()
                 and record.get('proposal_sha256') == file_sha(path)

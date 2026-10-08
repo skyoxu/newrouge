@@ -61,9 +61,9 @@ window.knowledgePlanning = async function ({action, manifest, button, status, re
     }
     if (result.status === 'recoverable') {
       // Candidate and review artifacts are durable.  Keep the result visible
-      // as resumable instead of presenting a terminal failure; clicking the
-      // same action again resumes from the reported stage.
-      message(result.message || 'Planning can be resumed', 'recoverable');
+      // as operator-recoverable. Generate always starts a fresh run; only
+      // explicit CLI/run-id recovery may resume this retained evidence.
+      message(`${result.message || 'Planning can be resumed'}. Generate starts a fresh run; retained evidence requires explicit operator recovery.`, 'recoverable');
       return;
     }
     if (result.status !== 'completed') throw new Error(result.message || 'Planning failed');

@@ -150,13 +150,24 @@ class ProjectHealthPlanningTests(unittest.TestCase):
         candidate = run_dir / 'candidates/candidate-1.json'
         candidate.parent.mkdir(parents=True)
         candidate.write_text('{"analysis_identity_sha256":"sha256:old"}', encoding='utf-8')
-        state = {'candidate_attempts': {'candidate-1': {
+        state = {'analysis_identity_sha256': 'sha256:old', 'candidate_attempts': {'candidate-1': {
             'status': 'valid', 'proposal_sha256': planning.file_sha(candidate),
             'validation': {'status': 'passed', 'formal_applicable': True},
         }}}
         self.assertEqual(['candidate-1'], planning._mvg_valid_candidates(run_dir, state))
         candidate.write_text('{"analysis_identity_sha256":"sha256:changed"}', encoding='utf-8')
         self.assertEqual([], planning._mvg_valid_candidates(run_dir, state))
+
+    def test_mvg_recovery_reads_nested_candidate_proposals(self):
+        run_dir = self.root / 'logs/ci/mvg-planning/nested-recovery'
+        candidate = run_dir / 'candidates/candidate-1/proposal.json'
+        candidate.parent.mkdir(parents=True)
+        candidate.write_text('{"analysis_identity_sha256":"sha256:current"}', encoding='utf-8')
+        state = {'analysis_identity_sha256': 'sha256:current', 'candidate_attempts': {'candidate-1': {
+            'status': 'valid', 'proposal_sha256': planning.file_sha(candidate),
+            'validation': {'status': 'passed', 'formal_applicable': True},
+        }}}
+        self.assertEqual(['candidate-1'], planning._mvg_valid_candidates(run_dir, state))
 
     def test_mvg_recovery_rejects_candidate_with_stale_analysis_identity(self):
         run_dir = self.root / 'logs/ci/mvg-planning/identity-recovery'

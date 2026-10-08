@@ -94,18 +94,37 @@ class ProjectHealthPlanningHttpTests(unittest.TestCase):
         finally:
             release.set()
 
-    def test_completed_click_reuses_validated_result_without_a_worker(self):
+    def test_completed_click_starts_new_worker(self):
         job = planning.create_job(self.root, 'capability')
         job.update(status='completed', stage='complete', count=2, message='Capability generated: 2 capabilities')
         atomic_json(planning.job_path(self.root, job['job_id']), job)
         with patch('_project_health_planning_http.generated_view', return_value={'available': True}) as view, \
              patch('_project_health_planning_http.run_job') as worker:
             code, payload = self.request('/api/knowledge/planning', {'action': 'capability'})
-        self.assertEqual(200, code)
-        self.assertEqual(job['job_id'], payload['job_id'])
-        view.assert_called_once_with(self.root, 'capability')
-        worker.assert_not_called()
-        self.assertFalse(self.request('/api/knowledge/operation')[1]['active'])
+        self.assertEqual(202, code)
+        self.assertNotEqual(job['job_id'], payload['job_id'])
+        view.assert_not_called()
+        worker.assert_called_once()
+
+    def test_each_click_is_fresh_even_with_identical_inputs(self):
+        finished = threading.Event()
+
+        def execute(root, job):
+            job.update(status='completed', stage='complete')
+            atomic_json(planning.job_path(root, job['job_id']), job)
+            finished.set()
+
+        with patch('_project_health_planning_http.run_job', side_effect=execute):
+            for action in ('capability', 'mvg'):
+                identifiers = []
+                for _ in range(2):
+                    finished.clear()
+                    code, result = self.request('/api/knowledge/planning', {'action': action})
+                    self.assertEqual(202, code)
+                    self.assertTrue(finished.wait(2))
+                    identifiers.append(result['job_id'])
+                    self.assertEqual(self.revision, result['revision'])
+                self.assertNotEqual(*identifiers)
 
     def test_recoverable_alignment_result_is_reported_without_losing_the_job(self):
         job = planning.create_job(self.root, 'capability')
