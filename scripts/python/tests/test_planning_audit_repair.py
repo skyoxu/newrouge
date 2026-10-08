@@ -111,7 +111,7 @@ def prepared_mvg(root):
     run = root / "logs/ci/mvg-planning/repair"
     atomic_json(run / "proposal.json", proposal)
     # Reviewed fixture evidence tests deterministic consumers; no model execution is claimed.
-    atomic_json(run / "semantic-review.json", {"schema_version": "newrouge.mvg-semantic-review.v1",
+    review = {"schema_version": "newrouge.mvg-semantic-review.v1",
         "analysis_identity_sha256": state["analysis_identity_sha256"], "proposal_sha256": canonical_sha(proposal),
         "verdict": "approved", "findings": [], "requirement_reviews": [
             {"requirement_id": row["requirement_id"], "verdict": "covered",
@@ -120,9 +120,11 @@ def prepared_mvg(root):
              "verification_ref": None, "authority_ref": None}
             for row in proposal["coverage_table"]
             ], "flow_reviews": [{"flow_id": "relay-delivery", "verdict": "sound",
-                "rationale": "Real contract connects both tasks; planned tests claim no runtime pass."}]})
+                "rationale": "Real contract connects both tasks; planned tests claim no runtime pass."}]}
+    atomic_json(run / "semantic-review.json", review)
     atomic_json(run / "semantic-review-execution.json", {
         "analysis_identity_sha256": state["analysis_identity_sha256"], "proposal_sha256": canonical_sha(proposal),
+        "semantic_review_sha256": canonical_sha(review),
         "runner_info": {"schema_version": "newrouge.isolated-model-runner.v1", "model": "fixture-reviewer",
             "fresh_session_per_invocation": True, "filesystem_scope": "workspace_only",
             "can_read_outside_workspace": False, "model_tools": []},
@@ -427,7 +429,7 @@ class PlanningAuditRepairTests(unittest.TestCase):
                 mvg.review(self.root, run_id="repair", runner=Path("fixture-runner"), timeout_sec=1)
             invoke.assert_not_called()
 
-    def test_semantic_block_uses_one_fresh_review_of_next_ranked_candidate(self):
+    def test_semantic_block_never_switches_to_next_ranked_candidate(self):
         state, proposal, _dest = prepared_mvg(self.root)
         run = self.root / "logs/ci/mvg-planning/repair"
         candidate_one = deepcopy(proposal)
@@ -495,17 +497,55 @@ class PlanningAuditRepairTests(unittest.TestCase):
 
         with patch.object(mvg, "inspect_isolated_runner", return_value=runner_info), \
              patch.object(mvg, "run_isolated_model", side_effect=review_candidate):
-            result = mvg.review(self.root, run_id="repair", runner=Path("fixture-runner"), timeout_sec=1)
+            with self.assertRaisesRegex(ValueError, "semantic review blocked"):
+                mvg.review(self.root, run_id="repair", runner=Path("fixture-runner"), timeout_sec=1)
 
-        self.assertEqual("approved", result["status"])
-        self.assertEqual(2, len(reviewed))
-        self.assertNotEqual(reviewed[0][0], reviewed[1][0])
-        self.assertNotEqual(reviewed[0][1], reviewed[1][1])
-        self.assertEqual(canonical_sha(candidate_two), canonical_sha(load_json(run / "proposal.json")))
-        self.assertEqual(canonical_sha(candidate_two), load_json(run / "semantic-review.json")["proposal_sha256"])
-        final_state = load_json(run / "run.json")
-        self.assertEqual(1, final_state["semantic_review_fallback_count"])
-        self.assertEqual([reviewed[0][1]], final_state["semantic_review_blocked_proposals"])
+        self.assertEqual(1, len(reviewed))
+        self.assertEqual(canonical_sha(candidate_one), canonical_sha(load_json(run / "proposal.json")))
+        self.assertEqual("candidate-1", load_json(run / "run.json")["selected_candidate"])
+
+    def test_selected_admission_proof_content_drift_blocks_without_new_model_call(self):
+        state, proposal, _dest = prepared_mvg(self.root)
+        run = self.root / "logs/ci/mvg-planning/repair"
+        proof = run / "selected-admission-proof.json"
+        execution = run / "selected-admission-execution.json"
+        atomic_json(proof, load_json(run / "semantic-review.json"))
+        atomic_json(execution, load_json(run / "semantic-review-execution.json"))
+        state.update(
+            phase="generated",
+            selection_status="selected",
+            selected_candidate="candidate-1",
+            selected_admission_review={
+                "path": proof.relative_to(self.root).as_posix(),
+                "execution_path": execution.relative_to(self.root).as_posix(),
+                "proposal_sha256": canonical_sha(proposal),
+                "proof_sha256": file_sha(proof),
+                "execution_sha256": file_sha(execution),
+            },
+        )
+        atomic_json(run / "run.json", state)
+        changed = load_json(proof)
+        changed["rationale"] = "tampered proof"
+        atomic_json(proof, changed)
+        with patch.object(mvg, "inspect_isolated_runner") as inspect, \
+             patch.object(mvg, "run_isolated_model") as invoke:
+            with self.assertRaisesRegex(ValueError, "proof identity"):
+                mvg.review(self.root, run_id="repair", runner=Path("fixture-runner"), timeout_sec=1)
+        inspect.assert_not_called()
+        invoke.assert_not_called()
+
+    def test_selected_run_without_admission_proof_cannot_use_legacy_review(self):
+        state, _proposal, _dest = prepared_mvg(self.root)
+        run = self.root / "logs/ci/mvg-planning/repair"
+        state.update(phase="generated", selection_status="selected", selected_candidate="candidate-1")
+        state.pop("selected_admission_review", None)
+        atomic_json(run / "run.json", state)
+        with patch.object(mvg, "inspect_isolated_runner") as inspect, \
+             patch.object(mvg, "run_isolated_model") as invoke:
+            with self.assertRaisesRegex(ValueError, "no valid hash-bound admission proof"):
+                mvg.review(self.root, run_id="repair", runner=Path("fixture-runner"), timeout_sec=1)
+        inspect.assert_not_called()
+        invoke.assert_not_called()
 
     def test_generation_execution_budget_survives_stage_retry(self):
         prepared_mvg(self.root)
@@ -809,6 +849,29 @@ class PlanningAuditRepairTests(unittest.TestCase):
         self.assertEqual(2, len(prompts))
         self.assertIn("relay-delivery: outcome, sources and handoffs are required", prompts[1])
         self.assertIn("Return a JSON patch only", prompts[1])
+
+    def test_segmented_generation_runner_failure_is_not_retired_as_semantic_issue(self):
+        prepared_mvg(self.root)
+        calls = 0
+        def invoke(*args, **kwargs):
+            nonlocal calls
+            calls += 1
+            raise RuntimeError("fixture runner unavailable")
+        with patch.object(mvg, "inspect_isolated_runner", return_value={"available": True}), \
+             patch.object(mvg, "run_isolated_model", side_effect=invoke):
+            with self.assertRaisesRegex(ValueError, "runner/input failure"):
+                mvg.generate(self.root, run_id="repair", timeout_sec=1,
+                             llm_backend="copilot-cli", segmented=True)
+        state = load_json(self.root / "logs/ci/mvg-planning/repair/run.json")
+        self.assertEqual("candidate-admission-execution-blocked", state["phase"])
+        self.assertTrue(all(row["admission_status"] == "execution-failed"
+                            for row in state["candidate_attempts"].values()))
+        self.assertTrue(state["admission_events"])
+        self.assertTrue(all(row["event"] != "admission-issue"
+                            for row in state["admission_events"]))
+        self.assertTrue(any(row["event"] == "admission-execution-failed"
+                            for row in state["admission_events"]))
+        self.assertGreater(calls, 0)
 
     def test_generation_pins_task_status_during_full_structural_correction(self):
         _, proposal, _ = prepared_mvg(self.root)

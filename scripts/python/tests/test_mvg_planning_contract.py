@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import concurrent.futures
 import sys
 import tempfile
 import unittest
@@ -28,12 +29,380 @@ from plan_mvg import (
     normalize_proposal_format,
     backfill_review_error_types,
     mvg_selection_output_schema, validate_mvg_selection,
+    MVG_REPAIR_ATTEMPT_LIMIT, admission_issue_id, advance_admission_state,
+    fresh_replacement_lineage,
+    run_admission_semantic_gate,
+    _latest_attempt_artifact,
+    restore_admission_checkpoint,
+    candidate_attempt_numbers, reserve_replacement_round,
+    build_selection_input_identity,
+    candidate_resume_attempt_numbers,
+    reserve_candidate_model_invocation,
 )
 from update_mvg_baseline import apply_delta
 from _planning_skill_common import atomic_json
 
 
 class MvgPlanningContractTests(unittest.TestCase):
+    def test_attempt_budget_does_not_expand_on_resume(self):
+        self.assertEqual([], list(candidate_attempt_numbers(64, segmented=True)))
+        self.assertEqual([3], list(candidate_attempt_numbers(2, segmented=False)))
+
+    def test_resume_scans_persisted_attempts_before_allocating_new_attempts(self):
+        self.assertEqual([1, 2, 3], candidate_resume_attempt_numbers(2, segmented=False))
+        self.assertEqual(list(range(1, 65)), candidate_resume_attempt_numbers(64, segmented=True))
+
+    def test_candidate_invocation_budget_is_durable_and_bounded(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            for _ in range(3):
+                self.assertEqual(_, reserve_candidate_model_invocation(root, "candidate-1", "candidate-1-r1") - 1)
+            state = json.loads((root / "lineage-execution.json").read_text(encoding="utf-8"))
+            self.assertEqual(3, state["model_invocation_count"])
+            atomic_json(root / "lineage-execution.json", {
+                "candidate": "candidate-1", "lineage": "candidate-1-r1",
+                "model_invocation_count": plan_mvg.MVG_CANDIDATE_INVOCATION_LIMIT,
+            })
+            with self.assertRaisesRegex(plan_mvg.MVGCandidateInvocationBudgetError, "64 model invocations"):
+                reserve_candidate_model_invocation(root, "candidate-1", "candidate-1-r1")
+
+    def test_candidate_invocation_reservations_are_atomic_under_segment_concurrency(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
+                reservations = list(executor.map(
+                    lambda _: reserve_candidate_model_invocation(root, "candidate-1", "candidate-1-r1"),
+                    range(32),
+                ))
+            self.assertEqual(list(range(1, 33)), sorted(reservations))
+            state = json.loads((root / "lineage-execution.json").read_text(encoding="utf-8"))
+            self.assertEqual(32, state["model_invocation_count"])
+
+    def test_candidate_admission_artifacts_must_stay_inside_candidate_workspace(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            run_dir = root / "logs/ci/mvg-planning/run-1"
+            candidate = run_dir / "candidates/candidate-1"
+            candidate.mkdir(parents=True)
+            for name in ("admission-review.json", "admission-execution.json"):
+                (candidate / name).write_text("{}", encoding="utf-8")
+            record = {
+                "workspace": "candidates/candidate-1",
+                "review_path": (candidate / "admission-review.json").relative_to(root).as_posix(),
+                "review_execution_path": (candidate / "admission-execution.json").relative_to(root).as_posix(),
+            }
+            proposal, proof, execution = plan_mvg._bound_admission_artifacts(root, run_dir, record)
+            self.assertEqual(candidate / "proposal.json", proposal)
+            self.assertEqual(candidate / "admission-review.json", proof)
+            record["review_path"] = (run_dir.parent / "outside.json").as_posix()
+            with self.assertRaisesRegex(ValueError, "escapes its workspace"):
+                plan_mvg._bound_admission_artifacts(root, run_dir, record)
+
+    def test_selected_incumbent_keeps_workspace_bound_for_idempotent_generation(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            run_id = "incumbent-idempotent"
+            run_dir = root / "logs/ci/mvg-planning" / run_id
+            incumbent = run_dir / "incumbent-admission"
+            incumbent.mkdir(parents=True)
+            proposal = {"schema_version": plan_mvg.PROPOSAL_SCHEMA,
+                        "analysis_identity_sha256": "sha256:analysis",
+                        "manifest_candidate": {"flows": []}}
+            atomic_json(run_dir / "proposal.json", proposal)
+            atomic_json(incumbent / "proposal.json", proposal)
+            proof = incumbent / "semantic-review.json"
+            execution = incumbent / "gate-incumbent/semantic-review-execution.json"
+            atomic_json(proof, {"verdict": "approved"})
+            atomic_json(execution, {})
+            admission = {"candidate": "incumbent", "lineage": "incumbent-r1",
+                         "status": "admitted", "workspace": "incumbent-admission",
+                         "proposal_sha256": plan_mvg.canonical_sha(proposal),
+                         "review_path": proof.relative_to(root).as_posix(),
+                         "review_execution_path": execution.relative_to(root).as_posix(),
+                         "proof_sha256": plan_mvg.file_sha(proof),
+                         "execution_sha256": plan_mvg.file_sha(execution)}
+            state = {"run_id": run_id, "formal_ready": True,
+                     "analysis_identity_sha256": "sha256:analysis",
+                     "selection_status": "selected", "selected_candidate": "incumbent",
+                     "selected_admission_review": {
+                         "path": admission["review_path"],
+                         "execution_path": admission["review_execution_path"],
+                         "proposal_sha256": admission["proposal_sha256"],
+                         "proof_sha256": admission["proof_sha256"],
+                         "execution_sha256": admission["execution_sha256"],
+                     },
+                     "candidate_admissions": {"incumbent": admission}}
+            run_path = run_dir / "run.json"
+            with patch.object(plan_mvg, "_load_run", return_value=(run_path, state)), \
+                 patch.object(plan_mvg, "_validate_input_freshness"), \
+                 patch.object(plan_mvg, "validate_proposal", return_value={
+                     "status": "passed", "formal_applicable": True}), \
+                 patch.object(plan_mvg, "candidate_admission_errors", return_value=[]), \
+                 patch("_mvg_planning_review.review_execution_errors", return_value=[]):
+                result = plan_mvg.generate(root, run_id=run_id, timeout_sec=1, llm_backend="codex-cli")
+            self.assertEqual("incumbent", result["selected"])
+
+    def test_replacement_round_budget_is_persisted_and_bounded(self):
+        state = {}
+        self.assertEqual(1, reserve_replacement_round(state))
+        self.assertEqual(2, reserve_replacement_round(state))
+        self.assertEqual(3, reserve_replacement_round(state))
+        self.assertIsNone(reserve_replacement_round(state))
+        self.assertEqual(3, state["replacement_rounds_used"])
+
+    def test_latest_attempt_artifact_uses_numeric_attempt_order(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            early = root / "attempt-2" / "semantic-review-execution.json"
+            late = root / "attempt-10" / "semantic-review-execution.json"
+            early.parent.mkdir(parents=True)
+            late.parent.mkdir(parents=True)
+            early.write_text("{}", encoding="utf-8")
+            late.write_text("{}", encoding="utf-8")
+            self.assertEqual(late, _latest_attempt_artifact([early, late]))
+
+    def test_admission_execution_discovery_uses_review_key_and_numeric_attempt(self):
+        with tempfile.TemporaryDirectory() as temp:
+            workspace = Path(temp) / "admission-review"
+            expected = workspace / "gate-attempt-10" / "semantic-review-execution.json"
+            stale = workspace / "gate-attempt-10" / "attempt-10" / "semantic-review-execution.json"
+            expected.parent.mkdir(parents=True)
+            stale.parent.mkdir(parents=True)
+            expected.write_text("{}", encoding="utf-8")
+            stale.write_text("{}", encoding="utf-8")
+
+            discover = getattr(plan_mvg, "_admission_execution_artifact", None)
+            self.assertTrue(callable(discover), "admission execution discovery helper is missing")
+            self.assertEqual(expected, discover(workspace, "attempt-10"))
+
+    def test_execution_failed_event_restores_execution_failure(self):
+        restored = restore_admission_checkpoint({}, [{
+            "candidate": "candidate-1", "lineage": "candidate-1-r1",
+            "event": "admission-execution-failed", "error": {"error_type": "runner_timeout"},
+        }], candidate="candidate-1", lineage="candidate-1-r1")
+        self.assertEqual("execution-failed", restored.get("status"))
+        self.assertEqual("runner_timeout", restored["execution_error"]["error_type"])
+
+    def test_admission_execution_receipt_is_bound_to_semantic_output(self):
+        from _mvg_planning_review import review_execution_errors
+        proposal = {"manifest_candidate": {"flows": []}}
+        review = {"verdict": "approved"}
+        state = {"analysis_identity_sha256": "sha256:analysis"}
+        execution = {
+            "analysis_identity_sha256": "sha256:analysis", "proposal_sha256": plan_mvg.canonical_sha(proposal),
+            "runner_info": {"schema_version": "newrouge.isolated-model-runner.v1", "model": "fixture",
+                "filesystem_scope": "workspace_only", "fresh_session_per_invocation": True,
+                "can_read_outside_workspace": False, "model_tools": []},
+            "receipt": {"model": "fixture", "model_tools": []},
+            "semantic_review_sha256": "sha256:other-review",
+        }
+        self.assertIn("independent_semantic_review_output_identity_invalid",
+                      review_execution_errors(state, proposal, execution, review))
+
+    def test_selector_input_identity_changes_when_any_scored_proposal_changes(self):
+        candidates = {"A": "sha256:a1", "B": "sha256:b1", "C": "sha256:c1"}
+        lineages = {"candidate-1": "candidate-1-r1", "candidate-2": "candidate-2-r1",
+                    "candidate-3": "candidate-3-r1"}
+        _, original = build_selection_input_identity(
+            "sha256:analysis", candidates, lineages, incumbent_present=False)
+        replacement_candidates = dict(candidates, A="sha256:a2")
+        _, replacement = build_selection_input_identity(
+            "sha256:analysis", replacement_candidates, lineages, incumbent_present=False)
+        self.assertNotEqual(original, replacement)
+
+        incumbent = dict(candidates, D="sha256:d1")
+        _, original_with_incumbent = build_selection_input_identity(
+            "sha256:analysis", incumbent, lineages, incumbent_present=True)
+        changed_incumbent = dict(incumbent, D="sha256:d2")
+        _, changed_incumbent_identity = build_selection_input_identity(
+            "sha256:analysis", changed_incumbent, lineages, incumbent_present=True)
+        self.assertNotEqual(original_with_incumbent, changed_incumbent_identity)
+
+    def test_admission_checkpoint_restores_issue_attempts_from_event_journal(self):
+        prior = {"candidate": "candidate-1", "lineage": "candidate-1-r1",
+                 "status": "repairing", "issues": [], "issue_attempts": {}}
+        restored = restore_admission_checkpoint(prior, [{
+            "candidate": "candidate-1", "lineage": "candidate-1-r1",
+            "event": "admission-issue", "issue": {"code": "bad-flow", "path": "flows[0]"},
+            "issue_attempts": {"bad-flow@flows[0]": 2}, "status": "repairing",
+        }], candidate="candidate-1", lineage="candidate-1-r1")
+        self.assertEqual(2, restored["issue_attempts"]["bad-flow@flows[0]"])
+        self.assertEqual("bad-flow", restored["issues"][0]["code"])
+
+    def test_retired_checkpoint_is_not_reopened_by_restore(self):
+        prior = {"candidate": "candidate-1", "lineage": "candidate-1-r1",
+                 "status": "repairing", "issues": [], "issue_attempts": {}}
+        restored = restore_admission_checkpoint(prior, [{
+            "candidate": "candidate-1", "lineage": "candidate-1-r1",
+            "event": "admission-issue", "issue": {"code": "bad-flow", "path": "flows[0]"},
+            "issue_attempts": {"bad-flow@flows[0]": 3}, "status": "retired",
+        }], candidate="candidate-1", lineage="candidate-1-r1")
+        self.assertEqual("retired", restored["status"])
+
+    def test_candidate_retired_event_restores_terminal_state(self):
+        prior = {"candidate": "candidate-1", "lineage": "candidate-1-r1",
+                 "status": "repairing", "issues": [], "issue_attempts": {}}
+        restored = restore_admission_checkpoint(prior, [{
+            "candidate": "candidate-1", "lineage": "candidate-1-r1",
+            "event": "candidate-retired", "issues": [{"code": "bad-flow", "path": "proposal"}],
+            "issue_attempts": {"bad-flow@proposal": 3},
+            "retirement_reason": "repair_attempt_limit_exhausted",
+        }], candidate="candidate-1", lineage="candidate-1-r1")
+        self.assertEqual("retired", restored["status"])
+        self.assertEqual("repair_attempt_limit_exhausted", restored["retirement_reason"])
+        self.assertEqual(3, restored["issue_attempts"]["bad-flow@proposal"])
+
+    def test_admission_gate_uses_bounded_projection_and_publication_with_fake_runner(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            run_id = "admission-fake"
+            run_dir = root / "logs" / "ci" / "mvg-planning" / run_id
+            analysis = run_dir / "analysis-input"
+            analysis.mkdir(parents=True)
+            atomic_json(analysis / "analysis-index.json", {
+                "schema_version": "newrouge.mvg-analysis-index.v1",
+                "analysis_identity_sha256": "sha256:analysis",
+                "files": {}, "authority_inputs": {},
+            })
+            atomic_json(analysis / "semantic-requirements.v1.json", {
+                "requirements": [{"requirement_id": "R1", "status": "active",
+                                   "delivery_relevant": True}],
+            })
+            atomic_json(analysis / "capabilities.v1.json", {
+                "schema_version": "newrouge.capabilities.v1", "capabilities": []})
+            state = {"run_id": run_id, "analysis_identity_sha256": "sha256:analysis"}
+            proposal = {"schema_version": "newrouge.mvg-planning-proposal.v1",
+                        "analysis_identity_sha256": "sha256:analysis",
+                        "manifest_candidate": {"flows": [{"id": "flow-a"}]}}
+            calls = []
+
+            def fake_invoke(prompt, attempt, *, output_name=None, output_schema_path=None,
+                            output_schema=None):
+                calls.append(attempt)
+                target = root / "fake-runner" / f"attempt-{attempt}.json"
+                atomic_json(target, {
+                    "schema_version": "newrouge.mvg-semantic-review.v1",
+                    "analysis_identity_sha256": "sha256:analysis",
+                    "proposal_sha256": plan_mvg.canonical_sha(proposal),
+                    "verdict": "approved", "findings": [],
+                    "requirement_reviews": [{"requirement_id": "R1", "verdict": "covered",
+                                              "rationale": "Flow covers the requirement."}],
+                    "flow_reviews": [{"flow_id": "flow-a", "verdict": "sound",
+                                      "rationale": "Boundary is observable."}],
+                })
+                return target, {"receipt": {"model": "fake", "model_tools": []}}
+
+            result = run_admission_semantic_gate(
+                root, state, proposal, run_dir / "candidate-admission",
+                runner=None, timeout_sec=5, invoke=fake_invoke)
+            self.assertEqual("approved", result["verdict"])
+            publication = list((run_dir / "candidate-admission").rglob("semantic-review-publication-*.json"))
+            self.assertEqual(1, len(publication))
+            checkpoint = json.loads(publication[0].read_text(encoding="utf-8"))
+            self.assertEqual("complete", checkpoint["status"])
+            self.assertTrue((run_dir / "candidate-admission" / "gate-default" / "attempt-1" / "analysis-input" / "review-evidence.json").is_file())
+
+            isolated = run_admission_semantic_gate(
+                root, state, proposal, run_dir / "candidate-admission",
+                runner=None, timeout_sec=5, invoke=fake_invoke, review_key="attempt-2")
+            self.assertEqual("approved", isolated["verdict"])
+            self.assertEqual([1, 1], calls)
+            default_publications = list(
+                (run_dir / "candidate-admission" / "gate-default").glob(
+                    "semantic-review-publication-*.json"))
+            isolated_publications = list(
+                (run_dir / "candidate-admission" / "gate-attempt-2").glob(
+                    "semantic-review-publication-*.json"))
+            self.assertEqual(1, len(default_publications))
+            self.assertEqual(1, len(isolated_publications))
+            self.assertNotEqual(default_publications[0], isolated_publications[0])
+
+    def test_admission_gate_rejects_empty_prepared_requirements_before_model_call(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            run_id = "admission-empty-requirements"
+            run_dir = root / "logs/ci/mvg-planning" / run_id
+            analysis = run_dir / "analysis-input"
+            analysis.mkdir(parents=True)
+            atomic_json(analysis / "semantic-requirements.v1.json", {"requirements": []})
+            state = {"run_id": run_id, "analysis_identity_sha256": "sha256:analysis"}
+            invoke = unittest.mock.Mock()
+            with self.assertRaisesRegex(ValueError, "prepared semantic requirements snapshot"):
+                run_admission_semantic_gate(
+                    root, state, {"manifest_candidate": {"flows": []}}, run_dir / "admission",
+                    runner=None, timeout_sec=5, invoke=invoke,
+                )
+            invoke.assert_not_called()
+
+    def test_admission_repairs_one_issue_before_advancing_to_next(self):
+        state = {"candidate": "candidate-1", "lineage": "candidate-1-r1",
+                 "issues": [{"code": "missing-owner", "path": "flows[0]"},
+                            {"code": "bad-test", "path": "tests[0]"}],
+                 "issue_attempts": {}}
+        for attempt in range(1, MVG_REPAIR_ATTEMPT_LIMIT + 1):
+            state = advance_admission_state(state,
+                                             ["bad-test"] if attempt == MVG_REPAIR_ATTEMPT_LIMIT
+                                             else ["missing-owner", "bad-test"],
+                                             repaired=(attempt == MVG_REPAIR_ATTEMPT_LIMIT))
+        self.assertEqual("bad-test", state["current_issue"]["code"])
+        self.assertEqual(0, state["issue_attempts"][admission_issue_id("bad-test", "tests[0]")])
+
+    def test_initial_hard_issue_does_not_consume_repair_budget(self):
+        state = {"candidate": "candidate-1", "lineage": "candidate-1-r1",
+                 "issues": [], "issue_attempts": {}}
+        state = advance_admission_state(state, ["missing-owner"], repaired=False)
+        self.assertEqual(0, state["issue_attempts"][admission_issue_id("missing-owner")])
+
+    def test_issue_reordering_does_not_mark_previous_issue_repaired(self):
+        state = {"candidate": "candidate-1", "lineage": "candidate-1-r1",
+                 "issues": [{"code": "missing-owner", "path": "flows[0]"},
+                            {"code": "bad-test", "path": "tests[0]"}],
+                 "issue_attempts": {}}
+        result = advance_admission_state(
+            state, [{"code": "bad-test", "path": "tests[0]"},
+                    {"code": "missing-owner", "path": "flows[0]"}], repaired=True)
+        self.assertEqual("missing-owner", result["current_issue"]["code"])
+        self.assertIn(admission_issue_id("missing-owner", "flows[0]"),
+                      {admission_issue_id(row["code"], row["path"]) for row in result["issues"]})
+        self.assertEqual(1, result["issue_attempts"][admission_issue_id("missing-owner", "flows[0]")])
+
+    def test_resumed_admission_preserves_current_issue_details_and_order(self):
+        state = {"candidate": "candidate-1", "lineage": "candidate-1-r1",
+                 "issues": [{"code": "missing-owner", "path": "flows[0]",
+                             "detail": "producer and consumer system roles are not explicit"},
+                            {"code": "bad-test", "path": "tests[0]",
+                             "detail": "selector is not a class name"}],
+                 "current_issue": {"code": "missing-owner", "path": "flows[0]",
+                                   "detail": "producer and consumer system roles are not explicit"},
+                 "issue_attempts": {}}
+        build_prompt = getattr(plan_mvg, "admission_repair_prompt", None)
+        self.assertTrue(callable(build_prompt), "admission recovery prompt helper is missing")
+        prompt = build_prompt("BASE", "CONTRACT", state)
+        self.assertTrue(prompt.startswith("BASE\nCONTRACT\n"))
+        self.assertIn("missing-owner:flows[0]: producer and consumer system roles are not explicit", prompt)
+        self.assertNotIn("bad-test:tests[0]", prompt)
+
+    def test_issue_queue_preserves_focused_semantic_detail_after_reordering(self):
+        current = {"code": "missing-owner", "path": "flows[0]", "detail": "Name the receiving system."}
+        result = advance_admission_state(
+            {"issues": [current], "issue_attempts": {}},
+            [{"code": "bad-test", "path": "tests[0]"}, current], repaired=False)
+        self.assertEqual(current, result["current_issue"])
+
+    def test_admission_retires_after_three_failed_repairs_and_replacement_is_clean(self):
+        state = {"candidate": "candidate-1", "lineage": "candidate-1-r1",
+                 "issues": [{"code": "missing-owner", "path": "flows[0]"}],
+                 "issue_attempts": {}}
+        result = state
+        for _ in range(MVG_REPAIR_ATTEMPT_LIMIT):
+            result = advance_admission_state(result, ["missing-owner"], repaired=False)
+        self.assertEqual("retired", result["status"])
+        replacement = fresh_replacement_lineage(result, "candidate-1")
+        self.assertNotEqual(result["lineage"], replacement["lineage"])
+        self.assertEqual({}, replacement["issue_attempts"])
+        self.assertNotIn("proposal", replacement)
+        self.assertNotIn("findings", replacement)
+
     def test_semantic_blocked_verdict_is_not_a_format_failure(self):
         from _mvg_planning_review import semantic_review_errors
         state = {"analysis_identity_sha256": "sha256:analysis"}
@@ -320,7 +689,7 @@ class MvgPlanningContractTests(unittest.TestCase):
             "evidence_refs": ["analysis-input/capabilities.v1.json"],
             "rationale": "The evaluator selected A despite its blocked verdict.",
         }
-        self.assertIn("mvg_selection_blocked_winner", validate_mvg_selection(
+        self.assertIn("mvg_selection_review_verdict_invalid:A", validate_mvg_selection(
             result, candidate_labels={"candidate-1", "candidate-2", "candidate-3"}, incumbent_present=False))
 
     def test_mvg_selection_rejects_formally_inapplicable_candidate(self):
@@ -353,7 +722,7 @@ class MvgPlanningContractTests(unittest.TestCase):
             "tradeoffs": ["B is complete."], "evidence_refs": ["analysis-input/capabilities.v1.json"],
             "rationale": "B is the highest ranked viable proposal.",
         }
-        self.assertEqual([], validate_mvg_selection(
+        self.assertIn("mvg_selection_review_verdict_invalid:C", validate_mvg_selection(
             result, candidate_labels={"candidate-1", "candidate-2", "candidate-3"},
             incumbent_present=False))
         duplicate_rank = json.loads(json.dumps(result))
@@ -370,7 +739,7 @@ class MvgPlanningContractTests(unittest.TestCase):
                 {"label": "A", "verdict": "viable", "rationale": "Viable.", "rank": 3},
                 {"label": "B", "verdict": "viable", "rationale": "Preferred.", "rank": 1},
                 {"label": "C", "verdict": "viable", "rationale": "Viable.", "rank": 2},
-                {"label": "D", "verdict": "blocked", "rationale": "Not applicable.", "rank": 4},
+                {"label": "D", "verdict": "viable", "rationale": "Complete but lower ranked.", "rank": 4},
             ],
             "tradeoffs": ["B is preferred."],
             "evidence_refs": ["analysis-input/capabilities.v1.json"],

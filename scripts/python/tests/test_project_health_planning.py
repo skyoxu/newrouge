@@ -41,6 +41,29 @@ class ProjectHealthPlanningTests(unittest.TestCase):
         git(self.root, 'branch', '-M', 'main')
         self.revision = main_revision(self.root)
 
+    def _write_admitted_mvg_candidate(self, run_dir, workspace, label='candidate-1'):
+        from plan_mvg import PROPOSAL_SCHEMA
+
+        candidate_root = run_dir / workspace
+        candidate_root.mkdir(parents=True, exist_ok=True)
+        proposal = {'schema_version': PROPOSAL_SCHEMA,
+                    'analysis_identity_sha256': 'sha256:current',
+                    'manifest_candidate': {'flows': []}}
+        candidate = candidate_root / 'proposal.json'
+        atomic_json(candidate, proposal)
+        analysis = run_dir / 'analysis-input/semantic-requirements.v1.json'
+        atomic_json(analysis, {'requirements': []})
+        proof_payload = {'schema_version': 'newrouge.mvg-semantic-review.v1',
+            'analysis_identity_sha256': 'sha256:current', 'proposal_sha256': canonical_sha(proposal),
+            'verdict': 'approved', 'findings': [], 'requirement_reviews': [], 'flow_reviews': []}
+        proof = candidate_root / 'admission-review.json'
+        atomic_json(proof, proof_payload)
+        execution = candidate_root / 'admission-execution.json'
+        atomic_json(execution, {'analysis_identity_sha256': 'sha256:current',
+            'proposal_sha256': canonical_sha(proposal), 'semantic_review_sha256': canonical_sha(proof_payload),
+            'runner_info': RUNNER, 'receipt': {'model': RUNNER['model'], 'model_tools': []}})
+        return proposal, candidate, proof, execution
+
     def test_checkout_reads_latest_main_and_ignores_dirty_feature_files(self):
         git(self.root, 'config', 'core.autocrlf', 'true')
         original = (self.root / GDD_PATH).read_text(encoding='utf-8')
@@ -147,12 +170,17 @@ class ProjectHealthPlanningTests(unittest.TestCase):
 
     def test_mvg_recovery_reuses_only_hash_bound_formal_candidates(self):
         run_dir = self.root / 'logs/ci/mvg-planning/recovery'
-        candidate = run_dir / 'candidates/candidate-1.json'
-        candidate.parent.mkdir(parents=True)
-        candidate.write_text('{"analysis_identity_sha256":"sha256:old"}', encoding='utf-8')
-        state = {'analysis_identity_sha256': 'sha256:old', 'candidate_attempts': {'candidate-1': {
+        _proposal, candidate, proof, execution = self._write_admitted_mvg_candidate(
+            run_dir, 'candidates/candidate-1')
+        state = {'analysis_identity_sha256': 'sha256:current', 'candidate_attempts': {'candidate-1': {
             'status': 'valid', 'proposal_sha256': planning.file_sha(candidate),
             'validation': {'status': 'passed', 'formal_applicable': True},
+        }}, 'candidate_admissions': {'candidate-1': {
+            'status': 'admitted', 'workspace': 'candidates/candidate-1',
+            'review_path': proof.relative_to(self.root).as_posix(),
+            'review_execution_path': execution.relative_to(self.root).as_posix(),
+            'proof_sha256': planning.file_sha(proof),
+            'execution_sha256': planning.file_sha(execution),
         }}}
         self.assertEqual(['candidate-1'], planning._mvg_valid_candidates(run_dir, state))
         candidate.write_text('{"analysis_identity_sha256":"sha256:changed"}', encoding='utf-8')
@@ -160,14 +188,69 @@ class ProjectHealthPlanningTests(unittest.TestCase):
 
     def test_mvg_recovery_reads_nested_candidate_proposals(self):
         run_dir = self.root / 'logs/ci/mvg-planning/nested-recovery'
-        candidate = run_dir / 'candidates/candidate-1/proposal.json'
-        candidate.parent.mkdir(parents=True)
-        candidate.write_text('{"analysis_identity_sha256":"sha256:current"}', encoding='utf-8')
+        _proposal, candidate, proof, execution = self._write_admitted_mvg_candidate(
+            run_dir, 'candidates/candidate-1')
         state = {'analysis_identity_sha256': 'sha256:current', 'candidate_attempts': {'candidate-1': {
             'status': 'valid', 'proposal_sha256': planning.file_sha(candidate),
             'validation': {'status': 'passed', 'formal_applicable': True},
+        }}, 'candidate_admissions': {'candidate-1': {
+            'status': 'admitted', 'workspace': 'candidates/candidate-1',
+            'review_path': proof.relative_to(self.root).as_posix(),
+            'review_execution_path': execution.relative_to(self.root).as_posix(),
+            'proof_sha256': planning.file_sha(proof),
+            'execution_sha256': planning.file_sha(execution),
         }}}
         self.assertEqual(['candidate-1'], planning._mvg_valid_candidates(run_dir, state))
+
+    def test_mvg_recovery_reads_admitted_replacement_workspace(self):
+        run_dir = self.root / 'logs/ci/mvg-planning/replacement-recovery'
+        _proposal, candidate, proof, execution = self._write_admitted_mvg_candidate(
+            run_dir, 'candidates/candidate-1--candidate-1-r2')
+        state = {'analysis_identity_sha256': 'sha256:current',
+            'candidate_attempts': {'candidate-1': {
+                'status': 'valid', 'proposal_sha256': planning.file_sha(candidate),
+                'validation': {'status': 'passed', 'formal_applicable': True},
+            }},
+            'candidate_admissions': {'candidate-1': {
+                'status': 'admitted', 'workspace': 'candidates/candidate-1--candidate-1-r2',
+                'review_path': proof.relative_to(self.root).as_posix(),
+                'review_execution_path': execution.relative_to(self.root).as_posix(),
+                'proof_sha256': planning.file_sha(proof),
+                'execution_sha256': planning.file_sha(execution),
+            }}}
+        self.assertEqual(['candidate-1'], planning._mvg_valid_candidates(run_dir, state))
+
+    def test_mvg_recovery_does_not_fallback_to_retired_workspace(self):
+        run_dir = self.root / 'logs/ci/mvg-planning/replacement-no-fallback'
+        _proposal, _current, _proof, _execution = self._write_admitted_mvg_candidate(
+            run_dir, 'candidates/candidate-1--candidate-1-r2')
+        (run_dir / 'candidates/candidate-1--candidate-1-r2/proposal.json').unlink()
+        stale = run_dir / 'candidates/candidate-1/proposal.json'
+        stale.parent.mkdir(parents=True)
+        proposal = {'schema_version': mvg.PROPOSAL_SCHEMA,
+                    'analysis_identity_sha256': 'sha256:current',
+                    'manifest_candidate': {'flows': []}}
+        atomic_json(stale, proposal)
+        proof = run_dir / 'candidates/candidate-1/admission-review.json'
+        execution = run_dir / 'candidates/candidate-1/admission-execution.json'
+        atomic_json(proof, {'schema_version': 'newrouge.mvg-semantic-review.v1',
+            'analysis_identity_sha256': 'sha256:current', 'proposal_sha256': canonical_sha(proposal),
+            'verdict': 'approved', 'findings': [], 'requirement_reviews': [], 'flow_reviews': []})
+        atomic_json(execution, {'analysis_identity_sha256': 'sha256:current',
+            'proposal_sha256': canonical_sha(proposal), 'semantic_review_sha256': canonical_sha(load_json(proof)),
+            'runner_info': RUNNER, 'receipt': {'model': RUNNER['model'], 'model_tools': []}})
+        state = {'analysis_identity_sha256': 'sha256:current',
+            'candidate_attempts': {'candidate-1': {
+                'status': 'valid', 'proposal_sha256': planning.file_sha(stale),
+                'validation': {'status': 'passed', 'formal_applicable': True},
+            }},
+            'candidate_admissions': {'candidate-1': {
+                'status': 'admitted', 'workspace': 'candidates/candidate-1--candidate-1-r2',
+                'review_path': proof.relative_to(self.root).as_posix(),
+                'review_execution_path': execution.relative_to(self.root).as_posix(),
+                'proof_sha256': planning.file_sha(proof), 'execution_sha256': planning.file_sha(execution),
+            }}}
+        self.assertEqual([], planning._mvg_valid_candidates(run_dir, state))
 
     def test_mvg_recovery_rejects_candidate_with_stale_analysis_identity(self):
         run_dir = self.root / 'logs/ci/mvg-planning/identity-recovery'
@@ -507,9 +590,9 @@ class ProjectHealthPlanningTests(unittest.TestCase):
                 (mvg_checkout / 'docs/planning/semantic-topology/capabilities.v1.json').read_bytes(),
             )
             # Capability uses five model calls; MVG generation uses three
-            # independent six-section candidates (one tests request per flow),
-            # one selection review, and one independent semantic review.
-            self.assertEqual(25, len(invocations))
+            # independent candidates with admission review, one selection
+            # review, and one final admission-proof verification.
+            self.assertEqual(27, len(invocations))
             overview = planning.generated_view(self.root, 'mvg')
             self.assertIsNotNone(overview)
             self.assertEqual(1, len(overview['manifests']))
@@ -530,7 +613,7 @@ class ProjectHealthPlanningTests(unittest.TestCase):
             reused = planning.create_job(self.root, 'capability')
             self.assertEqual('completed', reused['status'])
             self.assertEqual(cap_job['job_id'], reused['job_id'])
-            self.assertEqual(25, len(invocations))
+            self.assertEqual(27, len(invocations))
         git(self.root, 'commit', '--allow-empty', '-m', 'fixture: later main')
         self.assertIsNotNone(planning.generated_view(self.root, 'capability'))
         self.assertIsNotNone(planning.generated_view(self.root, 'mvg'))
@@ -547,7 +630,7 @@ class ProjectHealthPlanningTests(unittest.TestCase):
             self.assertNotIn('checkout_job_id', job)
             result = planning.run_job(self.root, job)
         self.assertEqual('completed', result['status'], result)
-        self.assertEqual(20, len(invocations))
+        self.assertEqual(22, len(invocations))
         self.assertEqual(main_revision(self.root), planning.generated_view(self.root, 'mvg')['revision'])
 
     def test_resume_reuses_generated_candidates_and_original_attempt(self):

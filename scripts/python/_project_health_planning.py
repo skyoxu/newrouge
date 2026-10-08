@@ -11,7 +11,7 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
-from _planning_skill_common import atomic_json, file_sha, load_json, normalized_file_sha, repo_path
+from _planning_skill_common import atomic_json, canonical_sha, file_sha, load_json, normalized_file_sha, repo_path
 from _project_health_planning_inputs import (
     LOCAL_DERIVED_TOPOLOGY, MainCheckout, TOPOLOGY_ROOT, git, prepare_checkout, task_scope, validate_checkout,
     workspace_revision,
@@ -365,12 +365,70 @@ def _mvg_valid_candidates(run_dir: Path, state: dict) -> list[str]:
             continue
         # MVG candidate proposals are stored in their isolated candidate
         # workspace. Keep the historical flat path readable for older runs.
-        paths = (
-            run_dir / 'candidates' / label / 'proposal.json',
-            run_dir / 'candidates' / f'{label}.json',
-        )
+        admission = (state.get('candidate_admissions') or {}).get(label)
+        if not isinstance(admission, dict) or admission.get('status') != 'admitted':
+            continue
+        checkout_root = run_dir.parents[3] if len(run_dir.parents) > 3 else run_dir
+        workspace_path = str(admission.get('workspace') or '')
+        if workspace_path:
+            try:
+                candidate_root = repo_path(run_dir, workspace_path)
+            except ValueError:
+                continue
+            if not candidate_root.is_relative_to(run_dir.resolve()):
+                continue
+            paths = (candidate_root / 'proposal.json',)
+        else:
+            candidate_root = None
+            paths = (run_dir / 'candidates' / label / 'proposal.json',
+                     run_dir / 'candidates' / f'{label}.json')
         path = next((candidate_path for candidate_path in paths if candidate_path.is_file()), paths[0])
         validation = record.get('validation') or {}
+        if not isinstance(admission, dict):
+            admission = {}
+        proof = admission.get('review_path')
+        execution = admission.get('review_execution_path')
+        if not proof or not execution:
+            continue
+        try:
+            proof_path = repo_path(checkout_root, str(proof))
+            execution_path = repo_path(checkout_root, str(execution))
+        except ValueError:
+            continue
+        if candidate_root is not None and (
+                not proof_path.is_relative_to(candidate_root.resolve())
+                or not execution_path.is_relative_to(candidate_root.resolve())):
+            continue
+        if not proof_path.is_file() or not execution_path.is_file():
+            continue
+        proof_sha = str(admission.get('proof_sha256') or '')
+        execution_sha = str(admission.get('execution_sha256') or '')
+        if (not proof_sha or not execution_sha
+                or file_sha(proof_path) != proof_sha
+                or file_sha(execution_path) != execution_sha):
+            continue
+        try:
+            candidate_payload = load_json(path, {})
+            proof_payload = load_json(proof_path, {})
+            execution_payload = load_json(execution_path, {})
+            if (proof_payload.get('schema_version') != 'newrouge.mvg-semantic-review.v1'
+                    or proof_payload.get('analysis_identity_sha256') != state.get('analysis_identity_sha256')
+                    or proof_payload.get('proposal_sha256') != canonical_sha(candidate_payload)
+                    or proof_payload.get('verdict') != 'approved'
+                    or proof_payload.get('findings') != []):
+                continue
+            semantics = load_json(run_dir / 'analysis-input/semantic-requirements.v1.json', None)
+            if not isinstance(semantics, dict) or not isinstance(semantics.get('requirements'), list):
+                continue
+            from _mvg_planning_review import review_execution_errors, semantic_review_errors
+            scope = state.get('planning_scope') if isinstance(state.get('planning_scope'), dict) else None
+            allowed = set(scope.get('requirement_ids', [])) if scope else None
+            if semantic_review_errors(state, candidate_payload, proof_payload, semantics, allowed):
+                continue
+            if review_execution_errors(state, candidate_payload, execution_payload, proof_payload):
+                continue
+        except (OSError, ValueError, TypeError, KeyError, json.JSONDecodeError):
+            continue
         if (record.get('status') == 'valid' and path.is_file()
                 and record.get('proposal_sha256') == file_sha(path)
                 and validation.get('status') == 'passed'

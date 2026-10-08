@@ -222,7 +222,8 @@ def semantic_review_errors(state: dict[str, Any], proposal: dict[str, Any], revi
     return errors
 
 
-def review_execution_errors(state: dict[str, Any], proposal: dict[str, Any], execution: dict[str, Any]) -> list[str]:
+def review_execution_errors(state: dict[str, Any], proposal: dict[str, Any], execution: dict[str, Any],
+                            review: dict[str, Any]) -> list[str]:
     from _planning_skill_common import validate_runner_description
     errors = []
     try:
@@ -230,8 +231,12 @@ def review_execution_errors(state: dict[str, Any], proposal: dict[str, Any], exe
     except ValueError:
         errors.append("independent_semantic_review_isolation_missing")
     receipt = execution.get("receipt") or {}
+    receipt_output_sha = receipt.get("output_sha256")
+    execution_output_sha = execution.get("output_sha256")
     if (execution.get("proposal_sha256") != canonical_sha(proposal)
         or execution.get("analysis_identity_sha256") != state["analysis_identity_sha256"]
+        or execution.get("semantic_review_sha256") != canonical_sha(review)
+        or (receipt_output_sha is not None and execution_output_sha != receipt_output_sha)
         or receipt.get("model_tools") != [] or not receipt.get("model")):
-        errors.append("independent_semantic_review_execution_identity_invalid")
+        errors.append("independent_semantic_review_output_identity_invalid")
     return errors

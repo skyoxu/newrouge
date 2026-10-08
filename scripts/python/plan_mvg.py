@@ -49,6 +49,396 @@ MVG_REVIEW_EVIDENCE_EXCERPT_CHARS = 2400
 MVG_CANDIDATE_LABELS = ("candidate-1", "candidate-2", "candidate-3")
 MVG_SELECTION_SCHEMA = "newrouge.mvg-selection-review.v1"
 MVG_SELECTION_ATTEMPT_LIMIT = 3
+MVG_REPAIR_ATTEMPT_LIMIT = 3
+# A candidate may have more than eight ordered hard issues.  Keep a durable
+# global stop-loss as well as the per-issue three-repair rule so a malformed
+# proposal cannot cause unbounded model calls.
+MVG_CANDIDATE_ATTEMPT_LIMIT = 64
+MVG_CANDIDATE_INVOCATION_LIMIT = 64
+MVG_REPLACEMENT_ROUND_LIMIT = 3
+
+
+def admission_issue_id(code: str, path: str = "") -> str:
+    """Return a stable identity for one ordered candidate hard issue."""
+    return f"{str(code).strip()}@{str(path).strip()}"
+
+
+def admission_repair_prompt(base_prompt: str, strict_contract: str,
+                            admission_state: dict[str, Any]) -> str:
+    """Build a focused repair prompt from the durable current-issue checkpoint."""
+    issue = admission_state.get("current_issue")
+    if not isinstance(issue, dict):
+        issues = admission_state.get("issues")
+        issue = issues[0] if isinstance(issues, list) and issues else {}
+    code = str(issue.get("code") or "issue")
+    path = str(issue.get("path") or "")
+    detail = str(issue.get("detail") or "").strip()
+    target = f"{code}:{path}" if path else code
+    if detail:
+        target += f": {detail}"
+    return base_prompt + "\n" + strict_contract + "\n" + correction_prompt([target])
+
+
+def advance_admission_state(state: dict[str, Any], issue_codes: list[Any], *,
+                            repaired: bool) -> dict[str, Any]:
+    """Advance one candidate's ordered repair queue after a focused recheck."""
+    result = deepcopy(state)
+    issues = result.get("issues") if isinstance(result.get("issues"), list) else []
+    normalized = []
+    for item in issue_codes:
+        if isinstance(item, dict):
+            code, path = str(item.get("code") or "issue"), str(item.get("path") or "")
+            detail = str(item.get("detail") or "").strip()
+        else:
+            code, path = str(item), ""
+            detail = ""
+        if not path:
+            prior = next((row for row in issues if isinstance(row, dict)
+                          and str(row.get("code") or "") == code), None)
+            if prior is not None:
+                path = str(prior.get("path") or "")
+                detail = detail or str(prior.get("detail") or "").strip()
+        normalized_issue = {"code": code, "path": path}
+        if detail:
+            normalized_issue["detail"] = detail
+        normalized.append(normalized_issue)
+    current_id = (admission_issue_id(str(issues[0].get("code") or "issue"),
+                                     str(issues[0].get("path") or ""))
+                  if issues and isinstance(issues[0], dict) else "")
+    attempts = result.setdefault("issue_attempts", {})
+    normalized_ids = {
+        admission_issue_id(row["code"], row["path"])
+        for row in normalized
+    }
+    # Callers may only claim a repair when the prior issue is absent from the
+    # fresh deterministic/semantic issue set.  This prevents issue reordering
+    # from silently deleting an issue that is still present.
+    repaired = bool(repaired and current_id and current_id not in normalized_ids)
+    if current_id and not repaired:
+        current_row = next((row for row in normalized
+                            if admission_issue_id(row["code"], row["path"]) == current_id), None)
+        if current_row is not None:
+            normalized = [current_row] + [row for row in normalized if row is not current_row]
+    for row in normalized:
+        attempts.setdefault(admission_issue_id(row["code"], row["path"]), 0)
+    if not current_id:
+        result["issues"] = normalized
+    else:
+        attempts[current_id] = int(attempts.get(current_id, 0)) + 1
+        if repaired:
+            result["issues"] = [row for row in normalized
+                                 if admission_issue_id(row["code"], row["path"]) != current_id]
+        else:
+            result["issues"] = normalized
+        if not repaired and attempts[current_id] >= MVG_REPAIR_ATTEMPT_LIMIT:
+            result.update(status="retired", retirement_reason="repair_attempt_limit_exhausted")
+            return result
+    if result.get("issues"):
+        result["status"] = "repairing"
+        result["current_issue"] = result["issues"][0]
+    else:
+        result["status"] = "admitted"
+        result["current_issue"] = None
+    return result
+
+
+def fresh_replacement_lineage(retired: dict[str, Any], candidate: str) -> dict[str, Any]:
+    """Create a replacement identity with no retired proposal or findings."""
+    prior = str(retired.get("lineage") or f"{candidate}-r1")
+    match = re.search(r"-r(\d+)$", prior)
+    revision = int(match.group(1)) + 1 if match else 2
+    return {"candidate": candidate, "lineage": f"{candidate}-r{revision}",
+            "status": "pending", "issues": [], "issue_attempts": {},
+            "replacement_of": prior}
+
+
+def candidate_attempt_numbers(record_count: int, *, segmented: bool) -> range:
+    """Return a non-expanding attempt range for one persisted lineage."""
+    if segmented:
+        return range(record_count + 1, MVG_CANDIDATE_ATTEMPT_LIMIT + 1)
+    return range(record_count + 1, MVG_REPAIR_ATTEMPT_LIMIT + 1)
+
+
+def candidate_resume_attempt_numbers(record_count: int, *, segmented: bool) -> list[int]:
+    """Scan persisted attempt slots before allocating the remaining bounded slots."""
+    limit = MVG_CANDIDATE_ATTEMPT_LIMIT if segmented else MVG_REPAIR_ATTEMPT_LIMIT
+    persisted = min(max(int(record_count), 0), limit)
+    return [*range(1, persisted + 1), *range(persisted + 1, limit + 1)]
+
+
+def reserve_replacement_round(state: dict[str, Any]) -> int | None:
+    """Persist one replacement round or return None after the stop-loss."""
+    used = int(state.get("replacement_rounds_used", 0) or 0)
+    if used >= MVG_REPLACEMENT_ROUND_LIMIT:
+        return None
+    state["replacement_rounds_used"] = used + 1
+    return used + 1
+
+
+def restore_admission_checkpoint(prior: dict[str, Any], events: list[Any], *,
+                                 candidate: str, lineage: str) -> dict[str, Any]:
+    """Restore the latest issue queue/counters for one non-terminal lineage."""
+    result = deepcopy(prior)
+    for event in reversed(events):
+        if not isinstance(event, dict) or str(event.get("candidate") or "") != candidate:
+            continue
+        if str(event.get("lineage") or lineage) != lineage:
+            continue
+        event_name = str(event.get("event") or "")
+        if event_name == "admission-execution-failed":
+            result.update(status="execution-failed", execution_error=deepcopy(event.get("error") or {}))
+            return result
+        if event_name in {"candidate-retired", "candidate-admitted"}:
+            if isinstance(event.get("admission"), dict):
+                result.update(deepcopy(event["admission"]))
+            result["status"] = "retired" if event_name == "candidate-retired" else "admitted"
+            if isinstance(event.get("issues"), list):
+                result["issues"] = [dict(row) for row in event["issues"] if isinstance(row, dict)]
+            if isinstance(event.get("issue_attempts"), dict):
+                result["issue_attempts"] = dict(event["issue_attempts"])
+            if event.get("retirement_reason"):
+                result["retirement_reason"] = event["retirement_reason"]
+            return result
+        if event_name != "admission-issue":
+            continue
+        if not result.get("issues") and isinstance(event.get("issue"), dict):
+            result["issues"] = [dict(event["issue"])]
+        if isinstance(event.get("issue_attempts"), dict):
+            result["issue_attempts"] = dict(event["issue_attempts"])
+        if event.get("status"):
+            result["status"] = event["status"]
+        break
+    return result
+
+
+def _latest_attempt_artifact(paths: Any) -> Path | None:
+    """Return the highest numeric attempt artifact, not lexical last."""
+    candidates = [path for path in paths if isinstance(path, Path)]
+    if not candidates:
+        return None
+    def key(path: Path) -> tuple[int, str]:
+        match = re.search(r"(?:^|/)attempt-(\d+)(?:/|$)", path.as_posix())
+        return (int(match.group(1)) if match else -1, path.as_posix())
+    return max(candidates, key=key)
+
+
+def _admission_execution_artifact(workspace: Path, review_key: str) -> Path | None:
+    """Return the execution receipt for one isolated semantic-gate review key."""
+    safe_review_key = re.sub(r"[^a-zA-Z0-9-]", "-", str(review_key))[:80] or "default"
+    published = workspace / f"gate-{safe_review_key}" / "semantic-review-execution.json"
+    return published if published.is_file() else None
+
+
+def _bound_admission_artifacts(root: Path, run_dir: Path,
+                               admission: dict[str, Any]) -> tuple[Path, Path, Path]:
+    """Resolve a candidate's proposal, proof, and receipt within its workspace."""
+    workspace_ref = str(admission.get("workspace") or "")
+    if not workspace_ref:
+        raise ValueError("candidate admission workspace is missing")
+    candidate_root = repo_path(run_dir, workspace_ref)
+    proposal = repo_path(candidate_root, "proposal.json")
+    proof = repo_path(root, str(admission.get("review_path") or ""))
+    execution = repo_path(root, str(admission.get("review_execution_path") or ""))
+    if not (proposal.is_relative_to(candidate_root.resolve())
+            and proof.is_relative_to(candidate_root.resolve())
+            and execution.is_relative_to(candidate_root.resolve())):
+        raise ValueError("candidate admission artifact escapes its workspace")
+    return proposal, proof, execution
+
+
+def build_selection_input_identity(analysis_identity_sha256: str,
+                                   candidate_hashes: dict[str, str],
+                                   candidate_lineages: dict[str, Any], *,
+                                   incumbent_present: bool) -> tuple[dict[str, str], str]:
+    """Bind comparative selection to every proposal and lineage it evaluates."""
+    aliases = ("A", "B", "C", "D") if incumbent_present else ("A", "B", "C")
+    identity = {alias: str(candidate_hashes.get(alias) or "") for alias in aliases}
+    if any(not value for value in identity.values()):
+        raise ValueError("selection input identity is missing a scored proposal hash")
+    digest = canonical_sha({
+        "analysis_identity_sha256": analysis_identity_sha256,
+        "candidates": identity,
+        "candidate_lineages": candidate_lineages,
+        "incumbent_present": incumbent_present,
+    })
+    return identity, digest
+
+
+def candidate_admission_errors(root: Path, state: dict[str, Any],
+                               proposal: dict[str, Any],
+                               semantic_review: dict[str, Any] | None = None) -> list[dict[str, str]]:
+    """Return ordered hard issues that prevent a proposal entering selection."""
+    validation = validate_proposal(root, state, proposal)
+    issues: list[dict[str, str]] = [
+        {"code": str(error), "path": "proposal"} for error in validation.get("errors", [])
+    ]
+    if int(validation.get("unresolved_gap_count", 0) or 0) > 0:
+        issues.append({"code": "unresolved_planning_gaps", "path": "proposal.gaps"})
+    if validation.get("status") == "passed":
+        baseline = _run_dir(root, str(state.get("run_id"))) / "analysis-input/existing-manifest.json"
+        if baseline.is_file():
+            try:
+                existing = load_json(baseline, {})
+                delta = build_delta(existing, proposal)
+                from update_mvg_baseline import apply_delta
+                apply_delta(existing, delta, root=root, validate_final=True)
+            except (OSError, ValueError, KeyError, TypeError) as exc:
+                issues.append({"code": "delta_validation_blocked", "path": "manifest", "detail": str(exc)})
+    if semantic_review is not None:
+        from _mvg_planning_review import semantic_review_errors
+        scope = state.get("planning_scope") if isinstance(state.get("planning_scope"), dict) else None
+        allowed = set(scope.get("requirement_ids", [])) if scope else None
+        semantics_path = _run_dir(root, str(state.get("run_id"))) / "analysis-input/semantic-requirements.v1.json"
+        semantics = load_json(semantics_path, None)
+        if (not isinstance(semantics, dict) or not isinstance(semantics.get("requirements"), list)
+                or not semantics["requirements"]):
+            issues.append({"code": "prepared_semantic_requirements_snapshot_missing_or_invalid",
+                           "path": "analysis-input/semantic-requirements.v1.json"})
+            errors = []
+        else:
+            errors = semantic_review_errors(state, proposal, semantic_review, semantics, allowed)
+        finding_detail = "; ".join(
+            str(value).strip() for value in (semantic_review.get("findings") or [])
+            if isinstance(value, str) and value.strip()
+        )[:1000]
+        for error in errors:
+            issue = {"code": str(error), "path": "semantic-review"}
+            if finding_detail and str(error) == "semantic_review_not_approved":
+                issue["detail"] = finding_detail
+            issues.append(issue)
+    # A candidate may enter selection only with no deterministic or semantic
+    # hard issue. Preserve first-seen order for focused repair routing.
+    seen: set[str] = set()
+    ordered: list[dict[str, str]] = []
+    for issue in issues:
+        key = admission_issue_id(issue.get("code", "issue"), issue.get("path", ""))
+        if key not in seen:
+            seen.add(key)
+            ordered.append(issue)
+    return ordered
+
+
+def run_admission_semantic_gate(root: Path, state: dict[str, Any], proposal: dict[str, Any],
+                                workspace: Path, *, runner: Path | None,
+                                timeout_sec: int, invoke: Any = None,
+                                review_key: str = "default",
+                                before_invoke: Any = None) -> dict[str, Any]:
+    """Run the independent semantic hard gate in a fresh candidate lineage workspace."""
+    run_dir = _run_dir(root, str(state.get("run_id")))
+    semantics = load_json(run_dir / "analysis-input/semantic-requirements.v1.json", None)
+    if (not isinstance(semantics, dict) or not isinstance(semantics.get("requirements"), list)
+            or not semantics["requirements"]):
+        raise ValueError("prepared semantic requirements snapshot is missing or invalid")
+    scope = state.get("planning_scope") if isinstance(state.get("planning_scope"), dict) else None
+    allowed = set(scope.get("requirement_ids", [])) if scope else None
+    required_requirements = {
+        str(row.get("requirement_id")) for row in semantics.get("requirements", [])
+        if isinstance(row, dict) and row.get("status", "active") == "active"
+        and row.get("delivery_relevant", True) and (allowed is None or str(row.get("requirement_id")) in allowed)
+    }
+    flow_ids = {str(row.get("id")) for row in (proposal.get("manifest_candidate") or {}).get("flows", [])
+                if isinstance(row, dict) and str(row.get("id") or "").strip()}
+    proposal_sha = canonical_sha(proposal)
+    workspace.mkdir(parents=True, exist_ok=True)
+    atomic_json(workspace / "proposal.json", proposal)
+    source = run_dir / "analysis-input"
+    safe_review_key = re.sub(r"[^a-zA-Z0-9-]", "-", str(review_key))[:80] or "default"
+    review_workspace = workspace / f"gate-{safe_review_key}"
+    review_workspace.mkdir(parents=True, exist_ok=True)
+    if source.is_dir():
+        shutil.copytree(source, review_workspace / "analysis-input", dirs_exist_ok=True)
+    prompt = ("You are the independent MVG candidate admission semantic gate. "
+              "Review proposal.json against analysis-input and return JSON only. "
+              "Block any semantic, ownership, handoff, recovery, or accounting issue. "
+              f"schema_version='newrouge.mvg-semantic-review.v1', analysis_identity_sha256='{state['analysis_identity_sha256']}', "
+              f"proposal_sha256='{proposal_sha}'. Return complete requirement_reviews and flow_reviews.")
+    attempts: list[dict[str, Any]] = []
+    proposal_sha = canonical_sha(proposal)
+    publication = review_workspace / (
+        f"semantic-review-publication-{proposal_sha.removeprefix('sha256:')}-{safe_review_key}.json")
+    runner_identity = inspect_isolated_runner(runner) if runner is not None else {"backend": "isolated-invoke"}
+    publication_identity = {
+        "analysis_identity_sha256": state["analysis_identity_sha256"],
+        "proposal_sha256": proposal_sha, "runner": runner_identity,
+    }
+    if publication.is_file():
+        from _planning_review_publication import resume_publication
+        resume_publication(publication, publication_identity, atomic_json)
+        restored = load_json(review_workspace / "semantic-review.json", None)
+        restored_execution = load_json(review_workspace / "semantic-review-execution.json", None)
+        if isinstance(restored, dict):
+            restored_errors = validate_review_shape(
+                state, proposal, restored,
+                requirement_ids=required_requirements, flow_ids=flow_ids,
+                check_identity=True, check_accounting=False,
+            )
+            if isinstance(restored_execution, dict):
+                from _mvg_planning_review import review_execution_errors
+                restored_errors.extend(review_execution_errors(state, proposal, restored_execution, restored))
+            else:
+                restored_errors.append("candidate_admission_execution_missing")
+            if restored_errors:
+                raise ValueError("candidate admission publication evidence is invalid: "
+                                 + ";".join(restored_errors))
+            return restored
+    for number in range(1, MVG_REVIEW_ATTEMPT_LIMIT + 1):
+        attempt_workspace = review_workspace / f"attempt-{number}"
+        attempt_workspace.mkdir(parents=True, exist_ok=True)
+        atomic_json(attempt_workspace / "proposal.json", proposal)
+        _prepare_review_workspace(run_dir, attempt_workspace, proposal)
+        prompt_path = attempt_workspace / "prompt.txt"
+        prompt_path.write_text(prompt, encoding="utf-8", newline="\n")
+        output = attempt_workspace / "semantic-review.json"
+        schema = attempt_workspace / "semantic-review-output-schema.json"
+        atomic_json(schema, semantic_review_output_schema())
+        try:
+            if runner is not None:
+                if before_invoke is not None:
+                    before_invoke()
+                receipt = run_isolated_model(runner, workspace=attempt_workspace, prompt_path=prompt_path,
+                                             output_path=output, timeout_sec=timeout_sec,
+                                             output_schema=schema)
+            elif invoke is not None:
+                generated, execution = invoke(prompt, number, output_name="semantic-review.json",
+                                              output_schema_path=schema,
+                                              output_schema=semantic_review_output_schema())
+                if generated != output:
+                    shutil.copyfile(generated, output)
+                receipt = execution.get("receipt", {}) if isinstance(execution, dict) else {}
+            else:
+                raise ValueError("independent semantic admission runner is unavailable")
+            if runner is not None and ((receipt or {}).get("model_tools") != []
+                                       or not (receipt or {}).get("model")):
+                raise ValueError("candidate admission reviewer execution identity is incomplete")
+            result = parse_model_json(output)
+            shape_errors = validate_review_shape(state, proposal, result,
+                requirement_ids=required_requirements, flow_ids=flow_ids,
+                check_identity=True, check_accounting=False)
+            if shape_errors:
+                raise ValueError("candidate admission semantic review output invalid: " + ";".join(shape_errors))
+            execution = {
+                "runner": str(runner) if runner else "isolated-invoke", "runner_info": runner_identity,
+                "receipt": receipt, "output_sha256": file_sha(output),
+                "analysis_identity_sha256": state["analysis_identity_sha256"],
+                "proposal_sha256": proposal_sha, "semantic_review_sha256": canonical_sha(result),
+                "attempt_count": number,
+            }
+            atomic_json(attempt_workspace / "semantic-review-execution.json", execution)
+            from _planning_review_publication import prepare_publication, resume_publication
+            prepare_publication(publication, publication_identity, {
+                "semantic-review.json": result,
+                "semantic-review-execution.json": execution}, atomic_json)
+            resume_publication(publication, publication_identity, atomic_json)
+            return result
+        except (OSError, RuntimeError, TimeoutError, ValueError, json.JSONDecodeError) as exc:
+            attempts.append({"attempt": number, "status": "execution-failed",
+                             "error": _compact_exception_message(exc),
+                             "error_type": classify_review_error(exc)})
+    raise MVGReviewAttemptBudgetError(
+        error_type=str(attempts[-1].get("error_type") or "runner_execution_failed"),
+        attempts_used=len(attempts), attempt_limit=MVG_REVIEW_ATTEMPT_LIMIT,
+        last_error=str(attempts[-1].get("error") or "admission semantic gate failed"),
+    )
 
 
 def _compact_exception_message(value: Any, limit: int = MVG_ERROR_MESSAGE_LIMIT) -> str:
@@ -76,6 +466,8 @@ def classify_review_error(exc: BaseException) -> str:
     """Return a stable machine-readable class for one isolated review failure."""
     text = str(exc)
     lowered = text.lower()
+    if isinstance(exc, MVGCandidateInvocationBudgetError):
+        return exc.error_type
     if ("input exceeds the maximum length" in lowered
             or "maximum context length" in lowered
             or "bounded mvg review workspace exceeds" in lowered):
@@ -218,7 +610,7 @@ def mvg_selection_output_schema(*, incumbent_present: bool) -> dict[str, Any]:
         "required": ["label", "verdict", "rationale", "rank"],
         "properties": {
             "label": {"type": "string", "enum": labels},
-            "verdict": {"type": "string", "enum": ["viable", "blocked"]},
+            "verdict": {"type": "string", "const": "viable"},
             "rationale": {"type": "string", "minLength": 1},
             "rank": {"type": "integer", "minimum": 1},
         },
@@ -226,7 +618,7 @@ def mvg_selection_output_schema(*, incumbent_present: bool) -> dict[str, Any]:
     properties: dict[str, Any] = {
         "schema_version": {"type": "string", "const": MVG_SELECTION_SCHEMA},
         "selected": {"anyOf": [{"type": "string", "enum": labels}, {"type": "null"}]},
-        "status": {"type": "string", "enum": ["selected", "no_valid_winner"]},
+        "status": {"type": "string", "const": "selected"},
         "candidate_reviews": {"type": "array", "items": review},
         "tradeoffs": {"type": "array", "items": {"type": "string", "minLength": 1}, "minItems": 1},
         "evidence_refs": {"type": "array", "items": {"type": "string", "minLength": 1}},
@@ -271,10 +663,10 @@ Evaluate in order: Capability membership fidelity, complete in-scope Requirement
 coherent player journeys and handoffs, ownership/test feasibility, and cumulative
 baseline preservation. A new candidate is not automatically better than the incumbent.
 Return JSON only with schema_version={MVG_SELECTION_SCHEMA!r}, selected={"A|B|C|D|null" if incumbent_present else "A|B|C|null"},
-status=selected|no_valid_winner, candidate_reviews with exactly one row for each available label.
+status=selected, candidate_reviews with exactly one viable row for each available label.
 Rank every row with a unique integer from 1 through the number of rows; array order is irrelevant.
-The selected label must have rank 1. This ranking is the stable fallback preference order;
-blocked rows may have ranks but are skipped during fallback.
+The selected label must have rank 1. All rows are already admitted and viable; ranking is
+comparative preference only and is not a semantic fallback mechanism.
 tradeoffs (non-empty), evidence_refs (paths or Requirement IDs), and rationale (non-empty).
 """
 
@@ -282,7 +674,11 @@ tradeoffs (non-empty), evidence_refs (paths or Requirement IDs), and rationale (
 def ranked_semantic_fallback_candidates(selection: dict[str, Any],
                                          alias_mapping: dict[str, str], *,
                                          selected: str) -> list[str]:
-    """Return formally ranked viable candidate identities after the winner."""
+    """Return ranked viable identities for legacy inspection only.
+
+    The production review path never falls back to a ranked candidate after
+    selection; all candidates must be admitted before the selector runs.
+    """
     reviews = selection.get("candidate_reviews", [])
     ranked = sorted(
         (row for row in reviews if isinstance(row, dict)
@@ -309,14 +705,14 @@ def validate_mvg_selection(result: dict[str, Any], *, candidate_labels: set[str]
     allowed = {"A", "B", "C"} | ({"D"} if incumbent_present else set())
     if result.get("schema_version") != MVG_SELECTION_SCHEMA:
         errors.append("mvg_selection_schema_mismatch")
-    if result.get("status") not in {"selected", "no_valid_winner"}:
+    if result.get("status") != "selected":
         errors.append("mvg_selection_status_invalid")
     selected = result.get("selected")
     if selected is not None and selected not in allowed:
         errors.append("mvg_selection_label_invalid")
     if result.get("status") == "selected" and selected is None:
         errors.append("mvg_selection_missing_winner")
-    if result.get("status") == "no_valid_winner" and selected is not None:
+    if result.get("status") != "selected" and selected is not None:
         errors.append("mvg_selection_unexpected_winner")
     reviews = result.get("candidate_reviews")
     expected_labels = {"A", "B", "C"} | ({"D"} if incumbent_present else set())
@@ -332,13 +728,13 @@ def validate_mvg_selection(result: dict[str, Any], *, candidate_labels: set[str]
             labels.append(label)
             if label not in expected_labels:
                 errors.append(f"mvg_selection_review_unknown:{label}")
-            if row.get("verdict") not in {"viable", "blocked"}:
+            if row.get("verdict") != "viable":
                 errors.append(f"mvg_selection_review_verdict_invalid:{label}")
             if not str(row.get("rationale") or "").strip():
                 errors.append(f"mvg_selection_review_rationale_missing:{label}")
-        # Rank is part of the persisted selection contract, not an optional
-        # presentation hint. It gives semantic-review fallback a stable,
-        # model-authored preference order independent of JSON/object order.
+        # Rank is part of the persisted comparative-selection contract, not an
+        # optional presentation hint. It records why an admitted candidate
+        # lost without turning rank into a semantic fallback path.
         for row in reviews:
             if not isinstance(row, dict):
                 continue
@@ -354,8 +750,6 @@ def validate_mvg_selection(result: dict[str, Any], *, candidate_labels: set[str]
             selected_review = next((row for row in reviews
                                     if isinstance(row, dict)
                                     and row.get("label") == selected), None)
-            if isinstance(selected_review, dict) and selected_review.get("verdict") != "viable":
-                errors.append("mvg_selection_blocked_winner")
             if isinstance(selected_review, dict) and selected_review.get("rank") != 1:
                 errors.append("mvg_selection_winner_not_top_ranked")
     if not isinstance(result.get("tradeoffs"), list) or not result.get("tradeoffs"):
@@ -388,6 +782,44 @@ class MVGReviewAttemptBudgetError(ValueError):
             f"error_type={error_type}; attempts={attempts_used}/{attempt_limit}; "
             f"last_error={_compact_exception_message(last_error)}"
         )
+
+
+class MVGCandidateInvocationBudgetError(RuntimeError):
+    error_type = "candidate_lineage_invocation_budget_exhausted"
+
+
+_candidate_invocation_lock_guard = threading.Lock()
+_candidate_invocation_locks: dict[str, threading.Lock] = {}
+
+
+def _candidate_invocation_lock(path: Path) -> threading.Lock:
+    """Return the process-local lock for one durable lineage counter.
+
+    Segmented candidate generation intentionally runs independent model calls
+    in parallel.  All segments still reserve from one lineage counter, so the
+    read/modify/atomic-replace sequence must be serialized on Windows where
+    concurrent replacement of the shared ``.tmp`` path raises WinError 32.
+    """
+    key = str(path.resolve())
+    with _candidate_invocation_lock_guard:
+        return _candidate_invocation_locks.setdefault(key, threading.Lock())
+
+
+def reserve_candidate_model_invocation(candidate_root: Path, candidate: str, lineage: str) -> int:
+    """Durably reserve one model call against the candidate-lineage stop-loss."""
+    path = candidate_root / "lineage-execution.json"
+    with _candidate_invocation_lock(path):
+        current = load_json(path, {})
+        if current and (current.get("candidate") != candidate or current.get("lineage") != lineage):
+            raise ValueError("candidate lineage execution identity changed")
+        count = int(current.get("model_invocation_count", 0) or 0)
+        if count >= MVG_CANDIDATE_INVOCATION_LIMIT:
+            raise MVGCandidateInvocationBudgetError(
+                f"candidate lineage reached {MVG_CANDIDATE_INVOCATION_LIMIT} model invocations")
+        count += 1
+        atomic_json(path, {"candidate": candidate, "lineage": lineage,
+                           "model_invocation_count": count})
+        return count
 
 
 class MVGReviewPreparationError(ValueError):
@@ -2660,29 +3092,56 @@ def generate(root: Path, *, run_id: str, timeout_sec: int, llm_backend: str, seg
     existing_proposal = load_json(run_dir / "proposal.json", {})
     if state.get("selection_status") == "selected" and isinstance(existing_proposal, dict):
         validation = validate_proposal(root, state, existing_proposal)
-        if validation.get("status") == "passed":
+        selected_admission = state.get("selected_admission_review") or {}
+        selected_candidate = str(state.get("selected_candidate") or "")
+        candidate_admission = (state.get("candidate_admissions") or {}).get(selected_candidate) or {}
+        try:
+            _proposal_path, proof_path, execution_path = _bound_admission_artifacts(
+                root, run_dir, candidate_admission)
+            proof_ok = (
+                selected_admission.get("path") == proof_path.relative_to(root).as_posix()
+                and selected_admission.get("execution_path") == execution_path.relative_to(root).as_posix()
+                and proof_path.is_file() and execution_path.is_file()
+            )
+        except (OSError, ValueError):
+            proof_path = execution_path = None
+            proof_ok = False
+        if proof_ok:
+            expected_proof_sha = str(selected_admission.get("proof_sha256") or "")
+            expected_execution_sha = str(selected_admission.get("execution_sha256") or "")
+            proof_ok = (bool(expected_proof_sha and expected_execution_sha)
+                        and file_sha(proof_path) == expected_proof_sha
+                        and file_sha(execution_path) == expected_execution_sha)
+        if proof_ok:
+            from _mvg_planning_review import review_execution_errors
+            proof = load_json(proof_path, {})
+            execution = load_json(execution_path, {})
+            proof_errors = candidate_admission_errors(root, state, existing_proposal, proof)
+            proof_errors.extend(review_execution_errors(state, existing_proposal, execution, proof))
+            proof_ok = not proof_errors
+        if (validation.get("status") == "passed"
+                and validation.get("formal_applicable") is True
+                and selected_admission.get("proposal_sha256") == canonical_sha(existing_proposal)
+                and proof_ok):
             return {"run_id": run_id, "proposal_sha256": file_sha(run_dir / "proposal.json"),
                     "selected": state.get("selected_candidate"),
                     "candidate_count": len(state.get("candidate_attempts") or {})}
+        if not proof_ok:
+            raise ValueError("selected MVG admission proof is missing, stale, or invalid")
     workspace_base = run_dir / "candidates"
     workspace_base.mkdir(parents=True, exist_ok=True)
     tool_sc_dir = Path(__file__).resolve().parents[1] / "sc"
     if str(tool_sc_dir) not in sys.path:
         sys.path.insert(0, str(tool_sc_dir))
-    from _llm_backend import inspect_llm_backend, run_llm_exec
+    from _llm_backend import run_llm_exec
 
-    runner: Path | None = None
-    if llm_backend in {"openai-api", "copilot-cli"}:
-        runner = Path(__file__).resolve().with_name(
-            "openai_isolated_model_runner.py" if llm_backend == "openai-api"
-            else "copilot_isolated_model_runner.py"
-        )
-        backend_info = inspect_isolated_runner(runner)
-    else:
-        backend_info = inspect_llm_backend(llm_backend)
-        if backend_info.get("available") is not True:
-            reasons = "; ".join(str(value) for value in backend_info.get("blocking_errors", []))
-            raise ValueError(f"{llm_backend} backend is unavailable: {reasons}")
+    runner_names = {
+        "codex-cli": "codex_isolated_model_runner.py",
+        "openai-api": "openai_isolated_model_runner.py",
+        "copilot-cli": "copilot_isolated_model_runner.py",
+    }
+    runner = Path(__file__).resolve().with_name(runner_names[llm_backend])
+    backend_info = inspect_isolated_runner(runner)
 
     known_task_ids = sorted(_task_ids(root))
     task_master = load_json(root / ".taskmaster/tasks/tasks.json", {})
@@ -2738,19 +3197,34 @@ Frozen manifest scope:
     prompt = PROMPT + "\n" + strict_contract
     state["generation_strategy"] = "independent-candidates-segmented" if segmented else "independent-candidates-single"
     state.setdefault("candidate_attempts", {})
+    state.setdefault("candidate_admissions", {})
+    state.setdefault("admission_events", [])
     atomic_json(run_path, state)
     state_lock = threading.Lock()
 
-    def invoke_for(candidate_root: Path, attempt_root: Path):
+    def invoke_for(candidate_root: Path, attempt_root: Path, *,
+                   candidate_label: str | None = None, lineage: str | None = None):
         def invoke(prompt_text: str, attempt: int, *, output_name: str | None = None,
                    output_schema_path: Path | None = None,
                    output_schema: dict[str, Any] | None = None) -> tuple[Path, dict[str, Any]]:
+            invocation_number = (reserve_candidate_model_invocation(candidate_root, candidate_label, lineage)
+                                 if candidate_label and lineage else None)
             relative_output = Path(output_name or f"proposal-attempt-{attempt}.json")
             prompt_stem = relative_output.with_suffix("").as_posix().replace("/", "-")
             # Equivalent to the former `llm_workspace = workspace / "llm-sandbox"`
             # layout, with the candidate and section identities made explicit.
             llm_workspace = attempt_root / "llm-sandbox" / f"attempt-{attempt}" / prompt_stem
             llm_workspace.mkdir(parents=True, exist_ok=True)
+            admission_proposal = candidate_root / "admission-review" / "proposal.json"
+            if not admission_proposal.is_file():
+                admission_proposal = candidate_root / "proposal.json"
+            if admission_proposal.is_file():
+                shutil.copyfile(admission_proposal, llm_workspace / "proposal.json")
+            admission_input = candidate_root / "admission-review" / "analysis-input"
+            if not admission_input.is_dir():
+                admission_input = candidate_root / "analysis-input"
+            if admission_input.is_dir():
+                shutil.copytree(admission_input, llm_workspace / "analysis-input", dirs_exist_ok=True)
             output = llm_workspace / relative_output.name
             if output_schema_path is not None and output_schema is not None:
                 atomic_json(output_schema_path, output_schema)
@@ -2762,7 +3236,7 @@ Frozen manifest scope:
                     output_path=output, timeout_sec=timeout_sec,
                     output_schema=output_schema_path,
                 )
-                return output, {"attempt": attempt, "backend": llm_backend,
+                return output, {"attempt": attempt, "invocation": invocation_number, "backend": llm_backend,
                                 "backend_info": backend_info, "runner": runner.as_posix(),
                                 "returncode": 0, "receipt": receipt}
             rc, stdout, cmd = run_llm_exec(
@@ -2770,7 +3244,7 @@ Frozen manifest scope:
                 output_last_message=output, timeout_sec=timeout_sec, codex_configs=[],
                 output_schema=output_schema_path,
             )
-            execution: dict[str, Any] = {"attempt": attempt, "backend": llm_backend,
+            execution: dict[str, Any] = {"attempt": attempt, "invocation": invocation_number, "backend": llm_backend,
                                           "backend_info": backend_info, "command": cmd,
                                           "returncode": rc}
             try:
@@ -2787,7 +3261,110 @@ Frozen manifest scope:
         return invoke
 
     def generate_candidate(label: str) -> dict[str, Any]:
-        candidate_root = workspace_base / label
+        prior_admission = state.get("candidate_admissions", {}).get(label) or {}
+        lineage_hint = str(prior_admission.get("lineage") or f"{label}-r1")
+        prior_admission = restore_admission_checkpoint(
+            prior_admission, state.get("admission_events") or [],
+            candidate=label, lineage=lineage_hint)
+        if prior_admission.get("status") == "admitted":
+            state["candidate_admissions"][label] = prior_admission
+        if prior_admission.get("status") == "admitted":
+            # An admitted candidate is immutable input to selection.  Reuse it
+            # only when its proposal, deterministic validation and admission
+            # proof are still readable and hash-bound. Artifact drift is an
+            # execution-integrity failure, not a semantic reason to regenerate.
+            admitted_proposal_path = None
+            review_path = execution_path = None
+            try:
+                admitted_proposal_path, review_path, execution_path = _bound_admission_artifacts(
+                    root, run_dir, prior_admission)
+            except (OSError, ValueError):
+                pass
+            if (admitted_proposal_path is not None and admitted_proposal_path.is_file()
+                    and review_path is not None and review_path.is_file()
+                    and execution_path is not None and execution_path.is_file()):
+                try:
+                    admitted_proposal = load_json(admitted_proposal_path, {})
+                    admitted_validation = validate_proposal(root, state, admitted_proposal)
+                    admitted_review = load_json(review_path, {})
+                    admitted_execution = load_json(execution_path, {})
+                    from _mvg_planning_review import review_execution_errors
+                    admitted_errors = candidate_admission_errors(
+                        root, state, admitted_proposal, admitted_review)
+                    admitted_errors.extend(review_execution_errors(
+                        state, admitted_proposal, admitted_execution, admitted_review))
+                    expected_sha = str(prior_admission.get("proposal_sha256") or "")
+                    expected_proof_sha = str(prior_admission.get("proof_sha256") or "")
+                    expected_execution_sha = str(prior_admission.get("execution_sha256") or "")
+                    if not expected_sha or expected_sha != file_sha(admitted_proposal_path):
+                        admitted_errors.append({"code": "admitted_proposal_hash_drift", "path": "proposal"})
+                    if (not expected_proof_sha or file_sha(review_path) != expected_proof_sha
+                            or not expected_execution_sha or file_sha(execution_path) != expected_execution_sha):
+                        admitted_errors.append({"code": "admission_proof_hash_missing_or_drift", "path": "admission-review"})
+                    if (admitted_validation.get("status") == "passed"
+                            and admitted_validation.get("formal_applicable") is True
+                            and not admitted_errors):
+                        summary = state.get("candidate_attempts", {}).get(label) or {}
+                        summary = dict(summary)
+                        summary.update(status="valid", admission_status="admitted",
+                                       proposal_sha256=file_sha(admitted_proposal_path),
+                                       validation=admitted_validation,
+                                       lineage=prior_admission.get("lineage"))
+                        with state_lock:
+                            state["candidate_attempts"][label] = summary
+                            atomic_json(run_path, state)
+                        return {"label": label, "valid": True, "admitted": True,
+                                "proposal": admitted_proposal, "summary": summary}
+                    integrity_error = ";".join(
+                        str(row.get("code") or "invalid") for row in admitted_errors[:6]
+                    ) or "admitted proposal failed formal validation"
+                except (OSError, ValueError, TypeError, json.JSONDecodeError) as exc:
+                    admitted_proposal = None
+                    integrity_error = f"admitted artifact unreadable: {exc}"
+            else:
+                admitted_proposal = None
+                integrity_error = "admission proof or admitted proposal is missing"
+            failed_admission = dict(prior_admission)
+            failed_admission.update(status="execution-failed", integrity_error=integrity_error)
+            summary = dict(state.get("candidate_attempts", {}).get(label) or {})
+            summary.update(status="execution-failed", admission_status="execution-failed",
+                           admission_error={"error_type": "admission_artifact_integrity_failure",
+                                            "error": integrity_error})
+            with state_lock:
+                state["candidate_admissions"][label] = failed_admission
+                state["candidate_attempts"][label] = summary
+                atomic_json(run_path, state)
+            return {"label": label, "valid": False, "admitted": False,
+                    "proposal": None, "summary": summary}
+        # Terminal execution failures survive a crash between event and summary
+        # publication; don't silently restart their model lineage on resume.
+        if prior_admission.get("status") == "execution-failed":
+            summary = dict(state.get("candidate_attempts", {}).get(label) or {})
+            summary.update(status="execution-failed", admission_status="execution-failed",
+                           admission_error=prior_admission.get("execution_error") or {})
+            state["candidate_admissions"][label] = prior_admission
+            state["candidate_attempts"][label] = summary
+            with state_lock:
+                atomic_json(run_path, state)
+            return {"label": label, "valid": False, "admitted": False,
+                    "proposal": None, "summary": summary}
+        if prior_admission.get("status") == "retired":
+            # Replacement accounting belongs to the outer durable round
+            # budget. Do not allocate a new lineage here, which would let a
+            # restarted process bypass that stop-loss.
+            state["candidate_admissions"][label] = prior_admission
+            summary = dict(state.get("candidate_attempts", {}).get(label) or {})
+            summary.update(status="failed", admission_status="retired",
+                           lineage=prior_admission.get("lineage"),
+                           admission_issues=prior_admission.get("issues") or [])
+            state["candidate_attempts"][label] = summary
+            with state_lock:
+                atomic_json(run_path, state)
+            return {"label": label, "valid": False, "admitted": False,
+                    "proposal": None, "summary": summary}
+        lineage = str(prior_admission.get("lineage") or f"{label}-r1")
+        candidate_root = workspace_base / (label if lineage == f"{label}-r1"
+                                           else f"{label}--{lineage}")
         candidate_root.mkdir(parents=True, exist_ok=True)
         prepared = candidate_root / "analysis-input"
         if prepared.exists():
@@ -2808,12 +3385,54 @@ Frozen manifest scope:
         # A fresh run gets one independent context per candidate.  On resume,
         # a candidate whose durable result is missing/invalid gets one bounded
         # fresh replacement context; already-valid siblings remain reusable.
-        if not segmented:
-            attempt_numbers = (1, 2, 3)
-        elif records:
-            attempt_numbers = (1, 2)
-        else:
-            attempt_numbers = (1,)
+        # Existing attempt slots are scanned first so a durable proposal can
+        # recover across the output/journal write boundary. New invocations
+        # still start after the persisted record count and remain bounded.
+        attempt_numbers = candidate_resume_attempt_numbers(len(records), segmented=segmented)
+        admission_runtime: dict[str, Any] = {
+            "candidate": label, "lineage": lineage, "status": "admitting",
+            "issues": list(prior_admission.get("issues") or []),
+            "issue_attempts": dict(prior_admission.get("issue_attempts") or {}),
+        }
+        if admission_runtime["issues"]:
+            admission_runtime["current_issue"] = admission_runtime["issues"][0]
+            candidate_prompt = admission_repair_prompt(prompt, strict_contract, admission_runtime)
+        admission_execution_error: dict[str, str] | None = None
+        admission_review_path = candidate_root / "admission-review.json"
+        admission_review = load_json(admission_review_path, None) if admission_review_path.is_file() else None
+        admission_issues: list[dict[str, str]] = ([
+            {"code": "proposal_missing", "path": "proposal"}
+        ] if proposal is None else candidate_admission_errors(root, state, proposal, admission_review))
+
+        def checkpoint_admission_issues(issues: list[dict[str, str]], attempt: int) -> None:
+            nonlocal admission_runtime, candidate_prompt
+            previous = admission_runtime.get("issues") or []
+            previous_id = (admission_issue_id(str(previous[0].get("code") or "issue"),
+                                              str(previous[0].get("path") or ""))
+                           if previous and isinstance(previous[0], dict) else "")
+            current_issue_ids = {
+                admission_issue_id(str(issue.get("code") or "issue"), str(issue.get("path") or ""))
+                for issue in issues if isinstance(issue, dict)
+            }
+            admission_runtime = advance_admission_state(
+                admission_runtime, issues,
+                repaired=bool(previous and previous_id not in current_issue_ids),
+            )
+            current_issue = admission_runtime.get("current_issue") or issues[0]
+            with state_lock:
+                state["candidate_admissions"][label] = dict(admission_runtime)
+                state["admission_events"].append({
+                    "candidate": label, "lineage": lineage, "attempt": attempt,
+                    "event": "admission-issue", "issue": current_issue,
+                    "issue_attempts": dict(admission_runtime.get("issue_attempts") or {}),
+                    "status": admission_runtime.get("status"),
+                })
+                atomic_json(run_path, state)
+            if admission_runtime.get("status") != "retired":
+                candidate_prompt = admission_repair_prompt(PROMPT, strict_contract, admission_runtime)
+            # Keep the legacy correction_prompt(errors) contract discoverable;
+            # production segmented generation routes through the durable helper above.
+
         for attempt in attempt_numbers:
             if attempt <= len(records):
                 # A process can terminate after the candidate output is
@@ -2821,7 +3440,7 @@ Frozen manifest scope:
                 # resume, recover and revalidate that output instead of
                 # treating the already completed candidate as missing.
                 prior = records[attempt - 1]
-                if isinstance(prior, dict) and prior.get("status") == "completed":
+                if isinstance(prior, dict) and prior.get("status") in {"completed", "running"}:
                     prior_output = candidate_root / "proposal.json"
                     if not prior_output.is_file():
                         prior_output = candidate_root / f"proposal-attempt-{attempt}.json"
@@ -2832,22 +3451,60 @@ Frozen manifest scope:
                                 normalize_proposal_format(recovered)
                                 normalize_dotnet_selectors(root, recovered)
                                 recovered_validation = validate_proposal(root, state, recovered)
+                                proposal = recovered
+                                validation = recovered_validation
                                 if (recovered_validation.get("status") == "passed"
                                         and recovered_validation.get("formal_applicable") is True):
-                                    proposal = recovered
-                                    validation = recovered_validation
-                                    break
-                                validation = recovered_validation
+                                    admission_review = load_json(admission_review_path, None) if admission_review_path.is_file() else None
+                                    if admission_review is None:
+                                        try:
+                                            admission_review = run_admission_semantic_gate(
+                                                root, state, proposal, candidate_root / "admission-review",
+                                                runner=runner, timeout_sec=timeout_sec,
+                                                invoke=invoke_for(candidate_root, candidate_root / "model-workspace" / f"attempt-{attempt}",
+                                                                  candidate_label=label, lineage=lineage),
+                                                review_key=f"attempt-{attempt}",
+                                                before_invoke=lambda: reserve_candidate_model_invocation(
+                                                    candidate_root, label, lineage),
+                                            )
+                                            atomic_json(admission_review_path, admission_review)
+                                        except MVGReviewAttemptBudgetError as exc:
+                                            admission_execution_error = {
+                                                "error_type": exc.error_type,
+                                                "error": _compact_exception_message(exc),
+                                            }
+                                            break
+                                        except (OSError, RuntimeError, TimeoutError, ValueError,
+                                                json.JSONDecodeError) as exc:
+                                            admission_execution_error = {
+                                                "error_type": classify_review_error(exc),
+                                                "error": _compact_exception_message(exc),
+                                            }
+                                            break
+                                    if not candidate_admission_errors(root, state, proposal, admission_review):
+                                        break
+                                recovered_issues = candidate_admission_errors(
+                                    root, state, proposal, admission_review)
+                                if recovered_issues:
+                                    checkpoint_admission_issues(recovered_issues, attempt)
+                                    if admission_runtime.get("status") == "retired":
+                                        break
                         except (OSError, ValueError, json.JSONDecodeError) as exc:
                             validation = {"status": "blocked", "errors": [str(exc)]}
                 # A previously failed or formally inapplicable attempt may be
                 # replaced once on resume. Do not copy its output into the
                 # next context; the new invocation remains independent.
-                if prior.get("status") == "completed" and proposal is not None:
-                    continue
+                continue
             attempt_root = candidate_root / "model-workspace" / f"attempt-{attempt}"
             attempt_root.mkdir(parents=True, exist_ok=True)
             shutil.copytree(prepared, attempt_root / "analysis-input")
+            # A focused repair may read only the current lineage's proposal.
+            # Keep it inside this attempt workspace and admission workspace;
+            # replacement lineages use a different root and therefore cannot
+            # inherit retired proposal/findings/prompts.
+            if proposal is not None:
+                atomic_json(attempt_root / "proposal.json", proposal)
+                atomic_json(candidate_root / "admission-review" / "proposal.json", proposal)
             record: dict[str, Any] = {"candidate": label, "attempt": attempt,
                                       "status": "running", "backend": llm_backend}
             records.append(record)
@@ -2860,7 +3517,8 @@ Frozen manifest scope:
                 ]
                 atomic_json(run_path, state)
             try:
-                invoke = invoke_for(candidate_root, attempt_root)
+                invoke = invoke_for(candidate_root, attempt_root,
+                                    candidate_label=label, lineage=lineage)
                 if segmented:
                     output, execution = invoke_segmented(
                         invoke, candidate_root, candidate_state, attempt, candidate_prompt, attempt_root,
@@ -2884,43 +3542,165 @@ Frozen manifest scope:
                     proposal = parsed
                 normalize_proposal_format(proposal)
                 normalize_dotnet_selectors(root, proposal)
+                # Every repaired proposal requires a fresh semantic admission
+                # review bound to its new hash; never reuse the prior verdict.
+                admission_review = None
+                if admission_review_path.is_file():
+                    admission_review_path.unlink()
                 validation = validate_proposal(root, state, proposal)
                 execution["proposal_sha256"] = canonical_sha(proposal)
                 execution["deterministic_validation"] = validation
                 record.update(execution, status="completed")
                 atomic_json(candidate_root / f"proposal-attempt-{attempt}.json", proposal)
             except (RuntimeError, TimeoutError, OSError, ValueError, json.JSONDecodeError) as exc:
-                record.update(status="execution-failed", error=_compact_exception_message(exc))
+                record.update(status="execution-failed", error=_compact_exception_message(exc),
+                               error_type=classify_review_error(exc))
                 validation = {"status": "blocked", "errors": [str(exc)]}
                 state["phase"] = "generation-execution-blocked"
+                if segmented:
+                    admission_execution_error = {
+                        "error_type": classify_review_error(exc),
+                        "error": _compact_exception_message(exc),
+                    }
             with state_lock:
                 atomic_json(run_path, state)
+                if admission_execution_error:
+                    state["admission_events"].append({
+                        "candidate": label, "lineage": lineage, "attempt": attempt,
+                        "event": "admission-execution-failed",
+                        "error": admission_execution_error,
+                    })
+                    atomic_json(run_path, state)
+            if admission_execution_error:
+                break
             ready_with_gaps = (validation.get("planning_status") == "ready_for_validation"
                                and validation.get("unresolved_gap_count", 0) > 0)
-            if validation.get("status") == "passed" and not ready_with_gaps:
+            if validation.get("status") == "passed" and not ready_with_gaps and segmented:
+                if admission_review is None:
+                    try:
+                        admission_review = run_admission_semantic_gate(
+                            root, state, proposal or {}, candidate_root / "admission-review",
+                            runner=runner, timeout_sec=timeout_sec,
+                            invoke=invoke_for(candidate_root, attempt_root,
+                                              candidate_label=label, lineage=lineage),
+                            review_key=f"attempt-{attempt}",
+                            before_invoke=lambda: reserve_candidate_model_invocation(
+                                candidate_root, label, lineage),
+                        )
+                        atomic_json(admission_review_path, admission_review)
+                    except MVGReviewAttemptBudgetError as exc:
+                        admission_execution_error = {
+                            "error_type": getattr(exc, "error_type", "runner_execution_failed"),
+                            "error": _compact_exception_message(exc),
+                        }
+                        admission_review = None
+                        break
+                    except (OSError, RuntimeError, TimeoutError, ValueError, json.JSONDecodeError) as exc:
+                        admission_execution_error = {
+                            "error_type": classify_review_error(exc),
+                            "error": _compact_exception_message(exc),
+                        }
+                        admission_review = None
+                        break
+                if not candidate_admission_errors(root, state, proposal or {}, admission_review):
+                    break
+            admission_issues = candidate_admission_errors(root, state, proposal or {}, admission_review) if proposal else [
+                {"code": "proposal_missing", "path": "proposal"}
+            ]
+            if admission_execution_error:
+                admission_issues = []
                 break
-            errors = validation.get("errors") or []
-            if ready_with_gaps:
-                errors = errors + ["ready_for_validation cannot contain unresolved gaps"]
-            candidate_prompt = PROMPT + "\n" + strict_contract + "\n" + correction_prompt(errors)
+            if not admission_issues:
+                break
+            if not segmented:
+                candidate_prompt = admission_repair_prompt(
+                    PROMPT, strict_contract,
+                    {"issues": admission_issues, "current_issue": admission_issues[0]})
+                continue
+            # The initial generated proposal does not consume a repair attempt.
+            checkpoint_admission_issues(admission_issues, attempt)
+            if admission_runtime.get("status") == "retired":
+                break
+        if admission_issues and len(records) >= MVG_CANDIDATE_ATTEMPT_LIMIT:
+            admission_execution_error = {
+                "error_type": "candidate_attempt_budget_exhausted",
+                "error": f"candidate lineage reached {MVG_CANDIDATE_ATTEMPT_LIMIT} attempts with hard issues remaining",
+            }
         # A structurally valid draft or unresolved-gap proposal is evidence
         # only. It must never enter comparative selection as a viable winner.
-        valid = bool(proposal and validation.get("status") == "passed"
+        admission_review = load_json(admission_review_path, None) if admission_review_path.is_file() else None
+        admission_issues = candidate_admission_errors(root, state, proposal or {}, admission_review) if proposal else [
+            {"code": "proposal_missing", "path": "proposal"}
+        ]
+        review_attempt = _admission_execution_artifact(
+            candidate_root / "admission-review", f"attempt-{attempt}") if segmented else None
+        if segmented and not admission_execution_error:
+            if admission_review is None or review_attempt is None:
+                admission_execution_error = {
+                    "error_type": "candidate_admission_evidence_missing",
+                    "error": "semantic admission proof or published execution receipt is missing",
+                }
+            else:
+                from _mvg_planning_review import review_execution_errors
+                execution = load_json(review_attempt, {})
+                execution_errors = review_execution_errors(state, proposal or {}, execution, admission_review)
+                if execution_errors:
+                    admission_execution_error = {
+                        "error_type": "candidate_admission_execution_identity_invalid",
+                        "error": ";".join(execution_errors),
+                    }
+        valid = bool(proposal and not admission_execution_error and not admission_issues
+                     and validation.get("status") == "passed"
                      and validation.get("formal_applicable") is True)
+        if valid:
+            atomic_json(candidate_root / "proposal.json", proposal)
+        admission = {"candidate": label, "lineage": lineage,
+                     "status": "admitted" if valid else (
+                         "execution-failed" if admission_execution_error else "retired"),
+                     "issues": admission_issues,
+                     "issue_attempts": admission_runtime.get("issue_attempts", {}),
+                     "attempt_count": len(records), "workspace": candidate_root.relative_to(run_dir).as_posix(),
+                     "execution_error": admission_execution_error,
+                     "proposal_sha256": file_sha(candidate_root / "proposal.json")
+                     if valid and (candidate_root / "proposal.json").is_file() else None}
+        if valid and admission_review is not None:
+            admission["review_path"] = (candidate_root / "admission-review.json").relative_to(root).as_posix()
+            if review_attempt is not None:
+                admission["review_execution_path"] = review_attempt.relative_to(root).as_posix()
+                admission["proof_sha256"] = file_sha(candidate_root / "admission-review.json")
+                admission["execution_sha256"] = file_sha(review_attempt)
+        with state_lock:
+            state["admission_events"].append({
+                "candidate": label, "lineage": lineage,
+                "event": "candidate-admitted" if valid else (
+                    "admission-execution-failed" if admission_execution_error else "candidate-retired"),
+                "attempt_count": len(records), "issues": admission_issues,
+                "issue_attempts": dict(admission_runtime.get("issue_attempts") or {}),
+                "error": admission_execution_error,
+                "retirement_reason": admission_runtime.get("retirement_reason") if not valid else None,
+                "admission": admission,
+            })
+            atomic_json(run_path, state)
         summary = {"status": "valid" if valid else "failed", "attempts": records,
-                   "attempt_count": len(records), "validation": validation}
+                   "attempt_count": len(records), "validation": validation,
+                   "admission_status": admission["status"], "admission_issues": admission_issues,
+                   "lineage": lineage}
+        if admission_execution_error:
+            summary.update(status="execution-failed", admission_status="execution-failed",
+                           admission_error=admission_execution_error)
         if valid:
             atomic_json(candidate_root / "proposal.json", proposal)
             summary["proposal_sha256"] = file_sha(candidate_root / "proposal.json")
         with state_lock:
             state["candidate_attempts"][label] = summary
+            state["candidate_admissions"][label] = admission
             state["generation_attempts"] = [
                 {"candidate": name, "attempt_count": int((state["candidate_attempts"].get(name) or {}).get("attempt_count", 0)),
                  "status": (state["candidate_attempts"].get(name) or {}).get("status", "pending")}
                 for name in MVG_CANDIDATE_LABELS if name in state["candidate_attempts"]
             ]
             atomic_json(run_path, state)
-        return {"label": label, "valid": valid, "proposal": proposal,
+        return {"label": label, "valid": valid, "admitted": valid, "proposal": proposal,
                 "summary": state["candidate_attempts"][label]}
 
     if not segmented:
@@ -2955,7 +3735,61 @@ Frozen manifest scope:
     with concurrent.futures.ThreadPoolExecutor(max_workers=len(MVG_CANDIDATE_LABELS)) as executor:
         futures = [executor.submit(generate_candidate, label) for label in MVG_CANDIDATE_LABELS]
         results = [future.result() for future in futures]
-    valid_results = [row for row in results if row["valid"]]
+    execution_failures = [row for row in results
+                          if (row.get("summary") or {}).get("admission_status") == "execution-failed"]
+    if execution_failures:
+        state["phase"] = "candidate-admission-execution-blocked"
+        state["selection_status"] = "blocked"
+        state["admission_stop_reason"] = "runner_or_input_failure"
+        atomic_json(run_path, state)
+        labels = ",".join(str(row.get("label")) for row in execution_failures)
+        raise ValueError("MVG candidate admission stopped on runner/input failure; recoverable state preserved: " + labels)
+    # Retired slots are replenished with a clean replacement lineage. The
+    # replacement context is rebuilt from the immutable prepared bundle and
+    # never receives the retired proposal, findings or repair prompt.
+    replacement_round = int(state.get("replacement_rounds_used", 0) or 0)
+    while len([row for row in results if row.get("admitted")]) < len(MVG_CANDIDATE_LABELS):
+        reserved_round = reserve_replacement_round(state)
+        if reserved_round is None:
+            state["phase"] = "candidate-admission-replacement-budget-exhausted"
+            state["selection_status"] = "blocked"
+            state["admission_stop_reason"] = "replacement_round_budget_exhausted"
+            atomic_json(run_path, state)
+            raise ValueError(
+                "MVG candidate replacement budget exhausted; admitted candidates: "
+                + str(len([row for row in results if row.get("admitted")]))
+            )
+        replacement_round = reserved_round
+        changed = False
+        for index, row in enumerate(list(results)):
+            if row.get("admitted"):
+                continue
+            label = str(row.get("label") or "")
+            retired = state.get("candidate_admissions", {}).get(label) or {
+                "candidate": label, "lineage": f"{label}-r{replacement_round}"
+            }
+            replacement = fresh_replacement_lineage(retired, label)
+            state["candidate_admissions"][label] = replacement
+            state["candidate_attempts"].pop(label, None)
+            state["admission_events"].append({
+                "candidate": label, "lineage": replacement["lineage"],
+                "replacement_of": replacement.get("replacement_of"),
+                "event": "replacement-started",
+            })
+            with state_lock:
+                atomic_json(run_path, state)
+            replacement_result = generate_candidate(label)
+            results[index] = replacement_result
+            changed = True
+            if (replacement_result.get("summary") or {}).get("admission_status") == "execution-failed":
+                break
+        if not changed:
+            break
+        if any((row.get("summary") or {}).get("admission_status") == "execution-failed" for row in results):
+            break
+    valid_results = [row for row in results if row.get("admitted")]
+    state["admitted_candidates"] = [str(row.get("label")) for row in valid_results]
+    state["retired_candidates"] = [str(row.get("label")) for row in results if not row.get("admitted")]
     if len(valid_results) != len(MVG_CANDIDATE_LABELS):
         atomic_json(run_dir / "model-execution.json", {
             "schema_version": "newrouge.mvg-planning-model-execution.v1",
@@ -2964,7 +3798,7 @@ Frozen manifest scope:
         })
         reasons = []
         for row in results:
-            if row["valid"]:
+            if row.get("admitted"):
                 continue
             summary = row.get("summary") or {}
             validation_errors = (summary.get("validation") or {}).get("errors") or []
@@ -2990,30 +3824,181 @@ Frozen manifest scope:
             # forbids retaining it until its defects are resolved.
             incumbent_valid = False
             state["incumbent_rejected"] = incumbent_errors or incumbent_validation.get("formal_blockers", [])
+        else:
+            incumbent_workspace = run_dir / "incumbent-admission"
+            try:
+                incumbent_review = run_admission_semantic_gate(
+                    root, state, incumbent_proposal, incumbent_workspace,
+                    runner=runner, timeout_sec=timeout_sec,
+                    invoke=invoke_for(incumbent_workspace, incumbent_workspace / "model-workspace"),
+                    review_key="incumbent",
+                )
+                atomic_json(incumbent_workspace / "semantic-review.json", incumbent_review)
+                incumbent_errors = candidate_admission_errors(root, state, incumbent_proposal, incumbent_review)
+                incumbent_execution = _admission_execution_artifact(incumbent_workspace, "incumbent")
+                if incumbent_execution is None:
+                    incumbent_errors.append({"code": "incumbent_admission_execution_missing",
+                                             "path": "semantic-review-execution"})
+                else:
+                    from _mvg_planning_review import review_execution_errors
+                    incumbent_errors.extend({"code": error, "path": "semantic-review-execution"}
+                        for error in review_execution_errors(
+                            state, incumbent_proposal,
+                            load_json(incumbent_execution, {}), incumbent_review))
+                if incumbent_errors:
+                    incumbent_valid = False
+                    state["incumbent_rejected"] = incumbent_errors
+            except MVGReviewAttemptBudgetError as exc:
+                state["phase"] = "incumbent-admission-execution-blocked"
+                state["selection_status"] = "blocked"
+                state["admission_stop_reason"] = "incumbent_runner_or_input_failure"
+                state["incumbent_rejected"] = [{"code": "incumbent_semantic_runner_failure", "path": str(exc)}]
+                atomic_json(run_path, state)
+                raise ValueError("MVG incumbent admission stopped on runner/input failure: " + str(exc)) from exc
+            except (OSError, RuntimeError, TimeoutError, ValueError, TypeError, json.JSONDecodeError) as exc:
+                state["phase"] = "incumbent-admission-execution-blocked"
+                state["selection_status"] = "blocked"
+                state["admission_stop_reason"] = classify_review_error(exc)
+                state["incumbent_rejected"] = [{"code": "incumbent_admission_evidence_invalid",
+                                                "path": _compact_exception_message(exc)}]
+                state.setdefault("admission_events", []).append({
+                    "candidate": "incumbent", "event": "admission-execution-failed",
+                    "error": {"error_type": state["admission_stop_reason"],
+                              "error": _compact_exception_message(exc)},
+                })
+                atomic_json(run_path, state)
+                raise ValueError("MVG incumbent admission evidence failed validation: "
+                                 + _compact_exception_message(exc)) from exc
     state["incumbent_present"] = incumbent_present
     state["incumbent_valid"] = incumbent_valid
+    selection_incumbent_present = incumbent_present and incumbent_valid
     selection_dir = run_dir / "selection-workspace"
     selection_dir.mkdir(parents=True, exist_ok=True)
-    shuffled_labels = list(MVG_CANDIDATE_LABELS)
-    shuffle_seed = int(canonical_sha({
-        "analysis_identity_sha256": state["analysis_identity_sha256"],
-        "run_id": run_id,
-    }).split(":", 1)[-1][:16], 16)
-    random.Random(shuffle_seed).shuffle(shuffled_labels)
-    aliases = dict(zip(("A", "B", "C"), shuffled_labels))
+    stored_mapping = state.get("selection_anonymous_mapping")
+    if (isinstance(stored_mapping, dict)
+            and set(stored_mapping) == {"A", "B", "C"}
+            and set(stored_mapping.values()) == set(MVG_CANDIDATE_LABELS)):
+        aliases = {str(key): str(value) for key, value in stored_mapping.items()}
+    else:
+        shuffled_labels = list(MVG_CANDIDATE_LABELS)
+        shuffle_seed = int(canonical_sha({
+            "analysis_identity_sha256": state["analysis_identity_sha256"],
+            "run_id": run_id,
+        }).split(":", 1)[-1][:16], 16)
+        random.Random(shuffle_seed).shuffle(shuffled_labels)
+        aliases = dict(zip(("A", "B", "C"), shuffled_labels))
     state["selection_anonymous_mapping"] = {alias: label for alias, label in aliases.items()}
+    state["selection_input_candidates"] = list(state["admitted_candidates"])
     for alias, label in aliases.items():
-        shutil.copyfile(workspace_base / label / "proposal.json", selection_dir / f"{alias}.json")
-    if incumbent_present and incumbent_proposal is not None:
+        candidate_summary = state.get("candidate_admissions", {}).get(label) or {}
+        if candidate_summary.get("status") != "admitted":
+            raise ValueError(f"selector candidate is not admitted: {label}")
+        try:
+            source_proposal, review_path, execution_path = _bound_admission_artifacts(
+                root, run_dir, candidate_summary)
+        except (OSError, ValueError) as exc:
+            raise ValueError(f"selector candidate workspace is invalid: {label}") from exc
+        if not source_proposal.is_file():
+            raise ValueError(f"selector candidate proposal is missing: {label}")
+        expected_proposal_sha = str(candidate_summary.get("proposal_sha256") or "")
+        if expected_proposal_sha and file_sha(source_proposal) != expected_proposal_sha:
+            raise ValueError(f"selector candidate proposal identity drift: {label}")
+        candidate_proposal = load_json(source_proposal, {})
+        candidate_validation = validate_proposal(root, state, candidate_proposal)
+        if not review_path.is_file() or not execution_path.is_file():
+            raise ValueError(f"selector admission proof is incomplete: {label}")
+        expected_proof_sha = str(candidate_summary.get("proof_sha256") or "")
+        expected_execution_sha = str(candidate_summary.get("execution_sha256") or "")
+        if (not expected_proof_sha or file_sha(review_path) != expected_proof_sha
+                or not expected_execution_sha or file_sha(execution_path) != expected_execution_sha):
+            raise ValueError(f"selector admission proof identity drift: {label}")
+        candidate_review = load_json(review_path, {})
+        candidate_execution = load_json(execution_path, {})
+        candidate_errors = candidate_admission_errors(root, state, candidate_proposal, candidate_review)
+        from _mvg_planning_review import review_execution_errors
+        candidate_errors.extend(review_execution_errors(
+            state, candidate_proposal, candidate_execution, candidate_review))
+        if candidate_validation.get("status") != "passed" or candidate_validation.get("formal_applicable") is not True:
+            candidate_errors.append({"code": "candidate_formal_validation_failed", "path": "proposal"})
+        if candidate_errors:
+            raise ValueError(f"selector candidate admission proof is invalid: {label}")
+        shutil.copyfile(source_proposal, selection_dir / f"{alias}.json")
+    if selection_incumbent_present and incumbent_proposal is not None:
         atomic_json(selection_dir / "D.json", incumbent_proposal)
+    candidate_hashes = {
+        alias: file_sha(selection_dir / f"{alias}.json")
+        for alias in (("A", "B", "C", "D") if selection_incumbent_present else ("A", "B", "C"))
+    }
+    selection_input_identity, selection_input_sha256 = build_selection_input_identity(
+        state["analysis_identity_sha256"], candidate_hashes,
+        {
+            label: (state.get("candidate_admissions", {}).get(label) or {}).get("lineage")
+            for label in MVG_CANDIDATE_LABELS
+        },
+        incumbent_present=selection_incumbent_present,
+    )
+    state["selection_input_identity"] = selection_input_identity
+    state["selection_input_sha256"] = selection_input_sha256
+    atomic_json(run_path, state)
     selection_prompt = mvg_selection_prompt(
-        incumbent_present=incumbent_present,
+        incumbent_present=selection_incumbent_present,
         planning_scope=state.get("planning_scope") if isinstance(state.get("planning_scope"), dict) else None,
     )
     selection_attempts = state.setdefault("selection_attempts", [])
     selection_result: dict[str, Any] | None = None
     selection_errors: list[str] = []
+    viable_labels = {alias for alias, label in aliases.items()
+                     if label in {row["label"] for row in valid_results}}
+    viable_selection_labels = {aliases[alias] for alias in viable_labels}
+    if incumbent_valid:
+        viable_selection_labels.add("incumbent")
+    # If selection.json was durably written before the run journal update, use
+    # that exact artifact instead of consuming another selector attempt. Scan
+    # the bounded attempt directories, including records still marked running.
+    selection_candidates = set()
+    for completed in selection_attempts:
+        if isinstance(completed, dict):
+            try:
+                selection_candidates.add(int(completed.get("attempt")))
+            except (TypeError, ValueError):
+                pass
+    selection_candidates.update(
+        int(match.group(1)) for path in selection_dir.glob("attempt-*/selection.json")
+        if (match := re.search(r"attempt-(\d+)$", path.parent.name))
+    )
+    for completed_number in sorted(selection_candidates, reverse=True):
+        completed_output = selection_dir / f"attempt-{completed_number}" / "selection.json"
+        if not completed_output.is_file():
+            continue
+        receipt_path = selection_dir / f"attempt-{completed_number}" / "selection-receipt.json"
+        receipt = load_json(receipt_path, {})
+        if (receipt.get("selection_input_sha256") != selection_input_sha256
+                or receipt.get("output_sha256") != file_sha(completed_output)):
+            continue
+        recorded = next((row for row in selection_attempts
+                         if isinstance(row, dict) and str(row.get("attempt")) == str(completed_number)), {})
+        if (recorded.get("selection_input_sha256")
+                and recorded.get("selection_input_sha256") != selection_input_sha256):
+            continue
+        if recorded.get("output_sha256") and recorded.get("output_sha256") != file_sha(completed_output):
+            raise ValueError("selection artifact identity drift")
+        try:
+            recovered_selection = load_json(completed_output, {})
+            recovered_errors = validate_mvg_selection(
+                recovered_selection, candidate_labels=set(MVG_CANDIDATE_LABELS),
+                incumbent_present=selection_incumbent_present, alias_mapping=aliases,
+                viable_labels=viable_selection_labels)
+        except (OSError, ValueError, TypeError, json.JSONDecodeError) as exc:
+            recovered_errors = [str(exc)]
+        if not recovered_errors:
+            selection_result = recovered_selection
+            recorded.update(status="completed", output_sha256=file_sha(completed_output),
+                            recovered_from_receipt=True)
+            atomic_json(run_path, state)
+            break
     for attempt in range(len(selection_attempts) + 1, MVG_SELECTION_ATTEMPT_LIMIT + 1):
+        if selection_result is not None:
+            break
         attempt_dir = selection_dir / f"attempt-{attempt}"
         attempt_dir.mkdir(parents=True, exist_ok=True)
         selection_input = attempt_dir / "analysis-input"
@@ -3026,10 +4011,12 @@ Frozen manifest scope:
                 shutil.copyfile(source, attempt_dir / f"{alias}.json")
         output = attempt_dir / "selection.json"
         schema_path = attempt_dir / "selection-output-schema.json"
-        atomic_json(schema_path, mvg_selection_output_schema(incumbent_present=incumbent_present))
+        atomic_json(schema_path, mvg_selection_output_schema(incumbent_present=selection_incumbent_present))
         prompt_path = attempt_dir / "prompt.txt"
         prompt_path.write_text(selection_prompt, encoding="utf-8", newline="\n")
-        record: dict[str, Any] = {"attempt": attempt, "status": "running", "backend": llm_backend}
+        record: dict[str, Any] = {"attempt": attempt, "status": "running", "backend": llm_backend,
+                                  "selection_input_sha256": selection_input_sha256,
+                                  "selection_input_identity": selection_input_identity}
         selection_attempts.append(record)
         atomic_json(run_path, state)
         try:
@@ -3048,24 +4035,29 @@ Frozen manifest scope:
                 if rc != 0:
                     raise RuntimeError(f"MVG selection model failed: {stdout[-2000:]}")
             selection_result = parse_model_json(output)
-            viable_labels = {alias for alias, label in aliases.items()
-                             if label in {row["label"] for row in valid_results}}
-            viable_selection_labels = {aliases[alias] for alias in viable_labels}
-            if incumbent_valid:
-                viable_selection_labels.add("incumbent")
             selection_errors = validate_mvg_selection(
                 selection_result, candidate_labels=set(MVG_CANDIDATE_LABELS),
-                incumbent_present=incumbent_present, alias_mapping=aliases,
+                incumbent_present=selection_incumbent_present, alias_mapping=aliases,
                 viable_labels=viable_selection_labels,
             )
             if selection_errors:
                 raise ValueError("MVG selection output invalid: " + ";".join(selection_errors))
             record.update(status="completed", output_sha256=file_sha(output))
+            atomic_json(attempt_dir / "selection-receipt.json", {
+                "schema_version": "newrouge.mvg-selection-execution-receipt.v1",
+                "attempt": attempt,
+                "backend": llm_backend,
+                "selection_input_sha256": selection_input_sha256,
+                "output_sha256": file_sha(output),
+                "runner_receipt": record.get("receipt"),
+                "returncode": record.get("returncode"),
+            })
             break
         except (OSError, RuntimeError, TimeoutError, ValueError, json.JSONDecodeError) as exc:
             selection_result = None
             selection_errors = [str(exc)]
-            record.update(status="execution-failed", error=_compact_exception_message(exc))
+            record.update(status="execution-failed", error=_compact_exception_message(exc),
+                          error_type=classify_review_error(exc))
         finally:
             atomic_json(run_path, state)
     if selection_result is None:
@@ -3076,13 +4068,43 @@ Frozen manifest scope:
     selected_alias = selection_result.get("selected")
     if selected_alias in aliases:
         selected_label = aliases[selected_alias]
-        selected_proposal = load_json(workspace_base / selected_label / "proposal.json", {})
+        selected_meta = state.get("candidate_admissions", {}).get(selected_label) or {}
+        selected_root = run_dir / str(selected_meta.get("workspace")) if selected_meta.get("workspace") \
+            else workspace_base / selected_label
+        selected_proposal = load_json(selected_root / "proposal.json", {})
+        selected_admission = state.get("candidate_admissions", {}).get(selected_label) or {}
     elif selected_alias == "D" and incumbent_proposal is not None and incumbent_valid:
         selected_label = "incumbent"
         selected_proposal = incumbent_proposal
+        incumbent_root = run_dir / "incumbent-admission"
+        incumbent_execution = _admission_execution_artifact(
+            incumbent_root, "incumbent")
+        incumbent_review = incumbent_root / "semantic-review.json"
+        if incumbent_execution is None or not incumbent_review.is_file():
+            raise ValueError("selected incumbent admission proof or execution receipt is missing")
+        selected_admission = {
+            "candidate": "incumbent", "lineage": "incumbent-r1", "status": "admitted",
+            "workspace": incumbent_root.relative_to(run_dir).as_posix(),
+            "proposal_sha256": canonical_sha(selected_proposal),
+            "review_path": incumbent_review.relative_to(root).as_posix(),
+            "review_execution_path": incumbent_execution.relative_to(root).as_posix(),
+            "proof_sha256": file_sha(incumbent_review),
+            "execution_sha256": file_sha(incumbent_execution),
+        }
+        state.setdefault("candidate_admissions", {})["incumbent"] = selected_admission
     else:
         raise ValueError("MVG comparative selection returned no usable winner")
     atomic_json(run_dir / "proposal.json", selected_proposal)
+    if selected_admission.get("review_path") and selected_admission.get("review_execution_path"):
+        proof_file = repo_path(root, selected_admission["review_path"])
+        execution_file = repo_path(root, selected_admission["review_execution_path"])
+        state["selected_admission_review"] = {
+            "path": selected_admission["review_path"],
+            "execution_path": selected_admission["review_execution_path"],
+            "proposal_sha256": canonical_sha(selected_proposal),
+            "proof_sha256": file_sha(proof_file) if proof_file.is_file() else None,
+            "execution_sha256": file_sha(execution_file) if execution_file.is_file() else None,
+        }
     state.update(
         phase="generated", selection_status="selected", selected_candidate=selected_label,
         selection_alias=selected_alias, selection_path="selection-review.json",
@@ -3092,7 +4114,7 @@ Frozen manifest scope:
                           "candidate_count": len(valid_results),
                           "attempt_count": sum(int(row["summary"].get("attempt_count", 0)) for row in results),
                           "selection_attempt_count": len(selection_attempts),
-                          "incumbent_present": incumbent_present,
+                          "incumbent_present": selection_incumbent_present,
                           "incumbent_valid": incumbent_valid},
     )
     atomic_json(run_dir / "model-execution.json", {
@@ -3100,7 +4122,7 @@ Frozen manifest scope:
         "backend": llm_backend, "candidate_attempts": state["candidate_attempts"],
         "selection_attempts": selection_attempts, "selected_alias": selected_alias,
         "selected_candidate": selected_label,
-        "incumbent_present": incumbent_present, "incumbent_valid": incumbent_valid,
+        "incumbent_present": selection_incumbent_present, "incumbent_valid": incumbent_valid,
     })
     atomic_json(run_path, state)
     return {"run_id": run_id, "proposal_sha256": file_sha(run_dir / "proposal.json"),
@@ -3149,7 +4171,11 @@ def validate_proposal(root: Path, state: dict[str, Any], proposal: dict[str, Any
     }
     semantics = load_json(prepared / "semantic-requirements.v1.json", None)
     if not isinstance(semantics, dict) or not isinstance(semantics.get("requirements"), list):
-        semantics = load_json(root / SEMANTICS, {})
+        if state.get("capabilities_sha256"):
+            errors.append("prepared_semantic_requirements_snapshot_missing")
+            semantics = {"requirements": []}
+        else:
+            semantics = load_json(root / SEMANTICS, {})
     known_requirements = {
         str(row.get("requirement_id"))
         for row in semantics.get("requirements", [])
@@ -3157,7 +4183,11 @@ def validate_proposal(root: Path, state: dict[str, Any], proposal: dict[str, Any
     }
     task_master = load_json(prepared / "task-master.json", None)
     if not isinstance(task_master, dict):
-        task_master = load_json(root / ".taskmaster/tasks/tasks.json", {})
+        if state.get("capabilities_sha256"):
+            errors.append("prepared_task_master_snapshot_missing")
+            task_master = {"master": {"tasks": []}}
+        else:
+            task_master = load_json(root / ".taskmaster/tasks/tasks.json", {})
     known_tasks = {
         int(row["id"])
         for row in (task_master.get("master", {}) or {}).get("tasks", [])
@@ -3167,7 +4197,11 @@ def validate_proposal(root: Path, state: dict[str, Any], proposal: dict[str, Any
     for name in ("tasks_back.json", "tasks_gameplay.json"):
         payload = load_json(prepared / "task-views" / name, None)
         if not isinstance(payload, list):
-            payload = load_json(root / ".taskmaster/tasks" / name, [])
+            if state.get("capabilities_sha256"):
+                errors.append(f"prepared_task_view_snapshot_missing:{name}")
+                payload = []
+            else:
+                payload = load_json(root / ".taskmaster/tasks" / name, [])
         if isinstance(payload, list):
             prepared_task_views.extend(row for row in payload if isinstance(row, dict))
     from _mvg_planning_review import coverage_errors, prepared_evidence_errors
@@ -3305,14 +4339,53 @@ def validate_proposal(root: Path, state: dict[str, Any], proposal: dict[str, Any
 
 def review(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict[str, Any]:
     """Run a fresh text-only reviewer against sources and the fixed proposal."""
+    from _mvg_planning_review import semantic_review_errors, review_execution_errors
     run_path, state = _load_run(root, run_id)
     run_dir = run_path.parent
     _validate_input_freshness(root, run_dir, state)
     proposal = load_json(run_dir / "proposal.json", {})
     if validate_proposal(root, state, proposal)["status"] != "passed":
         raise ValueError("MVG semantic review requires a structurally valid proposal")
+    # Candidate admission already performed the independent semantic hard gate
+    # against this exact proposal hash. Reuse that durable proof; never score a
+    # winner and then silently replace it after a second semantic block.
+    admission_proof = state.get("selected_admission_review")
+    if isinstance(admission_proof, dict) and admission_proof.get("proposal_sha256") == canonical_sha(proposal):
+        proof_path = repo_path(root, str(admission_proof.get("path") or ""))
+        execution_path = repo_path(root, str(admission_proof.get("execution_path") or "")) if admission_proof.get("execution_path") else None
+        if proof_path.is_file() and execution_path is not None and execution_path.is_file():
+            expected_proof_sha = str(admission_proof.get("proof_sha256") or "")
+            expected_execution_sha = str(admission_proof.get("execution_sha256") or "")
+            if (not expected_proof_sha or not expected_execution_sha
+                    or file_sha(proof_path) != expected_proof_sha
+                    or file_sha(execution_path) != expected_execution_sha):
+                state["phase"] = "review-blocked"
+                atomic_json(run_path, state)
+                raise ValueError("MVG candidate admission proof identity is stale or corrupted")
+            proof = load_json(proof_path, {})
+            execution = load_json(execution_path, {})
+            errors = semantic_review_errors(state, proposal, proof,
+                load_json(run_dir / "analysis-input/semantic-requirements.v1.json", {}),
+                set(state.get("planning_scope", {}).get("requirement_ids", [])) if isinstance(state.get("planning_scope"), dict) else None)
+            errors.extend(review_execution_errors(state, proposal, execution, proof))
+            if errors:
+                state["phase"] = "review-blocked"
+                atomic_json(run_path, state)
+                raise ValueError("MVG candidate admission proof is blocked: " + ";".join(errors))
+            atomic_json(run_dir / "semantic-review.json", proof)
+            atomic_json(run_dir / "semantic-review-execution.json", execution)
+            state["phase"] = "reviewed"
+            atomic_json(run_path, state)
+            return {"status": "approved", "proposal_sha256": canonical_sha(proposal), "runtime_verified": False,
+                    "source": "candidate-admission"}
+    if state.get("selection_status") in {"selected", "legacy-single"}:
+        state["phase"] = "review-blocked"
+        atomic_json(run_path, state)
+        raise ValueError(
+            "selected MVG run has no valid hash-bound admission proof; "
+            "legacy review bypass is disabled"
+        )
     runner_info = inspect_isolated_runner(runner)
-    from _mvg_planning_review import semantic_review_errors, review_execution_errors
     from _planning_review_publication import completed_output, prepare_publication, publication_complete, resume_publication
     proposal_sha = canonical_sha(proposal)
     publication = run_dir / f"semantic-review-publication-{proposal_sha.removeprefix('sha256:')}.json"
@@ -3336,8 +4409,8 @@ def review(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict[s
         allowed_requirements = set(scope.get("requirement_ids", [])) if scope else None
         errors = semantic_review_errors(state, proposal, existing,
             load_json(run_dir / "analysis-input/semantic-requirements.v1.json", {}), allowed_requirements)
-        errors.extend(review_execution_errors(state, proposal,
-            load_json(run_dir / "semantic-review-execution.json", {})))
+        existing_execution = load_json(run_dir / "semantic-review-execution.json", {})
+        errors.extend(review_execution_errors(state, proposal, existing_execution, existing))
         if state.get("phase") != "applied":
             state["phase"] = "review-blocked" if errors else "reviewed"
         atomic_json(run_path, state)
@@ -3489,7 +4562,7 @@ Use one actual verdict value, not the pipe-separated enumeration above. Do not r
         )
     execution = {"runner": runner.as_posix(), "runner_info": runner_info, "receipt": receipt,
         "analysis_identity_sha256": state["analysis_identity_sha256"], "proposal_sha256": canonical_sha(proposal),
-        "attempt_count": len(attempts)}
+        "semantic_review_sha256": canonical_sha(result), "attempt_count": len(attempts)}
     prepare_publication(publication, publication_identity,
         {"semantic-review.json": result, "semantic-review-execution.json": execution}, atomic_json)
     resume_publication(publication, publication_identity, atomic_json)
@@ -3497,37 +4570,9 @@ Use one actual verdict value, not the pipe-separated enumeration above. Do not r
     errors = semantic_review_errors(state, proposal, result,
         load_json(run_dir / "analysis-input/semantic-requirements.v1.json", {}),
         set(scope.get("requirement_ids", [])) if scope else None)
-    semantic_blocked = (result.get("verdict") == "blocked"
-                        or any(error.startswith("semantic_review_blocked:") for error in errors))
-    if errors and semantic_blocked:
-        fallback_count = int(state.get("semantic_review_fallback_count", 0))
-        if fallback_count < 1:
-            selection = load_json(run_dir / "selection-review.json", {})
-            mapping = state.get("selection_anonymous_mapping") or {}
-            current = str(state.get("selected_candidate") or "")
-            ranked = ranked_semantic_fallback_candidates(
-                selection if isinstance(selection, dict) else {}, mapping, selected=current)
-            blocked_hashes = {str(value) for value in state.get("semantic_review_blocked_proposals", [])}
-            for candidate in ranked:
-                candidate_path = (run_dir / "selection-workspace" / "D.json"
-                                  if candidate == "incumbent"
-                                  else run_dir / "candidates" / f"{candidate}.json")
-                if not candidate_path.is_file():
-                    continue
-                candidate_proposal = load_json(candidate_path, {})
-                candidate_sha = canonical_sha(candidate_proposal)
-                if candidate_sha in blocked_hashes:
-                    continue
-                candidate_validation = validate_proposal(root, state, candidate_proposal)
-                if not (candidate_validation.get("status") == "passed"
-                        and candidate_validation.get("formal_applicable") is True):
-                    continue
-                state["semantic_review_fallback_count"] = fallback_count + 1
-                state.setdefault("semantic_review_blocked_proposals", []).append(proposal_sha)
-                state["selected_candidate"] = candidate
-                atomic_json(run_dir / "proposal.json", candidate_proposal)
-                atomic_json(run_path, state)
-                return review(root, run_id=run_id, runner=runner, timeout_sec=timeout_sec)
+    # A semantic block is terminal for this candidate. Candidate replacement
+    # belongs to pre-selection admission; the final review must never silently
+    # switch the selected winner after comparative scoring.
     state["phase"] = "reviewed" if not errors else "review-blocked"
     atomic_json(run_path, state)
     if errors:
@@ -3626,7 +4671,8 @@ def validate(root: Path, *, run_id: str) -> dict[str, Any]:
         load_json(run_dir / "analysis-input/semantic-requirements.v1.json", {}),
         set(scope.get("requirement_ids", [])) if scope else None)
     review_errors.extend(review_execution_errors(state, proposal,
-        load_json(run_dir / "semantic-review-execution.json", {})))
+        load_json(run_dir / "semantic-review-execution.json", {}),
+        load_json(run_dir / "semantic-review.json", {})))
     if review_errors:
         result["formal_applicable"] = False
         result["formal_blockers"].extend(review_errors)
