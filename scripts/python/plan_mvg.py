@@ -272,7 +272,7 @@ coherent player journeys and handoffs, ownership/test feasibility, and cumulativ
 baseline preservation. A new candidate is not automatically better than the incumbent.
 Return JSON only with schema_version={MVG_SELECTION_SCHEMA!r}, selected={"A|B|C|D|null" if incumbent_present else "A|B|C|null"},
 status=selected|no_valid_winner, candidate_reviews with exactly one row for each available label.
-Rank every row with a unique integer from 1 through the number of rows, in ascending array order.
+Rank every row with a unique integer from 1 through the number of rows; array order is irrelevant.
 The selected label must have rank 1. This ranking is the stable fallback preference order;
 blocked rows may have ranks but are skipped during fallback.
 tradeoffs (non-empty), evidence_refs (paths or Requirement IDs), and rationale (non-empty).
@@ -348,8 +348,6 @@ def validate_mvg_selection(result: dict[str, Any], *, candidate_labels: set[str]
                  if isinstance(row, dict) and type(row.get("rank")) is int]
         if sorted(ranks) != list(range(1, len(expected_labels) + 1)):
             errors.append("mvg_selection_review_rank_invalid")
-        elif ranks != list(range(1, len(expected_labels) + 1)):
-            errors.append("mvg_selection_review_rank_order_invalid")
         if set(labels) != expected_labels or len(labels) != len(expected_labels):
             errors.append("mvg_selection_review_incomplete")
         if selected is not None:

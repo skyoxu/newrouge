@@ -362,6 +362,24 @@ class MvgPlanningContractTests(unittest.TestCase):
             duplicate_rank, candidate_labels={"candidate-1", "candidate-2", "candidate-3"},
             incumbent_present=False))
 
+    def test_mvg_selection_does_not_require_reviews_array_sorted_by_rank(self):
+        result = {
+            "schema_version": plan_mvg.MVG_SELECTION_SCHEMA,
+            "selected": "B", "status": "selected",
+            "candidate_reviews": [
+                {"label": "A", "verdict": "viable", "rationale": "Viable.", "rank": 3},
+                {"label": "B", "verdict": "viable", "rationale": "Preferred.", "rank": 1},
+                {"label": "C", "verdict": "viable", "rationale": "Viable.", "rank": 2},
+                {"label": "D", "verdict": "blocked", "rationale": "Not applicable.", "rank": 4},
+            ],
+            "tradeoffs": ["B is preferred."],
+            "evidence_refs": ["analysis-input/capabilities.v1.json"],
+            "rationale": "B is the highest-ranked viable proposal.",
+        }
+        self.assertEqual([], validate_mvg_selection(
+            result, candidate_labels={"candidate-1", "candidate-2", "candidate-3"},
+            incumbent_present=True))
+
     def test_mvg_selection_rejects_non_object_review_rows_without_throwing(self):
         result = {
             "schema_version": plan_mvg.MVG_SELECTION_SCHEMA,
