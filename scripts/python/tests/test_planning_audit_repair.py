@@ -114,8 +114,12 @@ def prepared_mvg(root):
     atomic_json(run / "semantic-review.json", {"schema_version": "newrouge.mvg-semantic-review.v1",
         "analysis_identity_sha256": state["analysis_identity_sha256"], "proposal_sha256": canonical_sha(proposal),
         "verdict": "approved", "findings": [], "requirement_reviews": [
-            {"requirement_id": rid, "verdict": "covered", "rationale": "Relay launch and delivery remain observable."}
-            for rid in reqs], "flow_reviews": [{"flow_id": "relay-delivery", "verdict": "sound",
+            {"requirement_id": row["requirement_id"], "verdict": "covered",
+             "rationale": "Relay launch and delivery remain observable.",
+             "disposition": "flow", "flow_id": row["flow_id"], "sink_id": None,
+             "verification_ref": None, "authority_ref": None}
+            for row in proposal["coverage_table"]
+            ], "flow_reviews": [{"flow_id": "relay-delivery", "verdict": "sound",
                 "rationale": "Real contract connects both tasks; planned tests claim no runtime pass."}]})
     atomic_json(run / "semantic-review-execution.json", {
         "analysis_identity_sha256": state["analysis_identity_sha256"], "proposal_sha256": canonical_sha(proposal),
@@ -422,6 +426,86 @@ class PlanningAuditRepairTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "resolve.*findings|semantic-review.*identity drift"):
                 mvg.review(self.root, run_id="repair", runner=Path("fixture-runner"), timeout_sec=1)
             invoke.assert_not_called()
+
+    def test_semantic_block_uses_one_fresh_review_of_next_ranked_candidate(self):
+        state, proposal, _dest = prepared_mvg(self.root)
+        run = self.root / "logs/ci/mvg-planning/repair"
+        candidate_one = deepcopy(proposal)
+        candidate_one["notes"] = ["candidate one"]
+        candidate_two = deepcopy(proposal)
+        candidate_two["notes"] = ["candidate two"]
+        candidate_three = deepcopy(proposal)
+        candidate_three["notes"] = ["candidate three"]
+        for label, candidate in (("candidate-1", candidate_one),
+                                 ("candidate-2", candidate_two),
+                                 ("candidate-3", candidate_three)):
+            atomic_json(run / "candidates" / f"{label}.json", candidate)
+        atomic_json(run / "proposal.json", candidate_one)
+        selection = {
+            "candidate_reviews": [
+                {"label": "A", "verdict": "viable", "rank": 1},
+                {"label": "B", "verdict": "viable", "rank": 2},
+                {"label": "C", "verdict": "viable", "rank": 3},
+            ]
+        }
+        atomic_json(run / "selection-review.json", selection)
+        state.update(selected_candidate="candidate-1", selection_anonymous_mapping={
+            "A": "candidate-1", "B": "candidate-2", "C": "candidate-3",
+        }, candidate_attempts={label: {
+            "status": "valid", "proposal_sha256": mvg.file_sha(run / "candidates" / f"{label}.json"),
+            "validation": {"status": "passed", "formal_applicable": True},
+        } for label in ("candidate-1", "candidate-2", "candidate-3")})
+        atomic_json(run / "run.json", state)
+        for path in run.glob("semantic-review-publication-*.json"):
+            path.unlink()
+        for filename in ("semantic-review.json", "semantic-review-execution.json"):
+            path = run / filename
+            if path.exists():
+                path.unlink()
+
+        runner_info = {
+            "schema_version": "newrouge.isolated-model-runner.v1",
+            "model": "fixture-reviewer", "fresh_session_per_invocation": True,
+            "filesystem_scope": "workspace_only", "can_read_outside_workspace": False,
+            "model_tools": [],
+        }
+        reviewed: list[tuple[Path, str]] = []
+
+        def review_candidate(*_args, **kwargs):
+            candidate_path = kwargs["workspace"] / "proposal.json"
+            current = load_json(candidate_path)
+            reviewed.append((kwargs["workspace"], canonical_sha(current)))
+            report = {
+                "schema_version": "newrouge.mvg-semantic-review.v1",
+                "analysis_identity_sha256": state["analysis_identity_sha256"],
+                "proposal_sha256": canonical_sha(current),
+                "verdict": "blocked" if len(reviewed) == 1 else "approved",
+                "findings": ["Selected proposal has a semantic gap."] if len(reviewed) == 1 else [],
+                "requirement_reviews": [{
+                    "requirement_id": row["requirement_id"], "verdict": "covered",
+                    "rationale": "The proposal route is accounted for.",
+                    "disposition": "flow", "flow_id": row["flow_id"], "sink_id": None,
+                    "verification_ref": None, "authority_ref": None,
+                } for row in current["coverage_table"]],
+                "flow_reviews": [{"flow_id": "relay-delivery", "verdict": "sound",
+                                  "rationale": "The route has observable boundaries."}],
+            }
+            atomic_json(kwargs["output_path"], report)
+            return {"model": "fixture-reviewer", "model_tools": []}
+
+        with patch.object(mvg, "inspect_isolated_runner", return_value=runner_info), \
+             patch.object(mvg, "run_isolated_model", side_effect=review_candidate):
+            result = mvg.review(self.root, run_id="repair", runner=Path("fixture-runner"), timeout_sec=1)
+
+        self.assertEqual("approved", result["status"])
+        self.assertEqual(2, len(reviewed))
+        self.assertNotEqual(reviewed[0][0], reviewed[1][0])
+        self.assertNotEqual(reviewed[0][1], reviewed[1][1])
+        self.assertEqual(canonical_sha(candidate_two), canonical_sha(load_json(run / "proposal.json")))
+        self.assertEqual(canonical_sha(candidate_two), load_json(run / "semantic-review.json")["proposal_sha256"])
+        final_state = load_json(run / "run.json")
+        self.assertEqual(1, final_state["semantic_review_fallback_count"])
+        self.assertEqual([reviewed[0][1]], final_state["semantic_review_blocked_proposals"])
 
     def test_generation_execution_budget_survives_stage_retry(self):
         prepared_mvg(self.root)

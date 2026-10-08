@@ -73,6 +73,12 @@ def _sequence_removed(before: dict[str, Any], after: dict[str, Any], key: str) -
 
 
 def _weakens_baseline(before: dict[str, Any], after: dict[str, Any]) -> bool:
+    # These fields define the meaning and Requirement ownership of an existing
+    # player journey. Any change needs explicit reviewed authority, even when
+    # it appears to widen coverage rather than weaken it.
+    for key in ("outcome", "requirement_ids", "capability_refs"):
+        if key in before and before.get(key) != after.get(key):
+            return True
     for key in ("min_tests", "minimum_tests"):
         if key in before:
             try:

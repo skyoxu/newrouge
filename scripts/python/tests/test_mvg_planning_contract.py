@@ -34,6 +34,56 @@ from _planning_skill_common import atomic_json
 
 
 class MvgPlanningContractTests(unittest.TestCase):
+    def test_semantic_blocked_verdict_is_not_a_format_failure(self):
+        from _mvg_planning_review import semantic_review_errors
+        state = {"analysis_identity_sha256": "sha256:analysis"}
+        proposal = {"manifest_candidate": {"flows": [{"id": "flow-a"}]}}
+        review = {
+            "schema_version": "newrouge.mvg-semantic-review.v1",
+            "analysis_identity_sha256": "sha256:analysis",
+            "proposal_sha256": plan_mvg.canonical_sha(proposal),
+            "verdict": "blocked", "findings": ["Owner evidence is missing."],
+            "requirement_reviews": [{"requirement_id": "FR-1", "verdict": "blocked",
+                                     "rationale": "Owner evidence is missing."}],
+            "flow_reviews": [{"flow_id": "flow-a", "verdict": "blocked",
+                              "rationale": "Owner evidence is missing."}],
+        }
+        self.assertEqual([], validate_review_shape(
+            state, proposal, review, requirement_ids={"FR-1"}, flow_ids={"flow-a"}))
+        errors = semantic_review_errors(
+            state, proposal, review, {"requirements": [{"requirement_id": "FR-1"}]})
+        self.assertIn("semantic_review_not_approved", errors)
+        self.assertNotIn("semantic_review_invalid_verdict:requirement_reviews", errors)
+        self.assertNotIn("semantic_review_invalid_verdict:flow_reviews", errors)
+        self.assertIn("semantic_review_blocked:requirement_reviews:FR-1", errors)
+        self.assertIn("semantic_review_blocked:flow_reviews:flow-a", errors)
+
+    def test_semantic_review_accounting_must_match_proposal_route_and_evidence(self):
+        from _mvg_planning_review import semantic_review_errors
+        state = {"analysis_identity_sha256": "sha256:analysis"}
+        proposal = {
+            "manifest_candidate": {"flows": [{"id": "flow-a"}]},
+            "coverage_table": [{"requirement_id": "FR-1", "flow_id": "flow-a",
+                                 "disposition": "other_verification", "sink_id": "sink-a",
+                                 "verification_ref": "logs/report.json", "rationale": "verified"}],
+        }
+        review = {
+            "schema_version": "newrouge.mvg-semantic-review.v1",
+            "analysis_identity_sha256": "sha256:analysis",
+            "proposal_sha256": plan_mvg.canonical_sha(proposal),
+            "verdict": "approved", "findings": [],
+            "requirement_reviews": [{"requirement_id": "FR-1", "verdict": "covered",
+                "rationale": "covered", "disposition": "flow", "flow_id": "flow-b",
+                "sink_id": "sink-b", "verification_ref": "logs/other.json",
+                "authority_ref": None}],
+            "flow_reviews": [{"flow_id": "flow-a", "verdict": "sound", "rationale": "sound"}],
+        }
+        errors = semantic_review_errors(
+            state, proposal, review, {"requirements": [{"requirement_id": "FR-1"}]})
+        self.assertIn("semantic_review_accounting_disposition_mismatch:FR-1", errors)
+        self.assertIn("semantic_review_accounting_flow_mismatch:FR-1", errors)
+        self.assertIn("semantic_review_accounting_sink_mismatch:FR-1", errors)
+        self.assertIn("semantic_review_accounting_evidence_mismatch:FR-1", errors)
     def test_review_shape_requires_complete_requirement_and_flow_rows(self):
         state = {"analysis_identity_sha256": "sha256:analysis"}
         proposal = {"schema_version": "newrouge.mvg-planning-proposal.v1",
@@ -171,6 +221,22 @@ class MvgPlanningContractTests(unittest.TestCase):
         self.assertEqual(["flow-a", "flow-b"], [row["flow_scope_ids"][0] for row in requests])
         self.assertEqual([["a-test"], ["b-test"]], [row["test_ids"] for row in requests])
 
+    def test_frozen_handoff_schema_uses_same_test_domain_as_flow(self):
+        schema = plan_mvg.segment_output_schema(
+            section="flows", identity="sha256:x", scope_id="map-node-owned-flow",
+            allowed_test_ids=["map-route-domain", "map-route-scene"],
+        )
+        flow_item = schema["properties"]["flows"]["items"]
+        self.assertEqual(
+            ["map-route-domain", "map-route-scene"],
+            flow_item["properties"]["test_ids"]["items"]["enum"],
+        )
+        handoff_item = flow_item["properties"]["handoffs"]["items"]
+        self.assertEqual(
+            ["map-route-domain", "map-route-scene"],
+            handoff_item["properties"]["test_ids"]["items"].get("enum"),
+        )
+
     def test_tests_prompt_forbids_cross_flow_and_cross_test_copying(self):
         prompt = plan_mvg.segment_prompt(
             section="tests", identity="sha256:x", requirements=[], task_ids=[7],
@@ -198,8 +264,8 @@ class MvgPlanningContractTests(unittest.TestCase):
             "schema_version": plan_mvg.MVG_SELECTION_SCHEMA,
             "selected": "D", "status": "selected",
             "candidate_reviews": [
-                {"label": label, "verdict": "viable", "rationale": "Reviewed."}
-                for label in ("A", "B", "C", "D")
+                {"label": label, "verdict": "viable", "rationale": "Reviewed.", "rank": rank}
+                for rank, label in enumerate(("D", "A", "B", "C"), 1)
             ],
             "tradeoffs": ["The incumbent preserves cumulative obligations."],
             "evidence_refs": ["analysis-input/capabilities.v1.json"],
@@ -246,9 +312,9 @@ class MvgPlanningContractTests(unittest.TestCase):
             "schema_version": plan_mvg.MVG_SELECTION_SCHEMA,
             "selected": "A", "status": "selected",
             "candidate_reviews": [
-                {"label": "A", "verdict": "blocked", "rationale": "Missing handoff evidence."},
-                {"label": "B", "verdict": "viable", "rationale": "Complete."},
-                {"label": "C", "verdict": "viable", "rationale": "Complete."},
+                {"label": "A", "verdict": "blocked", "rationale": "Missing handoff evidence.", "rank": 1},
+                {"label": "B", "verdict": "viable", "rationale": "Complete.", "rank": 2},
+                {"label": "C", "verdict": "viable", "rationale": "Complete.", "rank": 3},
             ],
             "tradeoffs": ["B and C remain viable."],
             "evidence_refs": ["analysis-input/capabilities.v1.json"],
@@ -256,6 +322,68 @@ class MvgPlanningContractTests(unittest.TestCase):
         }
         self.assertIn("mvg_selection_blocked_winner", validate_mvg_selection(
             result, candidate_labels={"candidate-1", "candidate-2", "candidate-3"}, incumbent_present=False))
+
+    def test_mvg_selection_rejects_formally_inapplicable_candidate(self):
+        result = {
+            "schema_version": plan_mvg.MVG_SELECTION_SCHEMA,
+            "selected": "A", "status": "selected",
+            "candidate_reviews": [
+                {"label": label, "verdict": "viable", "rationale": "Reviewed.", "rank": rank}
+                for rank, label in enumerate(("A", "B", "C"), 1)
+            ],
+            "tradeoffs": ["A is preferred."],
+            "evidence_refs": ["analysis-input/capabilities.v1.json"],
+            "rationale": "Complete comparison.",
+        }
+        errors = validate_mvg_selection(
+            result, candidate_labels={"candidate-1", "candidate-2", "candidate-3"},
+            incumbent_present=False, viable_labels={"candidate-2", "candidate-3"},
+        )
+        self.assertIn("mvg_selection_selected_candidate_not_formally_applicable:A", errors)
+
+    def test_mvg_selection_requires_unique_stable_ranked_reviews(self):
+        result = {
+            "schema_version": plan_mvg.MVG_SELECTION_SCHEMA,
+            "selected": "B", "status": "selected",
+            "candidate_reviews": [
+                {"label": "B", "verdict": "viable", "rationale": "First choice.", "rank": 1},
+                {"label": "A", "verdict": "viable", "rationale": "Second choice.", "rank": 2},
+                {"label": "C", "verdict": "blocked", "rationale": "Incomplete.", "rank": 3},
+            ],
+            "tradeoffs": ["B is complete."], "evidence_refs": ["analysis-input/capabilities.v1.json"],
+            "rationale": "B is the highest ranked viable proposal.",
+        }
+        self.assertEqual([], validate_mvg_selection(
+            result, candidate_labels={"candidate-1", "candidate-2", "candidate-3"},
+            incumbent_present=False))
+        duplicate_rank = json.loads(json.dumps(result))
+        duplicate_rank["candidate_reviews"][2]["rank"] = 2
+        self.assertIn("mvg_selection_review_rank_invalid", validate_mvg_selection(
+            duplicate_rank, candidate_labels={"candidate-1", "candidate-2", "candidate-3"},
+            incumbent_present=False))
+
+    def test_mvg_selection_rejects_non_object_review_rows_without_throwing(self):
+        result = {
+            "schema_version": plan_mvg.MVG_SELECTION_SCHEMA,
+            "selected": None, "status": "no_valid_winner",
+            "candidate_reviews": [None, None, None],
+            "tradeoffs": ["No candidate is formally applicable."],
+            "evidence_refs": ["analysis-input/capabilities.v1.json"],
+            "rationale": "All candidate rows are malformed.",
+        }
+        errors = validate_mvg_selection(
+            result, candidate_labels={"candidate-1", "candidate-2", "candidate-3"},
+            incumbent_present=False)
+        self.assertIn("mvg_selection_review_invalid", errors)
+
+    def test_semantic_fallback_uses_ranked_viable_candidate_after_top_level_block(self):
+        self.assertEqual(["candidate-3"], plan_mvg.ranked_semantic_fallback_candidates(
+            {"candidate_reviews": [
+                {"label": "C", "verdict": "viable", "rank": 2},
+                {"label": "A", "verdict": "viable", "rank": 1},
+                {"label": "B", "verdict": "blocked", "rank": 3},
+            ]}, {"A": "candidate-1", "B": "candidate-2", "C": "candidate-3"},
+            selected="candidate-1"))
 
     def test_incumbent_projection_keeps_current_capability_membership(self):
         with tempfile.TemporaryDirectory() as folder:
@@ -271,12 +399,20 @@ class MvgPlanningContractTests(unittest.TestCase):
                           if name.startswith("capabilities")
                           else root / "logs/ci/task-generation/semantic-requirements.v1.json")
                 (prepared / name).write_bytes(source.read_bytes())
+            semantics_path = prepared / "semantic-requirements.v1.json"
+            semantics = json.loads(semantics_path.read_text(encoding="utf-8"))
+            semantics["requirements"].append({"requirement_id": "RQ-OUTSIDE",
+                "statement": "Outside frozen pilot scope.", "delivery_relevant": True,
+                "status": "active"})
+            atomic_json(semantics_path, semantics)
             atomic_json(prepared / "existing-manifest.json", self.manifest())
             atomic_json(prepared / "entrypoint-skeleton.json", {"rows": []})
-            state = {"analysis_identity_sha256": "sha256:test"}
+            state = {"analysis_identity_sha256": "sha256:test",
+                     "planning_scope": {"requirement_ids": ["RQ-1"]}}
             incumbent = plan_mvg._build_incumbent_proposal(
                 root, run_dir, state, self.manifest(),
             )
+            self.assertEqual(["RQ-1"], [row["requirement_id"] for row in incumbent["coverage_table"]])
             self.assertTrue(all(
                 row.get("capability_ref") in {"CAP-A"}
                 for row in incumbent["coverage_table"]
@@ -1045,6 +1181,26 @@ class MvgPlanningContractTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "authority_ref"):
                 apply_delta(existing, delta, root=root)
 
+
+    def test_semantic_flow_change_requires_reviewed_authority(self) -> None:
+        with tempfile.TemporaryDirectory() as folder:
+            root = self._root(folder)
+            manifest = self.manifest()
+            for field, value in (("outcome", "different result"),
+                                 ("requirement_ids", ["RQ-2"]),
+                                 ("capability_refs", ["CAP-B"])):
+                with self.subTest(field=field):
+                    delta = {
+                        "schema_version": "newrouge.mvg-baseline-delta.v1",
+                        "expected_manifest_sha256": plan_mvg.canonical_sha(manifest),
+                        "flow_operations": [{
+                            "id": "flow-a", "action": "update", "reason": f"change {field}",
+                            "field_updates": {field: value},
+                        }],
+                        "test_operations": [],
+                    }
+                    with self.assertRaisesRegex(ValueError, "authority_ref"):
+                        apply_delta(manifest, delta, root=root)
 
 if __name__ == "__main__":
     unittest.main()

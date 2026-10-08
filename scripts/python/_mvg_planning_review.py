@@ -167,8 +167,8 @@ def semantic_review_errors(state: dict[str, Any], proposal: dict[str, Any], revi
     manifest = proposal.get("manifest_candidate")
     flows = {str(f["id"]) for f in (manifest if isinstance(manifest, dict) else {}).get("flows", [])}
     for key, id_key, expected, verdicts in (
-        ("requirement_reviews", "requirement_id", required, {"covered", "other_verification", "deferred"}),
-        ("flow_reviews", "flow_id", flows, {"sound"}),
+        ("requirement_reviews", "requirement_id", required, {"covered", "other_verification", "deferred", "blocked"}),
+        ("flow_reviews", "flow_id", flows, {"sound", "blocked"}),
     ):
         rows = review.get(key, [])
         if not isinstance(rows, list):
@@ -179,6 +179,46 @@ def semantic_review_errors(state: dict[str, Any], proposal: dict[str, Any], revi
             errors.append(f"semantic_review_incomplete:{key}")
         if any(not isinstance(r, dict) or r.get("verdict") not in verdicts or not str(r.get("rationale") or "").strip() for r in rows):
             errors.append(f"semantic_review_invalid_verdict:{key}")
+        for row in rows:
+            if isinstance(row, dict) and row.get("verdict") == "blocked":
+                errors.append(f"semantic_review_blocked:{key}:{row.get(id_key, '')}")
+    # When the reviewer echoes proposal accounting fields, bind them to the
+    # exact frozen row. This prevents an approved review from silently
+    # changing a Requirement's route, sink, or evidence reference.
+    coverage = {
+        str(row.get("requirement_id")): row
+        for row in (proposal.get("coverage_table") or [])
+        if isinstance(row, dict) and str(row.get("requirement_id") or "").strip()
+    }
+    requirement_reviews = review.get("requirement_reviews") or []
+    for row in requirement_reviews:
+        if not isinstance(row, dict):
+            continue
+        rid = str(row.get("requirement_id") or "")
+        expected = coverage.get(rid)
+        if not expected:
+            continue
+        if row.get("verdict") == "blocked":
+            continue
+        expected_disposition = str(expected.get("disposition") or ("flow" if expected.get("flow_id") else ""))
+        verdict = str(row.get("verdict") or "")
+        expected_verdict = {
+            "flow": "covered", "other_verification": "other_verification",
+            "deferred": "deferred",
+        }.get(expected_disposition)
+        if expected_verdict and verdict != "blocked" and verdict != expected_verdict:
+            errors.append(f"semantic_review_accounting_disposition_mismatch:{rid}")
+        for field, error_name in (
+            ("flow_id", "flow"), ("sink_id", "sink"),
+            ("verification_ref", "evidence"), ("authority_ref", "authority"),
+        ):
+            actual = str(row.get(field) or "").split("#", 1)[0].replace("\\", "/")
+            expected_value = str(expected.get(field) or "").split("#", 1)[0].replace("\\", "/")
+            if actual != expected_value:
+                errors.append(f"semantic_review_accounting_{error_name}_mismatch:{rid}")
+        actual_route = str(row.get("disposition") or row.get("route") or "").strip()
+        if actual_route != expected_disposition:
+            errors.append(f"semantic_review_accounting_route_mismatch:{rid}")
     return errors
 
 

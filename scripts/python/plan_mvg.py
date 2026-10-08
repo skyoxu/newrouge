@@ -11,6 +11,7 @@ import random
 import re
 import shutil
 import sys
+import threading
 from copy import deepcopy
 from pathlib import Path
 from typing import Any
@@ -167,11 +168,18 @@ def semantic_review_output_schema() -> dict[str, Any]:
     requirement = {
         "type": "object",
         "additionalProperties": False,
-        "required": ["requirement_id", "verdict", "rationale"],
+        "required": ["requirement_id", "verdict", "rationale", "disposition",
+                     "flow_id", "sink_id", "verification_ref", "authority_ref"],
         "properties": {
             "requirement_id": {"type": "string", "minLength": 1},
             "verdict": {"type": "string", "enum": ["covered", "other_verification", "deferred", "blocked"]},
             "rationale": rationale,
+            "disposition": {"type": "string", "enum": ["flow", "other_verification", "deferred"]},
+            "flow_id": {"type": ["string", "null"]},
+            "sink_id": {"type": ["string", "null"]},
+            "verification_ref": {"type": ["string", "null"]},
+            "authority_ref": {"type": ["string", "null"]},
+            "route": {"type": "string", "minLength": 1},
         },
     }
     flow = {
@@ -207,11 +215,12 @@ def mvg_selection_output_schema(*, incumbent_present: bool) -> dict[str, Any]:
     review = {
         "type": "object",
         "additionalProperties": False,
-        "required": ["label", "verdict", "rationale"],
+        "required": ["label", "verdict", "rationale", "rank"],
         "properties": {
             "label": {"type": "string", "enum": labels},
             "verdict": {"type": "string", "enum": ["viable", "blocked"]},
             "rationale": {"type": "string", "minLength": 1},
+            "rank": {"type": "integer", "minimum": 1},
         },
     }
     properties: dict[str, Any] = {
@@ -262,14 +271,39 @@ Evaluate in order: Capability membership fidelity, complete in-scope Requirement
 coherent player journeys and handoffs, ownership/test feasibility, and cumulative
 baseline preservation. A new candidate is not automatically better than the incumbent.
 Return JSON only with schema_version={MVG_SELECTION_SCHEMA!r}, selected={"A|B|C|D|null" if incumbent_present else "A|B|C|null"},
-status=selected|no_valid_winner, candidate_reviews with exactly one row for each available label,
+status=selected|no_valid_winner, candidate_reviews with exactly one row for each available label.
+Rank every row with a unique integer from 1 through the number of rows, in ascending array order.
+The selected label must have rank 1. This ranking is the stable fallback preference order;
+blocked rows may have ranks but are skipped during fallback.
 tradeoffs (non-empty), evidence_refs (paths or Requirement IDs), and rationale (non-empty).
 """
 
 
+def ranked_semantic_fallback_candidates(selection: dict[str, Any],
+                                         alias_mapping: dict[str, str], *,
+                                         selected: str) -> list[str]:
+    """Return formally ranked viable candidate identities after the winner."""
+    reviews = selection.get("candidate_reviews", [])
+    ranked = sorted(
+        (row for row in reviews if isinstance(row, dict)
+         and row.get("verdict") == "viable"
+         and isinstance(row.get("rank"), int) and not isinstance(row.get("rank"), bool)),
+        key=lambda row: (row["rank"], str(row.get("label") or "")),
+    )
+    result: list[str] = []
+    for row in ranked:
+        label = str(row.get("label") or "")
+        candidate = "incumbent" if label == "D" else str(alias_mapping.get(label) or "")
+        if (candidate in MVG_CANDIDATE_LABELS or candidate == "incumbent") \
+                and candidate != selected and candidate not in result:
+            result.append(candidate)
+    return result
+
+
 def validate_mvg_selection(result: dict[str, Any], *, candidate_labels: set[str],
                            incumbent_present: bool,
-                           alias_mapping: dict[str, str] | None = None) -> list[str]:
+                           alias_mapping: dict[str, str] | None = None,
+                           viable_labels: set[str] | None = None) -> list[str]:
     """Validate comparative selection without judging semantic quality locally."""
     errors: list[str] = []
     allowed = {"A", "B", "C"} | ({"D"} if incumbent_present else set())
@@ -302,6 +336,20 @@ def validate_mvg_selection(result: dict[str, Any], *, candidate_labels: set[str]
                 errors.append(f"mvg_selection_review_verdict_invalid:{label}")
             if not str(row.get("rationale") or "").strip():
                 errors.append(f"mvg_selection_review_rationale_missing:{label}")
+        # Rank is part of the persisted selection contract, not an optional
+        # presentation hint. It gives semantic-review fallback a stable,
+        # model-authored preference order independent of JSON/object order.
+        for row in reviews:
+            if not isinstance(row, dict):
+                continue
+            if type(row.get("rank")) is not int or row["rank"] < 1:
+                errors.append(f"mvg_selection_review_rank_invalid:{row.get('label', '')}")
+        ranks = [row.get("rank") for row in reviews
+                 if isinstance(row, dict) and type(row.get("rank")) is int]
+        if sorted(ranks) != list(range(1, len(expected_labels) + 1)):
+            errors.append("mvg_selection_review_rank_invalid")
+        elif ranks != list(range(1, len(expected_labels) + 1)):
+            errors.append("mvg_selection_review_rank_order_invalid")
         if set(labels) != expected_labels or len(labels) != len(expected_labels):
             errors.append("mvg_selection_review_incomplete")
         if selected is not None:
@@ -310,6 +358,8 @@ def validate_mvg_selection(result: dict[str, Any], *, candidate_labels: set[str]
                                     and row.get("label") == selected), None)
             if isinstance(selected_review, dict) and selected_review.get("verdict") != "viable":
                 errors.append("mvg_selection_blocked_winner")
+            if isinstance(selected_review, dict) and selected_review.get("rank") != 1:
+                errors.append("mvg_selection_winner_not_top_ranked")
     if not isinstance(result.get("tradeoffs"), list) or not result.get("tradeoffs"):
         errors.append("mvg_selection_tradeoffs_missing")
     if not isinstance(result.get("evidence_refs"), list):
@@ -320,6 +370,10 @@ def validate_mvg_selection(result: dict[str, Any], *, candidate_labels: set[str]
         available_aliases = alias_mapping or {"A": "candidate-1", "B": "candidate-2", "C": "candidate-3"}
         if available_aliases[selected] not in candidate_labels:
             errors.append(f"mvg_selection_selected_candidate_unavailable:{selected}")
+        elif viable_labels is not None and available_aliases[selected] not in viable_labels:
+            errors.append(f"mvg_selection_selected_candidate_not_formally_applicable:{selected}")
+    if selected == "D" and viable_labels is not None and "incumbent" not in viable_labels:
+        errors.append("mvg_selection_selected_incumbent_not_formally_applicable")
     return sorted(set(errors))
 
 
@@ -737,7 +791,8 @@ def segment_output_schema(*, section: str, identity: str, scope_id: str,
                           available_contract_paths: list[str] | None = None,
                           allowed_flow_ids: list[str] | None = None,
                           allowed_test_ids: list[str] | None = None,
-                          allowed_test_paths: list[str] | None = None) -> dict[str, Any]:
+                          allowed_test_paths: list[str] | None = None,
+                          available_reference_paths: list[str] | None = None) -> dict[str, Any]:
     """Build the CLI-enforced envelope for one routed segment request."""
     payload_key = {
         "flows": "flows",
@@ -768,6 +823,18 @@ def segment_output_schema(*, section: str, identity: str, scope_id: str,
     contract_path = bounded_path(available_contract_paths)
     flow_id = bounded_path(allowed_flow_ids)
     test_id = bounded_path(allowed_test_ids)
+    reference_path = nonempty_string
+    if available_reference_paths is not None:
+        paths = sorted({str(path).replace("\\", "/") for path in available_reference_paths
+                        if str(path).strip()})
+        # Anchors are valid only after an exact prepared repository path.
+        reference_path = {"type": "string", "pattern": (
+            "^(?:" + "|".join(re.escape(path) for path in paths) + ")(?:#[^\\r\\n]+)?$"
+        )} if paths else {"type": "string", "const": ""}
+    if section == "tests" and allowed_test_ids is None:
+        test_id = {**nonempty_string, "pattern": "^" + re.escape(scope_id + "-")}
+    if section == "flows" and allowed_flow_ids is None:
+        flow_id = {**nonempty_string, "pattern": "^" + re.escape(scope_id + "-")}
 
     def bounded_test_path(prefix: str, suffix: str) -> dict[str, Any]:
         values = sorted({str(path).replace("\\", "/") for path in (allowed_test_paths or [])
@@ -780,7 +847,7 @@ def segment_output_schema(*, section: str, identity: str, scope_id: str,
     handoff = strict_object({
         "producer_task": integer, "consumer_task": integer, "owner_task": integer,
         "contract_ref": contract_path, "contract_refs": nullable(array(nonempty_string)),
-        "behavior": nonempty_string, "test_ids": {"type": "array", "items": nonempty_string, "minItems": 1},
+        "behavior": nonempty_string, "test_ids": {"type": "array", "items": test_id, "minItems": 1},
         "from": nullable(nonempty_string), "to": nullable(nonempty_string),
     })
     flow = strict_object({
@@ -797,8 +864,8 @@ def segment_output_schema(*, section: str, identity: str, scope_id: str,
         "capability_ref": nullable(nonempty_string), "task_id": nullable(integer),
         "disposition": {"type": "string", "enum": ["flow", "other_verification", "deferred"]},
         "rationale": nonempty_string,
-        "sink_id": nullable(nonempty_string), "verification_ref": nullable(nonempty_string),
-        "authority_ref": nullable(nonempty_string),
+        "sink_id": nullable(nonempty_string), "verification_ref": nullable(reference_path),
+        "authority_ref": nullable(reference_path),
         "authority_review": nullable(strict_object({
             "status": nonempty_string, "rationale": nonempty_string,
         })),
@@ -825,6 +892,10 @@ def segment_output_schema(*, section: str, identity: str, scope_id: str,
     ]}
     item_schema = {"flows": flow, "coverage_table": coverage,
                    "entrypoints": entrypoint, "tests": test}[payload_key]
+    payload_schema = array(item_schema)
+    if ((section == "tests" and allowed_test_ids == [])
+            or (section == "flows" and allowed_test_ids == [])):
+        payload_schema["maxItems"] = 0
     return {
         "type": "object",
         "required": ["schema_version", "analysis_identity_sha256", "section", "scope_id", payload_key],
@@ -833,10 +904,20 @@ def segment_output_schema(*, section: str, identity: str, scope_id: str,
             "analysis_identity_sha256": {"type": "string", "const": identity},
             "section": {"type": "string", "const": section},
             "scope_id": {"type": "string", "const": scope_id},
-            payload_key: array(item_schema),
+            payload_key: payload_schema,
         },
         "additionalProperties": False,
     }
+
+
+def _segment_allowed_test_ids(request: dict[str, Any],
+                              planning_scope: dict[str, Any] | None,
+                              section: str) -> list[str] | None:
+    """Return the exact frozen test domain for one routed segment."""
+    if planning_scope is None or section not in ("flows", "tests"):
+        return None
+    return sorted({str(value) for value in request.get("test_ids", [])
+                   if str(value).strip()})
 
 
 def segment_prompt(*, section: str, identity: str, requirements: list[str], task_ids: list[int],
@@ -913,7 +994,8 @@ def validate_segment_references(value: dict[str, Any], *, section: str, prepared
     source_paths = {str(path).replace("\\", "/") for path in available_source_paths}
     contract_paths = {str(path).replace("\\", "/") for path in available_contract_paths}
     test_paths = {str(path).replace("\\", "/") for path in (available_test_paths or [])}
-    rows = value.get({"flows": "flows", "entrypoints": "entrypoints", "tests": "tests"}.get(section, ""), [])
+    rows = value.get({"flows": "flows", "coverage": "coverage_table",
+                      "entrypoints": "entrypoints", "tests": "tests"}.get(section, ""), [])
     if not isinstance(rows, list):
         return errors
     for row in rows:
@@ -948,10 +1030,17 @@ def validate_segment_references(value: dict[str, Any], *, section: str, prepared
             if row.get("state") == "implemented" and (path not in test_paths
                     or _prepared_reference(prepared, path) is None):
                 errors.append("segment_test_implemented_unprepared")
-        elif section == "coverage" and row.get("disposition") == "other_verification":
-            verification = str(row.get("verification_ref") or "").split("#", 1)[0].replace("\\", "/")
-            if not verification or _prepared_reference(prepared, verification) is None:
-                errors.append("segment_coverage_verification_unprepared")
+        elif section == "coverage":
+            if row.get("disposition") == "other_verification":
+                verification = str(row.get("verification_ref") or "").split("#", 1)[0].replace("\\", "/")
+                if not verification or _prepared_reference(prepared, verification) is None:
+                    errors.append("segment_coverage_verification_unprepared")
+            elif row.get("disposition") == "deferred":
+                authority = str(row.get("authority_ref") or "").split("#", 1)[0].replace("\\", "/")
+                if not authority or _prepared_reference(prepared, authority) is None:
+                    errors.append(
+                        f"segment_coverage_authority_unprepared:{row.get('requirement_id', '')}"
+                    )
     return errors
 
 
@@ -1825,7 +1914,18 @@ def invoke_segmented(invoke: Any, run_dir: Path, state: dict[str, Any], attempt:
             str(value).replace("\\", "/") for value in planning_scope["contract_refs"]
         })
     declared_contract_refs = set(model_context.get("declared_contract_refs", []))
+    prepared_reference_paths = sorted({
+        path.relative_to(prepared / family).as_posix()
+        for family in ("sources", "references")
+        for path in (prepared / family).rglob("*") if path.is_file()
+    })
 
+    frozen_manifest = load_json(prepared / "existing-manifest.json", {})
+    frozen_tests_by_flow = {
+        str(row.get("id")): sorted({str(value) for value in row.get("test_ids", [])
+                                    if str(value).strip()})
+        for row in frozen_manifest.get("flows", []) if isinstance(row, dict)
+    }
     requests: list[dict[str, Any]] = []
     for scope in flow_scopes:
         requests.append({"section": "flows", "scope_id": scope["scope_id"],
@@ -1834,7 +1934,9 @@ def invoke_segmented(invoke: Any, run_dir: Path, state: dict[str, Any], attempt:
                          "task_ids": scope["task_ids"],
                          "capabilities": scope["capabilities"],
                          "allow_exact_flow_id": planning_scope is not None,
-                         "test_ids": sorted(planning_scope.get("test_ids", [])) if planning_scope else []})
+                         "test_ids": sorted(
+                             frozen_tests_by_flow.get(scope["scope_id"], [])
+                         ) if planning_scope else []})
 
     # Flow coverage is accounted for in small Requirement batches after all
     # flow IDs are known. A batch contains only its own Requirement statements.
@@ -1889,15 +1991,21 @@ def invoke_segmented(invoke: Any, run_dir: Path, state: dict[str, Any], attempt:
         section = request["section"]
         requirements = request["requirement_ids"]
         scoped_tasks = request["task_ids"]
-        flow_context = [row for segment in segments for row in (segment.get("flows", []) or [])
-                        if isinstance(row, dict)]
         flow_prefix = ("" if planning_scope is not None else f"{request['scope_id']}-") if section == "flows" else ""
         test_prefix = (f"{request['scope_id']}-"
                        if section == "tests" and planning_scope is None else "")
+        prompt_flow_context = flow_context
+        if section == "tests" and request.get("flow_scope_ids"):
+            prompt_flow_context = [row for row in flow_context
+                                   if isinstance(row, dict)
+                                   and any((str(row.get("id", "")) == scope_id or
+                                            (not request.get("allow_exact_flow_id") and
+                                             str(row.get("id", "")).startswith(scope_id + "-")))
+                                           for scope_id in request["flow_scope_ids"])]
         section_prompt_text = segment_prompt(
             section=section, identity=identity,
             requirements=requirements, task_ids=scoped_tasks,
-            flow_context=flow_context,
+            flow_context=prompt_flow_context,
             scope_id=request["scope_id"], flow_id_prefix=flow_prefix, test_id_prefix=test_prefix,
             allow_exact_flow_id=bool(planning_scope is not None and section == "flows"),
             allow_exact_test_id=bool(planning_scope is not None and section == "tests"),
@@ -1906,10 +2014,14 @@ def invoke_segmented(invoke: Any, run_dir: Path, state: dict[str, Any], attempt:
             section_prompt_text += "\nThis is a frozen existing-manifest scope. Do not add obligations outside it. " \
                 "Preserve exactly these flow/test IDs and use only these Requirement, Task, source and test IDs:\n"
             section_prompt_text += json.dumps({
-                "flow_ids": planning_scope.get("flow_ids", []),
+                "flow_ids": ([request["scope_id"]] if section == "flows" else
+                             request.get("flow_scope_ids", []) if section == "tests" else
+                             planning_scope.get("flow_ids", [])),
                 "requirement_ids": planning_scope.get("requirement_ids", []),
                 "task_ids": planning_scope.get("task_ids", []),
-                "test_ids": planning_scope.get("test_ids", []),
+                "test_ids": (request.get("test_ids", [])
+                             if section in ("flows", "tests")
+                             else planning_scope.get("test_ids", [])),
                 "source_paths": planning_scope.get("source_paths", []),
                 "contract_refs": planning_scope.get("contract_refs", []),
                 "test_paths": planning_scope.get("test_paths", []),
@@ -1949,6 +2061,7 @@ def invoke_segmented(invoke: Any, run_dir: Path, state: dict[str, Any], attempt:
                 "capabilities": [{key: row.get(key) for key in (
                     "capability_id", "title", "requirement_ids")}
                                  for row in request.get("capabilities", [])],
+                "available_reference_paths": prepared_reference_paths,
             }, ensure_ascii=False)
         elif section == "entrypoints":
             section_prompt_text += "\nInline bounded evidence context:\n" + json.dumps({
@@ -1983,17 +2096,22 @@ def invoke_segmented(invoke: Any, run_dir: Path, state: dict[str, Any], attempt:
                                               allowed_flow_ids=(
                                                   [request["scope_id"]]
                                                   if planning_scope is not None and section == "flows"
-                                                  else (planning_scope.get("flow_ids", [])
-                                                        if planning_scope is not None and section in ("coverage", "tests")
+                                                  else ([str(row["id"]) for row in prompt_flow_context]
+                                                        if section == "tests"
+                                                        else planning_scope.get("flow_ids", [])
+                                                        if planning_scope is not None and section == "coverage"
                                                         else None)
                                               ),
                                               allowed_test_ids=(
-                                                  planning_scope.get("test_ids", [])
+                                                  _segment_allowed_test_ids(request, planning_scope, section)
                                                   if planning_scope is not None and section in ("flows", "tests") else None
                                               ),
                                               allowed_test_paths=(
                                                   planning_scope.get("test_paths", [])
                                                   if planning_scope is not None and section == "tests" else None
+                                              ),
+                                              available_reference_paths=(
+                                                  prepared_reference_paths if section == "coverage" else None
                                               ),
                                           ))
                 parsed = json.loads(output.read_text(encoding="utf-8"))
@@ -2419,6 +2537,10 @@ def _build_incumbent_proposal(root: Path, run_dir: Path, state: dict[str, Any],
         if isinstance(payload, list):
             task_views.extend(row for row in payload if isinstance(row, dict))
     active = _active_delivery_requirements(semantics)
+    planning_scope = state.get("planning_scope")
+    if isinstance(planning_scope, dict):
+        scoped_ids = {str(value) for value in planning_scope.get("requirement_ids", [])}
+        active = [row for row in active if str(row.get("requirement_id")) in scoped_ids]
     cap_membership = {
         str(row.get("capability_id")): {str(value) for value in row.get("requirement_ids", [])}
         for row in capabilities.get("capabilities", [])
@@ -2619,6 +2741,7 @@ Frozen manifest scope:
     state["generation_strategy"] = "independent-candidates-segmented" if segmented else "independent-candidates-single"
     state.setdefault("candidate_attempts", {})
     atomic_json(run_path, state)
+    state_lock = threading.Lock()
 
     def invoke_for(candidate_root: Path, attempt_root: Path):
         def invoke(prompt_text: str, attempt: int, *, output_name: str | None = None,
@@ -2684,7 +2807,15 @@ Frozen manifest scope:
         # The old single-proposal path used `for attempt in (1, 2, 3)` and is
         # retained only for explicit segmented=False compatibility. The new
         # default spends exactly one fresh context per candidate label.
-        attempt_numbers = (1, 2, 3) if not segmented else (1,)
+        # A fresh run gets one independent context per candidate.  On resume,
+        # a candidate whose durable result is missing/invalid gets one bounded
+        # fresh replacement context; already-valid siblings remain reusable.
+        if not segmented:
+            attempt_numbers = (1, 2, 3)
+        elif records:
+            attempt_numbers = (1, 2)
+        else:
+            attempt_numbers = (1,)
         for attempt in attempt_numbers:
             if attempt <= len(records):
                 # A process can terminate after the candidate output is
@@ -2703,27 +2834,33 @@ Frozen manifest scope:
                                 normalize_proposal_format(recovered)
                                 normalize_dotnet_selectors(root, recovered)
                                 recovered_validation = validate_proposal(root, state, recovered)
-                                if recovered_validation.get("status") == "passed":
+                                if (recovered_validation.get("status") == "passed"
+                                        and recovered_validation.get("formal_applicable") is True):
                                     proposal = recovered
                                     validation = recovered_validation
                                     break
                                 validation = recovered_validation
                         except (OSError, ValueError, json.JSONDecodeError) as exc:
                             validation = {"status": "blocked", "errors": [str(exc)]}
-                continue
+                # A previously failed or formally inapplicable attempt may be
+                # replaced once on resume. Do not copy its output into the
+                # next context; the new invocation remains independent.
+                if prior.get("status") == "completed" and proposal is not None:
+                    continue
             attempt_root = candidate_root / "model-workspace" / f"attempt-{attempt}"
             attempt_root.mkdir(parents=True, exist_ok=True)
             shutil.copytree(prepared, attempt_root / "analysis-input")
             record: dict[str, Any] = {"candidate": label, "attempt": attempt,
                                       "status": "running", "backend": llm_backend}
             records.append(record)
-            state["candidate_attempts"][label] = {"attempts": records}
-            state["generation_attempts"] = [
-                {"candidate": name, "attempt_count": len((state["candidate_attempts"].get(name) or {}).get("attempts", [])),
-                 "status": (state["candidate_attempts"].get(name) or {}).get("status", "pending")}
-                for name in MVG_CANDIDATE_LABELS if name in state["candidate_attempts"]
-            ]
-            atomic_json(run_path, state)
+            with state_lock:
+                state["candidate_attempts"][label] = {"attempts": records}
+                state["generation_attempts"] = [
+                    {"candidate": name, "attempt_count": len((state["candidate_attempts"].get(name) or {}).get("attempts", [])),
+                     "status": (state["candidate_attempts"].get(name) or {}).get("status", "pending")}
+                    for name in MVG_CANDIDATE_LABELS if name in state["candidate_attempts"]
+                ]
+                atomic_json(run_path, state)
             try:
                 invoke = invoke_for(candidate_root, attempt_root)
                 if segmented:
@@ -2758,7 +2895,8 @@ Frozen manifest scope:
                 record.update(status="execution-failed", error=_compact_exception_message(exc))
                 validation = {"status": "blocked", "errors": [str(exc)]}
                 state["phase"] = "generation-execution-blocked"
-            atomic_json(run_path, state)
+            with state_lock:
+                atomic_json(run_path, state)
             ready_with_gaps = (validation.get("planning_status") == "ready_for_validation"
                                and validation.get("unresolved_gap_count", 0) > 0)
             if validation.get("status") == "passed" and not ready_with_gaps:
@@ -2767,19 +2905,23 @@ Frozen manifest scope:
             if ready_with_gaps:
                 errors = errors + ["ready_for_validation cannot contain unresolved gaps"]
             candidate_prompt = PROMPT + "\n" + strict_contract + "\n" + correction_prompt(errors)
-        valid = bool(proposal and validation.get("status") == "passed")
+        # A structurally valid draft or unresolved-gap proposal is evidence
+        # only. It must never enter comparative selection as a viable winner.
+        valid = bool(proposal and validation.get("status") == "passed"
+                     and validation.get("formal_applicable") is True)
         summary = {"status": "valid" if valid else "failed", "attempts": records,
                    "attempt_count": len(records), "validation": validation}
-        state["candidate_attempts"][label] = summary
-        state["generation_attempts"] = [
-            {"candidate": name, "attempt_count": int((state["candidate_attempts"].get(name) or {}).get("attempt_count", 0)),
-             "status": (state["candidate_attempts"].get(name) or {}).get("status", "pending")}
-            for name in MVG_CANDIDATE_LABELS if name in state["candidate_attempts"]
-        ]
         if valid:
             atomic_json(candidate_root / "proposal.json", proposal)
-            state["candidate_attempts"][label]["proposal_sha256"] = file_sha(candidate_root / "proposal.json")
-        atomic_json(run_path, state)
+            summary["proposal_sha256"] = file_sha(candidate_root / "proposal.json")
+        with state_lock:
+            state["candidate_attempts"][label] = summary
+            state["generation_attempts"] = [
+                {"candidate": name, "attempt_count": int((state["candidate_attempts"].get(name) or {}).get("attempt_count", 0)),
+                 "status": (state["candidate_attempts"].get(name) or {}).get("status", "pending")}
+                for name in MVG_CANDIDATE_LABELS if name in state["candidate_attempts"]
+            ]
+            atomic_json(run_path, state)
         return {"label": label, "valid": valid, "proposal": proposal,
                 "summary": state["candidate_attempts"][label]}
 
@@ -2812,7 +2954,9 @@ Frozen manifest scope:
                 "selected": "candidate-1", "candidate_count": 1,
                 "attempt_count": legacy["summary"]["attempt_count"]}
 
-    results = [generate_candidate(label) for label in MVG_CANDIDATE_LABELS]
+    with concurrent.futures.ThreadPoolExecutor(max_workers=len(MVG_CANDIDATE_LABELS)) as executor:
+        futures = [executor.submit(generate_candidate, label) for label in MVG_CANDIDATE_LABELS]
+        results = [future.result() for future in futures]
     valid_results = [row for row in results if row["valid"]]
     if len(valid_results) != len(MVG_CANDIDATE_LABELS):
         atomic_json(run_dir / "model-execution.json", {
@@ -2840,13 +2984,14 @@ Frozen manifest scope:
     incumbent_proposal = None
     if incumbent_present:
         incumbent_proposal = _build_incumbent_proposal(root, run_dir, state, existing_manifest)
-        incumbent_errors = validate_proposal(root, state, incumbent_proposal)["errors"]
+        incumbent_validation = validate_proposal(root, state, incumbent_proposal)
+        incumbent_errors = incumbent_validation["errors"]
         if incumbent_errors:
             # Keep an invalid incumbent in the comparative review as D so the
             # evaluator sees the real baseline; deterministic selection below
             # forbids retaining it until its defects are resolved.
             incumbent_valid = False
-            state["incumbent_rejected"] = incumbent_errors
+            state["incumbent_rejected"] = incumbent_errors or incumbent_validation.get("formal_blockers", [])
     state["incumbent_present"] = incumbent_present
     state["incumbent_valid"] = incumbent_valid
     selection_dir = run_dir / "selection-workspace"
@@ -2905,9 +3050,15 @@ Frozen manifest scope:
                 if rc != 0:
                     raise RuntimeError(f"MVG selection model failed: {stdout[-2000:]}")
             selection_result = parse_model_json(output)
+            viable_labels = {alias for alias, label in aliases.items()
+                             if label in {row["label"] for row in valid_results}}
+            viable_selection_labels = {aliases[alias] for alias in viable_labels}
+            if incumbent_valid:
+                viable_selection_labels.add("incumbent")
             selection_errors = validate_mvg_selection(
                 selection_result, candidate_labels=set(MVG_CANDIDATE_LABELS),
                 incumbent_present=incumbent_present, alias_mapping=aliases,
+                viable_labels=viable_selection_labels,
             )
             if selection_errors:
                 raise ValueError("MVG selection output invalid: " + ";".join(selection_errors))
@@ -3215,7 +3366,7 @@ analysis_identity_sha256="{state['analysis_identity_sha256']}", proposal_sha256=
 Copy both identity values verbatim from this prompt; do not compute, shorten, or edit their sha256 strings.
 They are fixed host-supplied input identities, not semantic judgments. Check their exact characters before returning JSON.
 verdict="approved" or "blocked", findings=[] ONLY if all checks pass (otherwise concrete findings),
-requirement_reviews=[{{"requirement_id":"...","verdict":"covered|other_verification|deferred|blocked","rationale":"..."}}]
+requirement_reviews=[{{"requirement_id":"...","verdict":"covered|other_verification|deferred|blocked","rationale":"...","disposition":"flow|other_verification|deferred","flow_id":null,"sink_id":null,"verification_ref":null,"authority_ref":null}}]
 with exactly one explicit non-empty rationale per active delivery-relevant Requirement,
 flow_reviews=[{{"flow_id":"...","verdict":"sound|blocked","rationale":"..."}}] with exactly one row per flow.
 Use one actual verdict value, not the pipe-separated enumeration above. Do not rewrite the proposal.
@@ -3348,6 +3499,37 @@ Use one actual verdict value, not the pipe-separated enumeration above. Do not r
     errors = semantic_review_errors(state, proposal, result,
         load_json(run_dir / "analysis-input/semantic-requirements.v1.json", {}),
         set(scope.get("requirement_ids", [])) if scope else None)
+    semantic_blocked = (result.get("verdict") == "blocked"
+                        or any(error.startswith("semantic_review_blocked:") for error in errors))
+    if errors and semantic_blocked:
+        fallback_count = int(state.get("semantic_review_fallback_count", 0))
+        if fallback_count < 1:
+            selection = load_json(run_dir / "selection-review.json", {})
+            mapping = state.get("selection_anonymous_mapping") or {}
+            current = str(state.get("selected_candidate") or "")
+            ranked = ranked_semantic_fallback_candidates(
+                selection if isinstance(selection, dict) else {}, mapping, selected=current)
+            blocked_hashes = {str(value) for value in state.get("semantic_review_blocked_proposals", [])}
+            for candidate in ranked:
+                candidate_path = (run_dir / "selection-workspace" / "D.json"
+                                  if candidate == "incumbent"
+                                  else run_dir / "candidates" / f"{candidate}.json")
+                if not candidate_path.is_file():
+                    continue
+                candidate_proposal = load_json(candidate_path, {})
+                candidate_sha = canonical_sha(candidate_proposal)
+                if candidate_sha in blocked_hashes:
+                    continue
+                candidate_validation = validate_proposal(root, state, candidate_proposal)
+                if not (candidate_validation.get("status") == "passed"
+                        and candidate_validation.get("formal_applicable") is True):
+                    continue
+                state["semantic_review_fallback_count"] = fallback_count + 1
+                state.setdefault("semantic_review_blocked_proposals", []).append(proposal_sha)
+                state["selected_candidate"] = candidate
+                atomic_json(run_dir / "proposal.json", candidate_proposal)
+                atomic_json(run_path, state)
+                return review(root, run_id=run_id, runner=runner, timeout_sec=timeout_sec)
     state["phase"] = "reviewed" if not errors else "review-blocked"
     atomic_json(run_path, state)
     if errors:

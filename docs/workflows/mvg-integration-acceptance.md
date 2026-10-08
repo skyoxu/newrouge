@@ -41,6 +41,7 @@
 扩展时复制其结构，替换 mvg_id、coverage、flows 和 tests，并逐条核对范围：
 
 - flow：可观察 outcome、真实 task_ids、显式 source_paths、handoffs、test_ids。
+- 更新现有 flow 的 `outcome`、`requirement_ids` 或 `capability_refs` 属于语义重写，即使只是扩展映射，也必须在 delta 中附带真实规格 `authority_ref` 和已审阅的 `authority_review`；无此授权时 apply 阻断。保留旧 flow 的身份本身不代表它的语义字段可被静默改写。
 - critical/full 执行仍要求真实 producer/consumer 功能任务先 done；若某任务仅作为 handoff `owner_task` 承担本次整合验证、从不作为 producer/consumer，则它是专用整合 owner，不以“自身先 done”阻断同一次 MVG，避免形成自依赖。
 - handoff：producer_task / consumer_task / owner_task、contract_ref、behavior、test_ids。
 - test：唯一 id、kind（dotnet/gdunit）、state（planned/implemented）、仓库相对 path、evidence_level、min_tests；dotnet 还需测试类 selector。
@@ -108,6 +109,10 @@ py -3 scripts/python/run_mvg_mutation_probe.py --snapshot commit --revision HEAD
 ### MVG planning generation safeguards
 
 MVG generation separates deterministic completeness from LLM semantics. `plan_mvg prepare` writes immutable `coverage-skeleton.json` for every active delivery Requirement and an intentionally empty `entrypoint-skeleton.json`; Task IDs are evidence owners, not one-runtime-entrypoint placeholders. The model assigns Capability-led journeys, flows, handoffs and rationale, then derives entrypoints from actual flow boundaries and prepared implementation evidence. Segmented generation first designs bounded flows, then assigns coverage in Requirement batches and supplies boundary-aware entrypoint/test sections using the reviewed flow IDs. The planner merges sections into the skeleton before validation; retries preserve earlier valid rows. Each segment is run with the environment-default Codex model in an ephemeral context, so attempts do not share stale session state. This does not replace independent semantic review or runtime MVG execution.
+
+Page-driven planning binds the run to the selected Capability job ID and output hash. Before resuming or advancing a page job, the prepared Capability bytes, `analysis-index.json`, and planner `run.json` must still match that identity. A candidate can be reused only when its proposal hash, successful formal validation, and `analysis_identity_sha256` match the current prepared run; a failed sibling does not invalidate matching candidates.
+
+Comparative selection evaluates the complete A/B/C set and a valid incumbent D. Every review row has a unique rank from 1 through the set size, rows are stored in ascending rank order, and the selected viable row is rank 1. If independent semantic review blocks that proposal, the planner may review only the next ranked formally applicable candidate, once, using a fresh reviewer invocation. Top-level `blocked` verdicts trigger the same bounded path; the original review remains preserved, and the unchanged blocked proposal is not reviewed again. Review accounting must agree with the frozen proposal's per-Requirement disposition, flow, sink, verification evidence and authority.
 
 
 ### Incremental harness regression (T26)

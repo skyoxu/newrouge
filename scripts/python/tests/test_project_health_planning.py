@@ -119,10 +119,90 @@ class ProjectHealthPlanningTests(unittest.TestCase):
             with self.subTest(manifest=manifest), self.assertRaises(ValueError):
                 planning.create_job(self.root, 'mvg', manifest)
 
+    def test_mvg_attempt_is_not_reused_after_selected_capability_changes(self):
+        old_capability = 'planning-' + 'a' * 32
+        current_capability = 'planning-' + 'b' * 32
+        prior = {
+            'schema_version': 'newrouge.knowledge-planning-job.v1',
+            'job_id': 'planning-' + 'c' * 32,
+            'action': 'mvg', 'revision': self.revision,
+            'manifest': 'docs/testing/mvg/m1-full.json',
+            'checkout_job_id': old_capability,
+            'capabilities_sha256': 'sha256:old',
+            'stage': 'review', 'status': 'recoverable',
+        }
+        atomic_json(planning.job_path(self.root, prior['job_id']), prior)
+        atomic_json(self.root / planning.JOB_ROOT / 'mvg-attempt.json', {'job_id': prior['job_id']})
+        selected = {
+            'job_id': current_capability,
+            'output_hashes': {
+                'docs/planning/semantic-topology/capabilities.v1.json': 'sha256:current',
+            },
+        }
+        with patch.object(planning, 'selected_result', return_value=selected):
+            job = planning.create_job(self.root, 'mvg')
+        self.assertNotEqual(prior['job_id'], job['job_id'])
+        self.assertEqual(current_capability, job['checkout_job_id'])
+        self.assertEqual('sha256:current', job['capabilities_sha256'])
+
+    def test_mvg_recovery_reuses_only_hash_bound_formal_candidates(self):
+        run_dir = self.root / 'logs/ci/mvg-planning/recovery'
+        candidate = run_dir / 'candidates/candidate-1.json'
+        candidate.parent.mkdir(parents=True)
+        candidate.write_text('{"analysis_identity_sha256":"sha256:old"}', encoding='utf-8')
+        state = {'candidate_attempts': {'candidate-1': {
+            'status': 'valid', 'proposal_sha256': planning.file_sha(candidate),
+            'validation': {'status': 'passed', 'formal_applicable': True},
+        }}}
+        self.assertEqual(['candidate-1'], planning._mvg_valid_candidates(run_dir, state))
+        candidate.write_text('{"analysis_identity_sha256":"sha256:changed"}', encoding='utf-8')
+        self.assertEqual([], planning._mvg_valid_candidates(run_dir, state))
+
+    def test_mvg_recovery_rejects_candidate_with_stale_analysis_identity(self):
+        run_dir = self.root / 'logs/ci/mvg-planning/identity-recovery'
+        candidate = run_dir / 'candidates/candidate-1.json'
+        candidate.parent.mkdir(parents=True)
+        candidate.write_text('{"analysis_identity_sha256":"sha256:old"}', encoding='utf-8')
+        state = {'analysis_identity_sha256': 'sha256:current', 'candidate_attempts': {'candidate-1': {
+            'status': 'valid', 'proposal_sha256': planning.file_sha(candidate),
+            'validation': {'status': 'passed', 'formal_applicable': True},
+        }}}
+        self.assertEqual([], planning._mvg_valid_candidates(run_dir, state))
+
+    def test_mvg_recovery_rejects_candidate_when_run_identity_is_missing(self):
+        run_dir = self.root / 'logs/ci/mvg-planning/recovery-missing-identity'
+        candidate = run_dir / 'candidates/candidate-1.json'
+        candidate.parent.mkdir(parents=True)
+        candidate.write_text('{"analysis_identity_sha256":"sha256:any"}', encoding='utf-8')
+        state = {'candidate_attempts': {'candidate-1': {
+            'status': 'valid', 'proposal_sha256': planning.file_sha(candidate),
+            'validation': {'status': 'passed', 'formal_applicable': True},
+        }}}
+        self.assertEqual([], planning._mvg_valid_candidates(run_dir, state))
+
+    def test_mvg_run_rejects_prepared_capability_identity_drift(self):
+        job_id = 'planning-' + 'd' * 32
+        capability_id = 'planning-' + 'e' * 32
+        job = {
+            'job_id': job_id, 'action': 'mvg', 'checkout_job_id': capability_id,
+            'capabilities_sha256': 'sha256:expected',
+        }
+        checkout = self.root / 'logs/ci/mvg-checkout'
+        run_dir = checkout / 'logs/ci/mvg-planning' / job_id / 'analysis-input'
+        run_dir.mkdir(parents=True)
+        atomic_json(run_dir / 'analysis-index.json', {
+            'capabilities_sha256': 'sha256:actual',
+        })
+        with self.assertRaisesRegex(ValueError, 'Capability identity mismatch'):
+            planning.validate_mvg_capability_binding(self.root, checkout, job)
+
     def test_new_main_commit_with_unchanged_inputs_allows_publication(self):
         job = planning.create_job(self.root, 'capability')
         git(self.root, 'commit', '--allow-empty', '-m', 'fixture: new main')
-        result = planning.run_job(self.root, job)
+        invoke, _ = self._production_consumers()
+        with patch.object(planning, 'invoke', side_effect=invoke), \
+             patch.object(planning, 'runner_path', return_value=Path('fixture')):
+            result = planning.run_job(self.root, job)
         self.assertEqual('completed', result['status'])
         self.assertIsNotNone(planning.generated_view(self.root, 'capability'))
 
@@ -295,8 +375,9 @@ class ProjectHealthPlanningTests(unittest.TestCase):
                     'selected': 'A',
                     'status': 'selected',
                     'candidate_reviews': [
-                        {'label': label, 'verdict': 'viable', 'rationale': 'Fixture candidate is structurally valid.'}
-                        for label in labels
+                        {'label': label, 'verdict': 'viable', 'rationale': 'Fixture candidate is structurally valid.',
+                         'rank': rank}
+                        for rank, label in enumerate(labels, 1)
                     ],
                     'tradeoffs': ['Candidate A is selected by the fixture evaluator.'],
                     'evidence_refs': ['analysis-input/capabilities.v1.json'],
@@ -314,9 +395,16 @@ class ProjectHealthPlanningTests(unittest.TestCase):
                     if isinstance(row, dict) and row.get('requirement_id')
                 }
                 payload['requirement_reviews'] = [
-                    {'requirement_id': requirement_id, 'verdict': 'covered',
-                     'rationale': 'The fixture proposal accounts for this requirement.'}
-                    for requirement_id in sorted(requirement_ids)
+                    {'requirement_id': row['requirement_id'],
+                     'verdict': {'flow': 'covered', 'other_verification': 'other_verification',
+                                 'deferred': 'deferred'}.get(row.get('disposition', 'flow'), 'covered'),
+                     'rationale': 'The fixture proposal accounts for this requirement.',
+                     'disposition': row.get('disposition', 'flow'),
+                     'flow_id': row.get('flow_id'), 'sink_id': row.get('sink_id'),
+                     'verification_ref': row.get('verification_ref'),
+                     'authority_ref': row.get('authority_ref')}
+                    for row in proposal.get('coverage_table', [])
+                    if row.get('requirement_id') in requirement_ids
                 ]
                 flow_rows = proposal.get('manifest_candidate', {}).get('flows', [])
                 payload['flow_reviews'] = [
@@ -408,8 +496,9 @@ class ProjectHealthPlanningTests(unittest.TestCase):
                 (mvg_checkout / 'docs/planning/semantic-topology/capabilities.v1.json').read_bytes(),
             )
             # Capability uses five model calls; MVG generation uses three
-            # independent five-section candidates plus one selection review.
-            self.assertEqual(22, len(invocations))
+            # independent six-section candidates (one tests request per flow),
+            # one selection review, and one independent semantic review.
+            self.assertEqual(25, len(invocations))
             overview = planning.generated_view(self.root, 'mvg')
             self.assertIsNotNone(overview)
             self.assertEqual(1, len(overview['manifests']))
@@ -430,7 +519,7 @@ class ProjectHealthPlanningTests(unittest.TestCase):
             reused = planning.create_job(self.root, 'capability')
             self.assertEqual('completed', reused['status'])
             self.assertEqual(cap_job['job_id'], reused['job_id'])
-            self.assertEqual(22, len(invocations))
+            self.assertEqual(25, len(invocations))
         git(self.root, 'commit', '--allow-empty', '-m', 'fixture: later main')
         self.assertIsNotNone(planning.generated_view(self.root, 'capability'))
         self.assertIsNotNone(planning.generated_view(self.root, 'mvg'))
@@ -447,7 +536,7 @@ class ProjectHealthPlanningTests(unittest.TestCase):
             self.assertNotIn('checkout_job_id', job)
             result = planning.run_job(self.root, job)
         self.assertEqual('completed', result['status'], result)
-        self.assertEqual(17, len(invocations))
+        self.assertEqual(20, len(invocations))
         self.assertEqual(main_revision(self.root), planning.generated_view(self.root, 'mvg')['revision'])
 
     def test_resume_reuses_generated_candidates_and_original_attempt(self):

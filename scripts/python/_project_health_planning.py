@@ -180,12 +180,28 @@ def create_job(root: Path, action: str, manifest: str | None = None) -> dict:
             prior = selected_result(root, 'mvg')
             if not prior or prior.get('manifest') != manifest:
                 raise ValueError('Selected manifest is not in the local workspace or an owned generated result')
+    current_capability = selected_result(root, 'capability') if action == 'mvg' else None
+    current_capability_id = current_capability.get('job_id') if current_capability else None
+    current_capability_hash = current_capability.get('output_hashes', {}).get(
+        'docs/planning/semantic-topology/capabilities.v1.json') if current_capability else None
+    # A committed main topology may be the selected Capability source even
+    # when no page-generated parent job exists. Bind its exact bytes so the
+    # planner still has a durable identity without inventing a parent job.
+    capability_rel = 'docs/planning/semantic-topology/capabilities.v1.json'
+    if action == 'mvg' and not current_capability_hash:
+        capability_file = root / capability_rel
+        if capability_file.is_file() and capability_rel in set(git(root, 'ls-files').splitlines()):
+            current_capability_hash = normalized_file_sha(capability_file)
     # Continue the same persisted attempt after a disconnect/restart. Reusing a
     # terminal result also avoids silently paying for another identical review.
     pointer = load_json(root / JOB_ROOT / f'{action}-attempt.json', {})
     if pointer.get('job_id'):
         prior = read_job(root, pointer['job_id'])
-        if prior.get('manifest') == manifest and (
+        same_capability = action != 'mvg' or (
+            prior.get('checkout_job_id') == current_capability_id and
+            prior.get('capabilities_sha256') == current_capability_hash
+        )
+        if prior.get('manifest') == manifest and same_capability and (
                 prior.get('revision') == revision or _planning_input_fresh(root, prior)):
             # Resume interrupted planner stages, but never keep retrying a
             # prepare failure that happened before the planner created its
@@ -202,11 +218,14 @@ def create_job(root: Path, action: str, manifest: str | None = None) -> dict:
                 # one reusable candidate.  A run whose candidates all failed
                 # must start fresh so a changed runner gets new retry slots.
                 state = load_json(run_state, {}) if run_state.is_file() else {}
-                candidates = state.get('candidate_attempts') or {}
-                reusable = any(
-                    isinstance(row, dict) and row.get('final_meta')
-                    for row in candidates.values()
-                )
+                if action == 'mvg':
+                    reusable = bool(_mvg_valid_candidates(run_state.parent, state))
+                else:
+                    candidates = state.get('candidate_attempts') or {}
+                    reusable = any(
+                        isinstance(row, dict) and row.get('final_meta')
+                        for row in candidates.values()
+                    )
                 if not reusable:
                     pass
                 else:
@@ -219,9 +238,11 @@ def create_job(root: Path, action: str, manifest: str | None = None) -> dict:
            'status': 'queued', 'created_at': datetime.now(timezone.utc).isoformat(),
            'message': f'Queued {action} generation from local workspace {revision[:12]}'}
     if action == 'mvg':
-        capability = selected_result(root, 'capability')
+        capability = current_capability
         if capability:
             job['checkout_job_id'] = capability['job_id']
+        if current_capability_hash:
+            job['capabilities_sha256'] = current_capability_hash
     atomic_json(job_path(root, job_id), job)
     atomic_json(root / JOB_ROOT / f'{action}-attempt.json', {'job_id': job_id})
     return job
@@ -327,8 +348,73 @@ def _capability_valid_candidates(run_dir: Path, state: dict) -> list[str]:
             continue
         if not isinstance(candidate_payload, dict):
             continue
+        expected_identity = str(state.get('analysis_identity_sha256') or '')
+        if expected_identity and str(candidate_payload.get('analysis_identity_sha256') or '') != expected_identity:
+            continue
         valid.append(str(label))
     return sorted(valid)
+
+
+def _mvg_valid_candidates(run_dir: Path, state: dict) -> list[str]:
+    """Return MVG candidates whose durable file and formal validation agree."""
+    valid: list[str] = []
+    for label, record in (state.get('candidate_attempts') or {}).items():
+        if label not in {'candidate-1', 'candidate-2', 'candidate-3'} or not isinstance(record, dict):
+            continue
+        path = run_dir / 'candidates' / f'{label}.json'
+        validation = record.get('validation') or {}
+        if (record.get('status') == 'valid' and path.is_file()
+                and record.get('proposal_sha256') == file_sha(path)
+                and validation.get('status') == 'passed'
+                and validation.get('formal_applicable') is True):
+            expected_identity = str(state.get('analysis_identity_sha256') or '')
+            if not expected_identity:
+                continue
+            try:
+                candidate = load_json(path, {})
+            except (OSError, ValueError, json.JSONDecodeError):
+                continue
+            if str(candidate.get('analysis_identity_sha256') or '') != expected_identity:
+                continue
+            valid.append(label)
+    return sorted(valid)
+
+
+def validate_mvg_capability_binding(root: Path, checkout: Path, job: dict) -> None:
+    """Verify the prepared MVG run still consumes its bound Capability.
+
+    ``create_job`` binds the selected parent, but the durable prepared bundle
+    is the runtime authority.  Check both identities before invoking any stage
+    so stale or tampered run inputs cannot be resumed under a newer Capability.
+    """
+    if job.get('action') != 'mvg':
+        return
+    run_dir = checkout / 'logs/ci/mvg-planning' / str(job.get('job_id'))
+    index = load_json(run_dir / 'analysis-input' / 'analysis-index.json', {})
+    actual = str(index.get('capabilities_sha256') or '')
+    expected = str(job.get('capabilities_sha256') or '')
+    normalized_actual = normalized_file_sha(capability_path) if (
+        (capability_path := run_dir / 'analysis-input' / 'capabilities.v1.json').is_file()
+    ) else ''
+    exact_actual = file_sha(capability_path) if capability_path.is_file() else ''
+    if not expected or not actual or actual not in {exact_actual, normalized_actual}:
+        raise ValueError(
+            f'Capability identity mismatch: job={expected or "missing"} prepared={actual or "missing"}'
+        )
+    if not capability_path.is_file() or expected not in {exact_actual, normalized_actual}:
+        raise ValueError('Capability identity mismatch: prepared Capability bytes do not match bound hash')
+    run_state = load_json(run_dir / 'run.json', {})
+    if run_state:
+        state_hash = str(run_state.get('capabilities_sha256') or '')
+        if state_hash != actual:
+            raise ValueError('Capability identity mismatch: planner run state differs from selected job')
+    parent_id = str(job.get('checkout_job_id') or '')
+    if parent_id:
+        parent = read_job(root, parent_id)
+        parent_hash = str((parent.get('output_hashes') or {}).get(
+            'docs/planning/semantic-topology/capabilities.v1.json') or '')
+        if parent_hash != expected:
+            raise ValueError('Capability identity mismatch: selected parent output hash changed')
 
 
 def _capability_review_artifacts_available(run_dir: Path, state: dict) -> bool:
@@ -414,6 +500,7 @@ def run_job(root: Path, job: dict) -> dict:
     directory = job_path(root, job['job_id']).parent
     checkout = execution_root(root, job)
     stage, action = job['stage'], job['action']
+    run_id = job['job_id']
     invoked_stage: str | None = None
     try:
         job.update(status='running', message=f'Generating {action} from local workspace {job["revision"][:12]}')
@@ -424,9 +511,13 @@ def run_job(root: Path, job: dict) -> dict:
             derived_source = execution_root(root, parent)
         prepare_checkout(root, checkout, job['revision'], derived_source=derived_source)
         validate_checkout(root, checkout, job['revision'])
+        if action == 'mvg' and job.get('capabilities_sha256'):
+            prepared_index = (checkout / 'logs/ci/mvg-planning' / run_id / 'analysis-input' /
+                              'analysis-index.json')
+            if prepared_index.is_file():
+                validate_mvg_capability_binding(root, checkout, job)
         runner = runner_path()
         task_args = [value for tid in task_scope(checkout) for value in ('--task-id', tid)]
-        run_id = job['job_id']
         script = 'plan_capabilities.py' if action == 'capability' else 'plan_mvg.py'
         stages = ['prepare', 'generate', 'review', 'align', 'apply'] if action == 'capability' else ['prepare', 'generate', 'review', 'validate', 'apply']
         for stage in stages[stages.index(job['stage']):]:
@@ -457,6 +548,8 @@ def run_job(root: Path, job: dict) -> dict:
                 continue
             invoked_stage = stage
             result = invoke(checkout, script, args, directory / f'{stage}.log')
+            if action == 'mvg' and stage == 'prepare' and job.get('capabilities_sha256'):
+                validate_mvg_capability_binding(root, checkout, job)
             if result.get('status') in ('blocked', 'failed') or result.get('formal_applicable') is False:
                 errors = result.get('errors') or result.get('formal_blockers') or []
                 raise ValueError(result.get('reason') or '; '.join(str(error) for error in errors[:3]) or 'Planning stage blocked')
