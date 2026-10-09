@@ -807,6 +807,24 @@ class MvgPlanningContractTests(unittest.TestCase):
         self.assertIn("missing-owner:flows[0]: producer and consumer system roles are not explicit", prompt)
         self.assertNotIn("bad-test:tests[0]", prompt)
 
+    def test_segment_route_identity_failure_is_candidate_local_repair_issue(self):
+        error = plan_mvg.MVGSegmentRoutingError(
+            "MVG segment flows identity invalid: "
+            "segment_flow_change_review_missing:combat-reward-return"
+        )
+        issues = plan_mvg.segment_route_validation_issues(error)
+        self.assertEqual([{
+            "code": "segment_flow_change_review_missing:combat-reward-return",
+            "path": "segment.flows",
+            "detail": "segment_flow_change_review_missing:combat-reward-return",
+        }], issues)
+        self.assertNotEqual("runner_identity_invalid", plan_mvg.classify_review_error(error))
+
+    def test_unparseable_segment_failure_remains_execution_failure(self):
+        error = ValueError("MVG segment flows failed after retries: output schema mismatch")
+        self.assertEqual([], plan_mvg.segment_route_validation_issues(error))
+        self.assertNotEqual("candidate_segment_route_invalid", plan_mvg.classify_review_error(error))
+
     def test_issue_queue_preserves_focused_semantic_detail_after_reordering(self):
         current = {"code": "missing-owner", "path": "flows[0]", "detail": "Name the receiving system."}
         result = advance_admission_state(

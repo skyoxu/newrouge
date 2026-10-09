@@ -58,6 +58,28 @@ MVG_CANDIDATE_INVOCATION_LIMIT = 64
 MVG_REPLACEMENT_ROUND_LIMIT = 3
 
 
+class MVGSegmentRoutingError(ValueError):
+    """A bounded segment failed deterministic routing and remains repairable."""
+
+    def __init__(self, message: str, issues: list[dict[str, str]] | None = None) -> None:
+        super().__init__(message)
+        self.issues = issues or segment_route_validation_issues(message)
+
+
+def segment_route_validation_issues(error: BaseException | str) -> list[dict[str, str]]:
+    """Convert a terminal segment routing error into candidate-local issues."""
+    text = str(error or "").strip()
+    marker = "identity invalid:"
+    payload = text.split(marker, 1)[1].strip() if marker in text else text
+    issues: list[dict[str, str]] = []
+    for code in (part.strip() for part in payload.split(";")):
+        if not code or not code.startswith("segment_"):
+            continue
+        section = "segment.flows" if "flow" in code else "segment"
+        issues.append({"code": code, "path": section, "detail": code})
+    return issues
+
+
 def admission_issue_id(code: str, path: str = "") -> str:
     """Return a stable identity for one ordered candidate hard issue."""
     return f"{str(code).strip()}@{str(path).strip()}"
@@ -483,6 +505,8 @@ def classify_review_error(exc: BaseException) -> str:
         return "candidate_sibling_execution_failed"
     if isinstance(exc, MVGCandidateInvocationBudgetError):
         return exc.error_type
+    if isinstance(exc, MVGSegmentRoutingError):
+        return "candidate_segment_route_invalid"
     if ("input exceeds the maximum length" in lowered
             or "maximum context length" in lowered
             or "bounded mvg review workspace exceeds" in lowered):
@@ -2599,6 +2623,9 @@ def invoke_segmented(invoke: Any, run_dir: Path, state: dict[str, Any], attempt:
     def needs_repair(request: dict[str, Any]) -> bool:
         if not repair_issue:
             return False
+        if repair_code.startswith("segment_flow_change_review_missing:"):
+            flow_id = repair_code.split(":", 1)[1].strip()
+            return request["section"] == "flows" and request.get("scope_id") == flow_id
         if not coverage_only:
             return True
         return (request["section"] == "coverage"
@@ -2804,6 +2831,12 @@ def invoke_segmented(invoke: Any, run_dir: Path, state: dict[str, Any], attempt:
                     "in this retry; do not return a bare section payload or reuse a flow with "
                     "a mismatched Requirement, Capability, or owner Task."
                 )
+        route_issues = segment_route_validation_issues(last_error)
+        if route_issues:
+            raise MVGSegmentRoutingError(
+                last_error or f"MVG segment {section} failed after retries",
+                route_issues,
+            )
         raise ValueError(last_error or f"MVG segment {section} failed after retries")
 
     def execute_batch(batch: list[tuple[int, dict[str, Any]]], flow_context: list[dict[str, Any]]) -> list[tuple[int, dict[str, Any], dict[str, Any]]]:
@@ -3801,6 +3834,17 @@ Frozen manifest scope:
                 record.update(execution, status="completed")
                 atomic_json(candidate_root / f"proposal-attempt-{attempt}.json", proposal)
             except (RuntimeError, TimeoutError, OSError, ValueError, json.JSONDecodeError) as exc:
+                if segmented and isinstance(exc, MVGSegmentRoutingError) and exc.issues:
+                    record.update(status="repairable-failure", error=_compact_exception_message(exc),
+                                  error_type=classify_review_error(exc))
+                    validation = {"status": "blocked", "errors": [str(exc)]}
+                    with state_lock:
+                        state["candidate_attempts"][label] = {"attempts": records}
+                        atomic_json(run_path, state)
+                    checkpoint_admission_issues(exc.issues, attempt)
+                    if admission_runtime.get("status") == "retired":
+                        break
+                    continue
                 record.update(status="execution-failed", error=_compact_exception_message(exc),
                                error_type=classify_review_error(exc))
                 validation = {"status": "blocked", "errors": [str(exc)]}

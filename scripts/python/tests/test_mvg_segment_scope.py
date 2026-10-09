@@ -142,7 +142,11 @@ class MvgSegmentScopeTests(unittest.TestCase):
                     base_proposal=json.loads(output.read_text(encoding="utf-8")),
                     repair_issue=repair_issue,
                 )
-                self.assertEqual(["coverage"], calls,
+                expected_repair_sections = [
+                    "flows" if str(repair_issue.get("code", "")).startswith("segment_flow_")
+                    else "coverage"
+                ]
+                self.assertEqual(expected_repair_sections, calls,
                                  "Repair must invoke the affected section and reuse unaffected evidence")
             proposal = json.loads(output.read_text(encoding="utf-8"))
             from update_mvg_baseline import apply_delta
@@ -317,6 +321,20 @@ class MvgSegmentScopeTests(unittest.TestCase):
                 self.assertNotIn('"entrypoints":', prompt)
 
         self._dispatch(check, repair_issue=issue)
+
+    def test_flow_change_review_repair_reinvokes_only_named_flow(self):
+        issue = {"code": "segment_flow_change_review_missing:map-route-flow",
+                 "path": "segment.flows"}
+        calls = []
+
+        def check(section, flow, prompt, schema):
+            if section == "flows":
+                if flow["id"] == "map-route-flow" and "Focused candidate hard-issue repair" in prompt:
+                    calls.append(flow["id"])
+                    self.assertIn(issue["code"], prompt)
+
+        self._dispatch(check, repair_issue=issue)
+        self.assertEqual(["map-route-flow"], calls)
 
     def test_cli_test_schema_is_flow_local(self):
         def check(section, flow, prompt, schema):
