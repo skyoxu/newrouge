@@ -18,7 +18,7 @@ from _planning_skill_common import atomic_json, validate_output_schema
 
 
 class MvgSegmentScopeTests(unittest.TestCase):
-    def _dispatch(self, check, repair_issue=None):
+    def _dispatch(self, check, repair_issue=None, *, baseline_only_tests=False, missing_test_evidence=False):
         with tempfile.TemporaryDirectory() as directory:
             run = Path(directory)
             prepared = run / "analysis-input"
@@ -39,11 +39,12 @@ class MvgSegmentScopeTests(unittest.TestCase):
                                   "contract_refs": None, "behavior": name,
                                   "test_ids": [test_id], "from": None, "to": None}],
                 })
-                tests.append({"id": test_id, "kind": "dotnet", "state": "planned",
+                tests.append({"id": test_id, "kind": "dotnet",
+                              "state": "implemented" if baseline_only_tests else "planned",
                               "path": path, "selector": f"Task{index}Tests",
                               "evidence_level": "domain-integration", "min_tests": 1})
                 views.append({"taskmaster_id": index, "semantic_refs": [rid],
-                              "test_refs": [path], "source_refs": [source],
+                              "test_refs": [] if baseline_only_tests else [path], "source_refs": [source],
                               "contractRefs": [contract]})
                 requirements.append({"requirement_id": rid, "statement": name})
                 capabilities.append({"capability_id": f"CAP-{index}", "requirement_ids": [rid]})
@@ -58,7 +59,9 @@ class MvgSegmentScopeTests(unittest.TestCase):
             atomic_json(prepared / "task-views/tasks_back.json", views)
             atomic_json(prepared / "task-views/tasks_gameplay.json", [])
             atomic_json(prepared / "source-manifest.v1.json", {"sources": [{"path": source}]})
-            for relative in (source, contract):
+            for relative in (source, contract, *(test["path"] for test in tests)):
+                if missing_test_evidence and relative in {test["path"] for test in tests}:
+                    continue
                 target = prepared / "references" / relative
                 target.parent.mkdir(parents=True, exist_ok=True)
                 target.write_text("// Fixture evidence", encoding="utf-8")
@@ -136,6 +139,24 @@ class MvgSegmentScopeTests(unittest.TestCase):
                 self.assertEqual([flow["id"]], item["properties"]["flow_id"].get("enum"))
                 self.assertEqual(flow["test_ids"], item["properties"]["id"].get("enum"))
         self._dispatch(check)
+
+    def test_frozen_implemented_tests_need_not_be_task_view_refs(self):
+        def check(section, flow, prompt, schema):
+            if section == "tests":
+                inline = prompt.split("Inline bounded evidence context:\n", 1)[1]
+                evidence, _ = json.JSONDecoder().raw_decode(inline)
+                self.assertTrue(evidence["available_test_paths"])
+
+        proposal = self._dispatch(check, baseline_only_tests=True)
+        self.assertTrue(all(test["state"] == "implemented" for test in proposal["tests"]))
+
+    def test_frozen_test_manifest_does_not_authorize_missing_evidence(self):
+        with self.assertRaisesRegex(ValueError, "segment_test_implemented_unprepared"):
+            self._dispatch(lambda *args: None, baseline_only_tests=True, missing_test_evidence=True)
+
+    def test_frozen_baseline_test_segments_remain_reusable_for_coverage_repair(self):
+        self._dispatch(lambda *args: None, baseline_only_tests=True,
+                       repair_issue={"code": "coverage_deferral_unreviewed:FR-1", "path": "proposal"})
 
     def test_cli_flow_schema_test_ids_are_flow_local(self):
         def check(section, flow, prompt, schema):

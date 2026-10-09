@@ -5,6 +5,7 @@ import json
 import concurrent.futures
 import sys
 import tempfile
+import threading
 import unittest
 from unittest.mock import patch
 from pathlib import Path
@@ -45,6 +46,160 @@ from _planning_skill_common import atomic_json
 
 
 class MvgPlanningContractTests(unittest.TestCase):
+
+    def test_delta_failure_does_not_invoke_semantic_reviewer(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            run_dir = root / "logs/ci/mvg-planning/delta-first"
+            (run_dir / "analysis-input").mkdir(parents=True)
+            state = {"run_id": "delta-first", "formal_ready": True,
+                     "analysis_identity_sha256": "sha256:fixture", "task_scope": []}
+
+            def segment(invoke, candidate_root, candidate_state, attempt, prompt, workspace, **kwargs):
+                output = workspace / "proposal.json"
+                atomic_json(output, {"manifest_candidate": {"flows": []}})
+                return output, {}
+
+            with patch.object(plan_mvg, "_load_run", return_value=(run_dir / "run.json", state)), \
+                 patch.object(plan_mvg, "_validate_input_freshness"), \
+                 patch.object(plan_mvg, "inspect_isolated_runner", return_value={}), \
+                 patch.object(plan_mvg, "_task_ids", return_value=set()), \
+                 patch.object(plan_mvg, "_task_view_rows", return_value=[]), \
+                 patch.object(plan_mvg, "invoke_segmented", side_effect=segment), \
+                 patch.object(plan_mvg, "validate_proposal", return_value={"status": "passed"}), \
+                 patch.object(plan_mvg, "candidate_admission_errors", return_value=[{
+                     "code": "delta_validation_blocked", "path": "manifest", "detail": "Missing authority."}]), \
+                 patch.object(plan_mvg, "run_admission_semantic_gate", return_value={}) as reviewer, \
+                 patch.object(plan_mvg, "MVG_REPLACEMENT_ROUND_LIMIT", 0):
+                with self.assertRaisesRegex(ValueError, "replacement budget exhausted"):
+                    plan_mvg.generate(root, run_id="delta-first", timeout_sec=1, llm_backend="codex-cli")
+            reviewer.assert_not_called()
+
+    def test_execution_failed_sibling_prevents_new_model_calls(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            run_dir = root / "logs/ci/mvg-planning/stop-siblings"
+            (run_dir / "analysis-input").mkdir(parents=True)
+            state = {"run_id": "stop-siblings", "formal_ready": True,
+                     "analysis_identity_sha256": "sha256:fixture", "task_scope": []}
+            failed = threading.Event()
+
+            def write(path, value):
+                atomic_json(path, value)
+                if path == run_dir / "run.json" and any(
+                    row.get("event") == "admission-execution-failed"
+                    for row in value.get("admission_events", [])):
+                    failed.set()
+
+            def segment(invoke, candidate_root, candidate_state, attempt, prompt, workspace, **kwargs):
+                if candidate_root.name == "candidate-1":
+                    raise ValueError("Fixture runner output schema failure")
+                self.assertTrue(failed.wait(3), "Execution failure was not published")
+                output, execution = invoke("Sibling must not run", attempt, output_name="segments/flow.json")
+                return output, execution
+
+            def runner(_runner, *, output_path, **kwargs):
+                atomic_json(output_path, {})
+                return {"model": "fixture", "model_tools": []}
+
+            with patch.object(plan_mvg, "_load_run", return_value=(run_dir / "run.json", state)), \
+                 patch.object(plan_mvg, "_validate_input_freshness"), \
+                 patch.object(plan_mvg, "inspect_isolated_runner", return_value={}), \
+                 patch.object(plan_mvg, "_task_ids", return_value=set()), \
+                 patch.object(plan_mvg, "_task_view_rows", return_value=[]), \
+                 patch.object(plan_mvg, "atomic_json", side_effect=write), \
+                 patch.object(plan_mvg, "invoke_segmented", side_effect=segment), \
+                 patch.object(plan_mvg, "validate_proposal", return_value={"status": "blocked", "errors": ["bad"]}), \
+                 patch.object(plan_mvg, "run_isolated_model", side_effect=runner) as model:
+                with self.assertRaisesRegex(ValueError, "runner/input failure"):
+                    plan_mvg.generate(root, run_id="stop-siblings", timeout_sec=1, llm_backend="codex-cli")
+            model.assert_not_called()
+            self.assertEqual("blocked", state["selection_status"])
+
+    def test_recovered_delta_failure_does_not_invoke_semantic_reviewer(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            run_dir = root / "logs/ci/mvg-planning/recovered-delta"
+            (run_dir / "analysis-input").mkdir(parents=True)
+            state = {"run_id": "recovered-delta", "formal_ready": True,
+                     "analysis_identity_sha256": "sha256:fixture", "task_scope": [],
+                     "candidate_attempts": {}}
+            proposal = {"manifest_candidate": {"flows": []}}
+            for label in plan_mvg.MVG_CANDIDATE_LABELS:
+                atomic_json(run_dir / "candidates" / label / "proposal-attempt-1.json", proposal)
+                state["candidate_attempts"][label] = {"attempts": [{"attempt": 1, "status": "completed"}]}
+
+            def segment(invoke, candidate_root, candidate_state, attempt, prompt, workspace, **kwargs):
+                output = workspace / "proposal.json"
+                atomic_json(output, proposal)
+                return output, {}
+
+            with patch.object(plan_mvg, "_load_run", return_value=(run_dir / "run.json", state)), \
+                 patch.object(plan_mvg, "_validate_input_freshness"), \
+                 patch.object(plan_mvg, "inspect_isolated_runner", return_value={}), \
+                 patch.object(plan_mvg, "_task_ids", return_value=set()), \
+                 patch.object(plan_mvg, "_task_view_rows", return_value=[]), \
+                 patch.object(plan_mvg, "invoke_segmented", side_effect=segment), \
+                 patch.object(plan_mvg, "validate_proposal", return_value={"status": "passed", "formal_applicable": True}), \
+                 patch.object(plan_mvg, "candidate_admission_errors", return_value=[{
+                     "code": "delta_validation_blocked", "path": "manifest", "detail": "Missing authority."}]), \
+                 patch.object(plan_mvg, "run_admission_semantic_gate", return_value={}) as reviewer, \
+                 patch.object(plan_mvg, "MVG_REPLACEMENT_ROUND_LIMIT", 0):
+                with self.assertRaisesRegex(ValueError, "replacement budget exhausted"):
+                    plan_mvg.generate(root, run_id="recovered-delta", timeout_sec=1, llm_backend="codex-cli")
+            reviewer.assert_not_called()
+
+    def test_running_sibling_call_finishes_without_starting_followup_work(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            run_dir = root / "logs/ci/mvg-planning/inflight-sibling"
+            (run_dir / "analysis-input").mkdir(parents=True)
+            state = {"run_id": "inflight-sibling", "formal_ready": True,
+                     "analysis_identity_sha256": "sha256:fixture", "task_scope": []}
+            started, failed = threading.Event(), threading.Event()
+            calls = []
+
+            def write(path, value):
+                atomic_json(path, value)
+                if path == run_dir / "run.json" and any(
+                    row.get("candidate") == "candidate-1" and row.get("event") == "admission-execution-failed"
+                    for row in value.get("admission_events", [])):
+                    failed.set()
+
+            def segment(invoke, candidate_root, candidate_state, attempt, prompt, workspace, **kwargs):
+                if candidate_root.name == "candidate-1":
+                    self.assertTrue(started.wait(3))
+                    raise ValueError("Fixture transport failed")
+                if candidate_root.name == "candidate-3":
+                    self.assertTrue(failed.wait(3))
+                output, execution = invoke("In-flight fixture", attempt, output_name="segments/flow.json")
+                return output, execution
+
+            def runner(_runner, *, workspace, output_path, **kwargs):
+                calls.append(workspace)
+                started.set()
+                self.assertTrue(failed.wait(3))
+                atomic_json(output_path, {"manifest_candidate": {"flows": []}})
+                return {"model": "fixture", "model_tools": []}
+
+            with patch.object(plan_mvg, "_load_run", return_value=(run_dir / "run.json", state)), \
+                 patch.object(plan_mvg, "_validate_input_freshness"), \
+                 patch.object(plan_mvg, "inspect_isolated_runner", return_value={}), \
+                 patch.object(plan_mvg, "_task_ids", return_value=set()), \
+                 patch.object(plan_mvg, "_task_view_rows", return_value=[]), \
+                 patch.object(plan_mvg, "atomic_json", side_effect=write), \
+                 patch.object(plan_mvg, "invoke_segmented", side_effect=segment), \
+                 patch.object(plan_mvg, "validate_proposal", return_value={"status": "passed"}), \
+                 patch.object(plan_mvg, "run_isolated_model", side_effect=runner), \
+                 patch.object(plan_mvg, "run_admission_semantic_gate") as reviewer:
+                with self.assertRaisesRegex(ValueError, "runner/input failure"):
+                    plan_mvg.generate(root, run_id="inflight-sibling", timeout_sec=1, llm_backend="codex-cli")
+            self.assertEqual(1, len(calls))
+            self.assertTrue((calls[0] / "flow.json").is_file(), "Running call evidence must be retained")
+            reviewer.assert_not_called()
+            self.assertEqual("candidate_sibling_execution_failed",
+                             state["candidate_admissions"]["candidate-2"]["execution_error"]["error_type"])
+            self.assertEqual("blocked", state["selection_status"])
 
     def test_deterministic_retirement_creates_clean_replacement_without_review_proof(self):
         with tempfile.TemporaryDirectory() as temp:
@@ -499,6 +654,110 @@ class MvgPlanningContractTests(unittest.TestCase):
                     runner=None, timeout_sec=5, invoke=invoke,
                 )
             invoke.assert_not_called()
+
+    def _exercise_accounting_echo_retry(self, *, verdict="approved", always_invalid=False,
+                                       before_invoke=None):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            run_id = "admission-echo"
+            run_dir = root / "logs/ci/mvg-planning" / run_id
+            analysis = run_dir / "analysis-input"
+            atomic_json(analysis / "analysis-index.json", {
+                "files": {}, "authority_inputs": {}, "analysis_identity_sha256": "sha256:analysis"})
+            atomic_json(analysis / "semantic-requirements.v1.json", {
+                "requirements": [{"requirement_id": "R1", "delivery_relevant": True}]})
+            atomic_json(analysis / "capabilities.v1.json", {"capabilities": []})
+            state = {"run_id": run_id, "analysis_identity_sha256": "sha256:analysis"}
+            proposal = {"manifest_candidate": {"flows": [{"id": "flow-a"}]},
+                        "coverage_table": [{"requirement_id": "R1", "disposition": "flow",
+                                            "flow_id": "flow-a", "verification_ref": None}]}
+            calls = []
+
+            def invoke(prompt, attempt, **kwargs):
+                calls.append(attempt)
+                review = {
+                    "schema_version": "newrouge.mvg-semantic-review.v1",
+                    "analysis_identity_sha256": "sha256:analysis",
+                    "proposal_sha256": plan_mvg.canonical_sha(proposal),
+                    "verdict": verdict, "findings": [] if verdict == "approved" else ["Missing executable boundary."],
+                    "requirement_reviews": [{"requirement_id": "R1", "verdict": "covered" if verdict == "approved" else "blocked",
+                        "rationale": "The journey covers the requirement.", "disposition": "flow",
+                        "flow_id": "flow-a", "sink_id": None, "authority_ref": None,
+                        "verification_ref": "test-id" if attempt == 1 or always_invalid else None}],
+                    "flow_reviews": [{"flow_id": "flow-a", "verdict": "sound" if verdict == "approved" else "blocked", "rationale": "Boundary review."}],
+                }
+                output = root / f"review-{attempt}.json"
+                atomic_json(output, review)
+                return output, {"receipt": {"model": "fixture", "model_tools": []}}
+
+            original_hash = plan_mvg.canonical_sha(proposal)
+            if always_invalid:
+                with self.assertRaises(plan_mvg.MVGReviewAttemptBudgetError):
+                    run_admission_semantic_gate(root, state, proposal, run_dir / "admission",
+                                                runner=None, timeout_sec=1, invoke=invoke)
+                self.assertEqual(list(range(1, plan_mvg.MVG_REVIEW_ATTEMPT_LIMIT + 1)), calls)
+                gate = run_dir / "admission/gate-default"
+                attempts = json.loads((gate / "semantic-review-attempts.json").read_text(encoding="utf-8"))["attempts"]
+                self.assertEqual(10, len(attempts))
+                self.assertTrue(all(row["error_type"].startswith("runner_") for row in attempts))
+                self.assertFalse(list(gate.glob("semantic-review-publication-*.json")))
+                self.assertEqual(original_hash, plan_mvg.canonical_sha(proposal))
+                return
+            if before_invoke:
+                with self.assertRaises(plan_mvg.MVGGenerationStoppedError):
+                    run_admission_semantic_gate(root, state, proposal, run_dir / "admission",
+                                                runner=Path("fixture-runner.py"), timeout_sec=1,
+                                                before_invoke=before_invoke)
+                self.assertEqual([], calls)
+                return
+            review = run_admission_semantic_gate(root, state, proposal, run_dir / "admission",
+                                                runner=None, timeout_sec=1, invoke=invoke)
+            self.assertEqual([1, 2], calls)
+            self.assertIsNone(review["requirement_reviews"][0]["verification_ref"])
+            self.assertEqual(verdict, review["verdict"])
+            self.assertEqual(original_hash, plan_mvg.canonical_sha(proposal))
+
+    def test_admission_retries_accounting_echo_error_without_regenerating_proposal(self):
+        self._exercise_accounting_echo_retry()
+
+    def test_admission_format_repair_preserves_real_semantic_block(self):
+        self._exercise_accounting_echo_retry(verdict="blocked")
+
+    def test_admission_persistent_echo_error_exhausts_review_only(self):
+        self._exercise_accounting_echo_retry(always_invalid=True)
+
+    def test_admission_stop_signal_does_not_consume_review_retry_budget(self):
+        def stop():
+            raise plan_mvg.MVGGenerationStoppedError("Sibling execution failed")
+
+        with patch.object(plan_mvg, "inspect_isolated_runner", return_value={}):
+            self._exercise_accounting_echo_retry(before_invoke=stop)
+
+    def test_admission_cli_schema_binds_echo_but_not_semantic_verdict(self):
+        from _planning_skill_common import validate_output_schema
+        state = {"analysis_identity_sha256": "sha256:analysis"}
+        proposal = {"manifest_candidate": {"flows": [{"id": "flow-a"}]},
+                    "coverage_table": [{"requirement_id": "R1", "disposition": "flow",
+                                        "flow_id": "flow-a", "verification_ref": None}]}
+        review = {
+            "schema_version": "newrouge.mvg-semantic-review.v1",
+            "analysis_identity_sha256": "sha256:analysis",
+            "proposal_sha256": plan_mvg.canonical_sha(proposal),
+            "verdict": "blocked", "findings": ["Missing boundary."],
+            "requirement_reviews": [{"requirement_id": "R1", "verdict": "blocked",
+                "rationale": "Missing boundary.", "disposition": "flow", "flow_id": "flow-a",
+                "sink_id": None, "authority_ref": None, "verification_ref": None}],
+            "flow_reviews": [{"flow_id": "flow-a", "verdict": "blocked", "rationale": "Missing boundary."}],
+        }
+        with tempfile.TemporaryDirectory() as temp:
+            output, schema = Path(temp) / "review.json", Path(temp) / "schema.json"
+            atomic_json(schema, plan_mvg.semantic_review_output_schema(state=state, proposal=proposal))
+            atomic_json(output, review)
+            validate_output_schema(output, schema)
+            review["requirement_reviews"][0]["verification_ref"] = "test-id"
+            atomic_json(output, review)
+            with self.assertRaisesRegex(ValueError, "does not satisfy JSON schema"):
+                validate_output_schema(output, schema)
 
     def test_admission_repairs_one_issue_before_advancing_to_next(self):
         state = {"candidate": "candidate-1", "lineage": "candidate-1-r1",

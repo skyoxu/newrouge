@@ -351,7 +351,10 @@ def run_admission_semantic_gate(root: Path, state: dict[str, Any], proposal: dic
               "Review proposal.json against analysis-input and return JSON only. "
               "Block any semantic, ownership, handoff, recovery, or accounting issue. "
               f"schema_version='newrouge.mvg-semantic-review.v1', analysis_identity_sha256='{state['analysis_identity_sha256']}', "
-              f"proposal_sha256='{proposal_sha}'. Return complete requirement_reviews and flow_reviews.")
+              f"proposal_sha256='{proposal_sha}'. Return complete requirement_reviews and flow_reviews. "
+              "Echo disposition, flow_id, sink_id, verification_ref and authority_ref exactly from "
+              "each proposal coverage_table row, including nulls. Put your evidence analysis in "
+              "rationale, not in the echoed fields. A blocked semantic verdict is allowed.")
     attempts: list[dict[str, Any]] = []
     proposal_sha = canonical_sha(proposal)
     publication = review_workspace / (
@@ -370,7 +373,7 @@ def run_admission_semantic_gate(root: Path, state: dict[str, Any], proposal: dic
             restored_errors = validate_review_shape(
                 state, proposal, restored,
                 requirement_ids=required_requirements, flow_ids=flow_ids,
-                check_identity=True, check_accounting=False,
+                check_identity=True, check_accounting=True,
             )
             if isinstance(restored_execution, dict):
                 from _mvg_planning_review import review_execution_errors
@@ -390,7 +393,7 @@ def run_admission_semantic_gate(root: Path, state: dict[str, Any], proposal: dic
         prompt_path.write_text(prompt, encoding="utf-8", newline="\n")
         output = attempt_workspace / "semantic-review.json"
         schema = attempt_workspace / "semantic-review-output-schema.json"
-        atomic_json(schema, semantic_review_output_schema())
+        atomic_json(schema, semantic_review_output_schema(state=state, proposal=proposal))
         try:
             if runner is not None:
                 if before_invoke is not None:
@@ -401,7 +404,7 @@ def run_admission_semantic_gate(root: Path, state: dict[str, Any], proposal: dic
             elif invoke is not None:
                 generated, execution = invoke(prompt, number, output_name="semantic-review.json",
                                               output_schema_path=schema,
-                                              output_schema=semantic_review_output_schema())
+                                              output_schema=semantic_review_output_schema(state=state, proposal=proposal))
                 if generated != output:
                     shutil.copyfile(generated, output)
                 receipt = execution.get("receipt", {}) if isinstance(execution, dict) else {}
@@ -413,7 +416,7 @@ def run_admission_semantic_gate(root: Path, state: dict[str, Any], proposal: dic
             result = parse_model_json(output)
             shape_errors = validate_review_shape(state, proposal, result,
                 requirement_ids=required_requirements, flow_ids=flow_ids,
-                check_identity=True, check_accounting=False)
+                check_identity=True, check_accounting=True)
             if shape_errors:
                 raise ValueError("candidate admission semantic review output invalid: " + ";".join(shape_errors))
             execution = {
@@ -431,9 +434,15 @@ def run_admission_semantic_gate(root: Path, state: dict[str, Any], proposal: dic
             resume_publication(publication, publication_identity, atomic_json)
             return result
         except (OSError, RuntimeError, TimeoutError, ValueError, json.JSONDecodeError) as exc:
+            if isinstance(exc, MVGGenerationStoppedError):
+                raise
             attempts.append({"attempt": number, "status": "execution-failed",
                              "error": _compact_exception_message(exc),
                              "error_type": classify_review_error(exc)})
+            atomic_json(review_workspace / "semantic-review-attempts.json", {"attempts": attempts})
+            prompt += ("\nThe previous review failed output validation; correct the review only. "
+                       "Do not change proposal accounting or turn a formatting error into a semantic finding. "
+                       "Exact error: " + _compact_exception_message(exc))
     raise MVGReviewAttemptBudgetError(
         error_type=str(attempts[-1].get("error_type") or "runner_execution_failed"),
         attempts_used=len(attempts), attempt_limit=MVG_REVIEW_ATTEMPT_LIMIT,
@@ -466,6 +475,8 @@ def classify_review_error(exc: BaseException) -> str:
     """Return a stable machine-readable class for one isolated review failure."""
     text = str(exc)
     lowered = text.lower()
+    if isinstance(exc, MVGGenerationStoppedError):
+        return "candidate_sibling_execution_failed"
     if isinstance(exc, MVGCandidateInvocationBudgetError):
         return exc.error_type
     if ("input exceeds the maximum length" in lowered
@@ -533,6 +544,18 @@ def validate_review_shape(state: dict[str, Any], proposal: dict[str, Any], revie
         check_rows("requirement_reviews", "requirement_id", requirement_ids,
                    {"covered", "other_verification", "deferred", "blocked"})
         check_rows("flow_reviews", "flow_id", flow_ids, {"sound", "blocked"})
+        coverage = {str(row.get("requirement_id")): row for row in proposal.get("coverage_table", [])
+                    if isinstance(row, dict)}
+        for row in review.get("requirement_reviews", []) or []:
+            if not isinstance(row, dict) or str(row.get("requirement_id")) not in coverage:
+                continue
+            expected = coverage[str(row["requirement_id"])]
+            for field in ("disposition", "flow_id", "sink_id", "verification_ref", "authority_ref"):
+                value = expected.get(field)
+                if field == "disposition":
+                    value = value or ("flow" if expected.get("flow_id") else "")
+                if row.get(field) != value:
+                    errors.append(f"semantic_review_echo_mismatch:{row['requirement_id']}:{field}")
     else:
         for key in ("requirement_reviews", "flow_reviews"):
             if not isinstance(review.get(key), list):
@@ -554,7 +577,8 @@ def backfill_review_error_types(state: dict[str, Any]) -> bool:
     return changed
 
 
-def semantic_review_output_schema() -> dict[str, Any]:
+def semantic_review_output_schema(*, state: dict[str, Any] | None = None,
+                                 proposal: dict[str, Any] | None = None) -> dict[str, Any]:
     """Return the transport-level JSON schema for an independent review."""
     rationale = {"type": "string", "minLength": 1}
     requirement = {
@@ -584,7 +608,7 @@ def semantic_review_output_schema() -> dict[str, Any]:
             "rationale": rationale,
         },
     }
-    return {
+    schema = {
         "type": "object",
         "additionalProperties": False,
         "required": ["schema_version", "analysis_identity_sha256", "proposal_sha256",
@@ -599,6 +623,32 @@ def semantic_review_output_schema() -> dict[str, Any]:
             "flow_reviews": {"type": "array", "items": flow},
         },
     }
+    if state is not None and proposal is not None:
+        schema["properties"]["analysis_identity_sha256"]["const"] = state["analysis_identity_sha256"]
+        schema["properties"]["proposal_sha256"]["const"] = canonical_sha(proposal)
+        rows = [row for row in proposal.get("coverage_table", []) if isinstance(row, dict)]
+        if rows:
+            bound_rows = []
+            for row in rows:
+                item = deepcopy(requirement)
+                for field in ("requirement_id", "disposition", "flow_id", "sink_id",
+                              "verification_ref", "authority_ref"):
+                    value = row.get(field)
+                    if field == "disposition":
+                        value = value or ("flow" if row.get("flow_id") else "")
+                    item["properties"][field] = {"type": "null" if value is None else "string",
+                                                 "const": value}
+                bound_rows.append(item)
+            schema["properties"]["requirement_reviews"].update(
+                items={"anyOf": bound_rows}, minItems=len(rows), maxItems=len(rows))
+        flow_ids = sorted({str(row["id"]) for row in (proposal.get("manifest_candidate") or {}).get("flows", [])
+                           if isinstance(row, dict) and row.get("id")})
+        if flow_ids:
+            flow["properties"]["flow_id"]["enum"] = flow_ids
+            schema["properties"]["flow_reviews"].update(minItems=len(flow_ids), maxItems=len(flow_ids))
+        else:
+            schema["properties"]["flow_reviews"]["maxItems"] = 0
+    return schema
 
 
 def mvg_selection_output_schema(*, incumbent_present: bool) -> dict[str, Any]:
@@ -767,6 +817,10 @@ def validate_mvg_selection(result: dict[str, Any], *, candidate_labels: set[str]
     if selected == "D" and viable_labels is not None and "incumbent" not in viable_labels:
         errors.append("mvg_selection_selected_incumbent_not_formally_applicable")
     return sorted(set(errors))
+
+
+class MVGGenerationStoppedError(RuntimeError):
+    """Stop new model work when a sibling has failed execution."""
 
 
 class MVGReviewAttemptBudgetError(ValueError):
@@ -2397,6 +2451,15 @@ def invoke_segmented(invoke: Any, run_dir: Path, state: dict[str, Any], attempt:
     })
 
     frozen_manifest = load_json(prepared / "existing-manifest.json", {})
+    # Baseline tests are prepared dependencies even without task-view refs.
+    available_test_paths = sorted({
+        str(value).replace("\\", "/")
+        for row in all_test_views for value in _list_field(row, "test_refs") if str(value).strip()
+    } | {
+        str(row["path"]).replace("\\", "/")
+        for row in frozen_manifest.get("tests", []) if isinstance(row, dict) and row.get("path")
+        and _prepared_reference(prepared, str(row["path"]).replace("\\", "/")) is not None
+    })
     frozen_tests_by_flow = {
         str(row.get("id")): sorted({str(value) for value in row.get("test_ids", [])
                                     if str(value).strip()})
@@ -2569,9 +2632,7 @@ def invoke_segmented(invoke: Any, run_dir: Path, state: dict[str, Any], attempt:
             section_prompt_text += "\nInline bounded evidence context:\n" + json.dumps({
                 "task_views": [row for row in all_test_views
                                if int(row.get("taskmaster_id", -1)) in set(scoped_tasks)],
-                "available_test_paths": sorted({str(value) for row in all_test_views
-                                                if int(row.get("taskmaster_id", -1)) in set(scoped_tasks)
-                                                for value in _list_field(row, "test_refs") if str(value).strip()}),
+                "available_test_paths": available_test_paths,
             }, ensure_ascii=False)
         if needs_repair(request):
             payload_key = {"flows": "flows", "coverage": "coverage_table",
@@ -2643,15 +2704,14 @@ def invoke_segmented(invoke: Any, run_dir: Path, state: dict[str, Any], attempt:
                     prepared=prepared,
                     available_source_paths=source_paths,
                     available_contract_paths=contract_paths,
-                    available_test_paths=sorted({str(value).replace("\\", "/")
-                                                 for row in all_test_views
-                                                 for value in _list_field(row, "test_refs")
-                                                 if str(value).strip()}),
+                    available_test_paths=available_test_paths,
                 ))
                 if errors:
                     raise ValueError(f"MVG segment {section} identity invalid: {'; '.join(errors)}")
                 return index, parsed, {"section": section, "index": index, "retry": retry, "receipt": receipt}
             except (json.JSONDecodeError, OSError, RuntimeError, TimeoutError, ValueError) as exc:
+                if isinstance(exc, MVGGenerationStoppedError):
+                    raise
                 last_error = str(exc)
                 section_prompt_text += (
                     "\nThe previous response failed deterministic routing/schema validation. "
@@ -2677,10 +2737,7 @@ def invoke_segmented(invoke: Any, run_dir: Path, state: dict[str, Any], attempt:
                 prepared=prepared,
                 available_source_paths=source_paths,
                 available_contract_paths=contract_paths,
-                available_test_paths=sorted({str(value).replace("\\", "/")
-                                             for row in all_test_views
-                                             for value in _list_field(row, "test_refs")
-                                             if str(value).strip()}),
+                available_test_paths=available_test_paths,
                 routing_request=request,
                 flow_context=flow_context,
             )
@@ -3285,13 +3342,23 @@ Frozen manifest scope:
     state.setdefault("admission_events", [])
     atomic_json(run_path, state)
     state_lock = threading.Lock()
+    generation_stop = threading.Event()
+
+    def ensure_generation_active() -> None:
+        if generation_stop.is_set():
+            raise MVGGenerationStoppedError("MVG generation stopped after sibling execution failure")
+
+    def reserve_generation_invocation(candidate_root: Path, label: str, lineage: str) -> int:
+        ensure_generation_active()
+        return reserve_candidate_model_invocation(candidate_root, label, lineage)
 
     def invoke_for(candidate_root: Path, attempt_root: Path, *,
                    candidate_label: str | None = None, lineage: str | None = None):
         def invoke(prompt_text: str, attempt: int, *, output_name: str | None = None,
                    output_schema_path: Path | None = None,
                    output_schema: dict[str, Any] | None = None) -> tuple[Path, dict[str, Any]]:
-            invocation_number = (reserve_candidate_model_invocation(candidate_root, candidate_label, lineage)
+            ensure_generation_active()
+            invocation_number = (reserve_generation_invocation(candidate_root, candidate_label, lineage)
                                  if candidate_label and lineage else None)
             relative_output = Path(output_name or f"proposal-attempt-{attempt}.json")
             prompt_stem = relative_output.with_suffix("").as_posix().replace("/", "-")
@@ -3328,6 +3395,7 @@ Frozen manifest scope:
                     output_path=output, timeout_sec=timeout_sec,
                     output_schema=sandbox_schema_path,
                 )
+                ensure_generation_active()
                 return output, {"attempt": attempt, "invocation": invocation_number, "backend": llm_backend,
                                 "backend_info": backend_info, "runner": runner.as_posix(),
                                 "returncode": 0, "receipt": receipt}
@@ -3336,6 +3404,7 @@ Frozen manifest scope:
                 output_last_message=output, timeout_sec=timeout_sec, codex_configs=[],
                 output_schema=sandbox_schema_path,
             )
+            ensure_generation_active()
             execution: dict[str, Any] = {"attempt": attempt, "invocation": invocation_number, "backend": llm_backend,
                                           "backend_info": backend_info, "command": cmd,
                                           "returncode": rc}
@@ -3546,7 +3615,8 @@ Frozen manifest scope:
                                 proposal = recovered
                                 validation = recovered_validation
                                 if (recovered_validation.get("status") == "passed"
-                                        and recovered_validation.get("formal_applicable") is True):
+                                        and recovered_validation.get("formal_applicable") is True
+                                        and not candidate_admission_errors(root, state, proposal)):
                                     admission_review = load_json(admission_review_path, None) if admission_review_path.is_file() else None
                                     if admission_review is None:
                                         try:
@@ -3556,7 +3626,7 @@ Frozen manifest scope:
                                                 invoke=invoke_for(candidate_root, candidate_root / "model-workspace" / f"attempt-{attempt}",
                                                                   candidate_label=label, lineage=lineage),
                                                 review_key=f"attempt-{attempt}",
-                                                before_invoke=lambda: reserve_candidate_model_invocation(
+                                                before_invoke=lambda: reserve_generation_invocation(
                                                     candidate_root, label, lineage),
                                             )
                                             atomic_json(admission_review_path, admission_review)
@@ -3651,6 +3721,7 @@ Frozen manifest scope:
                 validation = {"status": "blocked", "errors": [str(exc)]}
                 state["phase"] = "generation-execution-blocked"
                 if segmented:
+                    generation_stop.set()
                     admission_execution_error = {
                         "error_type": classify_review_error(exc),
                         "error": _compact_exception_message(exc),
@@ -3668,7 +3739,8 @@ Frozen manifest scope:
                 break
             ready_with_gaps = (validation.get("planning_status") == "ready_for_validation"
                                and validation.get("unresolved_gap_count", 0) > 0)
-            if validation.get("status") == "passed" and not ready_with_gaps and segmented:
+            if (validation.get("status") == "passed" and not ready_with_gaps and segmented
+                    and not candidate_admission_errors(root, state, proposal or {})):
                 if admission_review is None:
                     try:
                         admission_review = run_admission_semantic_gate(
@@ -3677,7 +3749,7 @@ Frozen manifest scope:
                             invoke=invoke_for(candidate_root, attempt_root,
                                               candidate_label=label, lineage=lineage),
                             review_key=f"attempt-{attempt}",
-                            before_invoke=lambda: reserve_candidate_model_invocation(
+                            before_invoke=lambda: reserve_generation_invocation(
                                 candidate_root, label, lineage),
                         )
                         atomic_json(admission_review_path, admission_review)
@@ -3781,6 +3853,7 @@ Frozen manifest scope:
                    "admission_status": admission["status"], "admission_issues": admission_issues,
                    "lineage": lineage}
         if admission_execution_error:
+            generation_stop.set()
             summary.update(status="execution-failed", admission_status="execution-failed",
                            admission_error=admission_execution_error)
         if valid:
@@ -3827,8 +3900,18 @@ Frozen manifest scope:
                 "selected": "candidate-1", "candidate_count": 1,
                 "attempt_count": legacy["summary"]["attempt_count"]}
 
+    def generate_candidate_guarded(label: str) -> dict[str, Any]:
+        try:
+            result = generate_candidate(label)
+        except Exception:
+            generation_stop.set()
+            raise
+        if (result.get("summary") or {}).get("admission_status") == "execution-failed":
+            generation_stop.set()
+        return result
+
     with concurrent.futures.ThreadPoolExecutor(max_workers=len(MVG_CANDIDATE_LABELS)) as executor:
-        futures = [executor.submit(generate_candidate, label) for label in MVG_CANDIDATE_LABELS]
+        futures = [executor.submit(generate_candidate_guarded, label) for label in MVG_CANDIDATE_LABELS]
         results = [future.result() for future in futures]
     execution_failures = [row for row in results
                           if (row.get("summary") or {}).get("admission_status") == "execution-failed"]
@@ -3873,7 +3956,7 @@ Frozen manifest scope:
             })
             with state_lock:
                 atomic_json(run_path, state)
-            replacement_result = generate_candidate(label)
+            replacement_result = generate_candidate_guarded(label)
             results[index] = replacement_result
             changed = True
             if (replacement_result.get("summary") or {}).get("admission_status") == "execution-failed":
