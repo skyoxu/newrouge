@@ -85,6 +85,7 @@ class PlanningMainAuditFixesTests(unittest.TestCase):
         atomic_json(run / "semantic-review.json", review)
         execution = load_json(self.root / "logs/ci/mvg-planning/repair/semantic-review-execution.json")
         execution.update(analysis_identity_sha256=state["analysis_identity_sha256"], proposal_sha256=canonical_sha(proposal))
+        execution["semantic_review_sha256"] = canonical_sha(review)
         atomic_json(run / "semantic-review-execution.json", execution)
         self.assertTrue(mvg.validate(self.root, run_id="with-proof")["formal_applicable"])
         path.write_text("public class OutsideTests { /* changed proof */ }\n", encoding="utf-8")

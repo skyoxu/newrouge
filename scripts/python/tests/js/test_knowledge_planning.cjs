@@ -27,6 +27,7 @@ class Element {
 function harness(fetch) {
   const controls = {};
   const context = {document: {
+    querySelector() { return null; },
     getElementById(id) { return controls[id] ||= new Element(id.includes('select') ? 'select' : 'div'); },
     createElement: tag => new Element(tag), createTextNode: text => ({textContent: text}),
   }, window: {location: {search: '', pathname: '/knowledge/topology'}},

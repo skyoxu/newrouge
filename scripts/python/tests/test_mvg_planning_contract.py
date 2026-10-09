@@ -46,6 +46,43 @@ from _planning_skill_common import atomic_json
 
 class MvgPlanningContractTests(unittest.TestCase):
 
+    def test_segment_schema_is_inside_actual_model_sandbox(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            run_dir = root / "logs/ci/mvg-planning/schema-boundary"
+            (run_dir / "analysis-input").mkdir(parents=True)
+            state = {"run_id": "schema-boundary", "formal_ready": True,
+                     "analysis_identity_sha256": "sha256:fixture", "task_scope": []}
+            boundaries = []
+            schema = {"type": "object", "additionalProperties": False,
+                      "properties": {}, "required": []}
+
+            def segment(invoke, candidate_root, candidate_state, attempt, prompt, workspace, **kwargs):
+                invoke("Fixture section", attempt, output_name="segments/flow.json",
+                       output_schema_path=workspace / "segment-schemas/flow.json",
+                       output_schema=schema)
+
+            def runner(_runner, *, workspace, output_schema, **kwargs):
+                boundaries.append((workspace.resolve(), output_schema.resolve(),
+                                   json.loads(output_schema.read_text(encoding="utf-8"))))
+                raise RuntimeError("Fixture stops before any model invocation")
+
+            with patch.object(plan_mvg, "_load_run", return_value=(run_dir / "run.json", state)), \
+                 patch.object(plan_mvg, "_validate_input_freshness"), \
+                 patch.object(plan_mvg, "inspect_isolated_runner", return_value={}), \
+                 patch.object(plan_mvg, "_task_ids", return_value=set()), \
+                 patch.object(plan_mvg, "_task_view_rows", return_value=[]), \
+                 patch.object(plan_mvg, "invoke_segmented", side_effect=segment), \
+                 patch.object(plan_mvg, "run_isolated_model", side_effect=runner):
+                with self.assertRaisesRegex(ValueError, "runner/input failure"):
+                    plan_mvg.generate(root, run_id="schema-boundary", timeout_sec=1,
+                                      llm_backend="codex-cli")
+            self.assertEqual(3, len(boundaries))
+            for workspace, schema_path, actual in boundaries:
+                self.assertTrue(schema_path.is_relative_to(workspace),
+                                f"Schema {schema_path} escapes model sandbox {workspace}")
+                self.assertEqual(schema, actual)
+
     def test_selection_receipt_requires_bound_runner_and_output_identity(self):
         state = {"analysis_identity_sha256": "sha256:analysis"}
         selection = {"selected": "A", "status": "selected"}

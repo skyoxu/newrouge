@@ -3273,13 +3273,18 @@ Frozen manifest scope:
             output = llm_workspace / relative_output.name
             if output_schema_path is not None and output_schema is not None:
                 atomic_json(output_schema_path, output_schema)
+            sandbox_schema_path = None
+            if output_schema_path is not None:
+                # The runner may only read schemas inside its actual model sandbox.
+                sandbox_schema_path = llm_workspace / "output-schema.json"
+                shutil.copyfile(output_schema_path, sandbox_schema_path)
             if runner is not None:
                 prompt_path = llm_workspace / f"prompt-{attempt}-{prompt_stem}.txt"
                 prompt_path.write_text(prompt_text, encoding="utf-8", newline="\n")
                 receipt = run_isolated_model(
                     runner, workspace=llm_workspace, prompt_path=prompt_path,
                     output_path=output, timeout_sec=timeout_sec,
-                    output_schema=output_schema_path,
+                    output_schema=sandbox_schema_path,
                 )
                 return output, {"attempt": attempt, "invocation": invocation_number, "backend": llm_backend,
                                 "backend_info": backend_info, "runner": runner.as_posix(),
@@ -3287,7 +3292,7 @@ Frozen manifest scope:
             rc, stdout, cmd = run_llm_exec(
                 backend=llm_backend, root=llm_workspace, prompt=prompt_text,
                 output_last_message=output, timeout_sec=timeout_sec, codex_configs=[],
-                output_schema=output_schema_path,
+                output_schema=sandbox_schema_path,
             )
             execution: dict[str, Any] = {"attempt": attempt, "invocation": invocation_number, "backend": llm_backend,
                                           "backend_info": backend_info, "command": cmd,
