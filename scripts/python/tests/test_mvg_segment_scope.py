@@ -18,7 +18,8 @@ from _planning_skill_common import atomic_json, validate_output_schema
 
 
 class MvgSegmentScopeTests(unittest.TestCase):
-    def _dispatch(self, check, repair_issue=None, *, baseline_only_tests=False, missing_test_evidence=False):
+    def _dispatch(self, check, repair_issue=None, *, baseline_only_tests=False, missing_test_evidence=False,
+                  change_flows=False, omit_reviews="never"):
         with tempfile.TemporaryDirectory() as directory:
             run = Path(directory)
             prepared = run / "analysis-input"
@@ -59,6 +60,9 @@ class MvgSegmentScopeTests(unittest.TestCase):
             atomic_json(prepared / "task-views/tasks_back.json", views)
             atomic_json(prepared / "task-views/tasks_gameplay.json", [])
             atomic_json(prepared / "source-manifest.v1.json", {"sources": [{"path": source}]})
+            authority = prepared / "sources/docs/gdd/spec.md"
+            authority.parent.mkdir(parents=True, exist_ok=True)
+            authority.write_text("# Journey\nThe revised journey preserves the delivered behavior.", encoding="utf-8")
             for relative in (source, contract, *(test["path"] for test in tests)):
                 if missing_test_evidence and relative in {test["path"] for test in tests}:
                     continue
@@ -66,6 +70,7 @@ class MvgSegmentScopeTests(unittest.TestCase):
                 target.parent.mkdir(parents=True, exist_ok=True)
                 target.write_text("// Fixture evidence", encoding="utf-8")
             calls = []
+            flow_calls = {}
 
             def model(prompt, attempt, *, output_name, output_schema_path, output_schema):
                 section = output_schema["properties"]["section"]["const"]
@@ -73,9 +78,23 @@ class MvgSegmentScopeTests(unittest.TestCase):
                 envelope = {key: output_schema["properties"][key]["const"] for key in (
                     "schema_version", "analysis_identity_sha256", "section", "scope_id")}
                 if section == "flows":
+                    flow_calls[scope_id] = flow_calls.get(scope_id, 0) + 1
                     flow = next(row for row in flows if row["id"] == scope_id)
                     check(section, flow, prompt, output_schema)
                     envelope["flows"] = [deepcopy(flow)]
+                    if change_flows:
+                        envelope["flows"][0]["outcome"] += " revised"
+                        self.assertIn("change_reviews", output_schema["properties"])
+                        self.assertIn('"incumbent_flow"', prompt)
+                        self.assertIn("The revised journey preserves", prompt)
+                    if "change_reviews" in output_schema["properties"]:
+                        envelope["change_reviews"] = ([{
+                            "id": flow["id"], "reason": "Clarify the same journey outcome.",
+                            "authority_ref": "docs/gdd/spec.md#journey",
+                            "authority_review": {"status": "reviewed", "rationale": "The specification preserves the delivered behavior."},
+                        }] if change_flows else [])
+                        if omit_reviews == "always" or (omit_reviews == "once" and flow_calls[scope_id] == 1):
+                            envelope["change_reviews"] = []
                 elif section == "tests":
                     # A real CLI must choose from the request-local enum, not
                     # from the full manifest. Inspect that exact passed schema.
@@ -105,7 +124,7 @@ class MvgSegmentScopeTests(unittest.TestCase):
                 planning_scope=plan_mvg._manifest_planning_scope(manifest),
             )
             self.assertEqual(2, calls.count("tests"))
-            self.assertEqual(2, calls.count("flows"))
+            self.assertEqual(4 if omit_reviews == "once" else 2, calls.count("flows"))
             if repair_issue:
                 calls.clear()
                 output, _ = plan_mvg.invoke_segmented(
@@ -118,7 +137,93 @@ class MvgSegmentScopeTests(unittest.TestCase):
                 )
                 self.assertEqual(["coverage"], calls,
                                  "Repair must invoke the affected section and reuse unaffected evidence")
-            return json.loads(output.read_text(encoding="utf-8"))
+            proposal = json.loads(output.read_text(encoding="utf-8"))
+            from update_mvg_baseline import apply_delta
+            apply_delta(manifest, plan_mvg.build_delta(manifest, proposal), root=prepared / "sources")
+            return proposal
+
+    def test_frozen_flow_change_reviews_reach_delta_apply(self):
+        proposal = self._dispatch(lambda *args: None, change_flows=True)
+        self.assertEqual(2, len(proposal["change_reviews"]))
+        self.assertTrue(all(flow["outcome"].endswith(" revised")
+                            for flow in proposal["manifest_candidate"]["flows"]))
+
+    def test_missing_change_reviews_retry_only_the_routed_segment(self):
+        proposal = self._dispatch(lambda *args: None, change_flows=True, omit_reviews="once")
+        self.assertEqual(2, len(proposal["change_reviews"]))
+
+    def test_persistent_missing_change_reviews_never_assemble_proposal(self):
+        with self.assertRaisesRegex(ValueError, "segment_flow_change_review_missing"):
+            self._dispatch(lambda *args: None, change_flows=True, omit_reviews="always")
+
+    def test_flow_reviews_survive_unrelated_coverage_repair(self):
+        proposal = self._dispatch(lambda *args: None, change_flows=True,
+                                 repair_issue={"code": "coverage_deferral_unreviewed:FR-1", "path": "proposal"})
+        self.assertEqual(2, len(proposal["change_reviews"]))
+
+    def test_repaired_flow_clears_stale_change_review(self):
+        base = {"manifest_candidate": {"flows": [{"id": "old-flow", "outcome": "old"}]},
+                "change_reviews": [{"id": "old-flow", "authority_ref": "obsolete.md"},
+                                   {"id": "other-flow", "authority_ref": "keep.md"}]}
+        proposal = plan_mvg.merge_planning_segments(base, [
+            {"flows": [{"id": "old-flow", "outcome": "old"}], "change_reviews": []}])
+        self.assertEqual([{"id": "other-flow", "authority_ref": "keep.md"}], proposal["change_reviews"])
+        self.assertEqual(2, len(base["change_reviews"]))
+
+    def test_frozen_flow_review_schema_is_routed_and_prepared(self):
+        def check(section, flow, prompt, schema):
+            if section != "flows":
+                return
+            self.assertIn("change_reviews", schema["required"])
+            review = schema["properties"]["change_reviews"]["items"]
+            self.assertEqual([flow["id"]], review["properties"]["id"]["enum"])
+            self.assertEqual("reviewed", review["properties"]["authority_review"]["properties"]["status"]["const"])
+            pattern = review["properties"]["authority_ref"]["pattern"]
+            self.assertIsNotNone(re.match(pattern, "docs/gdd/spec.md#journey"))
+            self.assertIsNone(re.match(pattern, "docs/gdd/missing.md"))
+            value = {key: schema["properties"][key]["const"] for key in (
+                "schema_version", "analysis_identity_sha256", "section", "scope_id")}
+            value.update(flows=[deepcopy(flow)], change_reviews=[{
+                "id": flow["id"], "reason": "Fixture review.", "authority_ref": "docs/gdd/spec.md",
+                "authority_review": {"status": "unreviewed", "rationale": "Not reviewed."},
+            }])
+            with tempfile.TemporaryDirectory() as directory:
+                output, schema_file = Path(directory) / "output.json", Path(directory) / "schema.json"
+                atomic_json(output, value)
+                atomic_json(schema_file, schema)
+                with self.assertRaisesRegex(ValueError, "does not satisfy JSON schema"):
+                    validate_output_schema(output, schema_file)
+        self._dispatch(check)
+
+    def test_change_review_missing_foreign_and_duplicate_are_rejected(self):
+        baseline = {"id": "old-flow", "outcome": "old", "requirement_ids": ["FR-1"],
+                    "capability_refs": ["CAP-1"], "task_ids": [1], "handoffs": []}
+        request = {"scope_id": "old-flow", "allow_exact_flow_id": True,
+                   "incumbent_flow": baseline, "requirement_ids": ["FR-1"],
+                   "task_ids": [1], "capabilities": [{"capability_id": "CAP-1"}]}
+        value = {"flows": [{**baseline, "outcome": "revised"}], "change_reviews": []}
+        errors = plan_mvg.validate_segment_routing(value, section="flows", request=request)
+        self.assertIn("segment_flow_change_review_missing:old-flow", errors)
+        review = {"id": "foreign-flow", "reason": "Updated", "authority_ref": "docs/gdd/spec.md",
+                  "authority_review": {"status": "reviewed", "rationale": "Specification evidence."}}
+        value["change_reviews"] = [review]
+        self.assertIn("segment_change_review_outside_scope", plan_mvg.validate_segment_routing(
+            value, section="flows", request=request))
+        review["id"] = "old-flow"
+        value["change_reviews"] = [review, deepcopy(review)]
+        self.assertIn("segment_change_review_duplicate", plan_mvg.validate_segment_routing(
+            value, section="flows", request=request))
+        value["change_reviews"] = [review]
+        review["authority_review"]["status"] = "unreviewed"
+        self.assertIn("segment_change_review_invalid", plan_mvg.validate_segment_routing(
+            value, section="flows", request=request))
+
+    def test_change_review_unprepared_authority_is_rejected(self):
+        with tempfile.TemporaryDirectory() as directory:
+            errors = plan_mvg.validate_segment_references(
+                {"flows": [], "change_reviews": [{"id": "old-flow", "authority_ref": "docs/gdd/missing.md"}]},
+                section="flows", prepared=Path(directory), available_source_paths=[], available_contract_paths=[])
+            self.assertIn("segment_change_review_authority_unprepared:old-flow", errors)
 
     def test_coverage_repair_reinvokes_model_with_issue_and_current_rows(self):
         issue = {"code": "coverage_deferral_unreviewed:FR-1", "path": "proposal"}

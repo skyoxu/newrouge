@@ -122,6 +122,8 @@ Candidates are admitted before comparative selection. Each candidate must pass d
 
 Cumulative delta validation runs before independent semantic admission, including when recovering a durable proposal. The admission CLI schema binds accounting echoes to the exact proposal rows; malformed echoes retry only the review, with classified errors persisted in `semantic-review-attempts.json`. A blocked semantic verdict still enters the hard-issue repair queue. Frozen baseline tests that are readable in the prepared bundle are valid evidence even when absent from task-view test refs. When any candidate has a terminal execution failure, sibling candidates stop launching new model calls; already running calls finish and retain evidence, and selection remains blocked.
 
+Frozen flow segments must return `change_reviews` through the CLI-enforced schema. The field is an empty array for unchanged semantic fields; changes to an incumbent flow's outcome, Requirement membership or Capability membership require a source-backed review for that exact flow ID. Generation supplies the incumbent row and bounded prepared specification excerpts. The segment gate rejects missing, duplicate, foreign-flow, unreviewed or unprepared justifications before merge and retries only the affected segment. A repaired flow replaces its earlier justification rather than retaining stale authority. These proposal justifications are not approval: cumulative delta validation and independent semantic admission still decide whether the change is supported; no machine-generated authorization or automatic baseline weakening is permitted.
+
 
 ### Incremental harness regression (T26)
 

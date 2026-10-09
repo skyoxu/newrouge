@@ -350,6 +350,10 @@ def run_admission_semantic_gate(root: Path, state: dict[str, Any], proposal: dic
     prompt = ("You are the independent MVG candidate admission semantic gate. "
               "Review proposal.json against analysis-input and return JSON only. "
               "Block any semantic, ownership, handoff, recovery, or accounting issue. "
+              "For an existing manifest, compare each changed flow with existing-manifest.json and "
+              "verify that its change_reviews authority actually supports the exact semantic change. "
+              "A candidate's authority_review.status=reviewed is a justification claim, not your approval; "
+              "block unsupported baseline rewrites even when the referenced file exists. "
               f"schema_version='newrouge.mvg-semantic-review.v1', analysis_identity_sha256='{state['analysis_identity_sha256']}', "
               f"proposal_sha256='{proposal_sha}'. Return complete requirement_reviews and flow_reviews. "
               "Echo disposition, flow_id, sink_id, verification_ref and authority_ref exactly from "
@@ -1321,7 +1325,8 @@ def segment_output_schema(*, section: str, identity: str, scope_id: str,
                           allowed_flow_ids: list[str] | None = None,
                           allowed_test_ids: list[str] | None = None,
                           allowed_test_paths: list[str] | None = None,
-                          available_reference_paths: list[str] | None = None) -> dict[str, Any]:
+                          available_reference_paths: list[str] | None = None,
+                          allowed_change_ids: list[str] | None = None) -> dict[str, Any]:
     """Build the CLI-enforced envelope for one routed segment request."""
     payload_key = {
         "flows": "flows",
@@ -1425,7 +1430,7 @@ def segment_output_schema(*, section: str, identity: str, scope_id: str,
     if ((section == "tests" and allowed_test_ids == [])
             or (section == "flows" and allowed_test_ids == [])):
         payload_schema["maxItems"] = 0
-    return {
+    schema = {
         "type": "object",
         "required": ["schema_version", "analysis_identity_sha256", "section", "scope_id", payload_key],
         "properties": {
@@ -1437,6 +1442,18 @@ def segment_output_schema(*, section: str, identity: str, scope_id: str,
         },
         "additionalProperties": False,
     }
+    if section == "flows" and allowed_change_ids is not None:
+        schema["required"].append("change_reviews")
+        schema["properties"]["change_reviews"] = array(strict_object({
+            "id": {"type": "string", "enum": allowed_change_ids},
+            "reason": nonempty_string,
+            "authority_ref": reference_path,
+            "authority_review": strict_object({
+                "status": {"type": "string", "const": "reviewed"},
+                "rationale": nonempty_string,
+            }),
+        }))
+    return schema
 
 
 def _segment_allowed_test_ids(request: dict[str, Any],
@@ -1523,6 +1540,12 @@ def validate_segment_references(value: dict[str, Any], *, section: str, prepared
     source_paths = {str(path).replace("\\", "/") for path in available_source_paths}
     contract_paths = {str(path).replace("\\", "/") for path in available_contract_paths}
     test_paths = {str(path).replace("\\", "/") for path in (available_test_paths or [])}
+    for review in value.get("change_reviews", []) if isinstance(value.get("change_reviews"), list) else []:
+        if not isinstance(review, dict):
+            continue
+        authority = str(review.get("authority_ref") or "").split("#", 1)[0].replace("\\", "/")
+        if not authority or _prepared_reference(prepared, authority) is None:
+            errors.append(f"segment_change_review_authority_unprepared:{review.get('id', '')}")
     rows = value.get({"flows": "flows", "coverage": "coverage_table",
                       "entrypoints": "entrypoints", "tests": "tests"}.get(section, ""), [])
     if not isinstance(rows, list):
@@ -1606,11 +1629,38 @@ def validate_segment_routing(value: dict[str, Any], *, section: str,
     known_flow_ids = {str(row.get("id")) for row in (flow_context or [])
                       if isinstance(row, dict) and str(row.get("id") or "").strip()}
 
+    incumbent = request.get("incumbent_flow")
+    reviews = value.get("change_reviews", [])
+    if incumbent is not None and not isinstance(value.get("change_reviews"), list):
+        errors.append("segment_change_reviews_missing")
+    review_ids: set[str] = set()
+    for review in reviews if isinstance(reviews, list) else []:
+        if not isinstance(review, dict):
+            errors.append("segment_change_review_invalid")
+            continue
+        review_id = str(review.get("id") or "")
+        if section != "flows" or not isinstance(incumbent, dict) or review_id != str(incumbent.get("id")):
+            errors.append("segment_change_review_outside_scope")
+        if review_id in review_ids:
+            errors.append("segment_change_review_duplicate")
+        review_ids.add(review_id)
+        authority_review = review.get("authority_review")
+        if (not str(review.get("reason") or "").strip()
+                or not str(review.get("authority_ref") or "").strip()
+                or not isinstance(authority_review, dict)
+                or authority_review.get("status") != "reviewed"
+                or not str(authority_review.get("rationale") or "").strip()):
+            errors.append("segment_change_review_invalid")
+
     for row in rows:
         if not isinstance(row, dict):
             continue
         if section == "flows":
             flow_id = str(row.get("id") or "")
+            if isinstance(incumbent, dict) and any(
+                    key in incumbent and incumbent.get(key) != row.get(key)
+                    for key in ("outcome", "requirement_ids", "capability_refs")) and flow_id not in review_ids:
+                errors.append(f"segment_flow_change_review_missing:{flow_id}")
             # Cumulative manifests freeze their existing flow IDs.  A frozen
             # request must return the exact incumbent ID; accepting a suffixed
             # variant would create a second route that cannot be merged safely.
@@ -2102,6 +2152,13 @@ def merge_planning_segments(base: dict[str, Any], segments: list[dict[str, Any]]
     flows = manifest.setdefault("flows", [])
     flow_map = {str(row.get("id")): row for row in flows if isinstance(row, dict)}
     for segment in segments:
+        if "change_reviews" in segment:
+            # Replace reviews for this flow segment so repaired rows cannot
+            # retain a stale justification from an earlier proposal attempt.
+            replaced_ids = {str(row.get("id")) for row in segment.get("flows", []) if isinstance(row, dict)}
+            result["change_reviews"] = [row for row in result.get("change_reviews", [])
+                                        if str(row.get("id")) not in replaced_ids]
+            result["change_reviews"].extend(json.loads(json.dumps(segment["change_reviews"])))
         for row in segment.get("flows", []) or []:
             if not isinstance(row, dict) or not str(row.get("id") or "").strip():
                 continue
@@ -2465,6 +2522,8 @@ def invoke_segmented(invoke: Any, run_dir: Path, state: dict[str, Any], attempt:
                                     if str(value).strip()})
         for row in frozen_manifest.get("flows", []) if isinstance(row, dict)
     }
+    frozen_flows_by_id = {str(row.get("id")): row for row in frozen_manifest.get("flows", [])
+                          if isinstance(row, dict)}
     requests: list[dict[str, Any]] = []
     for scope in flow_scopes:
         requests.append({"section": "flows", "scope_id": scope["scope_id"],
@@ -2475,7 +2534,9 @@ def invoke_segmented(invoke: Any, run_dir: Path, state: dict[str, Any], attempt:
                          "allow_exact_flow_id": planning_scope is not None,
                          "test_ids": sorted(
                              frozen_tests_by_flow.get(scope["scope_id"], [])
-                         ) if planning_scope else []})
+                         ) if planning_scope else [],
+                         **({"incumbent_flow": frozen_flows_by_id[scope["scope_id"]]}
+                            if planning_scope is not None and scope["scope_id"] in frozen_flows_by_id else {})})
 
     # Flow coverage is accounted for in small Requirement batches after all
     # flow IDs are known. A batch contains only its own Requirement statements.
@@ -2611,6 +2672,26 @@ def invoke_segmented(invoke: Any, run_dir: Path, state: dict[str, Any], attempt:
                 "available_contract_paths": _contract_candidates(scoped_refs, contract_paths),
                 "declared_contract_refs": sorted(scoped_refs),
             }, ensure_ascii=False)
+            if request.get("incumbent_flow") is not None:
+                authority_paths = [path for path in prepared_reference_paths
+                                   if Path(path).suffix.lower() in (".md", ".txt")]
+                excerpt_limit = min(6000, 24000 // max(1, len(authority_paths)))
+                section_prompt_text += "\nCumulative change authority context:\n" + json.dumps({
+                    "incumbent_flow": request["incumbent_flow"],
+                    "available_reference_paths": prepared_reference_paths,
+                    "authority_evidence": [{"path": path, "sha256": file_sha(_prepared_reference(prepared, path)),
+                                            "excerpt": _review_excerpt(_prepared_reference(prepared, path), excerpt_limit)[0]}
+                                           for path in authority_paths],
+                }, ensure_ascii=False)
+                section_prompt_text += (
+                    "\nReturn change_reviews alongside flows. Return [] when outcome, requirement_ids and "
+                    "capability_refs are unchanged. Any change to these fields requires a review row for this "
+                    "exact incumbent flow id, with reason, a prepared specification authority_ref (optional "
+                    "anchor), and authority_review={status:reviewed,rationale:<specific source-backed reason>}. "
+                    "Preserve outcome wording when behavior is unchanged. Do not invent authorization; if "
+                    "the prepared specification does not support a change, preserve the incumbent semantic "
+                    "fields. This proposal justification is still subject to independent semantic admission."
+                )
         elif section == "coverage":
             section_prompt_text += "\nInline bounded evidence context:\n" + json.dumps({
                 "requirements": request["requirements"],
@@ -2686,7 +2767,11 @@ def invoke_segmented(invoke: Any, run_dir: Path, state: dict[str, Any], attempt:
                                                   if planning_scope is not None and section == "tests" else None
                                               ),
                                               available_reference_paths=(
-                                                  prepared_reference_paths if section == "coverage" else None
+                                                  prepared_reference_paths if section == "coverage" or request.get("incumbent_flow") is not None else None
+                                              ),
+                                              allowed_change_ids=(
+                                                  [str(request["incumbent_flow"]["id"])]
+                                                  if request.get("incumbent_flow") is not None else None
                                               ),
                                           ))
                 parsed = json.loads(output.read_text(encoding="utf-8"))
