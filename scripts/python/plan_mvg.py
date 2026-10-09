@@ -3260,16 +3260,19 @@ Frozen manifest scope:
             # layout, with the candidate and section identities made explicit.
             llm_workspace = attempt_root / "llm-sandbox" / f"attempt-{attempt}" / prompt_stem
             llm_workspace.mkdir(parents=True, exist_ok=True)
-            admission_proposal = candidate_root / "admission-review" / "proposal.json"
-            if not admission_proposal.is_file():
-                admission_proposal = candidate_root / "proposal.json"
-            if admission_proposal.is_file():
-                shutil.copyfile(admission_proposal, llm_workspace / "proposal.json")
-            admission_input = candidate_root / "admission-review" / "analysis-input"
-            if not admission_input.is_dir():
-                admission_input = candidate_root / "analysis-input"
-            if admission_input.is_dir():
-                shutil.copytree(admission_input, llm_workspace / "analysis-input", dirs_exist_ok=True)
+            # Segmented requests already contain their scoped evidence inline.
+            # Copying the complete bundle defeats the section's input boundary.
+            if relative_output.parts[0] != "segments":
+                admission_proposal = candidate_root / "admission-review" / "proposal.json"
+                if not admission_proposal.is_file():
+                    admission_proposal = candidate_root / "proposal.json"
+                if admission_proposal.is_file():
+                    shutil.copyfile(admission_proposal, llm_workspace / "proposal.json")
+                admission_input = candidate_root / "admission-review" / "analysis-input"
+                if not admission_input.is_dir():
+                    admission_input = candidate_root / "analysis-input"
+                if admission_input.is_dir():
+                    shutil.copytree(admission_input, llm_workspace / "analysis-input", dirs_exist_ok=True)
             output = llm_workspace / relative_output.name
             if output_schema_path is not None and output_schema is not None:
                 atomic_json(output_schema_path, output_schema)

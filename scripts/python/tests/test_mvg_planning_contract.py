@@ -51,6 +51,8 @@ class MvgPlanningContractTests(unittest.TestCase):
             root = Path(temp)
             run_dir = root / "logs/ci/mvg-planning/schema-boundary"
             (run_dir / "analysis-input").mkdir(parents=True)
+            atomic_json(run_dir / "analysis-input" / "large-auxiliary.json",
+                        {"unrelated": "x" * 1100000})
             state = {"run_id": "schema-boundary", "formal_ready": True,
                      "analysis_identity_sha256": "sha256:fixture", "task_scope": []}
             boundaries = []
@@ -65,6 +67,8 @@ class MvgPlanningContractTests(unittest.TestCase):
             def runner(_runner, *, workspace, output_schema, **kwargs):
                 boundaries.append((workspace.resolve(), output_schema.resolve(),
                                    json.loads(output_schema.read_text(encoding="utf-8"))))
+                self.assertFalse((workspace / "analysis-input").exists(),
+                                 "Inline segment context must not include the full prepared bundle")
                 raise RuntimeError("Fixture stops before any model invocation")
 
             with patch.object(plan_mvg, "_load_run", return_value=(run_dir / "run.json", state)), \
