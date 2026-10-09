@@ -387,6 +387,28 @@ class MvgPlanningContractTests(unittest.TestCase):
             with self.assertRaisesRegex(plan_mvg.MVGCandidateInvocationBudgetError, "64 model invocations"):
                 reserve_candidate_model_invocation(root, "candidate-1", "candidate-1-r1")
 
+    def test_candidate_repair_overflow_precedes_lineage_stop_loss(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            for _ in range(plan_mvg.MVG_CANDIDATE_INVOCATION_LIMIT):
+                reserve_candidate_model_invocation(root, "candidate-1", "candidate-1-r1")
+            self.assertEqual(
+                plan_mvg.MVG_CANDIDATE_INVOCATION_LIMIT + 1,
+                reserve_candidate_model_invocation(
+                    root, "candidate-1", "candidate-1-r1", allow_repair_overflow=True),
+            )
+
+    def test_candidate_has_unfinished_repair_stops_at_three_attempts(self):
+        issue = {"code": "semantic_review_not_approved", "path": "semantic-review"}
+        issue_id = admission_issue_id(issue["code"], issue["path"])
+        state = {"candidate_admissions": {"candidate-1": {
+            "status": "repairing", "issues": [issue], "current_issue": issue,
+            "issue_attempts": {issue_id: 2},
+        }}}
+        self.assertTrue(plan_mvg.candidate_has_unfinished_repair(state, "candidate-1"))
+        state["candidate_admissions"]["candidate-1"]["issue_attempts"][issue_id] = 3
+        self.assertFalse(plan_mvg.candidate_has_unfinished_repair(state, "candidate-1"))
+
     def test_candidate_invocation_reservations_are_atomic_under_segment_concurrency(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
@@ -971,6 +993,47 @@ class MvgPlanningContractTests(unittest.TestCase):
                 {"capabilities": [{"capability_id": "CAP-A", "requirement_ids": ["RQ-1"]}]}, [])
         self.assertEqual([], errors)
 
+    def test_coverage_rejects_duplicate_requirement_ownership_and_rows(self):
+        from _mvg_planning_review import coverage_errors
+        first = {"id": "flow-a", "requirement_ids": ["RQ-1"],
+                 "capability_refs": ["CAP-A"], "task_ids": [7], "handoffs": []}
+        second = {"id": "flow-b", "requirement_ids": ["RQ-1"],
+                  "capability_refs": ["CAP-A"], "task_ids": [7], "handoffs": []}
+        coverage = {"requirement_id": "RQ-1", "disposition": "flow", "flow_id": "flow-a",
+                    "capability_ref": "CAP-A", "task_id": 7, "rationale": "Covered."}
+        proposal = {"manifest_candidate": {"flows": [first, second]},
+                    "coverage_table": [coverage, dict(coverage)], "entrypoints": []}
+        with tempfile.TemporaryDirectory() as folder:
+            errors = coverage_errors(
+                Path(folder), proposal,
+                {"requirements": [{"requirement_id": "RQ-1"}]},
+                {"capabilities": [{"capability_id": "CAP-A", "requirement_ids": ["RQ-1"]}]},
+                [],
+            )
+        self.assertIn("flow_requirement_multiple_routes:RQ-1", errors)
+        self.assertIn("coverage_requirement_duplicate:RQ-1", errors)
+
+    def test_candidate_repair_routes_to_affected_requirement_and_flow_sections(self):
+        requests = [
+            {"section": "flows", "scope_id": "flow-a", "requirement_ids": ["RQ-1"]},
+            {"section": "flows", "scope_id": "flow-b", "requirement_ids": ["RQ-2"]},
+            {"section": "coverage", "requirement_ids": ["RQ-1", "RQ-2"]},
+            {"section": "coverage", "requirement_ids": ["RQ-3"]},
+            {"section": "entrypoints", "flow_scope_ids": ["flow-a"]},
+            {"section": "tests", "flow_scope_ids": ["flow-a"]},
+            {"section": "tests", "flow_scope_ids": ["flow-b"]},
+        ]
+        proposal = {"manifest_candidate": {"flows": [
+            {"id": "flow-a", "requirement_ids": ["RQ-1"]},
+            {"id": "flow-b", "requirement_ids": ["RQ-2"]},
+        ]}}
+        indexes = plan_mvg.route_candidate_repair_requests(
+            requests, {"code": "semantic_review_blocked:requirement_reviews:RQ-1"}, proposal)
+        self.assertEqual({1, 3, 5, 6}, indexes)
+        flow_indexes = plan_mvg.route_candidate_repair_requests(
+            requests, {"code": "semantic_review_blocked:flow_reviews:flow-b"}, proposal)
+        self.assertEqual({2, 7}, flow_indexes)
+
     def test_entrypoint_prompt_is_driven_by_flow_boundaries_not_task_count(self):
         prompt = segment_prompt(section="entrypoints", identity="sha256:x",
             requirements=[], task_ids=[44, 103], flow_context=[])
@@ -1118,6 +1181,36 @@ class MvgPlanningContractTests(unittest.TestCase):
         self.assertEqual(baseline["flows"], result["manifest_candidate"]["flows"])
         self.assertEqual(baseline["tests"], result["manifest_candidate"]["tests"])
         self.assertEqual(baseline["tests"], result["tests"])
+
+    def test_frozen_manifest_keeps_requirement_ownership_without_review(self):
+        baseline = {"flows": [{"id": "flow-a", "requirement_ids": ["RQ-1"],
+                               "capability_refs": ["CAP-A"], "task_ids": [7]}], "tests": []}
+        scope = {"flow_ids": ["flow-a"], "test_ids": []}
+        proposal = {"manifest_candidate": {"flows": [{
+            "id": "flow-a", "requirement_ids": ["RQ-1", "RQ-2"],
+            "capability_refs": ["CAP-A", "CAP-B"], "task_ids": [7],
+        }], "tests": []}, "change_reviews": []}
+        result = preserve_frozen_manifest_baseline(proposal, baseline, scope)
+        flow = result["manifest_candidate"]["flows"][0]
+        self.assertEqual(["RQ-1"], flow["requirement_ids"])
+        self.assertEqual(["CAP-A"], flow["capability_refs"])
+
+    def test_frozen_manifest_allows_explicitly_reviewed_requirement_ownership_change(self):
+        baseline = {"flows": [{"id": "flow-a", "requirement_ids": ["RQ-1"],
+                               "capability_refs": ["CAP-A"], "task_ids": [7]}], "tests": []}
+        scope = {"flow_ids": ["flow-a"], "test_ids": []}
+        proposal = {"manifest_candidate": {"flows": [{
+            "id": "flow-a", "requirement_ids": ["RQ-1", "RQ-2"],
+            "capability_refs": ["CAP-A", "CAP-B"], "task_ids": [7],
+        }], "tests": []}, "change_reviews": [{
+            "id": "flow-a", "reason": "Prepared specification changes the route ownership.",
+            "authority_ref": "docs/gdd/spec.md#route",
+            "authority_review": {"status": "reviewed", "rationale": "Source-backed review."},
+        }]}
+        result = preserve_frozen_manifest_baseline(proposal, baseline, scope)
+        flow = result["manifest_candidate"]["flows"][0]
+        self.assertEqual(["RQ-1", "RQ-2"], flow["requirement_ids"])
+        self.assertEqual(["CAP-A", "CAP-B"], flow["capability_refs"])
 
     def test_mvg_selection_cannot_choose_blocked_candidate(self):
         result = {

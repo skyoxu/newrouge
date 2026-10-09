@@ -262,6 +262,23 @@ class MvgSegmentScopeTests(unittest.TestCase):
         self.assertIn("segment_change_review_invalid", plan_mvg.validate_segment_routing(
             value, section="flows", request=request))
 
+    def test_flow_segment_rejects_duplicate_requirement_routes(self):
+        flow = lambda flow_id: {
+            "id": flow_id, "outcome": flow_id, "requirement_ids": ["FR-1"],
+            "capability_refs": ["CAP-1"], "task_ids": [1],
+            "source_paths": ["Game.Godot/Scripts/Main.gd"],
+            "handoffs": [{"producer_task": 1, "consumer_task": 1, "owner_task": 1,
+                          "contract_ref": "Game.Core/Contracts/Run/RunTransition.cs",
+                          "behavior": "Route the request.", "test_ids": ["test-a"]}],
+            "test_ids": ["test-a"],
+        }
+        value = {"flows": [flow("scope-a-first"), flow("scope-a-second")], "change_reviews": []}
+        errors = plan_mvg.validate_segment_routing(value, section="flows", request={
+            "scope_id": "scope-a", "requirement_ids": ["FR-1"], "task_ids": [1],
+            "capabilities": [{"capability_id": "CAP-1"}],
+        })
+        self.assertIn("segment_flow_requirement_multiple_routes:FR-1", errors)
+
     def test_flow_metadata_presence_and_value_change_matrix(self):
         absent = object()
         for key, old_id, new_id in (("requirement_ids", "FR-1", "FR-2"),

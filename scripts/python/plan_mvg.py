@@ -80,9 +80,99 @@ def segment_route_validation_issues(error: BaseException | str) -> list[dict[str
     return issues
 
 
+def _flow_request_ids(request: dict[str, Any]) -> set[str]:
+    if request.get("section") == "flows":
+        return {str(request.get("scope_id") or "")}
+    return {str(value) for value in request.get("flow_scope_ids", []) if str(value).strip()}
+
+
+def route_candidate_repair_requests(requests: list[dict[str, Any]], issue: dict[str, Any],
+                                    proposal: dict[str, Any] | None) -> set[int]:
+    """Select only proposal sections that can repair one identified hard issue."""
+    code = str(issue.get("code") or "")
+    if not code:
+        return set(range(1, len(requests) + 1))
+
+    requirement_id = ""
+    flow_id = ""
+    if code.startswith("semantic_review_blocked:requirement_reviews:"):
+        requirement_id = code.rsplit(":", 1)[-1]
+    elif code.startswith("semantic_review_blocked:flow_reviews:"):
+        flow_id = code.rsplit(":", 1)[-1]
+    elif code.startswith(("coverage_", "semantic_review_accounting_")):
+        requirement_id = code.rsplit(":", 1)[-1]
+    elif code.startswith("segment_flow_change_review_missing:"):
+        flow_id = code.split(":", 1)[1]
+    elif code.startswith("segment_flow_requirement_multiple_routes:"):
+        requirement_id = code.rsplit(":", 1)[-1]
+    elif "flow" in code and ":" in code:
+        suffix = code.rsplit(":", 1)[-1]
+        known_flows = {
+            str(row.get("id"))
+            for row in ((proposal or {}).get("manifest_candidate") or {}).get("flows", [])
+            if isinstance(row, dict)
+        }
+        if suffix in known_flows:
+            flow_id = suffix
+    if not requirement_id and not flow_id:
+        return set(range(1, len(requests) + 1))
+
+    flows = [row for row in (((proposal or {}).get("manifest_candidate") or {}).get("flows", []))
+             if isinstance(row, dict)]
+    flow_ids: set[str] = set()
+    if requirement_id:
+        matching = [row for row in flows if requirement_id in {
+            str(value) for value in row.get("requirement_ids", [])
+        }]
+        if len(matching) == 1:
+            flow_id = str(matching[0].get("id") or "")
+        elif len(matching) > 1 and not flow_id:
+            flow_ids = {str(row.get("id") or "") for row in matching}
+        else:
+            flow_ids = set()
+    else:
+        flow_ids = set()
+    if flow_id:
+        flow_ids.add(flow_id)
+
+    routed: set[int] = set()
+    for index, request in enumerate(requests, start=1):
+        section = str(request.get("section") or "")
+        request_requirements = {str(value) for value in request.get("requirement_ids", [])}
+        request_flows = _flow_request_ids(request)
+        if requirement_id and section == "coverage" and requirement_id in request_requirements:
+            routed.add(index)
+        if flow_ids and request_flows.intersection(flow_ids):
+            if section in {"flows", "entrypoints", "tests"}:
+                routed.add(index)
+            elif section == "coverage" and requirement_id:
+                if requirement_id in request_requirements:
+                    routed.add(index)
+    return routed or set(range(1, len(requests) + 1))
+
+
 def admission_issue_id(code: str, path: str = "") -> str:
     """Return a stable identity for one ordered candidate hard issue."""
     return f"{str(code).strip()}@{str(path).strip()}"
+
+
+def candidate_has_unfinished_repair(state: dict[str, Any], candidate: str) -> bool:
+    """Return whether a candidate has a current hard issue below its repair cap."""
+    admissions = state.get("candidate_admissions")
+    admission = admissions.get(candidate) if isinstance(admissions, dict) else None
+    if not isinstance(admission, dict) or admission.get("status") in {"retired", "admitted", "execution-failed"}:
+        return False
+    issues = admission.get("issues") if isinstance(admission.get("issues"), list) else []
+    current = admission.get("current_issue") if isinstance(admission.get("current_issue"), dict) else None
+    if current is None and issues and isinstance(issues[0], dict):
+        current = issues[0]
+    if not current:
+        return False
+    issue_id = admission_issue_id(str(current.get("code") or "issue"),
+                                  str(current.get("path") or ""))
+    attempts = admission.get("issue_attempts")
+    used = int(attempts.get(issue_id, 0) or 0) if isinstance(attempts, dict) else 0
+    return used < MVG_REPAIR_ATTEMPT_LIMIT
 
 
 def admission_repair_prompt(base_prompt: str, strict_contract: str,
@@ -319,6 +409,12 @@ def candidate_admission_errors(root: Path, state: dict[str, Any],
             errors = []
         else:
             errors = semantic_review_errors(state, proposal, semantic_review, semantics, allowed)
+        specific_blockers = [error for error in errors
+                             if str(error).startswith("semantic_review_blocked:")]
+        if specific_blockers:
+            # The aggregate verdict is a consequence of these identified rows,
+            # not a second issue that would trigger a broad whole-proposal retry.
+            errors = [error for error in errors if error != "semantic_review_not_approved"]
         finding_detail = "; ".join(
             str(value).strip() for value in (semantic_review.get("findings") or [])
             if isinstance(value, str) and value.strip()
@@ -932,20 +1028,23 @@ def _candidate_invocation_lock(path: Path) -> threading.Lock:
         return _candidate_invocation_locks.setdefault(key, threading.Lock())
 
 
-def reserve_candidate_model_invocation(candidate_root: Path, candidate: str, lineage: str) -> int:
-    """Durably reserve one model call against the candidate-lineage stop-loss."""
+def reserve_candidate_model_invocation(candidate_root: Path, candidate: str, lineage: str,
+                                       *, allow_repair_overflow: bool = False) -> int:
+    """Reserve one model call; a queued hard issue may finish its repair budget first."""
     path = candidate_root / "lineage-execution.json"
     with _candidate_invocation_lock(path):
         current = load_json(path, {})
         if current and (current.get("candidate") != candidate or current.get("lineage") != lineage):
             raise ValueError("candidate lineage execution identity changed")
         count = int(current.get("model_invocation_count", 0) or 0)
-        if count >= MVG_CANDIDATE_INVOCATION_LIMIT:
+        if count >= MVG_CANDIDATE_INVOCATION_LIMIT and not allow_repair_overflow:
             raise MVGCandidateInvocationBudgetError(
                 f"candidate lineage reached {MVG_CANDIDATE_INVOCATION_LIMIT} model invocations")
         count += 1
         atomic_json(path, {"candidate": candidate, "lineage": lineage,
-                           "model_invocation_count": count})
+                           "model_invocation_count": count,
+                           "repair_overflow_used": bool(allow_repair_overflow and
+                                                         count > MVG_CANDIDATE_INVOCATION_LIMIT)})
         return count
 
 
@@ -1676,6 +1775,18 @@ def validate_segment_routing(value: dict[str, Any], *, section: str,
                 or not str(authority_review.get("rationale") or "").strip()):
             errors.append("segment_change_review_invalid")
 
+    if section == "flows":
+        requirement_owners: dict[str, set[str]] = {}
+        for flow in rows:
+            if not isinstance(flow, dict):
+                continue
+            flow_id = str(flow.get("id") or "")
+            for requirement_id in flow.get("requirement_ids", []):
+                requirement_owners.setdefault(str(requirement_id), set()).add(flow_id)
+        for requirement_id, owners in requirement_owners.items():
+            if len(owners) > 1:
+                errors.append(f"segment_flow_requirement_multiple_routes:{requirement_id}")
+
     for row in rows:
         if not isinstance(row, dict):
             continue
@@ -2253,6 +2364,17 @@ def preserve_frozen_manifest_baseline(proposal: dict[str, Any],
     }
     allowed_flow_ids = [str(value) for value in planning_scope.get("flow_ids", [])]
     allowed_test_ids = set(str(value) for value in planning_scope.get("test_ids", []))
+    reviewed_changes = {
+        str(row.get("id"))
+        for row in proposal.get("change_reviews", [])
+        if isinstance(row, dict)
+        and str(row.get("id") or "").strip()
+        and str(row.get("reason") or "").strip()
+        and str(row.get("authority_ref") or "").strip()
+        and isinstance(row.get("authority_review"), dict)
+        and row["authority_review"].get("status") == "reviewed"
+        and str(row["authority_review"].get("rationale") or "").strip()
+    }
     if allowed_flow_ids:
         preserved_flows = []
         candidate_flows = {
@@ -2271,6 +2393,10 @@ def preserve_frozen_manifest_baseline(proposal: dict[str, Any],
             for key in ("id", "task_ids", "source_paths", "handoffs", "test_ids"):
                 if key in baseline_flow:
                     merged[key] = json.loads(json.dumps(baseline_flow[key]))
+            if flow_id not in reviewed_changes:
+                for key in ("requirement_ids", "capability_refs"):
+                    if key in baseline_flow:
+                        merged[key] = json.loads(json.dumps(baseline_flow[key]))
             preserved_flows.append(merged)
         manifest["flows"] = preserved_flows
         coverage = manifest.setdefault("coverage", {})
@@ -2476,7 +2602,12 @@ def invoke_segmented(invoke: Any, run_dir: Path, state: dict[str, Any], attempt:
             requirements = [row for scope in selected for row in scope.get("requirements", [])]
             requirement_ids = list(dict.fromkeys(row.get("requirement_id") for row in requirements))
             if not requirement_ids:
-                requirement_ids = sorted(requirement_set or allowed_requirement_ids or set())
+                # A legacy incumbent without explicit Requirement metadata must
+                # never widen every flow to the complete run scope.  Keep only
+                # the incumbent's own declared membership; when it is absent,
+                # leave the request empty so the candidate is rejected as an
+                # evidence gap instead of manufacturing duplicate ownership.
+                requirement_ids = sorted(requirement_set)
             remapped.append({
                 "scope_id": flow_id,
                 "requirements": requirements,
@@ -2619,9 +2750,12 @@ def invoke_segmented(invoke: Any, run_dir: Path, state: dict[str, Any], attempt:
     coverage_only = bool(repair_issue and repair_code.startswith("coverage_"))
     repair_requirement = (repair_code.split(":", 2)[1]
                          if coverage_only and repair_code.count(":") >= 1 else "")
+    repair_request_indexes = route_candidate_repair_requests(requests, repair_issue or {}, base_proposal)
 
-    def needs_repair(request: dict[str, Any]) -> bool:
+    def needs_repair(index: int, request: dict[str, Any]) -> bool:
         if not repair_issue:
+            return False
+        if index not in repair_request_indexes:
             return False
         if repair_code.startswith("segment_flow_change_review_missing:"):
             flow_id = repair_code.split(":", 1)[1].strip()
@@ -2742,7 +2876,7 @@ def invoke_segmented(invoke: Any, run_dir: Path, state: dict[str, Any], attempt:
                                if int(row.get("taskmaster_id", -1)) in set(scoped_tasks)],
                 "available_test_paths": available_test_paths,
             }, ensure_ascii=False)
-        if needs_repair(request):
+        if needs_repair(index, request):
             payload_key = {"flows": "flows", "coverage": "coverage_table",
                            "entrypoints": "entrypoints", "tests": "tests"}[section]
             prior = base_proposal or {}
@@ -2845,7 +2979,7 @@ def invoke_segmented(invoke: Any, run_dir: Path, state: dict[str, Any], attempt:
         reusable: list[tuple[int, dict[str, Any], dict[str, Any]]] = []
         pending: list[tuple[int, dict[str, Any]]] = []
         for index, request in batch:
-            cached = None if needs_repair(request) else load_reusable_segment(
+            cached = None if needs_repair(index, request) else load_reusable_segment(
                 run_dir,
                 current_attempt=attempt,
                 index=index,
@@ -3468,7 +3602,10 @@ Frozen manifest scope:
 
     def reserve_generation_invocation(candidate_root: Path, label: str, lineage: str) -> int:
         ensure_generation_active()
-        return reserve_candidate_model_invocation(candidate_root, label, lineage)
+        return reserve_candidate_model_invocation(
+            candidate_root, label, lineage,
+            allow_repair_overflow=candidate_has_unfinished_repair(state, label),
+        )
 
     def invoke_for(candidate_root: Path, attempt_root: Path, *,
                    candidate_label: str | None = None, lineage: str | None = None):

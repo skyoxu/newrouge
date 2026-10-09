@@ -128,6 +128,8 @@ Frozen flow segments must return `change_reviews` through the CLI-enforced schem
 
 Adding or removing `requirement_ids` or `capability_refs` on an incumbent flow is a change even when the added or removed value is an empty array; unchanged fields require identical presence and value.
 
+Admission repair is locally routed when a hard issue names a Requirement or flow. Existing cumulative flow Requirement/Capability ownership remains frozen unless that exact flow has an explicit reviewed change record. The deterministic coverage gate rejects a Requirement claimed by multiple flows or repeated coverage rows; the segment gate catches duplicate Requirement routes before merging. A requirement-scoped repair reruns its coverage segment and only its dependent flow/entrypoint/test segments, while a flow-scoped repair reruns that flow and its dependent entrypoint/test segments. Aggregate semantic rejection is not queued as a second issue when the reviewer identifies blocked Requirement/flow rows; those concrete rows drive repair routing.
+
 
 ### Incremental harness regression (T26)
 

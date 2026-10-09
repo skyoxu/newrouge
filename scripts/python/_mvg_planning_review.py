@@ -76,17 +76,35 @@ def coverage_errors(root: Path, proposal: dict[str, Any], semantics: dict[str, A
         if row.get("taskmaster_id") is not None:
             task_members.setdefault(int(row["taskmaster_id"]), set()).update(map(str,
                 row.get("semantic_refs", row.get("requirement_ids", []))))
-    flows = {str(f["id"]): f for f in proposal["manifest_candidate"].get("flows", []) if isinstance(f, dict)}
+    flow_rows = [f for f in proposal["manifest_candidate"].get("flows", []) if isinstance(f, dict)]
+    flows = {str(f["id"]): f for f in flow_rows}
     rows = proposal.get("coverage_table")
     errors = []
     if not isinstance(rows, list) or not rows:
         return ["coverage_table_missing_or_empty"]
     accounted = set()
+    coverage_row_counts: dict[str, int] = {}
+    requirement_flow_owners: dict[str, set[str]] = {}
+    for flow in flow_rows:
+        flow_id = str(flow.get("id") or "")
+        seen_in_flow: set[str] = set()
+        for value in flow.get("requirement_ids", []):
+            rid = str(value)
+            if rid in seen_in_flow:
+                errors.append(f"flow_requirement_duplicate:{flow_id}:{rid}")
+            seen_in_flow.add(rid)
+            requirement_flow_owners.setdefault(rid, set()).add(flow_id)
+    errors.extend(
+        f"flow_requirement_multiple_routes:{rid}"
+        for rid, owners in sorted(requirement_flow_owners.items())
+        if len(owners) > 1
+    )
     for row in rows:
         if not isinstance(row, dict):
             errors.append("invalid_coverage_row")
             continue
         rid = str(row.get("requirement_id") or "")
+        coverage_row_counts[rid] = coverage_row_counts.get(rid, 0) + 1
         if rid not in requirements:
             errors.append(f"coverage_unknown_requirement:{rid}")
             continue
@@ -128,6 +146,11 @@ def coverage_errors(root: Path, proposal: dict[str, Any], semantics: dict[str, A
         else:
             errors.append(f"coverage_disposition_invalid:{rid}")
         accounted.add(rid)
+    errors.extend(
+        f"coverage_requirement_duplicate:{rid}"
+        for rid, count in sorted(coverage_row_counts.items())
+        if count > 1
+    )
     errors.extend(f"coverage_requirement_missing:{rid}" for rid in sorted(set(requirements) - accounted))
     entries = proposal.get("entrypoints")
     incumbent_projection = any("incumbent" in str(note).lower()
