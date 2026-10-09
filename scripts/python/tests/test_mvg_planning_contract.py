@@ -29,6 +29,7 @@ from plan_mvg import (
     normalize_proposal_format,
     backfill_review_error_types,
     mvg_selection_output_schema, validate_mvg_selection,
+    validate_selection_execution_receipt,
     MVG_REPAIR_ATTEMPT_LIMIT, admission_issue_id, advance_admission_state,
     fresh_replacement_lineage,
     run_admission_semantic_gate,
@@ -44,6 +45,92 @@ from _planning_skill_common import atomic_json
 
 
 class MvgPlanningContractTests(unittest.TestCase):
+
+    def test_selection_receipt_requires_bound_runner_and_output_identity(self):
+        state = {"analysis_identity_sha256": "sha256:analysis"}
+        selection = {"selected": "A", "status": "selected"}
+        receipt = {
+            "schema_version": "newrouge.mvg-selection-execution-receipt.v1",
+            "analysis_identity_sha256": "sha256:analysis",
+            "attempt": 1,
+            "selection_input_sha256": "sha256:inputs",
+            "output_sha256": "sha256:output",
+            "runner_info": {
+                "schema_version": "newrouge.isolated-model-runner.v1",
+                "model": "fixture-model", "filesystem_scope": "workspace_only",
+                "fresh_session_per_invocation": True, "can_read_outside_workspace": False,
+                "model_tools": [],
+            },
+            "runner_receipt": {"model": "fixture-model", "model_tools": []},
+        }
+        errors = validate_selection_execution_receipt(
+            state, selection, receipt,
+            selection_input_sha256="sha256:inputs",
+            output_sha256="sha256:actual-output",
+        )
+        self.assertIn("selection_output_identity_invalid", errors)
+
+    def test_selection_receipt_rejects_runner_model_or_tools_drift(self):
+        state = {"analysis_identity_sha256": "sha256:analysis"}
+        selection = {"selected": "A", "status": "selected"}
+        receipt = {
+            "schema_version": "newrouge.mvg-selection-execution-receipt.v1",
+            "analysis_identity_sha256": "sha256:analysis",
+            "attempt": 1,
+            "selection_input_sha256": "sha256:inputs",
+            "output_sha256": "sha256:output",
+            "runner_info": {
+                "schema_version": "newrouge.isolated-model-runner.v1",
+                "model": "fixture-model", "filesystem_scope": "workspace_only",
+                "fresh_session_per_invocation": True, "can_read_outside_workspace": False,
+                "model_tools": [],
+            },
+            "runner_receipt": {"model": "other-model", "model_tools": ["shell"]},
+        }
+        errors = validate_selection_execution_receipt(
+            state, selection, receipt,
+            selection_input_sha256="sha256:inputs",
+            output_sha256="sha256:output",
+        )
+        self.assertIn("selection_runner_identity_invalid", errors)
+
+    def test_selection_receipt_allows_environment_default_runner_model(self):
+        receipt = {
+            "schema_version": "newrouge.mvg-selection-execution-receipt.v1",
+            "analysis_identity_sha256": "sha256:analysis", "attempt": 1,
+            "selection_input_sha256": "sha256:inputs", "output_sha256": "sha256:output",
+            "runner_info": {
+                "schema_version": "newrouge.isolated-model-runner.v1",
+                "model": "auto", "filesystem_scope": "workspace_only",
+                "fresh_session_per_invocation": True, "can_read_outside_workspace": False,
+                "model_tools": [],
+            },
+            "runner_receipt": {"model": "gpt-6-sol", "model_tools": []},
+        }
+        self.assertEqual([], validate_selection_execution_receipt(
+            {"analysis_identity_sha256": "sha256:analysis"},
+            {"selected": "A", "status": "selected"}, receipt,
+            selection_input_sha256="sha256:inputs", output_sha256="sha256:output",
+            expected_attempt=1))
+
+    def test_selection_receipt_malformed_runner_payload_is_recoverable_error(self):
+        state = {"analysis_identity_sha256": "sha256:analysis"}
+        errors = validate_selection_execution_receipt(
+            state, {"selected": "A", "status": "selected"},
+            {
+                "schema_version": "newrouge.mvg-selection-execution-receipt.v1",
+                "analysis_identity_sha256": "sha256:analysis",
+                "attempt": 1,
+                "selection_input_sha256": "sha256:inputs",
+                "output_sha256": "sha256:output",
+                "runner_info": ["bad"],
+                "runner_receipt": "not-an-object",
+            },
+            selection_input_sha256="sha256:inputs",
+            output_sha256="sha256:output",
+        )
+        self.assertIn("selection_runner_description_invalid", errors)
+        self.assertIn("selection_runner_identity_invalid", errors)
     def test_attempt_budget_does_not_expand_on_resume(self):
         self.assertEqual([], list(candidate_attempt_numbers(64, segmented=True)))
         self.assertEqual([3], list(candidate_attempt_numbers(2, segmented=False)))

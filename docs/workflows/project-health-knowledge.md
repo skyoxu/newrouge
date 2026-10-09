@@ -39,6 +39,8 @@ MVG generation uses the Capability file selected by the current local planning r
 
 Interrupted MVG recovery reuses only admitted candidates whose replacement workspace, proposal hash, semantic proof, execution receipt and prepared analysis identity all match. Selection recovery is bound to the exact proposal hashes and lineages it compared. Replacement work is capped at three persisted rounds; a lineage stops after 64 invocations, and unresolved issues at that cap are reported as an execution-budget failure. Legacy selected runs without hash-bound admission evidence cannot be promoted through the old review path and need a fresh page-generated run.
 
+Selection recovery also requires a hash-bound `selection-receipt.json`: its runner description and no-tools model receipt must match the selection output and immutable selection-input identity. Receipt drift is treated as an execution failure, not as a new semantic candidate.
+
 Runtime entrypoints follow the selected Capability journeys and their actual system boundaries, not the number of Task IDs. Task references can represent test/review provenance without imposing runtime APIs. The planner passes flow handoffs and implementation paths to the entrypoint stage, rejects test/contract files as runtime entrypoints, and preserves multiple boundaries owned by one Task. Independent semantic review still checks actual boundary completeness.
 
 Capability review incumbent rule: the topology entrypoint freezes a valid committed

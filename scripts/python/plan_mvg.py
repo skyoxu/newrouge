@@ -788,6 +788,51 @@ class MVGCandidateInvocationBudgetError(RuntimeError):
     error_type = "candidate_lineage_invocation_budget_exhausted"
 
 
+def validate_selection_execution_receipt(
+    state: dict[str, Any], selection: dict[str, Any], receipt: dict[str, Any], *,
+    selection_input_sha256: str, output_sha256: str,
+    expected_attempt: int | None = None,
+) -> list[str]:
+    """Validate the runner and hash binding for one comparative selection output."""
+    from _planning_skill_common import validate_runner_description
+
+    errors: list[str] = []
+    if not isinstance(receipt, dict):
+        return ["selection_receipt_schema_invalid", "selection_receipt_not_object"]
+    if receipt.get("schema_version") != "newrouge.mvg-selection-execution-receipt.v1":
+        errors.append("selection_receipt_schema_invalid")
+    if receipt.get("analysis_identity_sha256") != state.get("analysis_identity_sha256"):
+        errors.append("selection_analysis_identity_invalid")
+    if expected_attempt is not None and receipt.get("attempt") != expected_attempt:
+        errors.append("selection_attempt_identity_invalid")
+    if receipt.get("selection_input_sha256") != selection_input_sha256:
+        errors.append("selection_input_identity_invalid")
+    if receipt.get("output_sha256") != output_sha256:
+        errors.append("selection_output_identity_invalid")
+    runner_info = receipt.get("runner_info")
+    try:
+        if not isinstance(runner_info, dict):
+            raise ValueError("runner description must be an object")
+        validate_runner_description(runner_info)
+    except (TypeError, ValueError):
+        errors.append("selection_runner_description_invalid")
+    runner_receipt = receipt.get("runner_receipt") or {}
+    expected_model = str((runner_info or {}).get("model") or "") if isinstance(runner_info, dict) else ""
+    actual_model = str(runner_receipt.get("model") or "") if isinstance(runner_receipt, dict) else ""
+    model_matches = (
+        bool(actual_model)
+        and (expected_model.lower() in {"auto", "automatic", "codex-cli-default"}
+             or actual_model == expected_model)
+    )
+    if (not isinstance(runner_receipt, dict)
+            or not model_matches
+            or runner_receipt.get("model_tools") != []):
+        errors.append("selection_runner_identity_invalid")
+    if not isinstance(selection, dict) or selection.get("status") != "selected":
+        errors.append("selection_result_invalid")
+    return sorted(set(errors))
+
+
 _candidate_invocation_lock_guard = threading.Lock()
 _candidate_invocation_locks: dict[str, threading.Lock] = {}
 
@@ -3984,10 +4029,16 @@ Frozen manifest scope:
             raise ValueError("selection artifact identity drift")
         try:
             recovered_selection = load_json(completed_output, {})
+            recovered_receipt = receipt
             recovered_errors = validate_mvg_selection(
                 recovered_selection, candidate_labels=set(MVG_CANDIDATE_LABELS),
                 incumbent_present=selection_incumbent_present, alias_mapping=aliases,
                 viable_labels=viable_selection_labels)
+            recovered_errors.extend(validate_selection_execution_receipt(
+                state, recovered_selection, recovered_receipt,
+                selection_input_sha256=selection_input_sha256,
+                output_sha256=file_sha(completed_output),
+                expected_attempt=completed_number))
         except (OSError, ValueError, TypeError, json.JSONDecodeError) as exc:
             recovered_errors = [str(exc)]
         if not recovered_errors:
@@ -4015,6 +4066,7 @@ Frozen manifest scope:
         prompt_path = attempt_dir / "prompt.txt"
         prompt_path.write_text(selection_prompt, encoding="utf-8", newline="\n")
         record: dict[str, Any] = {"attempt": attempt, "status": "running", "backend": llm_backend,
+                                  "runner_info": backend_info,
                                   "selection_input_sha256": selection_input_sha256,
                                   "selection_input_identity": selection_input_identity}
         selection_attempts.append(record)
@@ -4043,15 +4095,27 @@ Frozen manifest scope:
             if selection_errors:
                 raise ValueError("MVG selection output invalid: " + ";".join(selection_errors))
             record.update(status="completed", output_sha256=file_sha(output))
-            atomic_json(attempt_dir / "selection-receipt.json", {
+            selection_receipt = {
                 "schema_version": "newrouge.mvg-selection-execution-receipt.v1",
                 "attempt": attempt,
                 "backend": llm_backend,
+                "analysis_identity_sha256": state["analysis_identity_sha256"],
                 "selection_input_sha256": selection_input_sha256,
                 "output_sha256": file_sha(output),
+                "runner_info": backend_info,
                 "runner_receipt": record.get("receipt"),
                 "returncode": record.get("returncode"),
-            })
+            }
+            atomic_json(attempt_dir / "selection-receipt.json", selection_receipt)
+            receipt_errors = validate_selection_execution_receipt(
+                state, selection_result,
+                selection_receipt,
+                selection_input_sha256=selection_input_sha256,
+                output_sha256=file_sha(output),
+                expected_attempt=attempt,
+            )
+            if receipt_errors:
+                raise ValueError("MVG selection execution receipt invalid: " + ";".join(receipt_errors))
             break
         except (OSError, RuntimeError, TimeoutError, ValueError, json.JSONDecodeError) as exc:
             selection_result = None
