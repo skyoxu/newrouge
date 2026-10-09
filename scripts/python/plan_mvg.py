@@ -1658,7 +1658,7 @@ def validate_segment_routing(value: dict[str, Any], *, section: str,
         if section == "flows":
             flow_id = str(row.get("id") or "")
             if isinstance(incumbent, dict) and any(
-                    key in incumbent and incumbent.get(key) != row.get(key)
+                    (key in incumbent) != (key in row) or incumbent.get(key) != row.get(key)
                     for key in ("outcome", "requirement_ids", "capability_refs")) and flow_id not in review_ids:
                 errors.append(f"segment_flow_change_review_missing:{flow_id}")
             # Cumulative manifests freeze their existing flow IDs.  A frozen

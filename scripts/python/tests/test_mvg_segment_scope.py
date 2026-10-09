@@ -8,6 +8,7 @@ from pathlib import Path
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 PYTHON = Path(__file__).resolve().parents[1]
 if str(PYTHON) not in sys.path:
@@ -19,7 +20,8 @@ from _planning_skill_common import atomic_json, validate_output_schema
 
 class MvgSegmentScopeTests(unittest.TestCase):
     def _dispatch(self, check, repair_issue=None, *, baseline_only_tests=False, missing_test_evidence=False,
-                  change_flows=False, omit_reviews="never"):
+                  change_flows=False, omit_reviews="never", legacy_flow_metadata=False,
+                  flow_attempts=None):
         with tempfile.TemporaryDirectory() as directory:
             run = Path(directory)
             prepared = run / "analysis-input"
@@ -49,8 +51,12 @@ class MvgSegmentScopeTests(unittest.TestCase):
                               "contractRefs": [contract]})
                 requirements.append({"requirement_id": rid, "statement": name})
                 capabilities.append({"capability_id": f"CAP-{index}", "requirement_ids": [rid]})
+            baseline_flows = deepcopy(flows)
+            if legacy_flow_metadata:
+                for key in ("requirement_ids", "capability_refs"):
+                    baseline_flows[1].pop(key)
             manifest = {"schema_version": "newrouge.mvg-integration.v1", "mvg_id": "fixture",
-                        "flows": flows, "tests": tests, "coverage": {
+                        "flows": baseline_flows, "tests": tests, "coverage": {
                             "mode": "pilot", "scope_id": "fixture", "blocking_task_ids": [],
                             "required_flow_ids": [row["id"] for row in flows],
                             "excluded_claims": ["Runtime evidence remains separate."],
@@ -70,7 +76,7 @@ class MvgSegmentScopeTests(unittest.TestCase):
                 target.parent.mkdir(parents=True, exist_ok=True)
                 target.write_text("// Fixture evidence", encoding="utf-8")
             calls = []
-            flow_calls = {}
+            flow_calls = flow_attempts if flow_attempts is not None else {}
 
             def model(prompt, attempt, *, output_name, output_schema_path, output_schema):
                 section = output_schema["properties"]["section"]["const"]
@@ -92,7 +98,7 @@ class MvgSegmentScopeTests(unittest.TestCase):
                             "id": flow["id"], "reason": "Clarify the same journey outcome.",
                             "authority_ref": "docs/gdd/spec.md#journey",
                             "authority_review": {"status": "reviewed", "rationale": "The specification preserves the delivered behavior."},
-                        }] if change_flows else [])
+                        }] if change_flows or (legacy_flow_metadata and flow["id"] == "map-route-flow") else [])
                         if omit_reviews == "always" or (omit_reviews == "once" and flow_calls[scope_id] == 1):
                             envelope["change_reviews"] = []
                 elif section == "tests":
@@ -121,17 +127,18 @@ class MvgSegmentScopeTests(unittest.TestCase):
                 model, run, {"run_id": "fixture", "analysis_identity_sha256": "sha256:fixture"},
                 1, "", run / "model-workspace/attempt-1",
                 semantics={"requirements": requirements}, task_ids=[1, 2],
-                planning_scope=plan_mvg._manifest_planning_scope(manifest),
+                planning_scope=plan_mvg._manifest_planning_scope(manifest, views),
             )
             self.assertEqual(2, calls.count("tests"))
-            self.assertEqual(4 if omit_reviews == "once" else 2, calls.count("flows"))
+            changed_flow_count = 2 if change_flows else int(legacy_flow_metadata)
+            self.assertEqual(2 + (changed_flow_count if omit_reviews == "once" else 0), calls.count("flows"))
             if repair_issue:
                 calls.clear()
                 output, _ = plan_mvg.invoke_segmented(
                     model, run, {"run_id": "fixture", "analysis_identity_sha256": "sha256:fixture"},
                     2, "", run / "model-workspace/attempt-2",
                     semantics={"requirements": requirements}, task_ids=[1, 2],
-                    planning_scope=plan_mvg._manifest_planning_scope(manifest),
+                    planning_scope=plan_mvg._manifest_planning_scope(manifest, views),
                     base_proposal=json.loads(output.read_text(encoding="utf-8")),
                     repair_issue=repair_issue,
                 )
@@ -155,6 +162,39 @@ class MvgSegmentScopeTests(unittest.TestCase):
     def test_persistent_missing_change_reviews_never_assemble_proposal(self):
         with self.assertRaisesRegex(ValueError, "segment_flow_change_review_missing"):
             self._dispatch(lambda *args: None, change_flows=True, omit_reviews="always")
+
+    def test_added_legacy_flow_metadata_retries_only_affected_flow_and_preserves_review(self):
+        flow_attempts = {}
+
+        def check(section, flow, prompt, schema):
+            if section == "flows" and flow["id"] == "map-route-flow" and flow_attempts[flow["id"]] > 1:
+                self.assertIn("segment_flow_change_review_missing:map-route-flow", prompt)
+
+        proposal = self._dispatch(check, legacy_flow_metadata=True, omit_reviews="once",
+                                  flow_attempts=flow_attempts)
+        self.assertEqual({"new-run-flow": 1, "map-route-flow": 2}, flow_attempts)
+        self.assertEqual(["map-route-flow"], [row["id"] for row in proposal["change_reviews"]])
+        self.assertEqual("docs/gdd/spec.md#journey", proposal["change_reviews"][0]["authority_ref"])
+        flow = next(row for row in proposal["manifest_candidate"]["flows"] if row["id"] == "map-route-flow")
+        self.assertEqual(["FR-2"], flow["requirement_ids"])
+        self.assertEqual(["CAP-2"], flow["capability_refs"])
+
+    def test_added_legacy_flow_metadata_without_review_exhausts_local_budget_before_merge(self):
+        flow_attempts = {}
+        with patch.object(plan_mvg, "merge_planning_segments", wraps=plan_mvg.merge_planning_segments) as merge, \
+                patch.object(plan_mvg, "run_admission_semantic_gate") as semantic_gate:
+            with self.assertRaisesRegex(ValueError, "segment_flow_change_review_missing:map-route-flow"):
+                self._dispatch(lambda *args: None, legacy_flow_metadata=True, omit_reviews="always",
+                               flow_attempts=flow_attempts)
+            merge.assert_not_called()
+            semantic_gate.assert_not_called()
+        self.assertEqual({"new-run-flow": 1, "map-route-flow": 3}, flow_attempts)
+
+    def test_added_legacy_flow_metadata_with_review_merges_without_retry(self):
+        flow_attempts = {}
+        proposal = self._dispatch(lambda *args: None, legacy_flow_metadata=True, flow_attempts=flow_attempts)
+        self.assertEqual({"new-run-flow": 1, "map-route-flow": 1}, flow_attempts)
+        self.assertEqual(["map-route-flow"], [row["id"] for row in proposal["change_reviews"]])
 
     def test_flow_reviews_survive_unrelated_coverage_repair(self):
         proposal = self._dispatch(lambda *args: None, change_flows=True,
@@ -217,6 +257,48 @@ class MvgSegmentScopeTests(unittest.TestCase):
         review["authority_review"]["status"] = "unreviewed"
         self.assertIn("segment_change_review_invalid", plan_mvg.validate_segment_routing(
             value, section="flows", request=request))
+
+    def test_flow_metadata_presence_and_value_change_matrix(self):
+        absent = object()
+        for key, old_id, new_id in (("requirement_ids", "FR-1", "FR-2"),
+                                    ("capability_refs", "CAP-1", "CAP-2")):
+            cases = (
+                ("add_nonempty", absent, [old_id], True),
+                ("add_empty", absent, [], True),
+                ("remove_nonempty", [old_id], absent, True),
+                ("remove_empty", [], absent, True),
+                ("modify", [old_id], [new_id], True),
+                ("clear", [old_id], [], True),
+                ("unchanged_nonempty", [old_id], [old_id], False),
+                ("unchanged_empty", [], [], False),
+                ("unchanged_absent", absent, absent, False),
+            )
+            for name, before, after, changed in cases:
+                with self.subTest(key=key, case=name):
+                    baseline = {"id": "old-flow", "outcome": "old", "requirement_ids": ["FR-1"],
+                                "capability_refs": ["CAP-1"], "task_ids": [1], "handoffs": []}
+                    candidate = deepcopy(baseline)
+                    for row, metadata in ((baseline, before), (candidate, after)):
+                        if metadata is absent:
+                            row.pop(key)
+                        else:
+                            row[key] = metadata
+                    request = {"scope_id": "old-flow", "allow_exact_flow_id": True,
+                               "incumbent_flow": baseline, "requirement_ids": ["FR-1", "FR-2"],
+                               "task_ids": [1], "capabilities": [
+                                   {"capability_id": "CAP-1"}, {"capability_id": "CAP-2"}]}
+                    value = {"flows": [candidate], "change_reviews": []}
+                    errors = plan_mvg.validate_segment_routing(value, section="flows", request=request)
+                    self.assertEqual(changed, "segment_flow_change_review_missing:old-flow" in errors)
+                    if changed:
+                        value["change_reviews"] = [{
+                            "id": "old-flow", "reason": "Align metadata with prepared specification.",
+                            "authority_ref": "docs/gdd/spec.md#journey",
+                            "authority_review": {"status": "reviewed", "rationale": "Specification evidence."},
+                        }]
+                        reviewed_errors = plan_mvg.validate_segment_routing(value, section="flows", request=request)
+                        self.assertNotIn("segment_flow_change_review_missing:old-flow", reviewed_errors)
+                        self.assertEqual(errors, sorted(set(reviewed_errors + ["segment_flow_change_review_missing:old-flow"])))
 
     def test_change_review_unprepared_authority_is_rejected(self):
         with tempfile.TemporaryDirectory() as directory:

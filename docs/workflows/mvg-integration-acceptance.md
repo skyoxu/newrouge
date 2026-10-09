@@ -126,6 +126,8 @@ Cumulative delta validation runs before independent semantic admission, includin
 
 Frozen flow segments must return `change_reviews` through the CLI-enforced schema. The field is an empty array for unchanged semantic fields; changes to an incumbent flow's outcome, Requirement membership or Capability membership require a source-backed review for that exact flow ID. Generation supplies the incumbent row and bounded prepared specification excerpts. The segment gate rejects missing, duplicate, foreign-flow, unreviewed or unprepared justifications before merge and retries only the affected segment. A repaired flow replaces its earlier justification rather than retaining stale authority. These proposal justifications are not approval: cumulative delta validation and independent semantic admission still decide whether the change is supported; no machine-generated authorization or automatic baseline weakening is permitted.
 
+Adding or removing `requirement_ids` or `capability_refs` on an incumbent flow is a change even when the added or removed value is an empty array; unchanged fields require identical presence and value.
+
 
 ### Incremental harness regression (T26)
 
