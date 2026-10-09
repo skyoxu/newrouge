@@ -18,7 +18,7 @@ from _planning_skill_common import atomic_json, validate_output_schema
 
 
 class MvgSegmentScopeTests(unittest.TestCase):
-    def _dispatch(self, check):
+    def _dispatch(self, check, repair_issue=None):
         with tempfile.TemporaryDirectory() as directory:
             run = Path(directory)
             prepared = run / "analysis-input"
@@ -85,7 +85,10 @@ class MvgSegmentScopeTests(unittest.TestCase):
                 else:
                     check(section, None, prompt, output_schema)
                     envelope[{"coverage": "coverage_table", "entrypoints": "entrypoints"}[section]] = []
-                output = run / "model-output" / output_name
+                index = int(Path(output_name).stem.split("-", 1)[0])
+                output = (run / "model-workspace" / f"attempt-{attempt}" / "llm-sandbox"
+                          / f"attempt-{attempt}" / f"segments-{index:03d}-{section}"
+                          / Path(output_name).name)
                 atomic_json(output, envelope)
                 atomic_json(output_schema_path, output_schema)
                 validate_output_schema(output, output_schema_path)
@@ -100,7 +103,30 @@ class MvgSegmentScopeTests(unittest.TestCase):
             )
             self.assertEqual(2, calls.count("tests"))
             self.assertEqual(2, calls.count("flows"))
+            if repair_issue:
+                calls.clear()
+                output, _ = plan_mvg.invoke_segmented(
+                    model, run, {"run_id": "fixture", "analysis_identity_sha256": "sha256:fixture"},
+                    2, "", run / "model-workspace/attempt-2",
+                    semantics={"requirements": requirements}, task_ids=[1, 2],
+                    planning_scope=plan_mvg._manifest_planning_scope(manifest),
+                    base_proposal=json.loads(output.read_text(encoding="utf-8")),
+                    repair_issue=repair_issue,
+                )
+                self.assertEqual(["coverage"], calls,
+                                 "Repair must invoke the affected section and reuse unaffected evidence")
             return json.loads(output.read_text(encoding="utf-8"))
+
+    def test_coverage_repair_reinvokes_model_with_issue_and_current_rows(self):
+        issue = {"code": "coverage_deferral_unreviewed:FR-1", "path": "proposal"}
+
+        def check(section, flow, prompt, schema):
+            if section == "coverage" and "Focused candidate hard-issue repair" in prompt:
+                self.assertIn(issue["code"], prompt)
+                self.assertIn('"current_section"', prompt)
+                self.assertNotIn('"entrypoints":', prompt)
+
+        self._dispatch(check, repair_issue=issue)
 
     def test_cli_test_schema_is_flow_local(self):
         def check(section, flow, prompt, schema):

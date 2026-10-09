@@ -2285,7 +2285,8 @@ def write_model_context(run_dir: Path, workspace: Path, semantics: dict[str, Any
 def invoke_segmented(invoke: Any, run_dir: Path, state: dict[str, Any], attempt: int,
                      full_prompt: str, workspace: Path, *, semantics: dict[str, Any],
                      task_ids: list[int], base_proposal: dict[str, Any] | None = None,
-                     planning_scope: dict[str, Any] | None = None) -> tuple[Path, dict[str, Any]]:
+                     planning_scope: dict[str, Any] | None = None,
+                     repair_issue: dict[str, Any] | None = None) -> tuple[Path, dict[str, Any]]:
     """Run bounded section requests and assemble a proposal-shaped document.
 
     Each request is bounded to one Capability slice or one small accounting
@@ -2462,6 +2463,23 @@ def invoke_segmented(invoke: Any, run_dir: Path, state: dict[str, Any], attempt:
         if planning_scope is not None else None,
     ))
 
+    # A hard-issue repair must not replay the segment that produced the issue.
+    # Only coverage failures have an independent, provably narrow route. Other
+    # issues may cross flow/test/entrypoint boundaries, so invalidate all their
+    # dependent sections rather than guessing from a diagnostic string.
+    repair_code = str((repair_issue or {}).get("code", ""))
+    coverage_only = bool(repair_issue and repair_code.startswith("coverage_"))
+    repair_requirement = (repair_code.split(":", 2)[1]
+                         if coverage_only and repair_code.count(":") >= 1 else "")
+
+    def needs_repair(request: dict[str, Any]) -> bool:
+        if not repair_issue:
+            return False
+        if not coverage_only:
+            return True
+        return (request["section"] == "coverage"
+                and (not repair_requirement or repair_requirement in request.get("requirement_ids", [])))
+
     def execute_request(index: int, request: dict[str, Any], flow_context: list[dict[str, Any]]) -> tuple[int, dict[str, Any], dict[str, Any]]:
         section = request["section"]
         requirements = request["requirement_ids"]
@@ -2555,6 +2573,27 @@ def invoke_segmented(invoke: Any, run_dir: Path, state: dict[str, Any], attempt:
                                                 if int(row.get("taskmaster_id", -1)) in set(scoped_tasks)
                                                 for value in _list_field(row, "test_refs") if str(value).strip()}),
             }, ensure_ascii=False)
+        if needs_repair(request):
+            payload_key = {"flows": "flows", "coverage": "coverage_table",
+                           "entrypoints": "entrypoints", "tests": "tests"}[section]
+            prior = base_proposal or {}
+            rows = (prior.get("manifest_candidate", {}).get(payload_key, [])
+                    if section == "flows" else prior.get(payload_key, []))
+            if section == "coverage":
+                rows = [row for row in rows if row.get("requirement_id") in requirements]
+            elif section == "flows":
+                rows = [row for row in rows if str(row.get("id", "")) == request["scope_id"]
+                        or str(row.get("id", "")).startswith(request["scope_id"] + "-")]
+            elif section == "entrypoints":
+                rows = [row for row in rows if row.get("owner_task") in scoped_tasks]
+            elif section == "tests":
+                ids = {str(row.get("id")) for row in prompt_flow_context}
+                rows = [row for row in rows if row.get("flow_id") in ids
+                        or row.get("id") in request.get("test_ids", [])]
+            section_prompt_text += "\nFocused candidate hard-issue repair:\n" + json.dumps({
+                "issue": repair_issue, "current_section": rows,
+                "instruction": "Repair this issue using only the supplied authority. Return the complete routed section. Do not invent reviewed authority or weaken coverage.",
+            }, ensure_ascii=False)
         output_name = f"segments/{index:03d}-{section}.json"
         last_error = ""
         for retry in range(1, 4):
@@ -2628,7 +2667,7 @@ def invoke_segmented(invoke: Any, run_dir: Path, state: dict[str, Any], attempt:
         reusable: list[tuple[int, dict[str, Any], dict[str, Any]]] = []
         pending: list[tuple[int, dict[str, Any]]] = []
         for index, request in batch:
-            cached = load_reusable_segment(
+            cached = None if needs_repair(request) else load_reusable_segment(
                 run_dir,
                 current_attempt=attempt,
                 index=index,
@@ -3579,6 +3618,7 @@ Frozen manifest scope:
                         task_ids=[int(value) for value in state.get("task_scope", [])],
                         base_proposal=proposal,
                         planning_scope=state.get("planning_scope"),
+                        repair_issue=admission_runtime.get("current_issue"),
                     )
                 else:
                     output, execution = invoke(candidate_prompt, attempt)
@@ -3687,7 +3727,9 @@ Frozen manifest scope:
         ]
         review_attempt = _admission_execution_artifact(
             candidate_root / "admission-review", f"attempt-{attempt}") if segmented else None
-        if segmented and not admission_execution_error:
+        if (segmented and not admission_execution_error and not admission_issues
+                and validation.get("status") == "passed"
+                and validation.get("formal_applicable") is True):
             if admission_review is None or review_attempt is None:
                 admission_execution_error = {
                     "error_type": "candidate_admission_evidence_missing",

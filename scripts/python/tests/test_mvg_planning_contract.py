@@ -46,6 +46,44 @@ from _planning_skill_common import atomic_json
 
 class MvgPlanningContractTests(unittest.TestCase):
 
+    def test_deterministic_retirement_creates_clean_replacement_without_review_proof(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            run_dir = root / "logs/ci/mvg-planning/retirement"
+            (run_dir / "analysis-input").mkdir(parents=True)
+            state = {"run_id": "retirement", "formal_ready": True,
+                     "analysis_identity_sha256": "sha256:fixture", "task_scope": []}
+            starts = []
+
+            def segment(invoke, candidate_root, candidate_state, attempt, prompt, workspace, **kwargs):
+                if attempt == 1:
+                    starts.append((candidate_root.name, kwargs.get("base_proposal"),
+                                   kwargs.get("repair_issue")))
+                output = workspace / "proposal.json"
+                atomic_json(output, {"schema_version": plan_mvg.PROPOSAL_SCHEMA,
+                                     "analysis_identity_sha256": "sha256:fixture"})
+                return output, {}
+
+            with patch.object(plan_mvg, "_load_run", return_value=(run_dir / "run.json", state)), \
+                 patch.object(plan_mvg, "_validate_input_freshness"), \
+                 patch.object(plan_mvg, "inspect_isolated_runner", return_value={}), \
+                 patch.object(plan_mvg, "_task_ids", return_value=set()), \
+                 patch.object(plan_mvg, "_task_view_rows", return_value=[]), \
+                 patch.object(plan_mvg, "invoke_segmented", side_effect=segment), \
+                 patch.object(plan_mvg, "validate_proposal", return_value={
+                     "status": "blocked", "formal_applicable": False, "errors": ["coverage_bad"]}), \
+                 patch.object(plan_mvg, "MVG_REPLACEMENT_ROUND_LIMIT", 1):
+                with self.assertRaisesRegex(ValueError, "replacement budget exhausted"):
+                    plan_mvg.generate(root, run_id="retirement", timeout_sec=1,
+                                      llm_backend="codex-cli")
+            self.assertEqual(6, len(starts))
+            self.assertEqual(3, sum("--candidate-" in name for name, _, _ in starts))
+            self.assertTrue(all(base is None and issue is None for _, base, issue in starts))
+            for admission in state["candidate_admissions"].values():
+                self.assertEqual("retired", admission["status"])
+                self.assertIsNone(admission["execution_error"])
+                self.assertEqual([3], list(admission["issue_attempts"].values()))
+
     def test_segment_schema_is_inside_actual_model_sandbox(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
