@@ -193,6 +193,12 @@ def apply_delta(
     missing_required = sorted(set(map(str, required)) - set(flow_ids))
     if missing_required:
         raise ValueError("required flow removed without coverage update: " + ", ".join(missing_required))
+    # Delta operations retain baseline row order. A proposal may list the same
+    # flows in another order; normalize only that lossless permutation.
+    if len(required) == len(flow_ids) and set(required) == set(flow_ids):
+        coverage = dict(updated.get("coverage") or {})
+        coverage["required_flow_ids"] = flow_ids
+        updated["coverage"] = coverage
     known_tests = set(test_ids)
     for flow in updated["flows"]:
         missing = sorted(set(map(str, flow.get("test_ids") or [])) - known_tests)

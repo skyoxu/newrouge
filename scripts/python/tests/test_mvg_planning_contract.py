@@ -1388,6 +1388,68 @@ class MvgPlanningContractTests(unittest.TestCase):
             merged["manifest_candidate"]["coverage"]["required_flow_ids"],
         )
 
+    def test_delta_application_rebases_required_flow_order_to_applied_flow_rows(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = self._root(folder)
+            existing = self.manifest()
+            second_flow = json.loads(json.dumps(existing["flows"][0]))
+            second_flow["id"] = "flow-b"
+            existing["flows"].append(second_flow)
+            existing["coverage"]["required_flow_ids"].append("flow-b")
+            desired = json.loads(json.dumps(existing))
+            desired["flows"] = list(reversed(desired["flows"]))
+            desired["coverage"]["required_flow_ids"] = [
+                row["id"] for row in desired["flows"]
+            ]
+            proposal = {
+                "manifest_candidate": desired,
+                "change_reviews": [],
+                "retirement_reviews": [],
+                "coverage_review": {},
+            }
+            delta = build_delta(existing, proposal)
+            updated = apply_delta(existing, delta, root=root, validate_final=True)
+            self.assertEqual(
+                [row["id"] for row in updated["flows"]],
+                updated["coverage"]["required_flow_ids"],
+            )
+            self.assertEqual(["flow-b", "flow-a"], desired["coverage"]["required_flow_ids"])
+            self.assertEqual(["flow-a", "flow-b"], existing["coverage"]["required_flow_ids"])
+
+    def test_delta_order_normalization_does_not_hide_missing_duplicate_or_unknown_flows(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = self._root(folder)
+            existing = self.manifest()
+            second = json.loads(json.dumps(existing["flows"][0]))
+            second["id"] = "flow-b"
+            existing["flows"].append(second)
+            existing["coverage"]["required_flow_ids"].append("flow-b")
+            for required in (["flow-a"], ["flow-a", "flow-b", "flow-b"],
+                             ["flow-a", "unknown-flow"]):
+                with self.subTest(required=required):
+                    desired = json.loads(json.dumps(existing))
+                    desired["coverage"]["required_flow_ids"] = required
+                    proposal = {"manifest_candidate": desired, "coverage_review": {
+                        "authority_ref": "docs/gdd/spec.md",
+                        "authority_review": {"status": "reviewed", "rationale": "Fixture only."},
+                    }}
+                    with self.assertRaises(ValueError):
+                        apply_delta(existing, build_delta(existing, proposal), root=root, validate_final=True)
+
+    def test_delta_order_normalization_handles_added_flow_without_changing_baseline_order(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = self._root(folder)
+            existing = self.manifest()
+            desired = json.loads(json.dumps(existing))
+            added = json.loads(json.dumps(existing["flows"][0]))
+            added["id"] = "flow-b"
+            desired["flows"].insert(0, added)
+            desired["coverage"]["required_flow_ids"] = ["flow-b", "flow-a"]
+            updated = apply_delta(existing, build_delta(existing, {"manifest_candidate": desired}),
+                                  root=root, validate_final=True)
+            self.assertEqual(["flow-a", "flow-b"], updated["coverage"]["required_flow_ids"])
+            self.assertEqual(["flow-a", "flow-b"], [row["id"] for row in updated["flows"]])
+
     def test_cumulative_baseline_tests_are_seeded_into_proposal_top_level(self):
         existing = {
             "flows": [{"id": "baseline-flow", "test_ids": ["baseline-test"],
