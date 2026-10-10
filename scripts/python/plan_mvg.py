@@ -103,7 +103,8 @@ def route_candidate_repair_requests(requests: list[dict[str, Any]], issue: dict[
         requirement_id = code.rsplit(":", 1)[-1]
     elif code.startswith("segment_flow_change_review_missing:"):
         flow_id = code.split(":", 1)[1]
-    elif code.startswith("segment_flow_requirement_multiple_routes:"):
+    elif code.startswith(("flow_requirement_multiple_routes:",
+                          "segment_flow_requirement_multiple_routes:")):
         requirement_id = code.rsplit(":", 1)[-1]
     elif "flow" in code and ":" in code:
         suffix = code.rsplit(":", 1)[-1]
@@ -709,7 +710,7 @@ def semantic_review_output_schema(*, state: dict[str, Any] | None = None,
         "type": "object",
         "additionalProperties": False,
         "required": ["requirement_id", "verdict", "rationale", "disposition",
-                     "flow_id", "sink_id", "verification_ref", "authority_ref"],
+                     "flow_id", "sink_id", "verification_ref", "authority_ref", "route"],
         "properties": {
             "requirement_id": {"type": "string", "minLength": 1},
             "verdict": {"type": "string", "enum": ["covered", "other_verification", "deferred", "blocked"]},
@@ -755,11 +756,13 @@ def semantic_review_output_schema(*, state: dict[str, Any] | None = None,
             bound_rows = []
             for row in rows:
                 item = deepcopy(requirement)
-                for field in ("requirement_id", "disposition", "flow_id", "sink_id",
+                for field in ("requirement_id", "disposition", "route", "flow_id", "sink_id",
                               "verification_ref", "authority_ref"):
                     value = row.get(field)
                     if field == "disposition":
                         value = value or ("flow" if row.get("flow_id") else "")
+                    if field == "route":
+                        value = row.get("route") or row.get("disposition") or ("flow" if row.get("flow_id") else "")
                     item["properties"][field] = {"type": "null" if value is None else "string",
                                                  "const": value}
                 bound_rows.append(item)
@@ -3594,11 +3597,11 @@ Frozen manifest scope:
     state.setdefault("admission_events", [])
     atomic_json(run_path, state)
     state_lock = threading.Lock()
-    generation_stop = threading.Event()
-
     def ensure_generation_active() -> None:
-        if generation_stop.is_set():
-            raise MVGGenerationStoppedError("MVG generation stopped after sibling execution failure")
+        # Candidate contexts are independent.  A runner failure in one slot
+        # must not interrupt a sibling that is already generating or repairing;
+        # the failed slot is replenished by the durable replacement loop.
+        return None
 
     def reserve_generation_invocation(candidate_root: Path, label: str, lineage: str) -> int:
         ensure_generation_active()
@@ -3650,7 +3653,6 @@ Frozen manifest scope:
                     output_path=output, timeout_sec=timeout_sec,
                     output_schema=sandbox_schema_path,
                 )
-                ensure_generation_active()
                 return output, {"attempt": attempt, "invocation": invocation_number, "backend": llm_backend,
                                 "backend_info": backend_info, "runner": runner.as_posix(),
                                 "returncode": 0, "receipt": receipt}
@@ -3659,7 +3661,6 @@ Frozen manifest scope:
                 output_last_message=output, timeout_sec=timeout_sec, codex_configs=[],
                 output_schema=sandbox_schema_path,
             )
-            ensure_generation_active()
             execution: dict[str, Any] = {"attempt": attempt, "invocation": invocation_number, "backend": llm_backend,
                                           "backend_info": backend_info, "command": cmd,
                                           "returncode": rc}
@@ -3987,7 +3988,6 @@ Frozen manifest scope:
                 validation = {"status": "blocked", "errors": [str(exc)]}
                 state["phase"] = "generation-execution-blocked"
                 if segmented:
-                    generation_stop.set()
                     admission_execution_error = {
                         "error_type": classify_review_error(exc),
                         "error": _compact_exception_message(exc),
@@ -4119,7 +4119,6 @@ Frozen manifest scope:
                    "admission_status": admission["status"], "admission_issues": admission_issues,
                    "lineage": lineage}
         if admission_execution_error:
-            generation_stop.set()
             summary.update(status="execution-failed", admission_status="execution-failed",
                            admission_error=admission_execution_error)
         if valid:
@@ -4169,25 +4168,36 @@ Frozen manifest scope:
     def generate_candidate_guarded(label: str) -> dict[str, Any]:
         try:
             result = generate_candidate(label)
-        except Exception:
-            generation_stop.set()
-            raise
-        if (result.get("summary") or {}).get("admission_status") == "execution-failed":
-            generation_stop.set()
+        except Exception as exc:
+            # Persist a candidate-local execution failure.  Do not propagate a
+            # shared stop signal to sibling candidates; they remain eligible
+            # for admission and the failed slot can be replaced independently.
+            failure = {"error_type": classify_review_error(exc),
+                       "error": _compact_exception_message(exc)}
+            with state_lock:
+                admission = dict(state.get("candidate_admissions", {}).get(label) or {})
+                admission.update(candidate=label, status="execution-failed",
+                                 execution_error=failure)
+                state.setdefault("candidate_admissions", {})[label] = admission
+                state.setdefault("candidate_attempts", {})[label] = {
+                    "status": "execution-failed", "admission_status": "execution-failed",
+                    "admission_error": failure,
+                }
+                state.setdefault("admission_events", []).append({
+                    "candidate": label, "lineage": admission.get("lineage"),
+                    "event": "admission-execution-failed", "error": failure,
+                })
+                atomic_json(run_path, state)
+            return {"label": label, "valid": False, "admitted": False,
+                    "proposal": None,
+                    "summary": {"status": "execution-failed",
+                                "admission_status": "execution-failed",
+                                "admission_error": failure}}
         return result
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=len(MVG_CANDIDATE_LABELS)) as executor:
         futures = [executor.submit(generate_candidate_guarded, label) for label in MVG_CANDIDATE_LABELS]
         results = [future.result() for future in futures]
-    execution_failures = [row for row in results
-                          if (row.get("summary") or {}).get("admission_status") == "execution-failed"]
-    if execution_failures:
-        state["phase"] = "candidate-admission-execution-blocked"
-        state["selection_status"] = "blocked"
-        state["admission_stop_reason"] = "runner_or_input_failure"
-        atomic_json(run_path, state)
-        labels = ",".join(str(row.get("label")) for row in execution_failures)
-        raise ValueError("MVG candidate admission stopped on runner/input failure; recoverable state preserved: " + labels)
     # Retired slots are replenished with a clean replacement lineage. The
     # replacement context is rebuilt from the immutable prepared bundle and
     # never receives the retired proposal, findings or repair prompt.
@@ -4225,11 +4235,10 @@ Frozen manifest scope:
             replacement_result = generate_candidate_guarded(label)
             results[index] = replacement_result
             changed = True
-            if (replacement_result.get("summary") or {}).get("admission_status") == "execution-failed":
-                break
+            # A failed replacement consumes this round for the slot but must
+            # not prevent other failed slots from receiving their own clean
+            # replacement attempt.
         if not changed:
-            break
-        if any((row.get("summary") or {}).get("admission_status") == "execution-failed" for row in results):
             break
     valid_results = [row for row in results if row.get("admitted")]
     state["admitted_candidates"] = [str(row.get("label")) for row in valid_results]
@@ -4900,7 +4909,7 @@ analysis_identity_sha256="{state['analysis_identity_sha256']}", proposal_sha256=
 Copy both identity values verbatim from this prompt; do not compute, shorten, or edit their sha256 strings.
 They are fixed host-supplied input identities, not semantic judgments. Check their exact characters before returning JSON.
 verdict="approved" or "blocked", findings=[] ONLY if all checks pass (otherwise concrete findings),
-requirement_reviews=[{{"requirement_id":"...","verdict":"covered|other_verification|deferred|blocked","rationale":"...","disposition":"flow|other_verification|deferred","flow_id":null,"sink_id":null,"verification_ref":null,"authority_ref":null}}]
+requirement_reviews=[{{"requirement_id":"...","verdict":"covered|other_verification|deferred|blocked","rationale":"...","disposition":"flow|other_verification|deferred","route":"flow|other_verification|deferred","flow_id":null,"sink_id":null,"verification_ref":null,"authority_ref":null}}]
 with exactly one explicit non-empty rationale per active delivery-relevant Requirement,
 flow_reviews=[{{"flow_id":"...","verdict":"sound|blocked","rationale":"..."}}] with exactly one row per flow.
 Use one actual verdict value, not the pipe-separated enumeration above. Do not rewrite the proposal.

@@ -75,7 +75,7 @@ class MvgPlanningContractTests(unittest.TestCase):
                     plan_mvg.generate(root, run_id="delta-first", timeout_sec=1, llm_backend="codex-cli")
             reviewer.assert_not_called()
 
-    def test_execution_failed_sibling_prevents_new_model_calls(self):
+    def test_execution_failed_sibling_does_not_stop_other_candidates(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             run_dir = root / "logs/ci/mvg-planning/stop-siblings"
@@ -111,9 +111,9 @@ class MvgPlanningContractTests(unittest.TestCase):
                  patch.object(plan_mvg, "invoke_segmented", side_effect=segment), \
                  patch.object(plan_mvg, "validate_proposal", return_value={"status": "blocked", "errors": ["bad"]}), \
                  patch.object(plan_mvg, "run_isolated_model", side_effect=runner) as model:
-                with self.assertRaisesRegex(ValueError, "runner/input failure"):
+                with self.assertRaisesRegex(ValueError, "replacement budget exhausted"):
                     plan_mvg.generate(root, run_id="stop-siblings", timeout_sec=1, llm_backend="codex-cli")
-            model.assert_not_called()
+            self.assertGreaterEqual(model.call_count, 2)
             self.assertEqual("blocked", state["selection_status"])
 
     def test_recovered_delta_failure_does_not_invoke_semantic_reviewer(self):
@@ -149,7 +149,7 @@ class MvgPlanningContractTests(unittest.TestCase):
                     plan_mvg.generate(root, run_id="recovered-delta", timeout_sec=1, llm_backend="codex-cli")
             reviewer.assert_not_called()
 
-    def test_running_sibling_call_finishes_without_starting_followup_work(self):
+    def test_running_sibling_call_finishes_independently(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             run_dir = root / "logs/ci/mvg-planning/inflight-sibling"
@@ -192,13 +192,13 @@ class MvgPlanningContractTests(unittest.TestCase):
                  patch.object(plan_mvg, "validate_proposal", return_value={"status": "passed"}), \
                  patch.object(plan_mvg, "run_isolated_model", side_effect=runner), \
                  patch.object(plan_mvg, "run_admission_semantic_gate") as reviewer:
-                with self.assertRaisesRegex(ValueError, "runner/input failure"):
+                with self.assertRaisesRegex(ValueError, "replacement budget exhausted"):
                     plan_mvg.generate(root, run_id="inflight-sibling", timeout_sec=1, llm_backend="codex-cli")
-            self.assertEqual(1, len(calls))
+            self.assertGreaterEqual(len(calls), 2)
             self.assertTrue((calls[0] / "flow.json").is_file(), "Running call evidence must be retained")
-            reviewer.assert_not_called()
-            self.assertEqual("candidate_sibling_execution_failed",
-                             state["candidate_admissions"]["candidate-2"]["execution_error"]["error_type"])
+            self.assertGreater(reviewer.call_count, 0)
+            self.assertNotEqual("candidate_sibling_execution_failed",
+                                (state["candidate_admissions"].get("candidate-2") or {}).get("execution_error", {}).get("error_type"))
             self.assertEqual("blocked", state["selection_status"])
 
     def test_deterministic_retirement_creates_clean_replacement_without_review_proof(self):
@@ -270,8 +270,9 @@ class MvgPlanningContractTests(unittest.TestCase):
                  patch.object(plan_mvg, "_task_ids", return_value=set()), \
                  patch.object(plan_mvg, "_task_view_rows", return_value=[]), \
                  patch.object(plan_mvg, "invoke_segmented", side_effect=segment), \
-                 patch.object(plan_mvg, "run_isolated_model", side_effect=runner):
-                with self.assertRaisesRegex(ValueError, "runner/input failure"):
+                 patch.object(plan_mvg, "run_isolated_model", side_effect=runner), \
+                 patch.object(plan_mvg, "MVG_REPLACEMENT_ROUND_LIMIT", 0):
+                with self.assertRaisesRegex(ValueError, "replacement budget exhausted"):
                     plan_mvg.generate(root, run_id="schema-boundary", timeout_sec=1,
                                       llm_backend="codex-cli")
             self.assertEqual(3, len(boundaries))
@@ -705,7 +706,8 @@ class MvgPlanningContractTests(unittest.TestCase):
                     "requirement_reviews": [{"requirement_id": "R1", "verdict": "covered" if verdict == "approved" else "blocked",
                         "rationale": "The journey covers the requirement.", "disposition": "flow",
                         "flow_id": "flow-a", "sink_id": None, "authority_ref": None,
-                        "verification_ref": "test-id" if attempt == 1 or always_invalid else None}],
+                        "verification_ref": "test-id" if attempt == 1 or always_invalid else None,
+                        "route": "flow"}],
                     "flow_reviews": [{"flow_id": "flow-a", "verdict": "sound" if verdict == "approved" else "blocked", "rationale": "Boundary review."}],
                 }
                 output = root / f"review-{attempt}.json"
@@ -768,7 +770,8 @@ class MvgPlanningContractTests(unittest.TestCase):
             "verdict": "blocked", "findings": ["Missing boundary."],
             "requirement_reviews": [{"requirement_id": "R1", "verdict": "blocked",
                 "rationale": "Missing boundary.", "disposition": "flow", "flow_id": "flow-a",
-                "sink_id": None, "authority_ref": None, "verification_ref": None}],
+                "sink_id": None, "authority_ref": None, "verification_ref": None,
+                "route": "flow"}],
             "flow_reviews": [{"flow_id": "flow-a", "verdict": "blocked", "rationale": "Missing boundary."}],
         }
         with tempfile.TemporaryDirectory() as temp:
