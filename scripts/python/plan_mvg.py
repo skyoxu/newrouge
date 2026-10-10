@@ -7,11 +7,13 @@ import argparse
 import concurrent.futures
 import datetime as dt
 import json
+import os
 import random
 import re
 import shutil
 import sys
 import threading
+import tempfile
 from copy import deepcopy
 from pathlib import Path
 from typing import Any
@@ -64,6 +66,16 @@ class MVGSegmentRoutingError(ValueError):
     def __init__(self, message: str, issues: list[dict[str, str]] | None = None) -> None:
         super().__init__(message)
         self.issues = issues or segment_route_validation_issues(message)
+
+
+class MVGRoutingSourceGapError(MVGSegmentRoutingError):
+    """The model explicitly reported a missing non-runtime evidence source."""
+
+    def __init__(self, gaps: list[str]) -> None:
+        self.gaps = list(gaps)
+        super().__init__("routing_source_evidence_missing:" + ";".join(self.gaps), [
+            {"code": "routing_source_gap:" + gap.split(":", 1)[0], "path": "routing", "detail": gap}
+            for gap in self.gaps])
 
 
 def segment_route_validation_issues(error: BaseException | str) -> list[dict[str, str]]:
@@ -193,7 +205,7 @@ def admission_repair_prompt(base_prompt: str, strict_contract: str,
 
 
 def advance_admission_state(state: dict[str, Any], issue_codes: list[Any], *,
-                            repaired: bool) -> dict[str, Any]:
+                            repaired: bool, count_repair: bool = True) -> dict[str, Any]:
     """Advance one candidate's ordered repair queue after a focused recheck."""
     result = deepcopy(state)
     issues = result.get("issues") if isinstance(result.get("issues"), list) else []
@@ -237,7 +249,7 @@ def advance_admission_state(state: dict[str, Any], issue_codes: list[Any], *,
     if not current_id:
         result["issues"] = normalized
     else:
-        attempts[current_id] = int(attempts.get(current_id, 0)) + 1
+        attempts[current_id] = int(attempts.get(current_id, 0)) + int(count_repair)
         if repaired:
             result["issues"] = [row for row in normalized
                                  if admission_issue_id(row["code"], row["path"]) != current_id]
@@ -1032,23 +1044,35 @@ def _candidate_invocation_lock(path: Path) -> threading.Lock:
 
 
 def reserve_candidate_model_invocation(candidate_root: Path, candidate: str, lineage: str,
-                                       *, allow_repair_overflow: bool = False) -> int:
-    """Reserve one model call; a queued hard issue may finish its repair budget first."""
+                                       ) -> int:
+    """Reserve one model call under the durable hard lineage ceiling."""
     path = candidate_root / "lineage-execution.json"
     with _candidate_invocation_lock(path):
         current = load_json(path, {})
         if current and (current.get("candidate") != candidate or current.get("lineage") != lineage):
             raise ValueError("candidate lineage execution identity changed")
         count = int(current.get("model_invocation_count", 0) or 0)
-        if count >= MVG_CANDIDATE_INVOCATION_LIMIT and not allow_repair_overflow:
+        if count >= MVG_CANDIDATE_INVOCATION_LIMIT:
             raise MVGCandidateInvocationBudgetError(
                 f"candidate lineage reached {MVG_CANDIDATE_INVOCATION_LIMIT} model invocations")
         count += 1
         atomic_json(path, {"candidate": candidate, "lineage": lineage,
-                           "model_invocation_count": count,
-                           "repair_overflow_used": bool(allow_repair_overflow and
-                                                         count > MVG_CANDIDATE_INVOCATION_LIMIT)})
+                           "model_invocation_count": count})
         return count
+
+
+def reserve_issue_repair(candidate_root: Path, issue: dict[str, Any]) -> int | None:
+    """Reserve before a correction call; internal and outer repairs share this ledger."""
+    path = candidate_root / "issue-repair-counts.json"
+    key = admission_issue_id(str(issue.get("code") or "issue"), str(issue.get("path") or ""))
+    with _candidate_invocation_lock(path):
+        counts = load_json(path, {})
+        used = int(counts.get(key, 0) or 0)
+        if used >= MVG_REPAIR_ATTEMPT_LIMIT:
+            return None
+        counts[key] = used + 1
+        atomic_json(path, counts)
+        return used + 1
 
 
 class MVGReviewPreparationError(ValueError):
@@ -1445,6 +1469,237 @@ def apply_restricted_patch(base: dict[str, Any], patch: dict[str, Any]) -> dict[
 
 SEGMENT_SCHEMA = "newrouge.mvg-planning-segment.v1"
 
+
+def promote_candidate_routing(candidate_root: Path) -> bool:
+    """Atomically publish a fully admitted route; pending routes are never read as committed state."""
+    pending = candidate_root / "candidate-routing.pending.json"
+    committed = candidate_root / "candidate-routing.json"
+    if not pending.is_file():
+        return False
+    os.replace(pending, committed)
+    return True
+
+
+def discard_candidate_routing_pending(candidate_root: Path) -> None:
+    """Drop an uncommitted route left by a process interruption."""
+    (candidate_root / "candidate-routing.pending.json").unlink(missing_ok=True)
+
+def validate_candidate_routing(rows: list[dict[str, Any]], permitted: dict[str, set[str] | None],
+                               requirements: dict[str, dict[str, Any]],
+                               prepared: Path | None = None) -> list[str]:
+    """Validate a model-owned whole-candidate route without assigning semantics."""
+    errors, seen = [], set()
+    if not isinstance(rows, list):
+        return ["routing_rows_not_array"]
+    for row in rows:
+        if not isinstance(row, dict):
+            errors.append("routing_row_not_object")
+            continue
+        rid = str(row.get("requirement_id") or "")
+        if rid not in permitted or rid in seen:
+            errors.append(f"routing_requirement_duplicate_or_foreign:{rid}")
+        seen.add(rid)
+        disposition = row.get("disposition")
+        if disposition == "flow":
+            eligible = permitted.get(rid, set())
+            flow_id = row.get("flow_id")
+            if (eligible is None and not (isinstance(flow_id, str) and re.fullmatch(r"routing-[a-z0-9]+(?:-[a-z0-9]+)*", flow_id))) or (
+                    eligible is not None and flow_id not in eligible):
+                errors.append(f"routing_flow_outside_evidence:{rid}")
+            if any(row.get(key) is not None for key in ("sink_id", "verification_ref", "authority_ref")):
+                errors.append(f"routing_flow_refs_forbidden:{rid}")
+        elif disposition in {"other_verification", "deferred", "source_gap"}:
+            if row.get("flow_id") is not None:
+                errors.append(f"routing_nonruntime_flow_forbidden:{rid}")
+            if disposition == "other_verification":
+                sink_rows = requirements.get(rid, {}).get("non_task_sinks", []) or []
+                sinks = {str(item.get("sink_id") or item.get("id")) if isinstance(item, dict) else str(item)
+                         for item in sink_rows} if isinstance(sink_rows, list) else set()
+                if not sinks or row.get("sink_id") not in sinks:
+                    errors.append(f"routing_verification_sink_unavailable:{rid}")
+                ref = row.get("verification_ref")
+                if not ref or prepared is None or _prepared_reference(prepared, str(ref)) is None:
+                    errors.append(f"routing_verification_source_missing:{rid}")
+            elif disposition == "deferred":
+                ref = row.get("authority_ref")
+                if not ref or prepared is None or _prepared_reference(prepared, str(ref)) is None:
+                    errors.append(f"routing_deferral_source_missing:{rid}")
+            elif any(row.get(key) is not None for key in ("sink_id", "verification_ref", "authority_ref")):
+                errors.append(f"routing_gap_invented_evidence:{rid}")
+        else:
+            errors.append(f"routing_disposition_invalid:{rid}")
+    errors.extend(f"routing_requirement_missing:{rid}" for rid in sorted(set(permitted) - seen))
+    return sorted(set(errors))
+
+
+def candidate_routing_schema(identity: str, permitted: dict[str, set[str] | None]) -> dict[str, Any]:
+    """Bind each route to its own Requirement/evidenced-flow domain in the CLI."""
+    def obj(properties):
+        return {"type": "object", "properties": properties, "required": list(properties),
+                "additionalProperties": False}
+    items = []
+    for rid, flows in sorted(permitted.items()):
+        properties = {
+            "requirement_id": {"type": "string", "const": rid},
+            "disposition": {"type": "string", "enum": ["flow", "other_verification", "deferred", "source_gap"]},
+            "flow_id": {"anyOf": [{"type": "string", "pattern": r"^routing-[a-z0-9]+(?:-[a-z0-9]+)*$"}, {"type": "null"}]} if flows is None else
+                       {"anyOf": [{"type": "string", "enum": sorted(flows)}, {"type": "null"}]} if flows else {"type": "null"},
+            "rationale": {"type": "string", "minLength": 1},
+            **{key: {"type": ["string", "null"]} for key in ("sink_id", "verification_ref", "authority_ref")},
+        }
+        items.append(obj(properties))
+    return obj({"schema_version": {"type": "string", "const": SEGMENT_SCHEMA},
+                "analysis_identity_sha256": {"type": "string", "const": identity},
+                "section": {"type": "string", "const": "routing"},
+                "scope_id": {"type": "string", "const": "candidate-routing"},
+                "routes": {"type": "array", "minItems": len(permitted), "maxItems": len(permitted),
+                           "items": {"anyOf": items} if items else {"type": "object"}}})
+
+
+def validate_candidate_routing_envelope(value: Any, identity: str,
+                                        permitted: dict[str, set[str] | None]) -> list[str]:
+    """Validate cached or fresh whole-route envelopes before reuse."""
+    if not isinstance(value, dict):
+        return ["routing_envelope_not_object"]
+    expected = {"schema_version", "analysis_identity_sha256", "section", "scope_id", "routes"}
+    if set(value) != expected:
+        return ["routing_envelope_keys_invalid"]
+    errors: list[str] = []
+    if value.get("schema_version") != SEGMENT_SCHEMA:
+        errors.append("routing_schema_version_mismatch")
+    if value.get("analysis_identity_sha256") != identity:
+        errors.append("routing_analysis_identity_mismatch")
+    if value.get("section") != "routing" or value.get("scope_id") != "candidate-routing":
+        errors.append("routing_envelope_scope_mismatch")
+    routes = value.get("routes")
+    if not isinstance(routes, list) or len(routes) != len(permitted):
+        errors.append("routing_route_count_mismatch")
+    else:
+        for row in routes:
+            if not isinstance(row, dict) or set(row) != {"requirement_id", "disposition", "flow_id", "rationale", "sink_id", "verification_ref", "authority_ref"}:
+                errors.append("routing_row_shape_invalid")
+                continue
+            if any(not isinstance(row.get(key), str) or not row[key].strip()
+                   for key in ("requirement_id", "disposition", "rationale")):
+                errors.append("routing_row_text_invalid")
+            if any(row.get(key) is not None and not isinstance(row[key], str)
+                   for key in ("flow_id", "sink_id", "verification_ref", "authority_ref")):
+                errors.append("routing_row_ref_invalid")
+    if not errors:
+        try:
+            from _planning_skill_common import validate_output_schema
+            with tempfile.TemporaryDirectory() as directory:
+                schema_path = Path(directory) / "routing-schema.json"
+                output_path = Path(directory) / "routing.json"
+                atomic_json(schema_path, candidate_routing_schema(identity, permitted))
+                atomic_json(output_path, value)
+                validate_output_schema(output_path, schema_path)
+        except (OSError, ValueError, TypeError, json.JSONDecodeError) as exc:
+            errors.append("routing_schema_invalid:" + str(exc))
+    return sorted(set(errors))
+
+
+def atomic_repair_errors(base: dict[str, Any], changed: dict[str, Any], issue: dict[str, Any],
+                         base_sha256: str) -> list[str]:
+    """Reject collateral row/field changes against the exact current proposal."""
+    if canonical_sha(base) != base_sha256:
+        return ["repair_base_hash_mismatch"]
+    code = str(issue.get("code") or "")
+    rid = str(issue.get("requirement_id") or "")
+    flow_id = str(issue.get("flow_id") or "")
+    suffix = code.rsplit(":", 1)[-1] if ":" in code else ""
+    known_requirements = {str(row.get("requirement_id")) for row in base.get("coverage_table", [])}
+    flows = {str(row.get("id")): row for row in base.get("manifest_candidate", {}).get("flows", [])}
+    if not rid and suffix in known_requirements:
+        rid = suffix
+    if not flow_id and suffix in flows:
+        flow_id = suffix
+    affected_flows = ({flow_id} if flow_id else
+                      {key for key, row in flows.items() if rid in row.get("requirement_ids", [])})
+    route_change = (code.startswith("routing_reassign:")
+                    or code.startswith("semantic_review_blocked:requirement_reviews:")) and rid
+    if route_change:
+        revised_rows = changed.get("manifest_candidate", {}).get("flows", [])
+        affected_flows.update(str(row.get("id")) for row in revised_rows
+                              if isinstance(row, dict) and rid in row.get("requirement_ids", []))
+    if not rid and not affected_flows:
+        return ["repair_dependency_domain_unresolved"] if base != changed else []
+    if code.startswith("coverage_"):
+        affected_flows = set()
+    affected_tasks = {tid for fid in affected_flows for tid in flows.get(fid, {}).get("task_ids", [])}
+    affected_tests = {str(tid) for fid in affected_flows for tid in flows.get(fid, {}).get("test_ids", [])}
+    errors = []
+    old_targets = [row for row in base.get("coverage_table", []) if row.get("requirement_id") == rid]
+    new_targets = [row for row in changed.get("coverage_table", []) if row.get("requirement_id") == rid]
+    if rid and old_targets and len(new_targets) != 1:
+        errors.append("repair_target_row_cardinality_invalid")
+    revised_flows = {str(row.get("id")): row for row in changed.get("manifest_candidate", {}).get("flows", [])}
+    for fid in affected_flows:
+        old, new = flows.get(fid, {}), revised_flows.get(fid, {})
+        protected = ("id", "task_ids", "source_paths", "test_ids")
+        if not route_change:
+            protected += ("requirement_ids", "capability_refs")
+        for field in protected:
+            if old.get(field) != new.get(field):
+                errors.append(f"repair_protected_flow_field:{fid}:{field}")
+        if route_change:
+            old_members = set(old.get("requirement_ids", []))
+            new_members = set(new.get("requirement_ids", []))
+            if (old_members ^ new_members) - {rid}:
+                errors.append(f"repair_unrelated_flow_requirement_change:{fid}")
+        if code.startswith("segment_flow_change_review_missing:") and old != new:
+            errors.append(f"repair_review_only_flow_changed:{fid}")
+    if code.startswith("semantic_review_blocked:requirement_reviews:") and rid:
+        old_routes = {str(row.get("id")): row for row in flows.values()}
+        new_routes = {str(row.get("id")): row for row in revised_flows.values()}
+        old_owners = {flow_id for flow_id, row in old_routes.items() if rid in row.get("requirement_ids", [])}
+        new_owners = {flow_id for flow_id, row in new_routes.items() if rid in row.get("requirement_ids", [])}
+        if len(new_owners) != 1 or old_owners == new_owners:
+            errors.append("repair_requirement_route_not_reassigned")
+        for flow_id in set(old_routes) | set(new_routes):
+            old, new = old_routes.get(flow_id, {}), new_routes.get(flow_id, {})
+            if flow_id in old_owners | new_owners:
+                if (set(old.get("requirement_ids", [])) ^ set(new.get("requirement_ids", []))) - {rid}:
+                    errors.append(f"repair_unrelated_flow_requirement_change:{flow_id}")
+                for field in ("capability_refs", "task_ids", "source_paths", "test_ids", "handoffs"):
+                    if old.get(field) != new.get(field):
+                        errors.append(f"repair_protected_flow_field:{flow_id}:{field}")
+            elif old != new:
+                errors.append(f"repair_unrelated_flow_change:{flow_id}")
+    for key in set(base) | set(changed):
+        if key == "manifest_candidate":
+            left, right = deepcopy(base.get(key, {})), deepcopy(changed.get(key, {}))
+            for field in ("flows", "tests"):
+                allowed = affected_flows if field == "flows" else affected_tests
+                left[field] = [row for row in left.get(field, []) if str(row.get("id")) not in allowed]
+                right[field] = [row for row in right.get(field, []) if str(row.get("id")) not in allowed]
+            if left != right:
+                errors.append("repair_unrelated_manifest_change")
+        elif key in {"coverage_table", "entrypoints", "tests", "change_reviews"}:
+            def outside(row):
+                if key == "coverage_table":
+                    return str(row.get("requirement_id")) != rid if rid else row.get("flow_id") not in affected_flows
+                if key == "entrypoints":
+                    refs = row.get("implementation_acceptance", [])
+                    refs = refs if isinstance(refs, list) else [refs]
+                    # Free-form text is not a dependency identifier. Existing
+                    # rows may be changed only by exact, structured flow refs.
+                    return not set(row.get("flow_ids", [])).intersection(affected_flows)
+                return str(row.get("id")) not in (affected_flows if key == "change_reviews" else affected_tests)
+            if [row for row in base.get(key, []) if outside(row)] != [row for row in changed.get(key, []) if outside(row)]:
+                errors.append(f"repair_unrelated_{key}_change")
+        elif base.get(key) != changed.get(key):
+            errors.append(f"repair_unrelated_field_change:{key}")
+    if code.startswith("routing_reassign:"):
+        old_routing = issue.get("base_routes")
+        new_routing = issue.get("changed_routes")
+        if isinstance(old_routing, list) and isinstance(new_routing, list):
+            old_other = [row for row in old_routing if row.get("requirement_id") != rid]
+            new_other = [row for row in new_routing if row.get("requirement_id") != rid]
+            if old_other != new_other:
+                errors.append("repair_unrelated_route_change")
+    return sorted(set(errors))
+
 def segment_output_schema(*, section: str, identity: str, scope_id: str,
                           available_source_paths: list[str] | None = None,
                           available_contract_paths: list[str] | None = None,
@@ -1452,7 +1707,9 @@ def segment_output_schema(*, section: str, identity: str, scope_id: str,
                           allowed_test_ids: list[str] | None = None,
                           allowed_test_paths: list[str] | None = None,
                           available_reference_paths: list[str] | None = None,
-                          allowed_change_ids: list[str] | None = None) -> dict[str, Any]:
+                          allowed_change_ids: list[str] | None = None,
+                          allowed_requirement_ids: list[str] | None = None,
+                          proposal_sha256: str | None = None) -> dict[str, Any]:
     """Build the CLI-enforced envelope for one routed segment request."""
     payload_key = {
         "flows": "flows",
@@ -1512,7 +1769,8 @@ def segment_output_schema(*, section: str, identity: str, scope_id: str,
     })
     flow = strict_object({
         "id": flow_id, "outcome": nonempty_string,
-        "requirement_ids": {"type": "array", "items": nonempty_string, "minItems": 1},
+        "requirement_ids": {"type": "array", "items": ({"type": "string", "enum": allowed_requirement_ids}
+                            if allowed_requirement_ids is not None else nonempty_string), "minItems": 1},
         "capability_refs": {"type": "array", "items": nonempty_string, "minItems": 1},
         "task_ids": {"type": "array", "items": integer, "minItems": 1},
         "source_paths": {"type": "array", "items": source_path, "minItems": 1},
@@ -1520,7 +1778,8 @@ def segment_output_schema(*, section: str, identity: str, scope_id: str,
         "test_ids": {"type": "array", "items": test_id, "minItems": 1},
     })
     coverage = strict_object({
-        "requirement_id": nonempty_string, "flow_id": nullable(flow_id),
+        "requirement_id": ({"type": "string", "enum": allowed_requirement_ids}
+                           if allowed_requirement_ids is not None else nonempty_string), "flow_id": nullable(flow_id),
         "capability_ref": nullable(nonempty_string), "task_id": nullable(integer),
         "disposition": {"type": "string", "enum": ["flow", "other_verification", "deferred"]},
         "rationale": nonempty_string,
@@ -1579,6 +1838,9 @@ def segment_output_schema(*, section: str, identity: str, scope_id: str,
                 "rationale": nonempty_string,
             }),
         }))
+    if proposal_sha256 is not None:
+        schema["properties"]["proposal_sha256"] = {"type": "string", "const": proposal_sha256}
+        schema["required"].append("proposal_sha256")
     return schema
 
 
@@ -2046,6 +2308,9 @@ def load_reusable_segment(run_dir: Path, *, current_attempt: int, index: int,
     if payload_key is None:
         return None
     for prior_attempt in range(current_attempt - 1, 0, -1):
+        acceptance = load_json(run_dir / f"proposal-attempt-{prior_attempt}-acceptance.json", {})
+        if acceptance.get("status") == "rejected":
+            continue
         path = (run_dir / "model-workspace" / f"attempt-{prior_attempt}" / "llm-sandbox"
                 / f"attempt-{prior_attempt}" / f"segments-{index:03d}-{section}"
                 / f"{index:03d}-{section}.json")
@@ -2056,6 +2321,10 @@ def load_reusable_segment(run_dir: Path, *, current_attempt: int, index: int,
         except (OSError, json.JSONDecodeError):
             continue
         if not isinstance(payload, dict):
+            continue
+        if payload.get("proposal_sha256") is not None:
+            # Repaired segments are meaningful only inside their accepted
+            # proposal; never replay them as independent seeds.
             continue
         if validate_segment_identity(payload, section=section, identity=identity,
                                      scope_id=scope_id):
@@ -2602,7 +2871,13 @@ def invoke_segmented(invoke: Any, run_dir: Path, state: dict[str, Any], attempt:
             if not selected and requirement_set:
                 selected = [scope for scope in flow_scopes
                             if requirement_set.intersection(scope.get("requirement_ids", []))]
-            requirements = [row for scope in selected for row in scope.get("requirements", [])]
+            evidence_requirements = (requirement_set if requirement_set else {
+                str(rid) for view in task_views
+                if view.get("taskmaster_id") in baseline_tasks
+                for rid in _list_field(view, "semantic_refs")
+            })
+            requirements = [row for scope in selected for row in scope.get("requirements", [])
+                            if str(row.get("requirement_id")) in evidence_requirements]
             requirement_ids = list(dict.fromkeys(row.get("requirement_id") for row in requirements))
             if not requirement_ids:
                 # A legacy incumbent without explicit Requirement metadata must
@@ -2622,6 +2897,250 @@ def invoke_segmented(invoke: Any, run_dir: Path, state: dict[str, Any], attempt:
                                      for cid in [cap.get("capability_id")]}],
             })
         flow_scopes = remapped
+
+    # Every lineage asks its own model to assign the complete route before any
+    # section is expanded. Evidence limits eligible associations, not semantics.
+    prepared = run_dir / "analysis-input"
+    requirement_context = {str(row["requirement_id"]): row for row in _active_delivery_requirements(semantics)
+                           if allowed_requirement_ids is None or str(row["requirement_id"]) in allowed_requirement_ids}
+    permitted = {rid: {scope["scope_id"] for scope in flow_scopes
+                       if rid in scope.get("requirement_ids", [])} for rid in requirement_context}
+    if planning_scope is None:
+        # A new manifest has no incumbent flow domain. The model names and
+        # groups journeys freely across the selected Capability membership.
+        permitted = {rid: None if capability_members.get(rid) else set() for rid in requirement_context}
+    route_path = run_dir / "candidate-routing.json"
+    pending_route_path = run_dir / "candidate-routing.pending.json"
+    repair_code = str((repair_issue or {}).get("code") or "")
+    repair_rid = (repair_code.rsplit(":", 1)[-1]
+                  if repair_code.startswith("semantic_review_blocked:requirement_reviews:") else "")
+    routing_issue = repair_code.startswith("routing_") or bool(repair_rid)
+    # Keep the incumbent route snapshot available while building a focused
+    # route repair.  Clearing it before extracting the target route loses the
+    # only trustworthy source for both the old owner and unrelated mappings.
+    # Within a live lineage, a prior proposal's provisional route is useful
+    # for repairing its next issue. On process recovery the pending file is
+    # discarded before this function is reached, so only committed routing
+    # can cross the crash boundary.
+    routing = (load_json(pending_route_path, None) or load_json(route_path, None)) if base_proposal is not None else None
+    if repair_rid and not isinstance(routing, dict):
+        # Older proposals and focused admission tests may not have a route
+        # artifact.  Preserve their ordinary section-level repair path; only
+        # perform route reassignment when an identity-bound snapshot exists.
+        repair_rid = ""
+        routing_issue = repair_code.startswith("routing_")
+    if routing is not None:
+        if pending_route_path.is_file():
+            # A pending route can only come from an earlier, locally validated
+            # attempt in this live lineage. Preserve its evidence-approved
+            # flow assignment while repairing a different issue. Pending
+            # routes are removed before crash recovery, so this cannot widen
+            # the route domain across a process restart.
+            for row in routing.get("routes", []):
+                rid = str(row.get("requirement_id") or "")
+                flow_id = row.get("flow_id")
+                if row.get("disposition") == "flow" and rid in permitted and flow_id:
+                    allowed = permitted[rid]
+                    if allowed is not None:
+                        allowed.add(str(flow_id))
+        cached_route_errors = validate_candidate_routing_envelope(routing, identity, permitted)
+        cached_route_errors.extend(validate_candidate_routing(
+            routing.get("routes", []), permitted, requirement_context, prepared))
+        if cached_route_errors:
+            raise MVGSegmentRoutingError(";".join(sorted(set(cached_route_errors))), [
+                {"code": code, "path": "routing"} for code in sorted(set(cached_route_errors))])
+    incumbent_routing = deepcopy(routing) if isinstance(routing, dict) else None
+    if not isinstance(routing, dict) or routing_issue:
+        routing_prompt = (
+            "Assign whole-candidate Requirement coverage before designing sections. Return routing JSON only. "
+            "The selected Capability file is the sole Capability authority. Shared context never claims coverage. "
+            "Choose exactly one route per Requirement. Frozen manifests use only eligible flow IDs; new manifests "
+            "name journeys with routing- lowercase kebab-case IDs. A journey may combine several Capabilities, "
+            "and one Capability may participate in several journeys. Task owners supply "
+            "evidence, not semantic conclusions. Prefer source_gap when no legitimate runtime journey, declared "
+            "non_task_sink with prepared verification, or specification-backed deferral exists. Never invent "
+            "a sink or deferral. Runtime route membership will bind every downstream flow/coverage section.\n"
+            + json.dumps({"requirements": requirement_context, "permitted_flow_scopes": {
+                rid: sorted(ids) if ids is not None else "model-owned-routing-prefix" for rid, ids in permitted.items()}, "capabilities": capabilities,
+                "incumbent_flows": load_json(prepared / "existing-manifest.json", {}).get("flows", []),
+                "task_views": task_views,
+                "available_reference_paths": sorted(path.relative_to(prepared / family).as_posix()
+                    for family in ("sources", "references") for path in (prepared / family).rglob("*") if path.is_file())}, ensure_ascii=False)
+        )
+        route_error = ""
+        route_issues: list[dict[str, str]] = []
+        route_permitted = permitted
+        if repair_rid:
+            routing_issue = True
+            if isinstance(routing, dict):
+                prior_target = next((row for row in routing.get("routes", [])
+                                     if row.get("requirement_id") == repair_rid), None)
+            else:
+                prior_target = None
+            if prior_target is None:
+                raise MVGSegmentRoutingError("routing_repair_target_missing:" + repair_rid,
+                    [{"code": "routing_repair_target_missing:" + repair_rid, "path": "routing"}])
+            current_flow = prior_target.get("flow_id")
+            if planning_scope is None:
+                eligible = None
+            else:
+                # A frozen flow can receive a Requirement only when that
+                # Requirement's own Task evidence and Capability membership
+                # intersect the flow's prepared owners/references.
+                existing_flows = {
+                    str(row.get("id")): row for row in
+                    load_json(prepared / "existing-manifest.json", {}).get("flows", [])
+                    if isinstance(row, dict) and str(row.get("id") or "").strip()
+                }
+                requirement_tasks = {
+                    int(view["taskmaster_id"]) for view in task_views
+                    if str(view.get("taskmaster_id") or "").isdigit()
+                    and int(view["taskmaster_id"]) in set(task_ids)
+                    and repair_rid in {str(value) for value in (
+                        view.get("semantic_refs") if isinstance(view.get("semantic_refs"), list)
+                        else _list_field(view, "requirement_ids"))}
+                }
+                requirement_capabilities = set(capability_members.get(repair_rid, []))
+                eligible = set()
+                for candidate_flow_id, candidate_flow in existing_flows.items():
+                    flow_tasks = {int(value) for value in candidate_flow.get("task_ids", [])
+                                  if type(value) is int}
+                    flow_capabilities = {str(value) for value in candidate_flow.get("capability_refs", [])
+                                         if str(value).strip()}
+                    if (requirement_tasks.intersection(flow_tasks)
+                            and requirement_capabilities.intersection(flow_capabilities)):
+                        eligible.add(candidate_flow_id)
+            if not eligible:
+                raise MVGSegmentRoutingError("routing_repair_no_evidence:" + repair_rid,
+                    [{"code": "routing_repair_no_evidence:" + repair_rid, "path": "routing"}])
+            if current_flow:
+                eligible.discard(str(current_flow))
+            if not eligible:
+                raise MVGSegmentRoutingError("routing_repair_no_alternative:" + repair_rid,
+                    [{"code": "routing_repair_no_alternative:" + repair_rid, "path": "routing"}])
+            route_permitted = {}
+            for rid, allowed in permitted.items():
+                old_row = next((row for row in routing.get("routes", [])
+                                if row.get("requirement_id") == rid), None)
+                if old_row is None:
+                    raise MVGSegmentRoutingError("routing_repair_target_missing:" + rid,
+                        [{"code": "routing_repair_target_missing:" + rid, "path": "routing"}])
+                route_permitted[rid] = eligible if rid == repair_rid else (
+                    {str(old_row.get("flow_id"))} if old_row.get("disposition") == "flow" else set())
+            # Later envelope validation must accept this evidence-authorized
+            # alternative, while all unrelated Requirement routes stay fixed.
+            permitted[repair_rid] = set(eligible) | {str(current_flow)}
+            routing_prompt += ("\nFocused semantic routing repair. Only this Requirement may change route; every other "
+                               "route row must be copied exactly. Select one different flow from the evidence-bound "
+                               "alternatives or fail closed.\n" + json.dumps({
+                                   "target_requirement_id": repair_rid,
+                                   "current_route": prior_target,
+                                   "eligible_alternative_flow_ids": sorted(eligible),
+                                   "all_current_routes": routing.get("routes", []),
+                               }, ensure_ascii=False))
+        elif routing_issue:
+            # Non-Requirement-specific routing diagnostics still use the
+            # deterministic whole-route schema and full local validators.
+            # They cannot be narrowed safely without a target Requirement.
+            route_permitted = permitted
+        for retry in range(1, 2 if repair_issue else 4):
+            if route_error:
+                if reserve_issue_repair(run_dir, route_issues[0]) is None:
+                    raise MVGSegmentRoutingError(route_error, route_issues)
+            try:
+                route_output, route_receipt = invoke(
+                    routing_prompt + ("\nCorrect routing errors: " + route_error if route_error else ""), attempt,
+                    output_name=f"segments/000-routing-{retry}.json",
+                    output_schema_path=workspace / "segment-schemas/routing.json",
+                    output_schema=candidate_routing_schema(identity, route_permitted))
+                routing = load_json(route_output, {})
+                route_errors = validate_candidate_routing(routing.get("routes", []), route_permitted, requirement_context, prepared)
+                if repair_rid and not route_errors:
+                    changed_route = next((row for row in routing.get("routes", [])
+                                          if row.get("requirement_id") == repair_rid), None)
+                    if (not changed_route or changed_route.get("disposition") != "flow"
+                            or changed_route.get("flow_id") == current_flow):
+                        route_errors.append("routing_repair_target_not_reassigned:" + repair_rid)
+                    incumbent_routes = {
+                        str(row.get("requirement_id")): row
+                        for row in (incumbent_routing or {}).get("routes", [])
+                        if isinstance(row, dict)
+                    }
+                    changed_routes = {
+                        str(row.get("requirement_id")): row
+                        for row in routing.get("routes", []) if isinstance(row, dict)
+                    }
+                    if any(changed_routes.get(rid) != row
+                           for rid, row in incumbent_routes.items() if rid != repair_rid):
+                        route_errors.append("routing_repair_unrelated_route_changed")
+                receipts.append({"section": "routing", "retry": retry, "receipt": route_receipt})
+            except (ValueError, json.JSONDecodeError) as exc:
+                if isinstance(exc, MVGGenerationStoppedError):
+                    raise
+                route_errors = ["routing_schema_invalid:" + str(exc)]
+            if not route_errors:
+                break
+            route_error = ";".join(route_errors)
+            route_issues = [{"code": value, "path": "routing"} for value in route_errors]
+        else:
+            raise MVGSegmentRoutingError(route_error, route_issues)
+        # A fresh route is only provisional input until candidate admission.
+        atomic_json(pending_route_path, routing)
+    envelope_errors = validate_candidate_routing_envelope(routing, identity, permitted)
+    envelope_errors.extend(validate_candidate_routing(
+        routing.get("routes", []), permitted, requirement_context, prepared))
+    if envelope_errors:
+        raise MVGSegmentRoutingError(";".join(sorted(set(envelope_errors))), [
+            {"code": code, "path": "routing"} for code in sorted(set(envelope_errors))])
+    route_errors = validate_candidate_routing(routing.get("routes", []), permitted, requirement_context, prepared)
+    if route_errors:
+        raise MVGSegmentRoutingError(";".join(route_errors), [{"code": value, "path": "routing"} for value in route_errors])
+    routing_by_requirement = {row["requirement_id"]: row for row in routing["routes"]}
+    source_gaps = [row["requirement_id"] for row in routing["routes"] if row["disposition"] == "source_gap"]
+    if source_gaps:
+        raise MVGRoutingSourceGapError([
+            rid + ":" + routing_by_requirement[rid]["rationale"] for rid in source_gaps])
+    if planning_scope is None:
+        routed_flows: dict[str, list[str]] = {}
+        for row in routing["routes"]:
+            if row["disposition"] == "flow":
+                routed_flows.setdefault(row["flow_id"], []).append(row["requirement_id"])
+        flow_scopes = []
+        for flow_id, requirement_ids in routed_flows.items():
+            selected_capabilities = {cid for rid in requirement_ids for cid in capability_members.get(rid, [])}
+            evidence_tasks = {int(view["taskmaster_id"]) for view in task_views
+                              if str(view.get("taskmaster_id", "")).isdigit()
+                              and int(view["taskmaster_id"]) in task_ids
+                              and set(requirement_ids).intersection(_list_field(view, "semantic_refs"))}
+            flow_scopes.append({"scope_id": flow_id, "requirement_ids": requirement_ids,
+                                "requirements": [requirement_context[rid] for rid in requirement_ids],
+                                "task_ids": sorted(evidence_tasks),
+                                "capabilities": [cap for cap in capabilities.get("capabilities", [])
+                                                 if cap.get("capability_id") in selected_capabilities]})
+    else:
+        for scope in flow_scopes:
+            scope["requirement_ids"] = [rid for rid in scope["requirement_ids"]
+                                        if routing_by_requirement[rid].get("flow_id") == scope["scope_id"]]
+            scope["requirements"] = [row for row in scope["requirements"] if row["requirement_id"] in scope["requirement_ids"]]
+        if repair_rid:
+            # Rebuild semantic membership from the accepted route, while
+            # keeping the incumbent flow IDs and frozen evidence inventories.
+            scope_by_id = {str(scope["scope_id"]): scope for scope in flow_scopes}
+            for rid, route in routing_by_requirement.items():
+                if route.get("disposition") != "flow":
+                    continue
+                scope = scope_by_id.get(str(route.get("flow_id") or ""))
+                if scope is None:
+                    continue
+                if rid not in scope["requirement_ids"]:
+                    scope["requirement_ids"].append(rid)
+                if not any(row.get("requirement_id") == rid for row in scope["requirements"]):
+                    scope["requirements"].append(requirement_context[rid])
+                scope["capabilities"] = [cap for cap in capabilities.get("capabilities", [])
+                                         if cap.get("capability_id") in {
+                                             cid for requirement_id in scope["requirement_ids"]
+                                             for cid in capability_members.get(requirement_id, [])}]
+        flow_scopes = [scope for scope in flow_scopes if scope["requirement_ids"]]
     model_context = load_json(workspace / "model-context.json", {})
     all_task_views = model_context.get("task_views", [])
     all_test_views = load_json(workspace / "test-context.json", {}).get("task_views", [])
@@ -2689,7 +3208,7 @@ def invoke_segmented(invoke: Any, run_dir: Path, state: dict[str, Any], attempt:
                          "requirement_ids": scope["requirement_ids"],
                          "task_ids": scope["task_ids"],
                          "capabilities": scope["capabilities"],
-                         "allow_exact_flow_id": planning_scope is not None,
+                         "allow_exact_flow_id": True,
                          "test_ids": sorted(
                              frozen_tests_by_flow.get(scope["scope_id"], [])
                          ) if planning_scope else [],
@@ -2702,7 +3221,7 @@ def invoke_segmented(invoke: Any, run_dir: Path, state: dict[str, Any], attempt:
     requirement_context = {
         str(row["requirement_id"]): row for row in active_rows
     }
-    for scope in build_segment_scope(semantics, task_ids, batch_size=24,
+    for scope in build_segment_scope(semantics, task_ids, batch_size=1,
                                     allowed_requirement_ids=allowed_requirement_ids):
         selected_requirements = set(scope["requirements"])
         scoped_tasks = sorted({int(row.get("taskmaster_id")) for row in task_views
@@ -2726,7 +3245,8 @@ def invoke_segmented(invoke: Any, run_dir: Path, state: dict[str, Any], attempt:
         requests.append({"section": "coverage", "scope_id": f"coverage-{len(requests) + 1:02d}",
                          "requirements": coverage_rows,
                          "requirement_ids": scope["requirements"],
-                         "task_ids": scoped_tasks})
+                         "task_ids": scoped_tasks,
+                         "coverage_routes": [routing_by_requirement[rid] for rid in scope["requirements"]]})
 
     # Entrypoints follow Capability journeys, not one placeholder per task.
     # The flow barrier below supplies the actual runtime boundary context.
@@ -2744,6 +3264,9 @@ def invoke_segmented(invoke: Any, run_dir: Path, state: dict[str, Any], attempt:
         load_json(run_dir / "analysis-input/existing-manifest.json", {})
         if planning_scope is not None else None,
     ))
+    for request in requests:
+        if request["section"] == "tests":
+            request["allow_exact_flow_id"] = True
 
     # A hard-issue repair must not replay the segment that produced the issue.
     # Only coverage failures have an independent, provably narrow route. Other
@@ -2754,6 +3277,22 @@ def invoke_segmented(invoke: Any, run_dir: Path, state: dict[str, Any], attempt:
     repair_requirement = (repair_code.split(":", 2)[1]
                          if coverage_only and repair_code.count(":") >= 1 else "")
     repair_request_indexes = route_candidate_repair_requests(requests, repair_issue or {}, base_proposal)
+    repair_flow_ids: set[str] = set()
+    if repair_rid and isinstance(routing, dict):
+        old_route = next((row for row in (incumbent_routing or {}).get("routes", [])
+                          if row.get("requirement_id") == repair_rid), None)
+        new_route = next((row for row in routing.get("routes", [])
+                          if row.get("requirement_id") == repair_rid), None)
+        repair_flow_ids = {str(row.get("flow_id")) for row in (old_route, new_route)
+                           if isinstance(row, dict) and row.get("disposition") == "flow"
+                           and row.get("flow_id")}
+        for index, request in enumerate(requests, start=1):
+            if (request.get("section") == "flows" and request.get("scope_id") in repair_flow_ids) or (
+                    request.get("section") == "tests"
+                    and repair_flow_ids.intersection(request.get("flow_scope_ids", []))) or (
+                    request.get("section") == "entrypoints"
+                    and repair_flow_ids.intersection(request.get("flow_scope_ids", []))):
+                repair_request_indexes.add(index)
 
     def needs_repair(index: int, request: dict[str, Any]) -> bool:
         if not repair_issue:
@@ -2763,6 +3302,14 @@ def invoke_segmented(invoke: Any, run_dir: Path, state: dict[str, Any], attempt:
         if repair_code.startswith("segment_flow_change_review_missing:"):
             flow_id = repair_code.split(":", 1)[1].strip()
             return request["section"] == "flows" and request.get("scope_id") == flow_id
+        if repair_rid:
+            if request["section"] == "coverage":
+                return repair_rid in request.get("requirement_ids", [])
+            if request["section"] == "flows":
+                return request.get("scope_id") in repair_flow_ids
+            if request["section"] in {"tests", "entrypoints"}:
+                return bool(repair_flow_ids.intersection(request.get("flow_scope_ids", [])))
+            return False
         if not coverage_only:
             return True
         return (request["section"] == "coverage"
@@ -2788,7 +3335,7 @@ def invoke_segmented(invoke: Any, run_dir: Path, state: dict[str, Any], attempt:
             requirements=requirements, task_ids=scoped_tasks,
             flow_context=prompt_flow_context,
             scope_id=request["scope_id"], flow_id_prefix=flow_prefix, test_id_prefix=test_prefix,
-            allow_exact_flow_id=bool(planning_scope is not None and section == "flows"),
+            allow_exact_flow_id=bool(section == "flows"),
             allow_exact_test_id=bool(planning_scope is not None and section == "tests"),
         )
         if planning_scope is not None:
@@ -2898,12 +3445,17 @@ def invoke_segmented(invoke: Any, run_dir: Path, state: dict[str, Any], attempt:
                         or row.get("id") in request.get("test_ids", [])]
             section_prompt_text += "\nFocused candidate hard-issue repair:\n" + json.dumps({
                 "issue": repair_issue, "current_section": rows,
-                "instruction": "Repair this issue using only the supplied authority. Return the complete routed section. Do not invent reviewed authority or weaken coverage.",
+                "proposal_sha256": canonical_sha(base_proposal or {}),
+                "instruction": "Echo proposal_sha256. Repair only the named row/fields and preserve other rows exactly. Return the complete routed section. Do not invent reviewed authority or weaken coverage.",
             }, ensure_ascii=False)
         output_name = f"segments/{index:03d}-{section}.json"
         last_error = ""
-        for retry in range(1, 4):
+        for retry in range(1, 2 if repair_issue else 4):
             try:
+                if last_error:
+                    prior_issues = segment_route_validation_issues(last_error)
+                    if prior_issues and reserve_issue_repair(run_dir, prior_issues[0]) is None:
+                        raise MVGSegmentRoutingError(last_error, prior_issues)
                 output, receipt = invoke(section_prompt_text, attempt,
                                          output_name=output_name,
                                          output_schema_path=workspace / "segment-schemas" / f"{index:03d}-{section}.json",
@@ -2915,11 +3467,11 @@ def invoke_segmented(invoke: Any, run_dir: Path, state: dict[str, Any], attempt:
                                               available_contract_paths=contract_paths,
                                               allowed_flow_ids=(
                                                   [request["scope_id"]]
-                                                  if planning_scope is not None and section == "flows"
+                                                  if section == "flows"
                                                   else ([str(row["id"]) for row in prompt_flow_context]
                                                         if section == "tests"
-                                                        else planning_scope.get("flow_ids", [])
-                                                        if planning_scope is not None and section == "coverage"
+                                                        else [str(row["id"]) for row in prompt_flow_context]
+                                                        if section == "coverage"
                                                         else None)
                                               ),
                                               allowed_test_ids=(
@@ -2937,6 +3489,8 @@ def invoke_segmented(invoke: Any, run_dir: Path, state: dict[str, Any], attempt:
                                                   [str(request["incumbent_flow"]["id"])]
                                                   if request.get("incumbent_flow") is not None else None
                                               ),
+                                              allowed_requirement_ids=requirements if section in {"flows", "coverage"} else None,
+                                              proposal_sha256=canonical_sha(base_proposal or {}) if needs_repair(index, request) else None,
                                           ))
                 parsed = json.loads(output.read_text(encoding="utf-8"))
                 if not isinstance(parsed, dict):
@@ -2955,11 +3509,25 @@ def invoke_segmented(invoke: Any, run_dir: Path, state: dict[str, Any], attempt:
                     available_contract_paths=contract_paths,
                     available_test_paths=available_test_paths,
                 ))
+                if needs_repair(index, request):
+                    tentative = merge_planning_segments(base_proposal or {}, [parsed])
+                    if not repair_rid:
+                        errors.extend(atomic_repair_errors(base_proposal or {}, tentative,
+                                                           repair_issue or {}, parsed.get("proposal_sha256", "")))
+                if section == "coverage":
+                    for row in parsed.get("coverage_table", []):
+                        expected = routing_by_requirement.get(str(row.get("requirement_id")), {})
+                        if row.get("disposition") != expected.get("disposition"):
+                            errors.append("segment_coverage_disposition_route_mismatch")
+                        if row.get("disposition") == "flow":
+                            expected_scope = str(expected.get("flow_id") or "")
+                            if row.get("flow_id") != expected_scope:
+                                errors.append("segment_coverage_whole_route_mismatch")
                 if errors:
                     raise ValueError(f"MVG segment {section} identity invalid: {'; '.join(errors)}")
                 return index, parsed, {"section": section, "index": index, "retry": retry, "receipt": receipt}
             except (json.JSONDecodeError, OSError, RuntimeError, TimeoutError, ValueError) as exc:
-                if isinstance(exc, MVGGenerationStoppedError):
+                if isinstance(exc, (MVGGenerationStoppedError, MVGSegmentRoutingError)):
                     raise
                 last_error = str(exc)
                 section_prompt_text += (
@@ -2996,6 +3564,24 @@ def invoke_segmented(invoke: Any, run_dir: Path, state: dict[str, Any], attempt:
                 routing_request=request,
                 flow_context=flow_context,
             )
+            if base_proposal is not None and not needs_repair(index, request):
+                key = {"flows": "flows", "coverage": "coverage_table", "entrypoints": "entrypoints", "tests": "tests"}[request["section"]]
+                prior_rows = (base_proposal.get("manifest_candidate", {}).get(key, [])
+                              if key == "flows" else base_proposal.get(key, []))
+                if key == "flows":
+                    prior_rows = [row for row in prior_rows if row.get("id") == request["scope_id"]
+                                  or str(row.get("id", "")).startswith(request["scope_id"] + "-")]
+                elif key == "coverage_table":
+                    prior_rows = [row for row in prior_rows if row.get("requirement_id") in request["requirement_ids"]]
+                elif key == "entrypoints":
+                    prior_rows = [row for row in prior_rows if row.get("owner_task") in request["task_ids"]]
+                elif key == "tests":
+                    prior_rows = [row for row in prior_rows if row.get("flow_id") in request.get("flow_scope_ids", [])
+                                  or row.get("id") in request.get("test_ids", [])]
+                cached = {"section": request["section"], key: deepcopy(prior_rows)}
+                if key == "flows":
+                    cached["change_reviews"] = [deepcopy(row) for row in base_proposal.get("change_reviews", [])
+                                                 if row.get("id") in {flow.get("id") for flow in prior_rows}]
             if cached is None:
                 pending.append((index, request))
             else:
@@ -3022,6 +3608,15 @@ def invoke_segmented(invoke: Any, run_dir: Path, state: dict[str, Any], attempt:
     receipts.extend(receipt for _, _, receipt in flow_results)
     flow_context = [row for _, parsed, _ in flow_results
                     for row in (parsed.get("flows", []) or []) if isinstance(row, dict)]
+    if planning_scope is not None:
+        final_projection = preserve_frozen_manifest_baseline(
+            merge_planning_segments({"manifest_candidate": frozen_manifest}, segments),
+            frozen_manifest, planning_scope)
+        flow_context = final_projection["manifest_candidate"]["flows"]
+        for segment in segments:
+            if segment.get("section") == "flows":
+                ids = {row.get("id") for row in segment.get("flows", [])}
+                segment["flows"] = [deepcopy(row) for row in flow_context if row.get("id") in ids]
     other_batch = [(index, request) for index, request in indexed_requests if request["section"] != "flows"]
     other_results = execute_batch(other_batch, flow_context)
     segments.extend(parsed for _, parsed, _ in other_results)
@@ -3098,11 +3693,10 @@ def invoke_segmented(invoke: Any, run_dir: Path, state: dict[str, Any], attempt:
             assembled["manifest_candidate"]["flows"] = [merged_flows[key] for key in planning_scope["flow_ids"]
                                                           if key in merged_flows]
             assembled["manifest_candidate"].setdefault("coverage", {})["required_flow_ids"] = list(planning_scope["flow_ids"])
-        assembled = preserve_frozen_manifest_baseline(
-            assembled,
-            load_json(run_dir / "analysis-input/existing-manifest.json", None),
-            planning_scope,
-        )
+        # Projection already happened at the flow barrier. Associated sections
+        # have consumed those exact final flows; do not rewrite their inputs.
+        if final_projection.get("tests") is not None:
+            assembled["tests"] = deepcopy(final_projection["tests"])
     assembled.setdefault("manifest_candidate", {})["tests"] = assembled.get("tests", [])
     output = workspace / f"proposal-attempt-{attempt}.json"
     atomic_json(output, assembled)
@@ -3605,10 +4199,7 @@ Frozen manifest scope:
 
     def reserve_generation_invocation(candidate_root: Path, label: str, lineage: str) -> int:
         ensure_generation_active()
-        return reserve_candidate_model_invocation(
-            candidate_root, label, lineage,
-            allow_repair_overflow=candidate_has_unfinished_repair(state, label),
-        )
+        return reserve_candidate_model_invocation(candidate_root, label, lineage)
 
     def invoke_for(candidate_root: Path, attempt_root: Path, *,
                    candidate_label: str | None = None, lineage: str | None = None):
@@ -3783,6 +4374,9 @@ Frozen manifest scope:
         candidate_root = workspace_base / (label if lineage == f"{label}-r1"
                                            else f"{label}--{lineage}")
         candidate_root.mkdir(parents=True, exist_ok=True)
+        # A process may have stopped after staging a route but before its
+        # proposal passed admission. Never resume from that untrusted state.
+        discard_candidate_routing_pending(candidate_root)
         prepared = candidate_root / "analysis-input"
         if prepared.exists():
             shutil.rmtree(prepared)
@@ -3823,6 +4417,10 @@ Frozen manifest scope:
 
         def checkpoint_admission_issues(issues: list[dict[str, str]], attempt: int) -> None:
             nonlocal admission_runtime, candidate_prompt
+            shared_counts = load_json(candidate_root / "issue-repair-counts.json", {})
+            for key, used in shared_counts.items():
+                admission_runtime.setdefault("issue_attempts", {})[key] = max(
+                    int(used), int(admission_runtime.get("issue_attempts", {}).get(key, 0)))
             previous = admission_runtime.get("issues") or []
             previous_id = (admission_issue_id(str(previous[0].get("code") or "issue"),
                                               str(previous[0].get("path") or ""))
@@ -3834,6 +4432,7 @@ Frozen manifest scope:
             admission_runtime = advance_admission_state(
                 admission_runtime, issues,
                 repaired=bool(previous and previous_id not in current_issue_ids),
+                count_repair=False,
             )
             current_issue = admission_runtime.get("current_issue") or issues[0]
             with state_lock:
@@ -3913,6 +4512,30 @@ Frozen manifest scope:
                 # replaced once on resume. Do not copy its output into the
                 # next context; the new invocation remains independent.
                 continue
+            target = admission_runtime.get("current_issue")
+            if segmented and isinstance(target, dict):
+                # Reserve before starting any model work. Recovery and local
+                # routing corrections consume the same stable issue ledger.
+                ledger_path = candidate_root / "issue-repair-counts.json"
+                key = admission_issue_id(str(target.get("code") or "issue"), str(target.get("path") or ""))
+                with _candidate_invocation_lock(ledger_path):
+                    counts = load_json(ledger_path, {})
+                    counts[key] = max(int(counts.get(key, 0)),
+                                      int(admission_runtime.get("issue_attempts", {}).get(key, 0)))
+                    atomic_json(ledger_path, counts)
+                reservation = reserve_issue_repair(candidate_root, target)
+                if reservation is None:
+                    admission_runtime.update(status="retired", retirement_reason="repair_attempt_limit_exhausted")
+                    break
+                admission_runtime.setdefault("issue_attempts", {})[key] = reservation
+                with state_lock:
+                    state["candidate_admissions"][label] = deepcopy(admission_runtime)
+                    state["admission_events"].append({
+                        "candidate": label, "lineage": lineage, "attempt": attempt,
+                        "event": "repair-reserved", "issue": target,
+                        "issue_attempts": dict(admission_runtime["issue_attempts"]),
+                        "status": "repairing"})
+                    atomic_json(run_path, state)
             attempt_root = candidate_root / "model-workspace" / f"attempt-{attempt}"
             attempt_root.mkdir(parents=True, exist_ok=True)
             shutil.copytree(prepared, attempt_root / "analysis-input")
@@ -3935,6 +4558,8 @@ Frozen manifest scope:
                 ]
                 atomic_json(run_path, state)
             try:
+                current_proposal = deepcopy(proposal)
+                pending_admission_review = None
                 invoke = invoke_for(candidate_root, attempt_root,
                                     candidate_label=label, lineage=lineage)
                 if segmented:
@@ -3961,10 +4586,56 @@ Frozen manifest scope:
                     proposal = parsed
                 normalize_proposal_format(proposal)
                 normalize_dotnet_selectors(root, proposal)
+                if segmented and current_proposal is not None and admission_runtime.get("current_issue"):
+                    target = admission_runtime["current_issue"]
+                    patch_errors = atomic_repair_errors(current_proposal, proposal, target,
+                                                         canonical_sha(current_proposal))
+                    old_validation = validate_proposal(root, state, current_proposal)
+                    candidate_validation = validate_proposal(root, state, proposal)
+                    new_errors = set(candidate_validation.get("errors", [])) - set(old_validation.get("errors", []))
+                    patch_errors.extend("repair_new_deterministic_issue:" + str(error) for error in sorted(new_errors))
+                    target_code = str(target.get("code") or "")
+                    if current_proposal == proposal:
+                        patch_errors.append("repair_target_unchanged")
+                    elif target_code in old_validation.get("errors", []) and target_code in candidate_validation.get("errors", []):
+                        patch_errors.append("repair_target_still_present")
+                    if not target_code.startswith("semantic_review_"):
+                        fresh_structural_issues = candidate_admission_errors(root, state, proposal)
+                        if any(item.get("code") == target_code and str(item.get("path") or "") == str(target.get("path") or "")
+                               for item in fresh_structural_issues):
+                            patch_errors.append("repair_target_not_reduced")
+                    if not patch_errors and target_code.startswith("semantic_review_"):
+                        pending_admission_review = run_admission_semantic_gate(
+                            root, state, proposal, candidate_root / "admission-review",
+                            runner=runner, timeout_sec=timeout_sec,
+                            invoke=invoke_for(candidate_root, attempt_root, candidate_label=label, lineage=lineage),
+                            review_key=f"attempt-{attempt}",
+                            before_invoke=lambda: reserve_generation_invocation(candidate_root, label, lineage))
+                        fresh_issues = candidate_admission_errors(root, state, proposal, pending_admission_review)
+                        prior_issue_ids = {admission_issue_id(str(item.get("code")), str(item.get("path") or ""))
+                                           for item in admission_runtime.get("issues", [])}
+                        fresh_issue_ids = {admission_issue_id(str(item.get("code")), str(item.get("path") or ""))
+                                           for item in fresh_issues}
+                        target_id = admission_issue_id(target_code, str(target.get("path") or ""))
+                        if target_id in fresh_issue_ids:
+                            patch_errors.append("repair_semantic_target_still_present")
+                        if fresh_issue_ids - prior_issue_ids:
+                            patch_errors.append("repair_new_semantic_issue")
+                    if patch_errors:
+                        proposal = current_proposal
+                        atomic_json(candidate_root / f"proposal-attempt-{attempt}-acceptance.json", {
+                            "status": "rejected", "base_sha256": canonical_sha(current_proposal),
+                            "errors": patch_errors})
+                        raise MVGSegmentRoutingError(";".join(patch_errors), [target])
+                    atomic_json(candidate_root / f"proposal-attempt-{attempt}-acceptance.json", {
+                        "status": "accepted", "base_sha256": canonical_sha(current_proposal),
+                        "proposal_sha256": canonical_sha(proposal)})
                 # Every repaired proposal requires a fresh semantic admission
                 # review bound to its new hash; never reuse the prior verdict.
-                admission_review = None
-                if admission_review_path.is_file():
+                admission_review = pending_admission_review
+                if pending_admission_review is not None:
+                    atomic_json(admission_review_path, pending_admission_review)
+                elif admission_review_path.is_file():
                     admission_review_path.unlink()
                 validation = validate_proposal(root, state, proposal)
                 execution["proposal_sha256"] = canonical_sha(proposal)
@@ -3972,6 +4643,10 @@ Frozen manifest scope:
                 record.update(execution, status="completed")
                 atomic_json(candidate_root / f"proposal-attempt-{attempt}.json", proposal)
             except (RuntimeError, TimeoutError, OSError, ValueError, json.JSONDecodeError) as exc:
+                # A staged route is not durable input until the candidate
+                # passes admission. Keep the committed snapshot untouched.
+                if segmented:
+                    discard_candidate_routing_pending(candidate_root)
                 if segmented and isinstance(exc, MVGSegmentRoutingError) and exc.issues:
                     record.update(status="repairable-failure", error=_compact_exception_message(exc),
                                   error_type=classify_review_error(exc))
@@ -3979,7 +4654,15 @@ Frozen manifest scope:
                     with state_lock:
                         state["candidate_attempts"][label] = {"attempts": records}
                         atomic_json(run_path, state)
-                    checkpoint_admission_issues(exc.issues, attempt)
+                    if current_proposal is not None:
+                        proposal = current_proposal
+                        atomic_json(candidate_root / "admission-review" / "proposal.json", current_proposal)
+                        atomic_json(candidate_root / f"proposal-attempt-{attempt}-acceptance.json", {
+                            "status": "rejected", "base_sha256": canonical_sha(current_proposal),
+                            "errors": [str(exc)]})
+                    existing_target = admission_runtime.get("current_issue")
+                    existing_issues = admission_runtime.get("issues") or []
+                    checkpoint_admission_issues(existing_issues if existing_target else exc.issues, attempt)
                     if admission_runtime.get("status") == "retired":
                         break
                     continue
@@ -4086,6 +4769,7 @@ Frozen manifest scope:
                      and validation.get("status") == "passed"
                      and validation.get("formal_applicable") is True)
         if valid:
+            promote_candidate_routing(candidate_root)
             atomic_json(candidate_root / "proposal.json", proposal)
         admission = {"candidate": label, "lineage": lineage,
                      "status": "admitted" if valid else (
@@ -4195,51 +4879,47 @@ Frozen manifest scope:
                                 "admission_error": failure}}
         return result
 
+    # Replenish a completed failed slot immediately while siblings are still
+    # running. A persisted round may fund each slot once; fast slots cannot
+    # reset their round count or wait for the initial whole-set barrier.
+    results_by_label: dict[str, dict[str, Any]] = {}
+    exhausted = False
     with concurrent.futures.ThreadPoolExecutor(max_workers=len(MVG_CANDIDATE_LABELS)) as executor:
-        futures = [executor.submit(generate_candidate_guarded, label) for label in MVG_CANDIDATE_LABELS]
-        results = [future.result() for future in futures]
-    # Retired slots are replenished with a clean replacement lineage. The
-    # replacement context is rebuilt from the immutable prepared bundle and
-    # never receives the retired proposal, findings or repair prompt.
-    replacement_round = int(state.get("replacement_rounds_used", 0) or 0)
-    while len([row for row in results if row.get("admitted")]) < len(MVG_CANDIDATE_LABELS):
-        reserved_round = reserve_replacement_round(state)
-        if reserved_round is None:
-            state["phase"] = "candidate-admission-replacement-budget-exhausted"
-            state["selection_status"] = "blocked"
-            state["admission_stop_reason"] = "replacement_round_budget_exhausted"
-            atomic_json(run_path, state)
-            raise ValueError(
-                "MVG candidate replacement budget exhausted; admitted candidates: "
-                + str(len([row for row in results if row.get("admitted")]))
-            )
-        replacement_round = reserved_round
-        changed = False
-        for index, row in enumerate(list(results)):
-            if row.get("admitted"):
-                continue
-            label = str(row.get("label") or "")
-            retired = state.get("candidate_admissions", {}).get(label) or {
-                "candidate": label, "lineage": f"{label}-r{replacement_round}"
-            }
-            replacement = fresh_replacement_lineage(retired, label)
-            state["candidate_admissions"][label] = replacement
-            state["candidate_attempts"].pop(label, None)
-            state["admission_events"].append({
-                "candidate": label, "lineage": replacement["lineage"],
-                "replacement_of": replacement.get("replacement_of"),
-                "event": "replacement-started",
-            })
-            with state_lock:
-                atomic_json(run_path, state)
-            replacement_result = generate_candidate_guarded(label)
-            results[index] = replacement_result
-            changed = True
-            # A failed replacement consumes this round for the slot but must
-            # not prevent other failed slots from receiving their own clean
-            # replacement attempt.
-        if not changed:
-            break
+        pending = {executor.submit(generate_candidate_guarded, label): label for label in MVG_CANDIDATE_LABELS}
+        while pending:
+            completed, _ = concurrent.futures.wait(pending, return_when=concurrent.futures.FIRST_COMPLETED)
+            for future in completed:
+                label = pending.pop(future)
+                row = future.result()
+                results_by_label[label] = row
+                if row.get("admitted"):
+                    continue
+                retired = state.get("candidate_admissions", {}).get(label) or {"lineage": f"{label}-r1"}
+                replacement = fresh_replacement_lineage(retired, label)
+                round_number = int(replacement["lineage"].rsplit("-r", 1)[-1]) - 1
+                with state_lock:
+                    if round_number > MVG_REPLACEMENT_ROUND_LIMIT:
+                        exhausted = True
+                        continue
+                    while int(state.get("replacement_rounds_used", 0)) < round_number:
+                        if reserve_replacement_round(state) is None:
+                            exhausted = True
+                            break
+                    if exhausted and int(state.get("replacement_rounds_used", 0)) < round_number:
+                        continue
+                    state["candidate_admissions"][label] = replacement
+                    state["candidate_attempts"].pop(label, None)
+                    state["admission_events"].append({"candidate": label, "lineage": replacement["lineage"],
+                        "replacement_of": replacement.get("replacement_of"), "event": "replacement-started"})
+                    atomic_json(run_path, state)
+                pending[executor.submit(generate_candidate_guarded, label)] = label
+    results = [results_by_label[label] for label in MVG_CANDIDATE_LABELS]
+    if exhausted:
+        state.update(phase="candidate-admission-replacement-budget-exhausted", selection_status="blocked",
+                     admission_stop_reason="replacement_round_budget_exhausted")
+        atomic_json(run_path, state)
+        raise ValueError("MVG candidate replacement budget exhausted; admitted candidates: "
+                         + str(sum(bool(row.get("admitted")) for row in results)))
     valid_results = [row for row in results if row.get("admitted")]
     state["admitted_candidates"] = [str(row.get("label")) for row in valid_results]
     state["retired_candidates"] = [str(row.get("label")) for row in results if not row.get("admitted")]

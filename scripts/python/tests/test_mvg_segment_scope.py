@@ -19,9 +19,147 @@ from _planning_skill_common import atomic_json, validate_output_schema
 
 
 class MvgSegmentScopeTests(unittest.TestCase):
+    def test_cached_routing_rejects_spoofed_identity_and_malformed_rows(self):
+        value = {"schema_version": plan_mvg.SEGMENT_SCHEMA, "analysis_identity_sha256": "old",
+                 "section": "routing", "scope_id": "candidate-routing", "routes": [None]}
+        self.assertTrue(plan_mvg.validate_candidate_routing_envelope(value, "current", {"FR-1": {"a"}}))
+        self.assertTrue(plan_mvg.validate_candidate_routing([None], {"FR-1": {"a"}}, {}))
+
+    def test_atomic_repair_cannot_delete_target_row_or_use_partial_flow_reference(self):
+        base = {"manifest_candidate": {"flows": [{"id": "flow-a", "requirement_ids": ["FR-1"],
+                    "task_ids": [1], "test_ids": []}], "tests": []},
+                "coverage_table": [{"requirement_id": "FR-1"}],
+                "entrypoints": [{"owner_task": 1, "path": "a.cs", "symbol": "A",
+                                 "implementation_acceptance": "flow-a2"}]}
+        changed = deepcopy(base)
+        changed["coverage_table"] = []
+        self.assertTrue(plan_mvg.atomic_repair_errors(base, changed, {"code": "coverage_missing:FR-1"},
+                                                      plan_mvg.canonical_sha(base)))
+        changed = deepcopy(base)
+        changed["entrypoints"][0]["symbol"] = "Polluted"
+        self.assertTrue(plan_mvg.atomic_repair_errors(base, changed, {"code": "bad:flow-a"},
+                                                      plan_mvg.canonical_sha(base)))
+    def test_dispatcher_shared_capability_has_exact_requirement_route_schema(self):
+        observed = []
+        def check(section, flow, prompt, schema):
+            if section == "routing":
+                observed.append(section)
+                self.assertEqual(2, schema["properties"]["routes"]["minItems"])
+            if section == "flows":
+                expected = flow["requirement_ids"]
+                self.assertEqual(expected, schema["properties"]["flows"]["items"]["properties"]["requirement_ids"]["items"]["enum"])
+                observed.append(flow["id"])
+        self._dispatch(check, shared_capability=True)
+        self.assertEqual("routing", observed[0])
+        self.assertEqual(3, len(observed))
+
+    def test_dispatcher_reports_nonruntime_source_gap_before_flow_calls(self):
+        calls = []
+        with self.assertRaisesRegex(ValueError, "routing_source_evidence_missing:FR-1"):
+            self._dispatch(lambda section, *_: calls.append(section), source_gap=True)
+        self.assertEqual(["routing"], calls)
+
+    def test_dispatcher_associated_sections_consume_projected_baseline_tasks(self):
+        observed = []
+        def check(section, flow, prompt, schema):
+            if section in {"coverage", "entrypoints", "tests"}:
+                self.assertIn('"task_ids": [1, 2]', prompt)
+                observed.append(section)
+        proposal = self._dispatch(check, change_flow_structure=True)
+        self.assertEqual(5, len(observed))
+        self.assertTrue(all(flow["task_ids"] == [1, 2] for flow in proposal["manifest_candidate"]["flows"]))
+
+    def test_new_manifest_dispatcher_allows_cross_capability_and_split_capability_routes(self):
+        for route_ids in (("routing-combined", "routing-combined"), ("routing-first", "routing-second")):
+            with self.subTest(routes=route_ids), tempfile.TemporaryDirectory() as directory:
+                run = Path(directory)
+                prepared = run / "analysis-input"
+                shared = route_ids[0] != route_ids[1]
+                capabilities = [{"capability_id": "CAP-A", "requirement_ids": ["FR-1", "FR-2"]}] if shared else [
+                    {"capability_id": "CAP-A", "requirement_ids": ["FR-1"]},
+                    {"capability_id": "CAP-B", "requirement_ids": ["FR-2"]}]
+                atomic_json(prepared / "capabilities.v1.json", {"capabilities": capabilities})
+                atomic_json(prepared / "task-views/tasks_back.json", [
+                    {"taskmaster_id": tid, "semantic_refs": [f"FR-{tid}"], "source_refs": [],
+                     "contractRefs": [], "test_refs": []} for tid in (1, 2)])
+                atomic_json(prepared / "task-views/tasks_gameplay.json", [])
+                generated = []
+                def model(prompt, attempt, *, output_name, output_schema_path, output_schema):
+                    section = output_schema["properties"]["section"]["const"]
+                    envelope = {key: output_schema["properties"][key]["const"] for key in (
+                        "schema_version", "analysis_identity_sha256", "section", "scope_id")}
+                    if section == "routing":
+                        envelope["routes"] = [{"requirement_id": f"FR-{tid}", "flow_id": flow_id,
+                            "disposition": "flow", "rationale": "Source-defined observable journey",
+                            "sink_id": None, "verification_ref": None, "authority_ref": None}
+                            for tid, flow_id in enumerate(route_ids, 1)]
+                    elif section == "flows":
+                        flow_id = envelope["scope_id"]
+                        tids = [tid for tid, fid in enumerate(route_ids, 1) if fid == flow_id]
+                        rids = [f"FR-{tid}" for tid in tids]
+                        caps = [cap["capability_id"] for cap in capabilities if set(rids).intersection(cap["requirement_ids"])]
+                        generated.append((flow_id, rids, caps))
+                        self.assertEqual([flow_id], output_schema["properties"]["flows"]["items"]["properties"]["id"]["enum"])
+                        envelope["flows"] = [{"id": flow_id, "outcome": "Observable result", "task_ids": tids,
+                            "requirement_ids": rids, "capability_refs": caps, "source_paths": ["Game.Godot/Main.gd"],
+                            "handoffs": [{"producer_task": tids[0], "consumer_task": tids[-1], "owner_task": tids[0],
+                                "contract_ref": "Game.Core/Contracts/Flow.cs", "contract_refs": None,
+                                "behavior": "Observable boundary", "test_ids": [flow_id + "-test"], "from": None, "to": None}],
+                            "test_ids": [flow_id + "-test"]}]
+                    else:
+                        envelope[{"coverage": "coverage_table", "tests": "tests", "entrypoints": "entrypoints"}[section]] = []
+                    output = run / "responses" / output_name
+                    atomic_json(output, envelope)
+                    atomic_json(output_schema_path, output_schema)
+                    validate_output_schema(output, output_schema_path)
+                    return output, {"backend": "fixture"}
+                with patch.object(plan_mvg, "validate_segment_references", return_value=[]):
+                    output, _ = plan_mvg.invoke_segmented(model, run,
+                        {"run_id": "new", "analysis_identity_sha256": "sha256:fixture"}, 1, "",
+                        run / "model-workspace/attempt-1", semantics={"requirements": [
+                            {"requirement_id": "FR-1", "statement": "First behavior"},
+                            {"requirement_id": "FR-2", "statement": "Second behavior"}]}, task_ids=[1, 2])
+                self.assertEqual(len(set(route_ids)), len(generated))
+                proposal = json.loads(output.read_text(encoding="utf-8"))
+                if not shared:
+                    self.assertEqual(["CAP-A", "CAP-B"], proposal["manifest_candidate"]["flows"][0]["capability_refs"])
+                else:
+                    self.assertTrue(all(row[2] == ["CAP-A"] for row in generated))
+
+    def test_whole_route_rejects_missing_duplicate_and_foreign_requirements(self):
+        rows = [{"requirement_id": "FR-1", "disposition": "flow", "flow_id": "flow-a",
+                 "rationale": "Observable journey", "verification_ref": None, "sink_id": None,
+                 "authority_ref": None}]
+        for routed in ([], rows + rows, [dict(rows[0], requirement_id="FR-X")],
+                       [dict(rows[0], flow_id="flow-b")]):
+            with self.subTest(routed=routed):
+                errors = plan_mvg.validate_candidate_routing(routed, {"FR-1": {"flow-a"}}, {})
+                self.assertTrue(errors)
+
+    def test_whole_route_does_not_invent_nonruntime_verification(self):
+        row = {"requirement_id": "NFR-1", "disposition": "other_verification", "flow_id": None,
+               "rationale": "Non-runtime requirement", "verification_ref": "docs/spec.md",
+               "sink_id": "invented", "authority_ref": None}
+        self.assertTrue(plan_mvg.validate_candidate_routing([row], {"NFR-1": set()}, {}))
+        row.update(disposition="source_gap", sink_id=None, verification_ref=None)
+        self.assertFalse(plan_mvg.validate_candidate_routing([row], {"NFR-1": set()}, {}))
+
+    def test_atomic_repair_preserves_unrelated_coverage_and_rejects_stale_hash(self):
+        base = {"manifest_candidate": {"flows": [], "tests": []}, "coverage_table": [
+            {"requirement_id": "FR-1", "rationale": "issue A"},
+            {"requirement_id": "FR-2", "rationale": "issue B"}], "entrypoints": []}
+        changed = deepcopy(base)
+        changed["coverage_table"][0]["rationale"] = "fixed A"
+        issue = {"code": "coverage_missing:FR-1", "path": "coverage"}
+        self.assertFalse(plan_mvg.atomic_repair_errors(base, changed, issue, plan_mvg.canonical_sha(base)))
+        self.assertIn("repair_base_hash_mismatch", plan_mvg.atomic_repair_errors(base, changed, issue, "stale"))
+        changed["coverage_table"][1]["rationale"] = "polluted B"
+        self.assertTrue(plan_mvg.atomic_repair_errors(base, changed, issue, plan_mvg.canonical_sha(base)))
+
     def _dispatch(self, check, repair_issue=None, *, baseline_only_tests=False, missing_test_evidence=False,
                   change_flows=False, omit_reviews="never", legacy_flow_metadata=False,
-                  flow_attempts=None):
+                  flow_attempts=None, shared_capability=False, source_gap=False,
+                  change_flow_structure=False):
         with tempfile.TemporaryDirectory() as directory:
             run = Path(directory)
             prepared = run / "analysis-input"
@@ -52,6 +190,13 @@ class MvgSegmentScopeTests(unittest.TestCase):
                 requirements.append({"requirement_id": rid, "statement": name})
                 capabilities.append({"capability_id": f"CAP-{index}", "requirement_ids": [rid]})
             baseline_flows = deepcopy(flows)
+            if shared_capability:
+                capabilities = [{"capability_id": "CAP-shared", "requirement_ids": ["FR-1", "FR-2"]}]
+                for flow in flows + baseline_flows:
+                    flow["capability_refs"] = ["CAP-shared"]
+            if change_flow_structure:
+                for flow in baseline_flows:
+                    flow["task_ids"] = [1, 2]
             if legacy_flow_metadata:
                 for key in ("requirement_ids", "capability_refs"):
                     baseline_flows[1].pop(key)
@@ -83,7 +228,22 @@ class MvgSegmentScopeTests(unittest.TestCase):
                 scope_id = output_schema["properties"]["scope_id"]["const"]
                 envelope = {key: output_schema["properties"][key]["const"] for key in (
                     "schema_version", "analysis_identity_sha256", "section", "scope_id")}
-                if section == "flows":
+                if "proposal_sha256" in output_schema["properties"]:
+                    envelope["proposal_sha256"] = output_schema["properties"]["proposal_sha256"]["const"]
+                if section == "routing":
+                    routes = []
+                    for requirement in (row["requirement_id"] for row in requirements):
+                        routes.append({"requirement_id": requirement, "disposition": "flow",
+                                       "flow_id": next(flow["id"] for flow in flows
+                                                       if requirement in flow["requirement_ids"]),
+                                       "rationale": "Observable journey", "sink_id": None,
+                                       "verification_ref": None, "authority_ref": None})
+                    envelope["routes"] = routes
+                    check(section, None, prompt, output_schema)
+                    if source_gap:
+                        routes[0].update(disposition="source_gap", flow_id=None,
+                                         rationale="Non-runtime verification source missing")
+                elif section == "flows":
                     flow_calls[scope_id] = flow_calls.get(scope_id, 0) + 1
                     flow = next(row for row in flows if row["id"] == scope_id)
                     check(section, flow, prompt, output_schema)
@@ -484,7 +644,7 @@ class MvgSegmentScopeTests(unittest.TestCase):
             value = {key: schema["properties"][key]["const"] for key in (
                 "schema_version", "analysis_identity_sha256", "section", "scope_id")}
             value["coverage_table"] = [{
-                "requirement_id": "FR-1", "flow_id": None, "capability_ref": "CAP-1",
+                "requirement_id": schema["properties"]["coverage_table"]["items"]["properties"]["requirement_id"]["enum"][0], "flow_id": None, "capability_ref": "CAP-1",
                 "task_id": 1, "disposition": "deferred", "rationale": "Fixture invalid reference.",
                 "sink_id": None, "verification_ref": None, "authority_ref": "NFR-T0103",
                 "authority_review": {"status": "reviewed", "rationale": "Fixture review."},

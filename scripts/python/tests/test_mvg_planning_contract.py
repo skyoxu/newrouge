@@ -47,6 +47,130 @@ from _planning_skill_common import atomic_json
 
 class MvgPlanningContractTests(unittest.TestCase):
 
+    def test_atomic_generation_rejects_pollution_then_accepts_a_with_b_remaining(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            run_dir = root / "logs/ci/mvg-planning/atomic"
+            (run_dir / "analysis-input").mkdir(parents=True)
+            state = {"run_id": "atomic", "formal_ready": True,
+                     "analysis_identity_sha256": "sha256:fixture", "task_scope": []}
+            original = {"manifest_candidate": {"flows": [], "tests": []}, "coverage_table": [
+                {"requirement_id": "FR-1", "rationale": "broken"},
+                {"requirement_id": "FR-2", "rationale": "broken"}], "entrypoints": []}
+            seeds = {}
+            def errors(proposal):
+                return [{"code": "coverage_missing:" + row["requirement_id"], "path": "coverage"}
+                        for row in proposal.get("coverage_table", []) if row["rationale"] == "broken"]
+            def validation(_root, _state, proposal):
+                issues = errors(proposal)
+                return {"status": "blocked" if issues else "passed", "formal_applicable": not issues,
+                        "errors": [issue["code"] for issue in issues]}
+            def segment(invoke, candidate_root, candidate_state, attempt, prompt, workspace, **kwargs):
+                from copy import deepcopy
+                base = kwargs.get("base_proposal")
+                seeds.setdefault(candidate_root.name, []).append(deepcopy(base))
+                value = deepcopy(original if base is None else base)
+                if attempt in (2, 3):
+                    value["coverage_table"][0]["rationale"] = "fixed"
+                if attempt == 2:
+                    value["coverage_table"][1]["rationale"] = "pollution"
+                output = workspace / "proposal.json"
+                atomic_json(output, value)
+                return output, {}
+            with patch.object(plan_mvg, "_load_run", return_value=(run_dir / "run.json", state)), \
+                 patch.object(plan_mvg, "_validate_input_freshness"), \
+                 patch.object(plan_mvg, "inspect_isolated_runner", return_value={}), \
+                 patch.object(plan_mvg, "_task_ids", return_value=set()), \
+                 patch.object(plan_mvg, "_task_view_rows", return_value=[]), \
+                 patch.object(plan_mvg, "invoke_segmented", side_effect=segment), \
+                 patch.object(plan_mvg, "validate_proposal", side_effect=validation), \
+                 patch.object(plan_mvg, "candidate_admission_errors", side_effect=lambda _r, _s, p, *_: errors(p)), \
+                 patch.object(plan_mvg, "run_admission_semantic_gate") as reviewer, \
+                 patch.object(plan_mvg, "MVG_REPLACEMENT_ROUND_LIMIT", 0):
+                with self.assertRaisesRegex(ValueError, "replacement budget exhausted"):
+                    plan_mvg.generate(root, run_id="atomic", timeout_sec=1, llm_backend="codex-cli")
+            reviewer.assert_not_called()
+            for label, values in seeds.items():
+                self.assertEqual(original, values[2], "Rejected proposal must never become the next seed")
+                self.assertEqual("fixed", values[3]["coverage_table"][0]["rationale"])
+                self.assertEqual("broken", values[3]["coverage_table"][1]["rationale"])
+                marker = json.loads((run_dir / "candidates" / label / "proposal-attempt-2-acceptance.json").read_text(encoding="utf-8"))
+                self.assertEqual("rejected", marker["status"])
+
+    def test_failed_slot_is_replaced_before_initial_siblings_finish(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            run_dir = root / "logs/ci/mvg-planning/immediate"
+            (run_dir / "analysis-input").mkdir(parents=True)
+            state = {"run_id": "immediate", "formal_ready": True,
+                     "analysis_identity_sha256": "sha256:fixture", "task_scope": []}
+            replacement_started = threading.Event()
+            observed = []
+            def segment(invoke, candidate_root, candidate_state, attempt, prompt, workspace, **kwargs):
+                if "--candidate-1-r2" in candidate_root.name:
+                    self.assertIsNone(kwargs.get("base_proposal"))
+                    self.assertIsNone(kwargs.get("repair_issue"))
+                    replacement_started.set()
+                elif candidate_root.name in {"candidate-2", "candidate-3"}:
+                    observed.append(replacement_started.wait(3))
+                raise RuntimeError("Fixture execution stops")
+            with patch.object(plan_mvg, "_load_run", return_value=(run_dir / "run.json", state)), \
+                 patch.object(plan_mvg, "_validate_input_freshness"), \
+                 patch.object(plan_mvg, "inspect_isolated_runner", return_value={}), \
+                 patch.object(plan_mvg, "_task_ids", return_value=set()), \
+                 patch.object(plan_mvg, "_task_view_rows", return_value=[]), \
+                 patch.object(plan_mvg, "invoke_segmented", side_effect=segment), \
+                 patch.object(plan_mvg, "MVG_REPLACEMENT_ROUND_LIMIT", 1):
+                with self.assertRaisesRegex(ValueError, "replacement budget exhausted"):
+                    plan_mvg.generate(root, run_id="immediate", timeout_sec=1, llm_backend="codex-cli")
+            self.assertEqual([True, True], observed)
+            self.assertEqual(1, state["replacement_rounds_used"])
+
+    def test_semantic_atomic_repair_requires_fresh_gate_before_seed_changes(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            run_dir = root / "logs/ci/mvg-planning/semantic-atomic"
+            (run_dir / "analysis-input").mkdir(parents=True)
+            state = {"run_id": "semantic-atomic", "formal_ready": True,
+                     "analysis_identity_sha256": "sha256:fixture", "task_scope": []}
+            seeds, reviews = {}, {}
+            base = {"manifest_candidate": {"flows": [], "tests": []}, "entrypoints": [], "coverage_table": [
+                {"requirement_id": "FR-1", "rationale": "broken"},
+                {"requirement_id": "FR-2", "rationale": "broken"}]}
+            def segment(invoke, candidate_root, candidate_state, attempt, prompt, workspace, **kwargs):
+                from copy import deepcopy
+                proposal = deepcopy(kwargs.get("base_proposal") or base)
+                seeds.setdefault(candidate_root.name, []).append(deepcopy(proposal))
+                if attempt == 2:
+                    proposal["coverage_table"][0]["rationale"] = "fixed"
+                output = workspace / "proposal.json"
+                atomic_json(output, proposal)
+                return output, {}
+            def gate(_root, _state, proposal, workspace, **kwargs):
+                reviews.setdefault(workspace.parent.name, []).append(plan_mvg.canonical_sha(proposal))
+                return {"proposal_sha256": plan_mvg.canonical_sha(proposal), "issues": [
+                    {"code": "semantic_review_blocked:coverage_reviews:" + row["requirement_id"],
+                     "path": "coverage_reviews"} for row in proposal["coverage_table"] if row["rationale"] == "broken"]}
+            with patch.object(plan_mvg, "_load_run", return_value=(run_dir / "run.json", state)), \
+                 patch.object(plan_mvg, "_validate_input_freshness"), \
+                 patch.object(plan_mvg, "inspect_isolated_runner", return_value={}), \
+                 patch.object(plan_mvg, "_task_ids", return_value=set()), \
+                 patch.object(plan_mvg, "_task_view_rows", return_value=[]), \
+                 patch.object(plan_mvg, "invoke_segmented", side_effect=segment), \
+                 patch.object(plan_mvg, "validate_proposal", return_value={"status": "passed", "formal_applicable": True, "errors": []}), \
+                 patch.object(plan_mvg, "candidate_admission_errors", side_effect=lambda _r, _s, _p, review=None: (review or {}).get("issues", [])), \
+                 patch.object(plan_mvg, "run_admission_semantic_gate", side_effect=gate), \
+                 patch.object(plan_mvg, "MVG_REPLACEMENT_ROUND_LIMIT", 0):
+                with self.assertRaisesRegex(ValueError, "replacement budget exhausted"):
+                    plan_mvg.generate(root, run_id="semantic-atomic", timeout_sec=1, llm_backend="codex-cli")
+            for label, rows in seeds.items():
+                self.assertGreaterEqual(len(rows), 2)
+                self.assertGreaterEqual(len(rows), 3)
+                self.assertEqual("fixed", rows[2]["coverage_table"][0]["rationale"])
+                self.assertEqual("broken", rows[2]["coverage_table"][1]["rationale"])
+                self.assertNotEqual(reviews[label][0], reviews[label][1])
+
+
     def test_delta_failure_does_not_invoke_semantic_reviewer(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
@@ -388,16 +512,13 @@ class MvgPlanningContractTests(unittest.TestCase):
             with self.assertRaisesRegex(plan_mvg.MVGCandidateInvocationBudgetError, "64 model invocations"):
                 reserve_candidate_model_invocation(root, "candidate-1", "candidate-1-r1")
 
-    def test_candidate_repair_overflow_precedes_lineage_stop_loss(self):
+    def test_candidate_repair_overflow_is_rejected_by_lineage_stop_loss(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             for _ in range(plan_mvg.MVG_CANDIDATE_INVOCATION_LIMIT):
                 reserve_candidate_model_invocation(root, "candidate-1", "candidate-1-r1")
-            self.assertEqual(
-                plan_mvg.MVG_CANDIDATE_INVOCATION_LIMIT + 1,
-                reserve_candidate_model_invocation(
-                    root, "candidate-1", "candidate-1-r1", allow_repair_overflow=True),
-            )
+            with self.assertRaisesRegex(plan_mvg.MVGCandidateInvocationBudgetError, "64 model invocations"):
+                reserve_candidate_model_invocation(root, "candidate-1", "candidate-1-r1")
 
     def test_candidate_has_unfinished_repair_stops_at_three_attempts(self):
         issue = {"code": "semantic_review_not_approved", "path": "semantic-review"}
@@ -409,6 +530,26 @@ class MvgPlanningContractTests(unittest.TestCase):
         self.assertTrue(plan_mvg.candidate_has_unfinished_repair(state, "candidate-1"))
         state["candidate_admissions"]["candidate-1"]["issue_attempts"][issue_id] = 3
         self.assertFalse(plan_mvg.candidate_has_unfinished_repair(state, "candidate-1"))
+
+    def test_repair_reservation_is_shared_durable_and_per_stable_issue(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            first = {"code": "segment_flow_change_review_missing:flow-a", "path": "segment.flows"}
+            second = {"code": "segment_flow_requirement_missing:flow-a", "path": "segment.flows"}
+            reserve = getattr(plan_mvg, "reserve_issue_repair", None)
+            self.assertTrue(callable(reserve), "shared repair reservation is missing")
+            self.assertEqual([1, 2, 3], [reserve(root, first) for _ in range(3)])
+            self.assertIsNone(reserve(root, first))
+            self.assertEqual(1, reserve(root, second))
+            self.assertIsNone(reserve(Path(str(root)), first), "resume must not reset reservations")
+
+    def test_checkpoint_does_not_charge_pre_reserved_repair_twice(self):
+        issue = {"code": "bad-route", "path": "routing"}
+        key = admission_issue_id(issue["code"], issue["path"])
+        result = advance_admission_state(
+            {"issues": [issue], "issue_attempts": {key: 1}}, [issue],
+            repaired=False, count_repair=False)
+        self.assertEqual(1, result["issue_attempts"][key])
 
     def test_candidate_invocation_reservations_are_atomic_under_segment_concurrency(self):
         with tempfile.TemporaryDirectory() as temp:

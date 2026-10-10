@@ -859,11 +859,13 @@ class PlanningAuditRepairTests(unittest.TestCase):
             raise RuntimeError("fixture runner unavailable")
         with patch.object(mvg, "inspect_isolated_runner", return_value={"available": True}), \
              patch.object(mvg, "run_isolated_model", side_effect=invoke):
-            with self.assertRaisesRegex(ValueError, "runner/input failure"):
+            with self.assertRaisesRegex(ValueError, "replacement budget exhausted"):
                 mvg.generate(self.root, run_id="repair", timeout_sec=1,
                              llm_backend="copilot-cli", segmented=True)
         state = load_json(self.root / "logs/ci/mvg-planning/repair/run.json")
-        self.assertEqual("candidate-admission-execution-blocked", state["phase"])
+        self.assertEqual("candidate-admission-replacement-budget-exhausted", state["phase"])
+        self.assertEqual("blocked", state["selection_status"])
+        self.assertEqual(mvg.MVG_REPLACEMENT_ROUND_LIMIT, state["replacement_rounds_used"])
         self.assertTrue(all(row["admission_status"] == "execution-failed"
                             for row in state["candidate_attempts"].values()))
         self.assertTrue(state["admission_events"])
@@ -871,6 +873,8 @@ class PlanningAuditRepairTests(unittest.TestCase):
                             for row in state["admission_events"]))
         self.assertTrue(any(row["event"] == "admission-execution-failed"
                             for row in state["admission_events"]))
+        self.assertFalse(any(row["event"] == "candidate-retired"
+                             for row in state["admission_events"]))
         self.assertGreater(calls, 0)
 
     def test_generation_pins_task_status_during_full_structural_correction(self):
