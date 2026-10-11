@@ -2,6 +2,7 @@
 """Capture task resource knowledge as an explicit Chapter 6 stage."""
 from __future__ import annotations
 import argparse, json, subprocess, sys, time
+from datetime import datetime, timezone
 from pathlib import Path
 
 GODOT_PATH_SUFFIXES = ('.tscn', '.gd', '.cs', '.tres', '.res', '.json', '.csv', '.png', '.jpg', '.jpeg', '.webp', '.svg', '.wav', '.ogg', '.mp3')
@@ -95,6 +96,7 @@ def _semantic_prompt_entries(entries: list[dict]) -> list[dict]:
                 'node_path': binding.get('node_path'), 'type': binding.get('type'), 'line': binding.get('line'),
                 'properties': [{key: prop.get(key) for key in ('name', 'value', 'line')}
                                for prop in binding.get('properties', [])[:12] if isinstance(prop, dict)],
+                'properties_truncated': len(binding.get('properties', [])) > 12,
             } for binding in bindings[:20] if isinstance(binding, dict)]
             item['available_bindings_truncated'] = len(bindings) > 20
         compact.append(item)
@@ -192,11 +194,13 @@ def _build_semantic_prompt(prompt_entries: list[dict]) -> str:
             json.dumps(prompt_entries, ensure_ascii=False, separators=(',', ':')))
 
 def _semantic_enrich(root: Path, task_id: str, backend: str, out_dir: Path) -> dict:
+    from chapter6_semantic_publication import prepare_identity, task_entries
+    from _planning_skill_common import atomic_json
     sys.path.insert(0, str(root / 'scripts/sc'))
     from _llm_backend import run_llm_exec
-    links = root / 'docs/knowledge/generated/task-resource-links.json'
-    payload = json.loads(links.read_text(encoding='utf-8')) if links.exists() else {'generated': []}
-    entries = [x for x in payload.get('generated', []) if str(x.get('task_id')) == str(task_id)]
+    task_id = str(task_id)
+    entries = task_entries(root, task_id)
+    identity = prepare_identity(root, task_id, entries)
     candidates = [entry for entry in entries if entry.get('kind') == 'config']
     candidates += [entry for entry in entries if entry.get('kind') == 'asset'][:12]
     scenes = [entry for entry in entries if entry.get('kind') == 'scene']
@@ -206,26 +210,49 @@ def _semantic_enrich(root: Path, task_id: str, backend: str, out_dir: Path) -> d
     prompt = _build_semantic_prompt(prompt_entries)
     out_dir.mkdir(parents=True, exist_ok=True)
     out = out_dir / 'semantic-candidate.json'
+    metadata = {'task_id': task_id, 'generated_by': 'llm-assisted-semantic-analysis',
+                'backend': backend, 'generated_at_utc': datetime.now(timezone.utc).isoformat(),
+                'input_identity': identity, 'runtime_verified': False}
+    coverage = {'scope': 'partial', 'input_kind': 'structured_static_evidence',
+                'available_resources': len(entries), 'supplied_resources': len(prompt_entries),
+                'described_resources': 0,
+                'omitted_resource_paths': sorted({row['path'] for row in entries} -
+                                                 {row['path'] for row in prompt_entries}),
+                'truncated_resource_paths': [row['path'] for row in prompt_entries
+                    if row.get('available_parameters_truncated') or row.get('available_bindings_truncated')
+                    or any(binding.get('properties_truncated') for binding in row.get('available_bindings', []))]}
+    if not prompt_entries:
+        atomic_json(out, {**metadata, 'status': 'unverified', 'coverage': coverage, 'error': 'No semantic resources supplied'})
+        return {'status': 'unverified', 'attempts': 0}
     rc, trace, command = 1, '', []
     validation_error = None
     model = None
+    valid = False
     for attempt in range(1, 6):
         rc, trace, command = run_llm_exec(backend=backend, root=root, prompt=prompt, output_last_message=out, timeout_sec=300)
         if rc == 0:
             try:
                 candidate = json.loads(out.read_text(encoding='utf-8'))
-                valid, model, validation_error = _validate_semantic_entries(candidate, entries)
+                valid, model, validation_error = _validate_semantic_entries(candidate, candidates)
+                valid = valid and bool(model) and all(str(row.get('explanation') or '').strip() for row in model)
                 if valid:
                     break
             except (OSError, json.JSONDecodeError) as exc:
                 validation_error = str(exc)
         if attempt < 5:
             time.sleep(1)
-    if rc != 0 or model is None:
+    try:
+        if prepare_identity(root, task_id, task_entries(root, task_id)) != identity:
+            valid, validation_error = False, 'Semantic sources changed during generation'
+    except (OSError, ValueError) as exc:
+        valid, validation_error = False, str(exc)
+    if rc != 0 or not valid:
         error = validation_error or trace[-1000:] or 'Semantic output validation failed'
-        out.write_text(json.dumps({'status': 'unverified', 'task_id': task_id, 'generated_by': 'llm-assisted-semantic-analysis', 'attempts': 5, 'error': error}, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
-        return {'status': 'unverified', 'rc': rc, 'attempts': 5}
-    out.write_text(json.dumps({'status': 'verified', 'task_id': task_id, 'generated_by': 'llm-assisted-semantic-analysis', 'backend': backend, 'entries': model}, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+        atomic_json(out, {**metadata, 'status': 'unverified', 'coverage': coverage, 'attempts': attempt, 'error': error})
+        return {'status': 'unverified', 'rc': rc, 'attempts': attempt}
+    coverage['described_resources'] = len(model)
+    coverage['undescribed_resource_paths'] = sorted({row['path'] for row in entries} - {row['path'] for row in model})
+    atomic_json(out, {**metadata, 'status': 'verified', 'entries': model, 'coverage': coverage})
     return {'status': 'verified', 'entries': len(model), 'attempts': attempt, 'command': command}
 
 def run(root: Path, task_id: str, write_task_refs: bool = False, semantic: bool = False, llm_backend: str = 'codex-cli') -> dict:

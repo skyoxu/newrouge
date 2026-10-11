@@ -19,6 +19,39 @@ from _planning_skill_common import atomic_json, validate_output_schema
 
 
 class MvgSegmentScopeTests(unittest.TestCase):
+    def test_incumbent_contracts_are_never_trimmed_by_hint_limit(self):
+        refs = [f'Game.Core/Contracts/Save/ZSnapshot{i}.cs' for i in range(4)]
+        distractors = [f'Game.Core/Contracts/Events/AEvent{i}.cs' for i in range(4)]
+        result = plan_mvg._contract_candidates(set(), distractors + refs, required_paths=refs)
+        self.assertEqual(set(refs), set(result))
+
+    def test_null_optional_handoff_fields_do_not_require_semantic_change_review(self):
+        handoff = {'producer_task': 1, 'consumer_task': 2, 'owner_task': 2,
+                   'contract_ref': 'Game.Core/Contracts/Run/Transition.cs',
+                   'behavior': 'Transfer route ownership.', 'test_ids': ['route-test']}
+        baseline = {'id': 'route-flow', 'outcome': 'Route', 'requirement_ids': ['FR-1'],
+                    'capability_refs': ['CAP-1'], 'task_ids': [1, 2], 'handoffs': [handoff]}
+        revised = deepcopy(baseline)
+        revised['handoffs'][0].update(contract_refs=None, **{'from': None, 'to': None})
+        request = {'scope_id': 'route-flow', 'allow_exact_flow_id': True,
+                   'incumbent_flow': baseline, 'requirement_ids': ['FR-1'],
+                   'task_ids': [1, 2], 'capabilities': [{'capability_id': 'CAP-1'}]}
+        errors = plan_mvg.validate_segment_routing({'flows': [revised], 'change_reviews': []},
+                                                  section='flows', request=request)
+        self.assertNotIn('segment_flow_change_review_missing:route-flow', errors)
+        revised['handoffs'][0]['contract_ref'] = 'Game.Core/Contracts/Events/Reward.cs'
+        self.assertIn('segment_flow_change_review_missing:route-flow',
+                      plan_mvg.validate_segment_routing({'flows': [revised], 'change_reviews': []},
+                                                        section='flows', request=request))
+
+    def test_segment_repair_before_proposal_exists_keeps_segment_validation(self):
+        calls = []
+        proposal = self._dispatch(lambda section, *_: calls.append(section),
+            initial_repair={'code': 'segment_flow_change_review_missing:map-route-flow',
+                            'path': 'segment.flows'})
+        self.assertEqual(2, len(proposal['manifest_candidate']['flows']))
+        self.assertIn('flows', calls)
+
     def test_cached_routing_rejects_spoofed_identity_and_malformed_rows(self):
         value = {"schema_version": plan_mvg.SEGMENT_SCHEMA, "analysis_identity_sha256": "old",
                  "section": "routing", "scope_id": "candidate-routing", "routes": [None]}
@@ -159,7 +192,7 @@ class MvgSegmentScopeTests(unittest.TestCase):
     def _dispatch(self, check, repair_issue=None, *, baseline_only_tests=False, missing_test_evidence=False,
                   change_flows=False, omit_reviews="never", legacy_flow_metadata=False,
                   flow_attempts=None, shared_capability=False, source_gap=False,
-                  change_flow_structure=False):
+                  change_flow_structure=False, add_verification=False, initial_repair=None):
         with tempfile.TemporaryDirectory() as directory:
             run = Path(directory)
             prepared = run / "analysis-input"
@@ -270,6 +303,15 @@ class MvgSegmentScopeTests(unittest.TestCase):
                     test = deepcopy(next(row for row in tests if row["id"] in flow["test_ids"]))
                     test.update(flow_id=flow["id"], test_refs=[])
                     envelope["tests"] = [test]
+                    if add_verification:
+                        envelope["tests"].append({"id": "verify-" + flow["id"] + "-failure",
+                            "flow_id": flow["id"], "kind": "gdunit", "state": "planned",
+                            "path": "Tests.Godot/tests/Integration/test_" + flow["id"].replace("-", "_") + "_failure.gd",
+                            "selector": "test_failure", "min_tests": 1, "evidence_level": "scene-method",
+                            "test_refs": ["Reject illegal input without progression."], "owner_task": flow["task_ids"][0],
+                            "requirement_ids": flow["requirement_ids"], "handoff_indexes": [0],
+                            "inputs": "Invalid transition request", "assertions": "Observable rejection and no progression",
+                            "implementation_acceptance": "Implement the failure case at the route boundary."})
                 else:
                     check(section, None, prompt, output_schema)
                     envelope[{"coverage": "coverage_table", "entrypoints": "entrypoints"}[section]] = []
@@ -288,6 +330,7 @@ class MvgSegmentScopeTests(unittest.TestCase):
                 1, "", run / "model-workspace/attempt-1",
                 semantics={"requirements": requirements}, task_ids=[1, 2],
                 planning_scope=plan_mvg._manifest_planning_scope(manifest, views),
+                repair_issue=initial_repair,
             )
             self.assertEqual(2, calls.count("tests"))
             changed_flow_count = 2 if change_flows else int(legacy_flow_metadata)
@@ -318,6 +361,14 @@ class MvgSegmentScopeTests(unittest.TestCase):
         self.assertEqual(2, len(proposal["change_reviews"]))
         self.assertTrue(all(flow["outcome"].endswith(" revised")
                             for flow in proposal["manifest_candidate"]["flows"]))
+
+    def test_additive_verification_survives_segment_merge_and_delta(self):
+        proposal = self._dispatch(lambda *args: None, add_verification=True)
+        extensions = [row for row in proposal["tests"] if row["id"].startswith("verify-")]
+        self.assertEqual(2, len(extensions))
+        for flow in proposal["manifest_candidate"]["flows"]:
+            self.assertEqual(2, len(flow["test_ids"]))
+            self.assertEqual(flow["test_ids"], flow["handoffs"][0]["test_ids"])
 
     def test_missing_change_reviews_retry_only_the_routed_segment(self):
         proposal = self._dispatch(lambda *args: None, change_flows=True, omit_reviews="once")
@@ -519,7 +570,12 @@ class MvgSegmentScopeTests(unittest.TestCase):
                 return
             for item in schema["properties"]["tests"]["items"]["anyOf"]:
                 self.assertEqual([flow["id"]], item["properties"]["flow_id"].get("enum"))
-                self.assertEqual(flow["test_ids"], item["properties"]["id"].get("enum"))
+                if "pattern" in item["properties"]["id"]:
+                    self.assertEqual("planned", item["properties"]["state"]["const"])
+                    import re
+                    self.assertIsNotNone(re.fullmatch(item["properties"]["id"]["pattern"], "verify-" + flow["id"] + "-failure"))
+                else:
+                    self.assertEqual(flow["test_ids"], item["properties"]["id"].get("enum"))
         self._dispatch(check)
 
     def test_frozen_implemented_tests_need_not_be_task_view_refs(self):

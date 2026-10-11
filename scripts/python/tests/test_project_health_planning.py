@@ -316,8 +316,65 @@ class ProjectHealthPlanningTests(unittest.TestCase):
 
         def model(_runner, **kwargs):
             workspace = kwargs['workspace']
-            invocations.append(str(workspace))
+            invocations.append(str(kwargs['output_path']))
             prompt = Path(kwargs['prompt_path']).read_text(encoding='utf-8')
+            transport_schema = load_json(kwargs.get('output_schema'), {}) if kwargs.get('output_schema') else {}
+            schema_version = transport_schema.get('properties', {}).get('schema_version', {}).get('const')
+            if schema_version in {'newrouge.mvg-capability-append.v1', 'newrouge.mvg-semantic-review.v1'} and 'segments' in str(workspace):
+                context = json.loads(prompt.split('\n', 1)[1])
+                if schema_version == 'newrouge.mvg-capability-append.v1':
+                    scope = context['scope']
+                    fid = 'routing-' + scope['capability_id'].lower()
+                    tid = fid + '-test'
+                    accepted_entrypoints = context['accepted_proposal'].get('entrypoints', [])
+                    prior_flow_ids = [ref for row in accepted_entrypoints if row.get('owner_task') == 42
+                                      for ref in row.get('flow_ids', [])]
+                    payload = {key: prop['const'] for key, prop in transport_schema['properties'].items() if 'const' in prop}
+                    payload.update(flows=[{'id': fid, 'outcome': 'Relay delivers or exposes retry.',
+                        'requirement_ids': scope['new_requirement_ids'], 'capability_refs': [scope['capability_id']],
+                        'task_ids': [7, 42], 'source_paths': [GDD_PATH.as_posix()], 'test_ids': [tid],
+                        'handoffs': [{'producer_task': 7, 'consumer_task': 42, 'owner_task': 42,
+                            'contract_ref': 'Game.Core/Contracts/RelayHandoff.cs', 'contract_refs': None,
+                            'behavior': 'Deliver or preserve retry state.', 'test_ids': [tid], 'from': None, 'to': None}]}],
+                        coverage_table=[{'requirement_id': rid, 'capability_ref': scope['capability_id'],
+                            'task_id': next(row['taskmaster_id'] for row in context['task_views'] if rid in row.get('semantic_refs', [])),
+                            'flow_id': fid, 'disposition': 'flow', 'rationale': 'Owned observable relay behavior.',
+                            'sink_id': None, 'verification_ref': None, 'authority_ref': None, 'authority_review': None}
+                            for rid in scope['new_requirement_ids']],
+                        tests=[{'id': tid, 'kind': 'dotnet', 'state': 'planned', 'flow_id': fid, 'test_refs': [],
+                            'path': 'Game.Core.Tests/Tasks/RelayTests.cs', 'selector': 'RelayTests',
+                            'evidence_level': 'domain-integration', 'min_tests': 1}],
+                        entrypoints=[{'status': 'planned', 'flow_ids': prior_flow_ids + [fid], 'owner_task': 42,
+                            'path': 'Game.Core/Tasks/Relay42.cs', 'symbol': 'Run', 'inputs': 'Request',
+                            'state': 'Ready', 'assertions': 'Delivery or retry visible',
+                            'implementation_acceptance': 'Implement both outcomes'}], change_reviews=[], gaps=[], notes=[])
+                else:
+                    proposal = context['proposal']
+                    payload = {'schema_version': schema_version,
+                        'analysis_identity_sha256': proposal['analysis_identity_sha256'], 'proposal_sha256': canonical_sha(proposal),
+                        'verdict': 'approved', 'findings': [], 'requirement_reviews': [
+                            {'requirement_id': row['requirement_id'], 'verdict': 'covered', 'rationale': 'Owned observable behavior.',
+                             'repair_action': 'none', 'disposition': row['disposition'], 'route': row['disposition'],
+                             'flow_id': row['flow_id'], 'sink_id': None, 'verification_ref': None, 'authority_ref': None}
+                            for row in proposal['coverage_table']], 'flow_reviews': [
+                            {'flow_id': flow['id'], 'verdict': 'sound', 'rationale': 'Owned contract and test obligation.'}
+                            for flow in proposal['manifest_candidate']['flows']]}
+                atomic_json(kwargs['output_path'], payload)
+                return {'model': RUNNER['model'], 'model_tools': []}
+            if transport_schema.get('properties', {}).get('section', {}).get('const') == 'routing':
+                context, _ = json.JSONDecoder().raw_decode(prompt.split('\n', 1)[1].lstrip())
+                routes = []
+                for index, row in enumerate(context['requirements'].values(), 1):
+                    rid = row['requirement_id']
+                    allowed = context['permitted_flow_scopes'][rid]
+                    flow_id = allowed[0] if isinstance(allowed, list) else f'routing-relay-{index}'
+                    routes.append({'requirement_id': rid, 'disposition': 'flow', 'flow_id': flow_id,
+                                   'rationale': 'Fixture source-backed journey', 'sink_id': None,
+                                   'verification_ref': None, 'authority_ref': None})
+                atomic_json(kwargs['output_path'], {'schema_version': mvg.SEGMENT_SCHEMA,
+                    'analysis_identity_sha256': transport_schema['properties']['analysis_identity_sha256']['const'],
+                    'section': 'routing', 'scope_id': 'candidate-routing', 'routes': routes})
+                return {'model': RUNNER['model'], 'model_tools': []}
             if 'Capability identity alignment reviewer' in prompt:
                 base = json.loads(prompt.split('BASE_ALIGNMENT=', 1)[1].split('\nCANDIDATE=', 1)[0])
                 decisions = []
@@ -386,7 +443,7 @@ class ProjectHealthPlanningTests(unittest.TestCase):
                     scoped_capabilities = [value for value in scoped_capabilities if value]
                     scoped_tasks = task_ids or [7, 42]
                     envelope['flows'] = [{
-                        'id': f'{scope_id}-delivery',
+                        'id': scope_id,
                         'outcome': 'Relay delivery completes or exposes a retryable failure.',
                         'requirement_ids': scoped_requirements,
                         'capability_refs': scoped_capabilities,
@@ -435,6 +492,7 @@ class ProjectHealthPlanningTests(unittest.TestCase):
                 elif section == 'entrypoints':
                     envelope['entrypoints'] = [{
                         'status': 'planned',
+                        'flow_ids': [str(flow['id']) for flow in flow_context if task_id in flow.get('task_ids', [])],
                         'owner_task': task_id,
                         'path': f'Game.Core/Tasks/Relay{task_id}.cs',
                         'symbol': f'Relay{task_id}.Run',
@@ -493,6 +551,7 @@ class ProjectHealthPlanningTests(unittest.TestCase):
                      'verdict': {'flow': 'covered', 'other_verification': 'other_verification',
                                  'deferred': 'deferred'}.get(row.get('disposition', 'flow'), 'covered'),
                      'rationale': 'The fixture proposal accounts for this requirement.',
+                     'repair_action': 'none',
                      'disposition': row.get('disposition', 'flow'),
                      'flow_id': row.get('flow_id'), 'sink_id': row.get('sink_id'),
                      'verification_ref': row.get('verification_ref'),
@@ -583,7 +642,9 @@ class ProjectHealthPlanningTests(unittest.TestCase):
             cap_checkout = planning.execution_root(self.root, cap_job)
             self.assertNotEqual(cap_checkout, mvg_checkout)
             result = planning.run_job(self.root, mvg_job)
-            self.assertEqual('completed', result['status'], result)
+            ledger = load_json(mvg_checkout / 'logs/ci/mvg-planning' / mvg_job['job_id'] /
+                               'candidates/candidate-1/capability-append/append-ledger.json', {})
+            self.assertEqual('completed', result['status'], (result, ledger.get('issue_events', [])[:2]))
             self.assertEqual(self.revision, git(mvg_checkout, 'rev-parse', 'HEAD'))
             self.assertEqual(
                 (cap_checkout / 'docs/planning/semantic-topology/capabilities.v1.json').read_bytes(),
@@ -592,7 +653,10 @@ class ProjectHealthPlanningTests(unittest.TestCase):
             # Capability uses five model calls; MVG generation uses three
             # independent candidates with admission review, one selection
             # review, and one final admission-proof verification.
-            self.assertEqual(27, len(invocations))
+            generated_invocation_count = len(invocations)
+            self.assertEqual(6, sum(path.endswith('capability-append.json') for path in invocations))
+            admission_state = load_json(mvg_checkout / 'logs/ci/mvg-planning' / mvg_job['job_id'] / 'run.json')
+            self.assertTrue(all(row['status'] == 'admitted' for row in admission_state['candidate_admissions'].values()))
             overview = planning.generated_view(self.root, 'mvg')
             self.assertIsNotNone(overview)
             self.assertEqual(1, len(overview['manifests']))
@@ -613,7 +677,7 @@ class ProjectHealthPlanningTests(unittest.TestCase):
             reused = planning.create_job(self.root, 'capability')
             self.assertEqual('completed', reused['status'])
             self.assertEqual(cap_job['job_id'], reused['job_id'])
-            self.assertEqual(27, len(invocations))
+            self.assertEqual(generated_invocation_count, len(invocations))
         git(self.root, 'commit', '--allow-empty', '-m', 'fixture: later main')
         self.assertIsNotNone(planning.generated_view(self.root, 'capability'))
         self.assertIsNotNone(planning.generated_view(self.root, 'mvg'))
@@ -630,7 +694,7 @@ class ProjectHealthPlanningTests(unittest.TestCase):
             self.assertNotIn('checkout_job_id', job)
             result = planning.run_job(self.root, job)
         self.assertEqual('completed', result['status'], result)
-        self.assertEqual(22, len(invocations))
+        self.assertEqual(6, sum(path.endswith('capability-append.json') for path in invocations))
         self.assertEqual(main_revision(self.root), planning.generated_view(self.root, 'mvg')['revision'])
 
     def test_resume_reuses_generated_candidates_and_original_attempt(self):

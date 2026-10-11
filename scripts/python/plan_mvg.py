@@ -98,6 +98,17 @@ def _flow_request_ids(request: dict[str, Any]) -> set[str]:
     return {str(value) for value in request.get("flow_scope_ids", []) if str(value).strip()}
 
 
+def requirement_route_repair_id(issue: dict[str, Any]) -> str:
+    """Reassign ownership only when the review explicitly requests that repair."""
+    code = str(issue.get("code") or "")
+    if code.startswith("routing_reassign:"):
+        return code.rsplit(":", 1)[-1]
+    if (code.startswith("semantic_review_blocked:requirement_reviews:")
+            and issue.get("repair_action") == "reassign_route"):
+        return code.rsplit(":", 1)[-1]
+    return ""
+
+
 def route_candidate_repair_requests(requests: list[dict[str, Any]], issue: dict[str, Any],
                                     proposal: dict[str, Any] | None) -> set[int]:
     """Select only proposal sections that can repair one identified hard issue."""
@@ -224,6 +235,10 @@ def advance_admission_state(state: dict[str, Any], issue_codes: list[Any], *,
                 path = str(prior.get("path") or "")
                 detail = detail or str(prior.get("detail") or "").strip()
         normalized_issue = {"code": code, "path": path}
+        if isinstance(item, dict):
+            for key in ("repair_action", "findings"):
+                if item.get(key):
+                    normalized_issue[key] = str(item[key])
         if detail:
             normalized_issue["detail"] = detail
         normalized.append(normalized_issue)
@@ -411,6 +426,15 @@ def candidate_admission_errors(root: Path, state: dict[str, Any],
                 issues.append({"code": "delta_validation_blocked", "path": "manifest", "detail": str(exc)})
     if semantic_review is not None:
         from _mvg_planning_review import semantic_review_errors
+        if semantic_review.get("schema_version") == "newrouge.mvg-capability-admission.v1":
+            from _mvg_capability_generation import capability_scopes, seed_proposal
+            prepared = _run_dir(root, str(state.get("run_id"))) / "analysis-input"
+            expected_scopes = capability_scopes(load_json(prepared / "capabilities.v1.json", {}),
+                load_json(prepared / "semantic-requirements.v1.json", {}), state.get("planning_scope"),
+                {str(row["id"]): str(row.get("status", "")).lower() for row in
+                 load_json(prepared / "task-master.json", {}).get("master", {}).get("tasks", [])})
+            if semantic_review.get("scopes") != expected_scopes or semantic_review.get("seed") != seed_proposal(state, prepared):
+                issues.append({"code": "capability_admission_prepared_binding_invalid", "path": "admission-review"})
         scope = state.get("planning_scope") if isinstance(state.get("planning_scope"), dict) else None
         allowed = set(scope.get("requirement_ids", [])) if scope else None
         semantics_path = _run_dir(root, str(state.get("run_id"))) / "analysis-input/semantic-requirements.v1.json"
@@ -434,6 +458,15 @@ def candidate_admission_errors(root: Path, state: dict[str, Any],
         )[:1000]
         for error in errors:
             issue = {"code": str(error), "path": "semantic-review"}
+            if str(error).startswith("semantic_review_blocked:"):
+                _, family, identifier = str(error).split(":", 2)
+                key = "requirement_id" if family == "requirement_reviews" else "flow_id"
+                row = next((row for row in semantic_review.get(family, [])
+                            if isinstance(row, dict) and str(row.get(key)) == identifier), {})
+                issue["detail"] = str(row.get("rationale") or "")
+                issue["repair_action"] = str(row.get("repair_action") or "repair_sections")
+                if finding_detail:
+                    issue["findings"] = finding_detail
             if finding_detail and str(error) == "semantic_review_not_approved":
                 issue["detail"] = finding_detail
             issues.append(issue)
@@ -485,6 +518,15 @@ def run_admission_semantic_gate(root: Path, state: dict[str, Any], proposal: dic
               "verify that its change_reviews authority actually supports the exact semantic change. "
               "A candidate's authority_review.status=reviewed is a justification claim, not your approval; "
               "block unsupported baseline rewrites even when the referenced file exists. "
+              "This is planning admission, not runtime acceptance. An implemented test means its implementation "
+              "exists, not that it passed or proves an entire Requirement. Planned entrypoints/tests with real "
+              "owners, concrete inputs/state/assertions and implementation acceptance are legitimate future "
+              "obligations. Do not require those obligations to be implemented now. Block coverage claims "
+              "that neither have adequate existing evidence nor explicitly specify the missing verification. "
+              "For each requirement_review return repair_action=none when accepted, repair_sections for missing "
+              "evidence, assertions, or implementation obligations within its correct journey, and reassign_route "
+              "only when the Requirement belongs to a different journey. Missing verification alone is not "
+              "a reason to reassign ownership. Explain the precise needed repair in that row's rationale. "
               f"schema_version='newrouge.mvg-semantic-review.v1', analysis_identity_sha256='{state['analysis_identity_sha256']}', "
               f"proposal_sha256='{proposal_sha}'. Return complete requirement_reviews and flow_reviews. "
               "Echo disposition, flow_id, sink_id, verification_ref and authority_ref exactly from "
@@ -722,7 +764,7 @@ def semantic_review_output_schema(*, state: dict[str, Any] | None = None,
         "type": "object",
         "additionalProperties": False,
         "required": ["requirement_id", "verdict", "rationale", "disposition",
-                     "flow_id", "sink_id", "verification_ref", "authority_ref", "route"],
+                     "flow_id", "sink_id", "verification_ref", "authority_ref", "route", "repair_action"],
         "properties": {
             "requirement_id": {"type": "string", "minLength": 1},
             "verdict": {"type": "string", "enum": ["covered", "other_verification", "deferred", "blocked"]},
@@ -733,6 +775,7 @@ def semantic_review_output_schema(*, state: dict[str, Any] | None = None,
             "verification_ref": {"type": ["string", "null"]},
             "authority_ref": {"type": ["string", "null"]},
             "route": {"type": "string", "minLength": 1},
+            "repair_action": {"type": "string", "enum": ["none", "repair_sections", "reassign_route"]},
         },
     }
     flow = {
@@ -1547,7 +1590,31 @@ def candidate_routing_schema(identity: str, permitted: dict[str, set[str] | None
             "rationale": {"type": "string", "minLength": 1},
             **{key: {"type": ["string", "null"]} for key in ("sink_id", "verification_ref", "authority_ref")},
         }
-        items.append(obj(properties))
+        for disposition in ("flow", "other_verification", "deferred", "source_gap"):
+            variant = dict(properties)
+            variant["disposition"] = {"type": "string", "const": disposition}
+            if disposition == "flow":
+                if flows is not None and not flows:
+                    continue
+                variant["flow_id"] = (
+                    {"type": "string", "pattern": r"^routing-[a-z0-9]+(?:-[a-z0-9]+)*$"}
+                    if flows is None else {"type": "string", "enum": sorted(flows)})
+                for key in ("sink_id", "verification_ref", "authority_ref"):
+                    variant[key] = {"type": "null"}
+            else:
+                variant["flow_id"] = {"type": "null"}
+                if disposition == "other_verification":
+                    variant["sink_id"] = {"type": "string", "minLength": 1}
+                    variant["verification_ref"] = {"type": "string", "minLength": 1}
+                    variant["authority_ref"] = {"type": "null"}
+                elif disposition == "deferred":
+                    variant["sink_id"] = {"type": "null"}
+                    variant["verification_ref"] = {"type": "null"}
+                    variant["authority_ref"] = {"type": "string", "minLength": 1}
+                else:
+                    for key in ("sink_id", "verification_ref", "authority_ref"):
+                        variant[key] = {"type": "null"}
+            items.append(obj(variant))
     return obj({"schema_version": {"type": "string", "const": SEGMENT_SCHEMA},
                 "analysis_identity_sha256": {"type": "string", "const": identity},
                 "section": {"type": "string", "const": "routing"},
@@ -1616,8 +1683,7 @@ def atomic_repair_errors(base: dict[str, Any], changed: dict[str, Any], issue: d
         flow_id = suffix
     affected_flows = ({flow_id} if flow_id else
                       {key for key, row in flows.items() if rid in row.get("requirement_ids", [])})
-    route_change = (code.startswith("routing_reassign:")
-                    or code.startswith("semantic_review_blocked:requirement_reviews:")) and rid
+    route_change = bool(requirement_route_repair_id(issue)) and rid
     if route_change:
         revised_rows = changed.get("manifest_candidate", {}).get("flows", [])
         affected_flows.update(str(row.get("id")) for row in revised_rows
@@ -1628,6 +1694,10 @@ def atomic_repair_errors(base: dict[str, Any], changed: dict[str, Any], issue: d
         affected_flows = set()
     affected_tasks = {tid for fid in affected_flows for tid in flows.get(fid, {}).get("task_ids", [])}
     affected_tests = {str(tid) for fid in affected_flows for tid in flows.get(fid, {}).get("test_ids", [])}
+    for test in changed.get("tests", []):
+        if (test.get("flow_id") in affected_flows and test.get("state") == "planned"
+                and not planned_verification_errors(test, flows.get(str(test.get("flow_id")), {}))):
+            affected_tests.add(str(test.get("id")))
     errors = []
     old_targets = [row for row in base.get("coverage_table", []) if row.get("requirement_id") == rid]
     new_targets = [row for row in changed.get("coverage_table", []) if row.get("requirement_id") == rid]
@@ -1640,6 +1710,8 @@ def atomic_repair_errors(base: dict[str, Any], changed: dict[str, Any], issue: d
         if not route_change:
             protected += ("requirement_ids", "capability_refs")
         for field in protected:
+            if field == "test_ids" and set(old.get(field, [])) <= set(new.get(field, [])) <= affected_tests:
+                continue
             if old.get(field) != new.get(field):
                 errors.append(f"repair_protected_flow_field:{fid}:{field}")
         if route_change:
@@ -1649,7 +1721,7 @@ def atomic_repair_errors(base: dict[str, Any], changed: dict[str, Any], issue: d
                 errors.append(f"repair_unrelated_flow_requirement_change:{fid}")
         if code.startswith("segment_flow_change_review_missing:") and old != new:
             errors.append(f"repair_review_only_flow_changed:{fid}")
-    if code.startswith("semantic_review_blocked:requirement_reviews:") and rid:
+    if route_change and rid:
         old_routes = {str(row.get("id")): row for row in flows.values()}
         new_routes = {str(row.get("id")): row for row in revised_flows.values()}
         old_owners = {flow_id for flow_id, row in old_routes.items() if rid in row.get("requirement_ids", [])}
@@ -1700,6 +1772,14 @@ def atomic_repair_errors(base: dict[str, Any], changed: dict[str, Any], issue: d
                 errors.append("repair_unrelated_route_change")
     return sorted(set(errors))
 
+
+def _canonical_handoffs(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Treat omitted optional fields and explicit null as the same handoff."""
+    return [{key: value for key, value in row.items()
+             if key not in {'contract_refs', 'from', 'to'} or value is not None}
+            for row in rows]
+
+
 def segment_output_schema(*, section: str, identity: str, scope_id: str,
                           available_source_paths: list[str] | None = None,
                           available_contract_paths: list[str] | None = None,
@@ -1709,6 +1789,7 @@ def segment_output_schema(*, section: str, identity: str, scope_id: str,
                           available_reference_paths: list[str] | None = None,
                           allowed_change_ids: list[str] | None = None,
                           allowed_requirement_ids: list[str] | None = None,
+                          allow_planned_verification: bool = False,
                           proposal_sha256: str | None = None) -> dict[str, Any]:
     """Build the CLI-enforced envelope for one routed segment request."""
     payload_key = {
@@ -1740,6 +1821,9 @@ def segment_output_schema(*, section: str, identity: str, scope_id: str,
     contract_path = bounded_path(available_contract_paths)
     flow_id = bounded_path(allowed_flow_ids)
     test_id = bounded_path(allowed_test_ids)
+    if section == "flows" and allow_planned_verification and allowed_flow_ids:
+        test_id = {"anyOf": [test_id, *[{"type": "string", "pattern": "^" + re.escape(f"verify-{fid}-")
+                   + "[a-z0-9][a-z0-9-]*$"} for fid in allowed_flow_ids]]}
     reference_path = nonempty_string
     if available_reference_paths is not None:
         paths = sorted({str(path).replace("\\", "/") for path in available_reference_paths
@@ -1792,6 +1876,7 @@ def segment_output_schema(*, section: str, identity: str, scope_id: str,
     flexible_text = {"anyOf": [nonempty_string, array(nonempty_string), {"type": "null"}]}
     entrypoint = strict_object({
         "status": {"type": "string", "enum": ["planned", "existing_verified"]},
+        "flow_ids": {"type": "array", "items": flow_id, "minItems": 1},
         "owner_task": integer, "path": nonempty_string, "symbol": nonempty_string,
         "inputs": flexible_text, "state": flexible_text, "assertions": flexible_text,
         "implementation_acceptance": flexible_text,
@@ -1809,10 +1894,29 @@ def segment_output_schema(*, section: str, identity: str, scope_id: str,
                        "path": bounded_test_path("Tests.Godot/tests/", ".gd"),
                        "evidence_level": {"type": "string", "enum": ["scene-method", "engine-input"]}}),
     ]}
+    if section == "tests" and allow_planned_verification and allowed_flow_ids:
+        for fid in allowed_flow_ids:
+            for kind, prefix, suffix, levels in (
+                    ("dotnet", "Game.Core.Tests/", ".cs", ["domain-integration"]),
+                    ("gdunit", "Tests.Godot/tests/", ".gd", ["scene-method", "engine-input"])):
+                test["anyOf"].append(strict_object({
+                    **test_common,
+                    "id": {"type": "string", "pattern": "^" + re.escape(f"verify-{fid}-") + "[a-z0-9][a-z0-9-]*$"},
+                    "flow_id": {"type": "string", "enum": [fid], "const": fid},
+                    "state": {"type": "string", "const": "planned"},
+                    "kind": {"type": "string", "const": kind},
+                    "path": {"type": "string", "pattern": "^" + re.escape(prefix) + ".+" + re.escape(suffix) + "$"},
+                    "evidence_level": {"type": "string", "enum": levels},
+                    "owner_task": integer,
+                    "requirement_ids": {"type": "array", "items": nonempty_string, "minItems": 1},
+                    "handoff_indexes": {"type": "array", "items": {"type": "integer", "minimum": 0}, "minItems": 1},
+                    "inputs": nonempty_string, "assertions": nonempty_string,
+                    "implementation_acceptance": nonempty_string,
+                }))
     item_schema = {"flows": flow, "coverage_table": coverage,
                    "entrypoints": entrypoint, "tests": test}[payload_key]
     payload_schema = array(item_schema)
-    if ((section == "tests" and allowed_test_ids == [])
+    if ((section == "tests" and allowed_test_ids == [] and not allow_planned_verification)
             or (section == "flows" and allowed_test_ids == [])):
         payload_schema["maxItems"] = 0
     schema = {
@@ -2057,9 +2161,12 @@ def validate_segment_routing(value: dict[str, Any], *, section: str,
             continue
         if section == "flows":
             flow_id = str(row.get("id") or "")
-            if isinstance(incumbent, dict) and any(
-                    (key in incumbent) != (key in row) or incumbent.get(key) != row.get(key)
-                    for key in ("outcome", "requirement_ids", "capability_refs")) and flow_id not in review_ids:
+            semantic_changed = isinstance(incumbent, dict) and (
+                any((key in incumbent) != (key in row) or incumbent.get(key) != row.get(key)
+                    for key in ("outcome", "requirement_ids", "capability_refs"))
+                or _canonical_handoffs(incumbent.get('handoffs', []))
+                != _canonical_handoffs(row.get('handoffs', [])))
+            if semantic_changed and flow_id not in review_ids:
                 errors.append(f"segment_flow_change_review_missing:{flow_id}")
             # Cumulative manifests freeze their existing flow IDs.  A frozen
             # request must return the exact incumbent ID; accepting a suffixed
@@ -2159,6 +2266,8 @@ def validate_segment_routing(value: dict[str, Any], *, section: str,
             owner_task = row.get("owner_task")
             if type(owner_task) is not int or owner_task not in allowed_tasks:
                 errors.append("segment_entrypoint_owner_outside_scope")
+            if "flow_ids" in row and (not row["flow_ids"] or not set(row["flow_ids"]).issubset(known_flow_ids)):
+                errors.append("segment_entrypoint_flow_outside_scope")
         elif section == "tests":
             flow_id = str(row.get("flow_id") or "")
             exact_flow_ids = set(flow_scope_ids) if request.get("allow_exact_flow_id") else set()
@@ -2170,14 +2279,20 @@ def validate_segment_routing(value: dict[str, Any], *, section: str,
                 errors.append("segment_test_flow_unknown")
             allowed_test_paths = {str(value).replace("\\", "/")
                                   for value in request.get("test_paths", []) if str(value).strip()}
-            if allowed_test_paths and str(row.get("path") or "").replace("\\", "/") not in allowed_test_paths:
+            extension = bool(request.get("allow_planned_verification")
+                             and str(row.get("id") or "").startswith(f"verify-{flow_id}-"))
+            if allowed_test_paths and not extension and str(row.get("path") or "").replace("\\", "/") not in allowed_test_paths:
                 errors.append("segment_test_path_outside_scope")
             test_id = str(row.get("id") or "")
             exact_test_ids = {str(value) for value in request.get("test_ids", [])}
             if scope_id and not (
                     (request.get("allow_exact_test_id") and test_id in exact_test_ids)
+                    or extension
                     or (not request.get("allow_exact_test_id") and test_id.startswith(scope_id + "-"))):
                 errors.append("segment_test_id_outside_scope")
+            if extension:
+                flow = next((flow for flow in flow_context or [] if flow.get("id") == flow_id), {})
+                errors.extend(planned_verification_errors(row, flow))
     return sorted(set(errors))
 
 
@@ -2254,6 +2369,54 @@ def validate_segment_identity(value: dict[str, Any], *, section: str, identity: 
     return errors
 
 
+def planned_verification_errors(test: dict[str, Any], flow: dict[str, Any]) -> list[str]:
+    """Additive verification must bind to an actual journey and real owner."""
+    errors = []
+    test_id = str(test.get("id") or "")
+    if str(test.get("flow_id") or "") != str(flow.get("id") or ""):
+        errors.append("segment_verification_flow_mismatch")
+    if test.get("state") != "planned":
+        errors.append("segment_verification_not_planned")
+    if (type(test.get("owner_task")) is not int
+            or test.get("owner_task") not in flow.get("task_ids", [])):
+        errors.append("segment_verification_owner_outside_flow")
+    requirements = test.get("requirement_ids")
+    if (not isinstance(requirements, list) or not requirements
+            or not set(requirements).issubset(flow.get("requirement_ids", []))):
+        errors.append("segment_verification_requirements_outside_flow")
+    indexes = test.get("handoff_indexes")
+    if (not isinstance(indexes, list) or not indexes
+            or any(type(i) is not int or i < 0 or i >= len(flow.get("handoffs", [])) for i in indexes)):
+        errors.append("segment_verification_handoff_outside_flow")
+    for field in ("inputs", "assertions", "implementation_acceptance"):
+        if not isinstance(test.get(field), str) or not test[field].strip():
+            errors.append(f"segment_verification_missing_{field}")
+    if not re.fullmatch(re.escape(f"verify-{flow.get('id')}-") + r"[a-z0-9][a-z0-9-]*", test_id):
+        errors.append("segment_verification_id_outside_flow")
+    return errors
+
+
+def bind_planned_verification(proposal: dict[str, Any], baseline: dict[str, Any]) -> None:
+    """Append model-owned planned tests to their explicit handoffs, retaining regressions."""
+    baseline_tests = {str(row.get("id")) for row in baseline.get("tests", [])}
+    flows = {str(row.get("id")): row for row in proposal.get("manifest_candidate", {}).get("flows", [])}
+    for test in proposal.get("tests", []):
+        if str(test.get("id")) in baseline_tests:
+            continue
+        fid = str(test.get("flow_id") or "")
+        flow = flows.get(fid, {})
+        errors = planned_verification_errors(test, flow)
+        if errors:
+            raise MVGSegmentRoutingError(";".join(errors), [{"code": error, "path": "tests"} for error in errors])
+        test_id = str(test["id"])
+        if test_id not in flow.get("test_ids", []):
+            flow.setdefault("test_ids", []).append(test_id)
+        for index in test["handoff_indexes"]:
+            handoff = flow["handoffs"][index]
+            if test_id not in handoff.get("test_ids", []):
+                handoff.setdefault("test_ids", []).append(test_id)
+
+
 def bind_manifest_test_ids(proposal: dict[str, Any], *,
                            preserve_flow_ids: set[str] | None = None) -> None:
     """Bind generated test routes without weakening cumulative baseline flows.
@@ -2283,9 +2446,10 @@ def bind_manifest_test_ids(proposal: dict[str, Any], *,
             continue
         flow_id = str(flow.get("id") or "")
         routed = list(dict.fromkeys(by_flow.get(flow_id, [])))
-        if not routed and flow_id in preserved:
-            # No fresh test route is an allowed no-op for an existing
-            # cumulative flow.  Keep its handoff bindings byte-for-byte.
+        if flow_id in preserved:
+            # Existing cumulative flows already have evidence-bound test
+            # routes. A generated test segment must not replace each narrow
+            # handoff binding with the entire flow's test inventory.
             continue
         test_ids = routed
         flow["test_ids"] = test_ids
@@ -2392,23 +2556,32 @@ def _manifest_planning_scope(manifest: dict[str, Any] | None,
     test_paths = {str(row.get("path")).split("#", 1)[0].replace("\\", "/")
                   for row in tests if str(row.get("path") or "").strip()}
     # Older manifests may not carry semantic/capability fields on each flow.
-    # Resolve those fields from the authoritative task views, still bounded to
-    # the manifest's explicit task IDs.
-    for row in task_views or []:
-        if not isinstance(row, dict):
+    # Only those legacy manifests may resolve fields from task views.  Once a
+    # manifest declares explicit membership, it is the frozen MVG boundary;
+    # evidence-owner task views must not widen it with governance-only rows.
+    for flow in flows:
+        missing_requirements = "requirement_ids" not in flow
+        missing_capabilities = "capability_refs" not in flow
+        if not missing_requirements and not missing_capabilities:
             continue
-        try:
-            task_id = int(row.get("taskmaster_id"))
-        except (TypeError, ValueError):
-            continue
-        if task_id not in task_ids:
-            continue
-        requirement_values = (row.get("semantic_refs")
-                              if isinstance(row.get("semantic_refs"), list)
-                              else row.get("requirement_ids"))
-        requirement_ids.update(str(value) for value in (requirement_values or []) if str(value).strip())
-        capability_values = row.get("capability_refs")
-        capability_refs.update(str(value) for value in (capability_values or []) if str(value).strip())
+        legacy_task_ids = {value for value in flow.get("task_ids", []) if type(value) is int}
+        for row in task_views or []:
+            if not isinstance(row, dict):
+                continue
+            try:
+                task_id = int(row.get("taskmaster_id"))
+            except (TypeError, ValueError):
+                continue
+            if task_id not in legacy_task_ids:
+                continue
+            requirement_values = (row.get("semantic_refs")
+                                  if isinstance(row.get("semantic_refs"), list)
+                                  else row.get("requirement_ids"))
+            if missing_requirements:
+                requirement_ids.update(str(value) for value in (requirement_values or []) if str(value).strip())
+            capability_values = row.get("capability_refs")
+            if missing_capabilities:
+                capability_refs.update(str(value) for value in (capability_values or []) if str(value).strip())
     return {
         "scope_id": str(coverage.get("scope_id") or manifest.get("mvg_id") or "").strip(),
         "mode": str(coverage.get("mode") or "").strip(),
@@ -2421,6 +2594,7 @@ def _manifest_planning_scope(manifest: dict[str, Any] | None,
         "contract_refs": sorted(contract_refs),
         "test_paths": sorted(test_paths),
         "excluded_claims": list(coverage.get("excluded_claims") or []),
+        "allow_planned_verification": True,
     }
 
 
@@ -2429,8 +2603,13 @@ def _bounded_text(value: Any, limit: int = 480) -> str:
     return text if len(text) <= limit else text[:limit - 3].rstrip() + "..."
 
 
-def _contract_candidates(contract_refs: set[str], paths: list[str], *, limit: int = 3) -> list[str]:
+def _contract_candidates(contract_refs: set[str], paths: list[str], *, limit: int = 3,
+                         required_paths: list[str] | None = None) -> list[str]:
     """Reduce contract evidence to paths plausibly owned by this task slice."""
+    required = {str(path).split('#', 1)[0].replace('\\', '/') for path in (required_paths or [])}
+    missing = required - set(paths)
+    if missing:
+        raise ValueError('incumbent_contract_unprepared:' + ','.join(sorted(missing)))
     selected: list[str] = []
     for ref in sorted(contract_refs):
         tokens = {token.lower() for token in str(ref).replace(".", " ").replace("_", " ").split()
@@ -2445,7 +2624,9 @@ def _contract_candidates(contract_refs: set[str], paths: list[str], *, limit: in
                 matches.append(path)
         selected.extend(matches[:limit])
     if selected:
-        return sorted(set(selected))[:limit]
+        return sorted(required | set(sorted(set(selected))[:limit]))
+    if required:
+        return sorted(required)
     # Task views often carry event/contract identifiers rather than file
     # paths. Keep a bounded real-path fallback so the model can choose an
     # actual prepared contract instead of inventing a GAP pseudo-path.
@@ -2569,11 +2750,20 @@ def merge_planning_segments(base: dict[str, Any], segments: list[dict[str, Any]]
         for row in segment.get("flows", []) or []:
             if not isinstance(row, dict) or not str(row.get("id") or "").strip():
                 continue
+            row = deepcopy(row)
+            if 'handoffs' in row:
+                row['handoffs'] = _canonical_handoffs(row['handoffs'])
             existing = flow_map.get(str(row["id"]))
             if existing is None:
                 flows.append(row)
                 flow_map[str(row["id"])] = row
             else:
+                # Optional null/omitted handoff fields are structurally
+                # equivalent. Preserve the incumbent representation so a
+                # section merge does not manufacture a semantic delta.
+                if (isinstance(existing.get("handoffs"), list)
+                        and row.get("handoffs") == _canonical_handoffs(existing["handoffs"])):
+                    row["handoffs"] = deepcopy(existing["handoffs"])
                 existing.update(row)
         for key in ("coverage_table", "entrypoints", "tests"):
             target = result.setdefault(key, [])
@@ -2662,9 +2852,11 @@ def preserve_frozen_manifest_baseline(proposal: dict[str, Any],
             # Keep the cumulative route contract and evidence inventory byte-
             # stable, while retaining model-owned semantic membership fields
             # needed to account for the frozen Requirement rows.
-            for key in ("id", "task_ids", "source_paths", "handoffs", "test_ids"):
+            for key in ("id", "task_ids", "source_paths", "test_ids"):
                 if key in baseline_flow:
                     merged[key] = json.loads(json.dumps(baseline_flow[key]))
+            if flow_id not in reviewed_changes or "handoffs" not in merged:
+                merged["handoffs"] = deepcopy(baseline_flow.get("handoffs", []))
             if flow_id not in reviewed_changes:
                 for key in ("requirement_ids", "capability_refs"):
                     if key in baseline_flow:
@@ -2725,6 +2917,7 @@ def build_test_segment_requests(flow_scopes: list[dict[str, Any]],
             "allow_exact_test_id": planning_scope is not None,
             "test_ids": frozen_test_ids if planning_scope is not None else [],
             "test_paths": sorted(planning_scope.get("test_paths", [])) if planning_scope else [],
+            "allow_planned_verification": bool(planning_scope and planning_scope.get("allow_planned_verification")),
         })
     return requests
 
@@ -2912,8 +3105,7 @@ def invoke_segmented(invoke: Any, run_dir: Path, state: dict[str, Any], attempt:
     route_path = run_dir / "candidate-routing.json"
     pending_route_path = run_dir / "candidate-routing.pending.json"
     repair_code = str((repair_issue or {}).get("code") or "")
-    repair_rid = (repair_code.rsplit(":", 1)[-1]
-                  if repair_code.startswith("semantic_review_blocked:requirement_reviews:") else "")
+    repair_rid = requirement_route_repair_id(repair_issue or {})
     routing_issue = repair_code.startswith("routing_") or bool(repair_rid)
     # Keep the incumbent route snapshot available while building a focused
     # route repair.  Clearing it before extracting the target route loses the
@@ -3317,13 +3509,14 @@ def invoke_segmented(invoke: Any, run_dir: Path, state: dict[str, Any], attempt:
 
     def execute_request(index: int, request: dict[str, Any], flow_context: list[dict[str, Any]]) -> tuple[int, dict[str, Any], dict[str, Any]]:
         section = request["section"]
+        section_contract_paths = contract_paths
         requirements = request["requirement_ids"]
         scoped_tasks = request["task_ids"]
         flow_prefix = ("" if planning_scope is not None else f"{request['scope_id']}-") if section == "flows" else ""
         test_prefix = (f"{request['scope_id']}-"
                        if section == "tests" and planning_scope is None else "")
         prompt_flow_context = flow_context
-        if section == "tests" and request.get("flow_scope_ids"):
+        if section in {"tests", "entrypoints"} and request.get("flow_scope_ids"):
             prompt_flow_context = [row for row in flow_context
                                    if isinstance(row, dict)
                                    and any((str(row.get("id", "")) == scope_id or
@@ -3340,7 +3533,8 @@ def invoke_segmented(invoke: Any, run_dir: Path, state: dict[str, Any], attempt:
         )
         if planning_scope is not None:
             section_prompt_text += "\nThis is a frozen existing-manifest scope. Do not add obligations outside it. " \
-                "Preserve exactly these flow/test IDs and use only these Requirement, Task, source and test IDs:\n"
+                "Preserve these baseline flow/test IDs and use only these Requirement, Task and source IDs. " \
+                "Tests may add the separately schema-authorized planned verification extension within the same journey:\n"
             section_prompt_text += json.dumps({
                 "flow_ids": ([request["scope_id"]] if section == "flows" else
                              request.get("flow_scope_ids", []) if section == "tests" else
@@ -3374,13 +3568,18 @@ def invoke_segmented(invoke: Any, run_dir: Path, state: dict[str, Any], attempt:
             scoped_refs = {str(value) for row in all_task_views
                            if int(row.get("taskmaster_id", -1)) in set(scoped_tasks)
                            for value in _list_field(row, "contractRefs") if str(value).strip()}
+            incumbent_contracts = [str(value) for handoff in (request.get('incumbent_flow') or {}).get('handoffs', [])
+                                  for value in [handoff.get('contract_ref'), *(handoff.get('contract_refs') or [])]
+                                  if value]
+            section_contract_paths = _contract_candidates(scoped_refs, contract_paths,
+                                                         required_paths=incumbent_contracts)
             section_prompt_text += "\nInline bounded evidence context:\n" + json.dumps({
                 "requirements": request["requirements"],
                 "capabilities": request.get("capabilities", []),
                 "task_views": [row for row in all_task_views
                                if int(row.get("taskmaster_id", -1)) in set(scoped_tasks)],
                 "available_source_paths": source_paths,
-                "available_contract_paths": _contract_candidates(scoped_refs, contract_paths),
+                "available_contract_paths": section_contract_paths,
                 "declared_contract_refs": sorted(scoped_refs),
             }, ensure_ascii=False)
             if request.get("incumbent_flow") is not None:
@@ -3396,7 +3595,7 @@ def invoke_segmented(invoke: Any, run_dir: Path, state: dict[str, Any], attempt:
                 }, ensure_ascii=False)
                 section_prompt_text += (
                     "\nReturn change_reviews alongside flows. Return [] when outcome, requirement_ids and "
-                    "capability_refs are unchanged. Any change to these fields requires a review row for this "
+                    "capability_refs and handoffs are unchanged. Any change to these fields requires a review row for this "
                     "exact incumbent flow id, with reason, a prepared specification authority_ref (optional "
                     "anchor), and authority_review={status:reviewed,rationale:<specific source-backed reason>}. "
                     "Preserve outcome wording when behavior is unchanged. Do not invent authorization; if "
@@ -3425,7 +3624,28 @@ def invoke_segmented(invoke: Any, run_dir: Path, state: dict[str, Any], attempt:
                 "task_views": [row for row in all_test_views
                                if int(row.get("taskmaster_id", -1)) in set(scoped_tasks)],
                 "available_test_paths": available_test_paths,
+                "baseline_tests": [row for row in frozen_manifest.get("tests", [])
+                                   if row.get("id") in request.get("test_ids", [])],
+                "baseline_test_evidence": [{"path": row["path"],
+                    "excerpt": _review_excerpt(_prepared_reference(prepared, row["path"]), 3000)[0]}
+                    for row in frozen_manifest.get("tests", [])
+                    if row.get("id") in request.get("test_ids", [])
+                    and _prepared_reference(prepared, str(row.get("path") or "")) is not None],
             }, ensure_ascii=False)
+            if request.get("allow_planned_verification"):
+                section_prompt_text += (
+                    "\nAdditive verification is allowed inside this exact journey. Baseline implemented tests "
+                    "are retained unchanged by the host; return an empty array if no new verification is needed. "
+                    "For missing behavior coverage, return concrete planned tests with id verify-<flow_id>-<name>, "
+                    "that exact flow_id, a real owner_task from this flow, a nonempty subset of its requirement_ids, "
+                    "and zero-based handoff_indexes identifying the exact boundaries tested. Supply concrete inputs, "
+                    "assertions and implementation_acceptance. New paths may be not-yet-created files under the "
+                    "normal test directories. These rows remain planned; never relabel a baseline implemented test "
+                    "or pretend a fixture verifies a branch it does not exercise. The full Requirement statement "
+                    "may require additional cases beyond the old tests.\n"
+                    + json.dumps({"requirements": [requirement_context[rid] for flow in prompt_flow_context
+                        for rid in flow.get("requirement_ids", []) if rid in requirement_context]}, ensure_ascii=False)
+                )
         if needs_repair(index, request):
             payload_key = {"flows": "flows", "coverage": "coverage_table",
                            "entrypoints": "entrypoints", "tests": "tests"}[section]
@@ -3464,7 +3684,7 @@ def invoke_segmented(invoke: Any, run_dir: Path, state: dict[str, Any], attempt:
                                               identity=identity,
                                               scope_id=request["scope_id"],
                                               available_source_paths=source_paths,
-                                              available_contract_paths=contract_paths,
+                                              available_contract_paths=section_contract_paths,
                                               allowed_flow_ids=(
                                                   [request["scope_id"]]
                                                   if section == "flows"
@@ -3472,7 +3692,8 @@ def invoke_segmented(invoke: Any, run_dir: Path, state: dict[str, Any], attempt:
                                                         if section == "tests"
                                                         else [str(row["id"]) for row in prompt_flow_context]
                                                         if section == "coverage"
-                                                        else None)
+                                                        else [str(row["id"]) for row in prompt_flow_context]
+                                                        if section == "entrypoints" else None)
                                               ),
                                               allowed_test_ids=(
                                                   _segment_allowed_test_ids(request, planning_scope, section)
@@ -3490,6 +3711,7 @@ def invoke_segmented(invoke: Any, run_dir: Path, state: dict[str, Any], attempt:
                                                   if request.get("incumbent_flow") is not None else None
                                               ),
                                               allowed_requirement_ids=requirements if section in {"flows", "coverage"} else None,
+                                              allow_planned_verification=bool(request.get("allow_planned_verification")),
                                               proposal_sha256=canonical_sha(base_proposal or {}) if needs_repair(index, request) else None,
                                           ))
                 parsed = json.loads(output.read_text(encoding="utf-8"))
@@ -3509,7 +3731,7 @@ def invoke_segmented(invoke: Any, run_dir: Path, state: dict[str, Any], attempt:
                     available_contract_paths=contract_paths,
                     available_test_paths=available_test_paths,
                 ))
-                if needs_repair(index, request):
+                if needs_repair(index, request) and base_proposal is not None:
                     tentative = merge_planning_segments(base_proposal or {}, [parsed])
                     if not repair_rid:
                         errors.extend(atomic_repair_errors(base_proposal or {}, tentative,
@@ -3696,7 +3918,12 @@ def invoke_segmented(invoke: Any, run_dir: Path, state: dict[str, Any], attempt:
         # Projection already happened at the flow barrier. Associated sections
         # have consumed those exact final flows; do not rewrite their inputs.
         if final_projection.get("tests") is not None:
-            assembled["tests"] = deepcopy(final_projection["tests"])
+            baseline_tests = deepcopy(final_projection["tests"])
+            baseline_ids = {str(row.get("id")) for row in baseline_tests}
+            extensions = [row for row in assembled.get("tests", []) if str(row.get("id")) not in baseline_ids]
+            assembled["tests"] = baseline_tests + extensions
+            if planning_scope.get("allow_planned_verification"):
+                bind_planned_verification(assembled, frozen_manifest)
     assembled.setdefault("manifest_candidate", {})["tests"] = assembled.get("tests", [])
     output = workspace / f"proposal-attempt-{attempt}.json"
     atomic_json(output, assembled)
@@ -4074,6 +4301,7 @@ def generate(root: Path, *, run_id: str, timeout_sec: int, llm_backend: str, seg
     # are complete independent proposals and never patch another candidate.
     run_path, state = _load_run(root, run_id)
     _validate_input_freshness(root, run_path.parent, state)
+    legacy_segmented_run = state.get("generation_strategy") == "independent-candidates-segmented"
     if state.get("formal_ready") is not True:
         raise ValueError("formal MVG planning is blocked until the explicit Chapter 5 scope is ready")
     if llm_backend not in SUPPORTED_LLM_BACKENDS:
@@ -4185,7 +4413,8 @@ Frozen manifest scope:
             "scope_id", "mode", "flow_ids", "requirement_ids", "capability_refs",
             "task_ids", "test_ids", "source_paths", "excluded_claims")}, ensure_ascii=False)
     prompt = PROMPT + "\n" + strict_contract
-    state["generation_strategy"] = "independent-candidates-segmented" if segmented else "independent-candidates-single"
+    state["generation_strategy"] = ("independent-candidates-segmented" if legacy_segmented_run else
+                                    "independent-candidates-capability-append") if segmented else "independent-candidates-single"
     state.setdefault("candidate_attempts", {})
     state.setdefault("candidate_admissions", {})
     state.setdefault("admission_events", [])
@@ -4389,6 +4618,78 @@ Frozen manifest scope:
         records = list((state.get("candidate_attempts", {}).get(label) or {}).get("attempts", []))
         proposal: dict[str, Any] | None = None
         validation: dict[str, Any] = {"status": "blocked", "errors": ["model_not_run"]}
+
+        # The production path is Capability-local additive generation.  The
+        # older flow/section dispatcher remains available to explicit legacy
+        # callers and is deliberately bypassed here so a candidate cannot mix
+        # whole-proposal and Capability append contexts.
+        if segmented and not legacy_segmented_run:
+            from _mvg_capability_generation import generate_append
+            def append_checkpoint(ledger):
+                progress = {key: deepcopy(ledger.get(key)) for key in (
+                    "order", "completed", "status", "total_invocations", "errors")}
+                current = ledger.get("current") or {}
+                progress["current"] = {key: deepcopy(current.get(key)) for key in (
+                    "capability_id", "context", "issue", "issue_attempts")}
+                with state_lock:
+                    state["candidate_attempts"][label] = {
+                        "status": "running", "lineage": lineage, "capability_append": progress,
+                        "attempt_count": ledger.get("total_invocations", 0), "attempts": []}
+                    state["generation_attempts"] = [
+                        {"candidate": name, "attempt_count": (state["candidate_attempts"].get(name) or {}).get("attempt_count", 0),
+                         "status": (state["candidate_attempts"].get(name) or {}).get("status", "pending")}
+                        for name in MVG_CANDIDATE_LABELS]
+                    atomic_json(run_path, state)
+            append_result = generate_append(
+                root, candidate_state, candidate_root,
+                invoke_factory=lambda workspace: invoke_for(
+                    candidate_root, workspace, candidate_label=label, lineage=lineage),
+                before_call=lambda phase: None,
+                checkpoint=append_checkpoint,
+            )
+            if append_result.get("status") == "admitted":
+                proposal = append_result["accepted"]
+                validation = validate_proposal(root, state, proposal)
+                atomic_json(candidate_root / "proposal.json", proposal)
+                admission = {"candidate": label, "lineage": lineage, "status": "admitted",
+                             "issues": [], "issue_attempts": {},
+                             "attempt_count": append_result.get("total_invocations", 0),
+                             "workspace": candidate_root.relative_to(run_dir).as_posix(),
+                             "proposal_sha256": file_sha(candidate_root / "proposal.json"),
+                             "append_ledger": (candidate_root / "capability-append/append-ledger.json").relative_to(root).as_posix(),
+                             "review_path": (candidate_root / "admission-review.json").relative_to(root).as_posix(),
+                             "review_execution_path": (candidate_root / "admission-execution.json").relative_to(root).as_posix(),
+                             "proof_sha256": file_sha(candidate_root / "admission-review.json"),
+                             "execution_sha256": file_sha(candidate_root / "admission-execution.json")}
+                with state_lock:
+                    state["candidate_admissions"][label] = admission
+                    state["candidate_attempts"][label] = {
+                        "status": "valid", "admission_status": "admitted",
+                        "validation": validation,
+                        "attempt_count": append_result.get("total_invocations", 0),
+                        "lineage": lineage, "proposal_sha256": admission["proposal_sha256"],
+                        "capability_append": {key: deepcopy(append_result.get(key)) for key in (
+                            "order", "completed", "status", "total_invocations", "errors")},
+                    }
+                    atomic_json(run_path, state)
+                return {"label": label, "valid": True, "admitted": True,
+                        "proposal": proposal, "summary": state["candidate_attempts"][label]}
+            failure = append_result.get("errors") or [{"code": "capability_append_not_admitted"}]
+            admission = {"candidate": label, "lineage": lineage,
+                         "status": "retired" if append_result.get("status") == "retired" else "execution-failed",
+                         "issues": failure, "attempt_count": append_result.get("total_invocations", 0),
+                         "append_terminal": True,
+                         "workspace": candidate_root.relative_to(run_dir).as_posix(),
+                         "execution_error": {"error_type": str(failure[0].get("code") if isinstance(failure[0], dict) else failure[0])}}
+            with state_lock:
+                state["candidate_admissions"][label] = admission
+                state["candidate_attempts"][label] = {"status": "failed", "admission_status": admission["status"],
+                    "attempt_count": append_result.get("total_invocations", 0), "lineage": lineage,
+                    "capability_append": {key: deepcopy(append_result.get(key)) for key in (
+                        "order", "completed", "status", "total_invocations", "errors")}}
+                atomic_json(run_path, state)
+            return {"label": label, "valid": False, "admitted": False, "proposal": None,
+                    "summary": state["candidate_attempts"][label]}
         candidate_prompt = prompt
         # The old single-proposal path used `for attempt in (1, 2, 3)` and is
         # retained only for explicit segmented=False compatibility. The new
@@ -4862,6 +5163,8 @@ Frozen manifest scope:
                 admission = dict(state.get("candidate_admissions", {}).get(label) or {})
                 admission.update(candidate=label, status="execution-failed",
                                  execution_error=failure)
+                if segmented and not legacy_segmented_run:
+                    admission["append_terminal"] = True
                 state.setdefault("candidate_admissions", {})[label] = admission
                 state.setdefault("candidate_attempts", {})[label] = {
                     "status": "execution-failed", "admission_status": "execution-failed",
@@ -4895,6 +5198,11 @@ Frozen manifest scope:
                 if row.get("admitted"):
                     continue
                 retired = state.get("candidate_admissions", {}).get(label) or {"lineage": f"{label}-r1"}
+                if retired.get("append_terminal"):
+                    # Slice restarts already used the same immutable base and
+                    # lineage budget. A full-batch failure must not allocate
+                    # another 64 calls implicitly.
+                    continue
                 replacement = fresh_replacement_lineage(retired, label)
                 round_number = int(replacement["lineage"].rsplit("-r", 1)[-1]) - 1
                 with state_lock:
@@ -4934,9 +5242,13 @@ Frozen manifest scope:
             if row.get("admitted"):
                 continue
             summary = row.get("summary") or {}
-            validation_errors = (summary.get("validation") or {}).get("errors") or []
+            validation_errors = ((summary.get("validation") or {}).get("errors")
+                                 or (summary.get("capability_append") or {}).get("errors") or [])
             attempt_errors = [str(item.get("error") or "") for item in (summary.get("attempts") or [])
                               if isinstance(item, dict) and item.get("error")]
+            if not validation_errors and not attempt_errors and summary.get("admission_error"):
+                attempt_errors = [str(summary["admission_error"].get("error") or
+                                      summary["admission_error"].get("error_type") or "execution_failed")]
             detail = ";".join(str(value) for value in (validation_errors or attempt_errors)[:4])
             reasons.append(f"{row['label']}={_compact_exception_message(detail or 'unknown_candidate_failure', 500)}")
         raise ValueError("MVG independent candidate generation attempt budget exhausted; incomplete: "
@@ -5282,7 +5594,8 @@ Frozen manifest scope:
             "candidate_count": len(valid_results),
             "attempt_count": state["model_execution"]["attempt_count"]}
 
-def validate_proposal(root: Path, state: dict[str, Any], proposal: dict[str, Any]) -> dict[str, Any]:
+def validate_proposal(root: Path, state: dict[str, Any], proposal: dict[str, Any], *,
+                      append_requirement_ids: set[str] | None = None) -> dict[str, Any]:
     errors: list[str] = []
     if proposal.get("schema_version") != PROPOSAL_SCHEMA:
         errors.append("invalid_proposal_schema")
@@ -5299,7 +5612,13 @@ def validate_proposal(root: Path, state: dict[str, Any], proposal: dict[str, Any
     if not isinstance(manifest, dict):
         return {"status": "blocked", "errors": errors + ["manifest_candidate_missing"]}
 
-    errors.extend(validate_manifest(root, manifest, executable=False))
+    manifest_errors = validate_manifest(root, manifest, executable=False)
+    if append_requirement_ids is not None and not manifest.get("flows"):
+        # A non-runtime Capability can legitimately precede the first journey.
+        # Empty runtime arrays are allowed only at the internal append barrier.
+        manifest_errors = [error for error in manifest_errors
+                           if error != "At least one flow and test are required"]
+    errors.extend(manifest_errors)
     prepared = _run_dir(root, str(state.get("run_id"))) / "analysis-input"
     # Validate against the byte-bound prepared snapshot. The selected local
     # Capability is the planning SSoT; live auxiliary files cannot drift into
@@ -5360,7 +5679,19 @@ def validate_proposal(root: Path, state: dict[str, Any], proposal: dict[str, Any
     planning_scope = state.get("planning_scope") if isinstance(state.get("planning_scope"), dict) else None
     scoped_requirement_ids = (set(planning_scope.get("requirement_ids", []))
                               if planning_scope is not None else None)
-    errors.extend(coverage_errors(root, proposal, semantics, capabilities, prepared_task_views,
+    coverage_proposal = proposal
+    if append_requirement_ids is not None:
+        scoped_requirement_ids = append_requirement_ids
+        coverage_proposal = deepcopy(proposal)
+        def append_flow_requirements(flow):
+            if "requirement_ids" in flow:
+                return set(flow["requirement_ids"])
+            return {rid for row in prepared_task_views if row.get("taskmaster_id") in flow.get("task_ids", [])
+                    for rid in row.get("semantic_refs", row.get("requirement_ids", []))}
+        coverage_proposal["manifest_candidate"]["flows"] = [
+            flow for flow in manifest.get("flows", [])
+            if append_flow_requirements(flow).intersection(append_requirement_ids)]
+    errors.extend(coverage_errors(root, coverage_proposal, semantics, capabilities, prepared_task_views,
                                   scoped_requirement_ids))
     errors.extend(prepared_evidence_errors(root, proposal, prepared))
     for flow in manifest.get("flows", []):
@@ -5387,6 +5718,18 @@ def validate_proposal(root: Path, state: dict[str, Any], proposal: dict[str, Any
         allowed_sources = set(allowed.get("source_paths", []))
         allowed_contracts = set(allowed.get("contract_refs", []))
         allowed_test_paths = set(allowed.get("test_paths", []))
+        extension_ids: set[str] = set()
+        if allowed.get("allow_planned_verification"):
+            flows_by_id = {str(flow.get("id")): flow for flow in manifest.get("flows", [])}
+            for test in manifest.get("tests", []):
+                if not isinstance(test, dict) or str(test.get("id")) in allowed_tests:
+                    continue
+                flow = flows_by_id.get(str(test.get("flow_id")), {})
+                extension_errors = planned_verification_errors(test, flow)
+                if not extension_errors:
+                    extension_ids.add(str(test.get("id")))
+                else:
+                    errors.extend(extension_errors)
         actual_flows = {str(row.get("id")) for row in manifest.get("flows", []) if isinstance(row, dict)}
         for flow_id in sorted(actual_flows - allowed_flows):
             scope_error("flow", flow_id)
@@ -5405,7 +5748,7 @@ def validate_proposal(root: Path, state: dict[str, Any], proposal: dict[str, Any
                 if type(value) is not int or value not in allowed_tasks:
                     scope_error("task", value)
             for value in flow.get("test_ids", []):
-                if str(value) not in allowed_tests:
+                if str(value) not in allowed_tests | extension_ids:
                     scope_error("test", value)
             for value in flow.get("source_paths", []):
                 if str(value).replace("\\", "/") not in allowed_sources:
@@ -5421,10 +5764,10 @@ def validate_proposal(root: Path, state: dict[str, Any], proposal: dict[str, Any
                             scope_error("contract", extra_ref)
         for test in manifest.get("tests", []):
             if isinstance(test, dict):
-                if str(test.get("id")) not in allowed_tests:
+                if str(test.get("id")) not in allowed_tests | extension_ids:
                     scope_error("test", test.get("id"))
                 test_path = str(test.get("path") or "").split("#", 1)[0].replace("\\", "/")
-                if test_path not in allowed_test_paths:
+                if test_path not in allowed_test_paths and str(test.get("id")) not in extension_ids:
                     scope_error("test_path", test_path)
         for row in proposal.get("coverage_table", []):
             if isinstance(row, dict) and str(row.get("requirement_id")) not in allowed_requirements:
@@ -5591,6 +5934,9 @@ They are fixed host-supplied input identities, not semantic judgments. Check the
 verdict="approved" or "blocked", findings=[] ONLY if all checks pass (otherwise concrete findings),
 requirement_reviews=[{{"requirement_id":"...","verdict":"covered|other_verification|deferred|blocked","rationale":"...","disposition":"flow|other_verification|deferred","route":"flow|other_verification|deferred","flow_id":null,"sink_id":null,"verification_ref":null,"authority_ref":null}}]
 with exactly one explicit non-empty rationale per active delivery-relevant Requirement,
+Each requirement_review must include repair_action="none|repair_sections|reassign_route". Use none for accepted rows,
+repair_sections for evidence/assertion/implementation-obligation defects within the correct journey, and reassign_route
+only for wrong journey ownership. Missing verification does not itself require a different flow.
 flow_reviews=[{{"flow_id":"...","verdict":"sound|blocked","rationale":"..."}}] with exactly one row per flow.
 Use one actual verdict value, not the pipe-separated enumeration above. Do not rewrite the proposal.
 '''

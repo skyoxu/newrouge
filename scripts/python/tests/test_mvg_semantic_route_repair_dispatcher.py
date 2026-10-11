@@ -45,6 +45,12 @@ class SemanticRouteRepairDispatcherTests(unittest.TestCase):
             self.assertFalse((root / "candidate-routing.pending.json").exists())
 
     def test_semantic_requirement_review_can_move_only_target_to_evidenced_flow(self):
+        self._exercise_semantic_repair("reassign_route")
+
+    def test_missing_verification_repairs_current_journey_without_routing_call(self):
+        self._exercise_semantic_repair("repair_sections")
+
+    def _exercise_semantic_repair(self, repair_action):
         with tempfile.TemporaryDirectory() as directory:
             run = Path(directory)
             prepared = run / "analysis-input"
@@ -118,17 +124,20 @@ class SemanticRouteRepairDispatcherTests(unittest.TestCase):
                 elif section == "flows":
                     incumbent = next(row for row in flows if row["id"] == scope_id)
                     revised = deepcopy(incumbent)
-                    if scope_id == "flow-a":
+                    if repair_action == "repair_sections":
+                        revised = deepcopy(incumbent)
+                    elif scope_id == "flow-a":
                         revised["requirement_ids"] = ["FR-3"]
                     else:
                         revised["requirement_ids"] = ["FR-1", "FR-2"]
                     value["flows"] = [revised]
                     if "change_reviews" in output_schema["properties"]:
-                        value["change_reviews"] = [{"id": scope_id, "reason": "Correct the requirement route.",
+                        value["change_reviews"] = [] if repair_action == "repair_sections" else [{"id": scope_id, "reason": "Correct the requirement route.",
                             "authority_ref": "docs/gdd/spec.md", "authority_review": {
                                 "status": "reviewed", "rationale": "The specification assigns FR-1 to this journey."}}]
                 elif section == "coverage":
-                    value["coverage_table"] = [{"requirement_id": "FR-1", "disposition": "flow", "flow_id": "flow-b",
+                    value["coverage_table"] = [{"requirement_id": "FR-1", "disposition": "flow",
+                        "flow_id": "flow-b" if repair_action == "reassign_route" else "flow-a",
                         "capability_ref": "CAP-SHARED", "task_id": 1, "rationale": "The map journey owns this behavior.",
                         "sink_id": None, "verification_ref": None, "authority_ref": None, "authority_review": None}]
                 elif section == "tests":
@@ -147,15 +156,27 @@ class SemanticRouteRepairDispatcherTests(unittest.TestCase):
                     run / "model-workspace/attempt-2", semantics={"requirements": reqs}, task_ids=[1, 2, 3],
                     base_proposal=base,
                     planning_scope=plan_mvg._manifest_planning_scope(manifest, task_views),
-                    repair_issue={"code": "semantic_review_blocked:requirement_reviews:FR-1", "path": "proposal"})
+                    repair_issue={"code": "semantic_review_blocked:requirement_reviews:FR-1", "path": "proposal",
+                                  "repair_action": repair_action})
 
             proposal = json.loads(output.read_text(encoding="utf-8"))
             committed_routes = plan_mvg.load_json(run / "candidate-routing.json", {})["routes"]
+            if repair_action == "repair_sections":
+                self.assertEqual(old_routes, committed_routes)
+                self.assertNotIn(("routing", "candidate-routing"), seen)
+                self.assertNotIn(("flows", "flow-b"), seen)
+                self.assertEqual(base["manifest_candidate"], proposal["manifest_candidate"])
+                self.assertEqual("flow-a", proposal["coverage_table"][0]["flow_id"])
+                self.assertFalse(plan_mvg.atomic_repair_errors(base, proposal,
+                    {"code": "semantic_review_blocked:requirement_reviews:FR-1",
+                     "repair_action": repair_action}, plan_mvg.canonical_sha(base)))
+                return
             pending_routes = plan_mvg.load_json(run / "candidate-routing.pending.json", {})["routes"]
             self.assertEqual(old_routes, committed_routes)
             self.assertEqual("flow-b", next(row["flow_id"] for row in pending_routes
                                              if row["requirement_id"] == "FR-1"))
-            self.assertEqual([("routing", "candidate-routing"), ("flows", "flow-a"), ("flows", "flow-b")], seen[:3])
+            self.assertEqual(("routing", "candidate-routing"), seen[0])
+            self.assertCountEqual([("flows", "flow-a"), ("flows", "flow-b")], seen[1:3])
             coverage = {row["requirement_id"]: row["flow_id"] for row in proposal["coverage_table"]}
             self.assertEqual({"FR-1": "flow-b", "FR-2": "flow-b", "FR-3": "flow-a"}, coverage)
             revised = {row["id"]: row for row in proposal["manifest_candidate"]["flows"]}

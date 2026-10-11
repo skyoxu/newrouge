@@ -53,6 +53,7 @@ class MvgPlanningContractTests(unittest.TestCase):
             run_dir = root / "logs/ci/mvg-planning/atomic"
             (run_dir / "analysis-input").mkdir(parents=True)
             state = {"run_id": "atomic", "formal_ready": True,
+                     "generation_strategy": "independent-candidates-segmented",
                      "analysis_identity_sha256": "sha256:fixture", "task_scope": []}
             original = {"manifest_candidate": {"flows": [], "tests": []}, "coverage_table": [
                 {"requirement_id": "FR-1", "rationale": "broken"},
@@ -103,6 +104,7 @@ class MvgPlanningContractTests(unittest.TestCase):
             run_dir = root / "logs/ci/mvg-planning/immediate"
             (run_dir / "analysis-input").mkdir(parents=True)
             state = {"run_id": "immediate", "formal_ready": True,
+                     "generation_strategy": "independent-candidates-segmented",
                      "analysis_identity_sha256": "sha256:fixture", "task_scope": []}
             replacement_started = threading.Event()
             observed = []
@@ -132,6 +134,7 @@ class MvgPlanningContractTests(unittest.TestCase):
             run_dir = root / "logs/ci/mvg-planning/semantic-atomic"
             (run_dir / "analysis-input").mkdir(parents=True)
             state = {"run_id": "semantic-atomic", "formal_ready": True,
+                     "generation_strategy": "independent-candidates-segmented",
                      "analysis_identity_sha256": "sha256:fixture", "task_scope": []}
             seeds, reviews = {}, {}
             base = {"manifest_candidate": {"flows": [], "tests": []}, "entrypoints": [], "coverage_table": [
@@ -177,6 +180,7 @@ class MvgPlanningContractTests(unittest.TestCase):
             run_dir = root / "logs/ci/mvg-planning/delta-first"
             (run_dir / "analysis-input").mkdir(parents=True)
             state = {"run_id": "delta-first", "formal_ready": True,
+                     "generation_strategy": "independent-candidates-segmented",
                      "analysis_identity_sha256": "sha256:fixture", "task_scope": []}
 
             def segment(invoke, candidate_root, candidate_state, attempt, prompt, workspace, **kwargs):
@@ -205,6 +209,7 @@ class MvgPlanningContractTests(unittest.TestCase):
             run_dir = root / "logs/ci/mvg-planning/stop-siblings"
             (run_dir / "analysis-input").mkdir(parents=True)
             state = {"run_id": "stop-siblings", "formal_ready": True,
+                     "generation_strategy": "independent-candidates-segmented",
                      "analysis_identity_sha256": "sha256:fixture", "task_scope": []}
             failed = threading.Event()
 
@@ -246,6 +251,7 @@ class MvgPlanningContractTests(unittest.TestCase):
             run_dir = root / "logs/ci/mvg-planning/recovered-delta"
             (run_dir / "analysis-input").mkdir(parents=True)
             state = {"run_id": "recovered-delta", "formal_ready": True,
+                     "generation_strategy": "independent-candidates-segmented",
                      "analysis_identity_sha256": "sha256:fixture", "task_scope": [],
                      "candidate_attempts": {}}
             proposal = {"manifest_candidate": {"flows": []}}
@@ -279,6 +285,7 @@ class MvgPlanningContractTests(unittest.TestCase):
             run_dir = root / "logs/ci/mvg-planning/inflight-sibling"
             (run_dir / "analysis-input").mkdir(parents=True)
             state = {"run_id": "inflight-sibling", "formal_ready": True,
+                     "generation_strategy": "independent-candidates-segmented",
                      "analysis_identity_sha256": "sha256:fixture", "task_scope": []}
             started, failed = threading.Event(), threading.Event()
             calls = []
@@ -331,6 +338,7 @@ class MvgPlanningContractTests(unittest.TestCase):
             run_dir = root / "logs/ci/mvg-planning/retirement"
             (run_dir / "analysis-input").mkdir(parents=True)
             state = {"run_id": "retirement", "formal_ready": True,
+                     "generation_strategy": "independent-candidates-segmented",
                      "analysis_identity_sha256": "sha256:fixture", "task_scope": []}
             starts = []
 
@@ -371,6 +379,7 @@ class MvgPlanningContractTests(unittest.TestCase):
             atomic_json(run_dir / "analysis-input" / "large-auxiliary.json",
                         {"unrelated": "x" * 1100000})
             state = {"run_id": "schema-boundary", "formal_ready": True,
+                     "generation_strategy": "independent-candidates-segmented",
                      "analysis_identity_sha256": "sha256:fixture", "task_scope": []}
             boundaries = []
             schema = {"type": "object", "additionalProperties": False,
@@ -912,7 +921,7 @@ class MvgPlanningContractTests(unittest.TestCase):
             "requirement_reviews": [{"requirement_id": "R1", "verdict": "blocked",
                 "rationale": "Missing boundary.", "disposition": "flow", "flow_id": "flow-a",
                 "sink_id": None, "authority_ref": None, "verification_ref": None,
-                "route": "flow"}],
+                "route": "flow", "repair_action": "repair_sections"}],
             "flow_reviews": [{"flow_id": "flow-a", "verdict": "blocked", "rationale": "Missing boundary."}],
         }
         with tempfile.TemporaryDirectory() as temp:

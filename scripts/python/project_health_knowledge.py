@@ -622,6 +622,15 @@ def query(root: Path, state: dict, request: dict) -> dict:
     return result
 
 
+def attach_published_semantics(root: Path, task_id: str, navigation: dict, state: dict) -> None:
+    from chapter6_semantic_publication import load_for_navigation
+    semantic, publication = load_for_navigation(root, task_id, state)
+    if publication is not None:
+        navigation['semantic_publication'] = publication
+    if semantic is not None:
+        attach_semantic_navigation(navigation, semantic, state.get('sources', {}))
+
+
 def attach_semantic_navigation(navigation: dict, semantic: dict, sources: dict | None = None) -> None:
     sources = sources or {}
     by_key = {(item.get('kind'), item.get('path')): item for item in semantic.get('entries', [])
@@ -693,10 +702,7 @@ def main(argv=None) -> int:
                 capture_path = root / 'docs/knowledge/generated' / f'chapter6-task-{args.task_id}-elements.json'
                 if capture_path.exists():
                     result['chapter6_capture'] = read_json(capture_path)
-                semantic_path = root / 'docs/knowledge/generated' / f'task-{args.task_id}-semantic.json'
-                if semantic_path.exists():
-                    semantic = read_json(semantic_path)
-                    attach_semantic_navigation(result.get('navigation', {}), semantic, state.get('sources', {}))
+                attach_published_semantics(root, args.task_id, result['navigation'], state)
             elif args.action == 'source':
                 if args.path not in state['sources']:
                     raise ValueError('Source is not in the scanned allowlist')

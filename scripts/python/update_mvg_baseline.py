@@ -68,6 +68,19 @@ def _sequence_removed(before: dict[str, Any], after: dict[str, Any], key: str) -
         return False
     old = {_canonical_sha(item) for item in before[key]}
     new_value = after.get(key, [])
+    if key == "handoffs" and isinstance(new_value, list):
+        # Additional tests strengthen an unchanged boundary. Preserve every
+        # original field and original test obligation; behavioral edits and
+        # removed tests still require reviewed authority.
+        def retained(old_row: Any, new_row: Any) -> bool:
+            if not isinstance(old_row, dict) or not isinstance(new_row, dict):
+                return old_row == new_row
+            if {k: v for k, v in old_row.items() if k != "test_ids"} != {
+                    k: v for k, v in new_row.items() if k != "test_ids"}:
+                return False
+            return set(old_row.get("test_ids", [])) <= set(new_row.get("test_ids", []))
+        return any(not any(retained(old_row, new_row) for new_row in new_value)
+                   for old_row in before[key])
     new = {_canonical_sha(item) for item in new_value} if isinstance(new_value, list) else set()
     return bool(old - new)
 

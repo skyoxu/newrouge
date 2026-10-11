@@ -148,7 +148,27 @@ function configAssociationGroup(item) {
   if ((item.semantic?.parameters || []).some(param=>pointers.has(param.pointer || param.key))) return 'suggested';
   return 'indirect';
 }
+function renderSemanticPublication(info, box) {
+  if (!info) return;
+  const note = document.createElement('div');
+  note.className = 'source-semantic-note';
+  const paragraph = value => { const p = document.createElement('p'); p.textContent = value; note.append(p); };
+  paragraph('Partial semantic notes · ' + info.freshness + ' · runtime behavior is not verified');
+  paragraph('Source: ' + info.path + ' · generated: ' + (info.generated_at_utc || 'unknown'));
+  if (info.reviewed_by) paragraph('Reviewed by: ' + info.reviewed_by + ' · published: ' + (info.published_at_utc || 'unknown'));
+  if (info.candidate_path) paragraph('Candidate: ' + info.candidate_path + ' · ' + (info.candidate_sha256 || ''));
+  const coverage = info.coverage;
+  if (coverage) {
+    paragraph(`${coverage.described_resources ?? '?'} described / ${coverage.supplied_resources ?? '?'} supplied / ${coverage.available_resources ?? '?'} available`);
+    if (coverage.truncated_resource_paths?.length) paragraph('Evidence excerpts: ' + coverage.truncated_resource_paths.join(', '));
+  }
+  if (info.freshness === 'stale') paragraph('Outdated notes are hidden. Changed sources: ' + (info.changed_paths || []).join(', '));
+  if (info.freshness === 'legacy_unbound') paragraph('Legacy notes have no source binding; freshness and review provenance are unknown.');
+  if (info.freshness === 'invalid') paragraph('Notes are hidden because their publication evidence is invalid or missing.');
+  box.append(note);
+}
 function renderNavigation(nav, box=el('detail-links'), related=false) {
+  if (!related) renderSemanticPublication(nav.semantic_publication, box);
   const textSources = new Set(nav.text_sources || []);
   const paragraph = (parent, value) => {const p=document.createElement('p');p.textContent=value;parent.append(p);};
   const linkedPath = path => textSources.has(path) ? sourceLink(path, activeTaskDetail) : document.createTextNode(path);

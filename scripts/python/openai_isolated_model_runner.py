@@ -21,7 +21,10 @@ from _llm_backend import (  # noqa: E402
     inspect_llm_backend,
     run_llm_exec,
 )
-from _planning_skill_common import validate_output_schema  # noqa: E402
+from _planning_skill_common import atomic_json, load_json, validate_output_schema  # noqa: E402
+from _capability_input_integrity import (  # noqa: E402
+    DEFAULT_MAX_INPUT_TOKENS, REPORT_NAME, check_workspace_request, compact_file_section, configured_input_limit, measure_request, validate_batches,
+)
 
 SCHEMA = "newrouge.isolated-model-runner.v1"
 DEFAULT_MAX_BYTES = 8 * 1024 * 1024
@@ -105,11 +108,11 @@ def workspace_payload(
         "Use only these files and the instruction above.",
     ]
     total = len(prompt.encode("utf-8"))
-    for path in _safe_files(root, {prompt_resolved, output_resolved}):
+    for path in _safe_files(root, {prompt_resolved, output_resolved, root / REPORT_NAME}):
         data = path.read_bytes()
         total += len(data)
         if total > max_bytes:
-            raise ValueError(f"workspace exceeds max visible bytes: {max_bytes}")
+            raise ValueError(f"runner_input_too_large:workspace_bytes={total};limit={max_bytes}")
         chunks.extend(["", _file_section(root, path)])
     return "\n".join(chunks).rstrip() + "\n"
 
@@ -144,7 +147,11 @@ def batched_workspace_parts(
     if not isinstance(rows, list) or not rows:
         raise ValueError("Capability model batch index contains no batches")
 
-    excluded = {prompt_path.resolve(), output_path.resolve()}
+    for value, label in ((prompt_path.resolve(), 'prompt'), (output_path.resolve(), 'output')):
+        if not value.is_relative_to(root):
+            raise ValueError(f'{label} path must be inside workspace')
+    validate_batches(root, batch_index)
+    excluded = {prompt_path.resolve(), output_path.resolve(), root / REPORT_NAME}
     base_sections: list[str] = []
     total = 0
     for path in _safe_files(root, excluded):
@@ -156,13 +163,13 @@ def batched_workspace_parts(
             "analysis-input/semantic-requirements.v1.json",
         }:
             continue
-        if _is_batch_payload(path, root):
+        if _is_batch_payload(path, root) and path != batch_index_path:
             continue
         data = path.read_bytes()
         total += len(data)
         if total > max_bytes:
             raise ValueError(f"base workspace exceeds max visible bytes: {max_bytes}")
-        base_sections.append(_file_section(root, path))
+        base_sections.append(compact_file_section(root, path))
 
     ordered_batches: list[tuple[str, str]] = []
     seen_paths: set[str] = set()
@@ -179,7 +186,7 @@ def batched_workspace_parts(
             raise ValueError(f"Capability model batch file is missing: {rel}")
         if len(path.read_bytes()) > max_bytes:
             raise ValueError(f"single Capability model batch exceeds max visible bytes: {rel}")
-        ordered_batches.append((rel, _file_section(root, path)))
+        ordered_batches.append((rel, compact_file_section(root, path)))
 
     base = "\n\n".join([
         "The following is the complete non-source model-visible workspace context.",
@@ -207,11 +214,14 @@ def _response(
     previous_response_id: str | None,
     timeout_sec: float,
     output_schema: dict[str, Any] | None = None,
+    max_output_tokens: int = 4096,
 ) -> Any:
     kwargs: dict[str, Any] = {
         "model": model_name(),
         "input": prompt,
         "reasoning": {"effort": "high"},
+        "truncation": "disabled",
+        "max_output_tokens": max(256, int(max_output_tokens)),
     }
     if previous_response_id:
         kwargs["previous_response_id"] = previous_response_id
@@ -232,6 +242,7 @@ def _run_batched_session(
     timeout_sec: int,
     max_bytes: int,
     output_schema_path: Path | None = None,
+    max_input_tokens: int = DEFAULT_MAX_INPUT_TOKENS,
 ) -> dict[str, Any]:
     original_prompt = prompt_path.read_text(encoding="utf-8").rstrip()
     base, batches = batched_workspace_parts(
@@ -241,9 +252,37 @@ def _run_batched_session(
         max_bytes=max_bytes,
     )
     deadline = time.monotonic() + timeout_sec
-    client = _openai_client(timeout_sec)
     previous_id: str | None = None
     request_count = 0
+    request_integrity: list[dict[str, Any]] = []
+
+    coverage = validate_batches(workspace, load_json(_batch_index_path(workspace), {}))
+    request_texts = ["\n\n".join([
+        original_prompt, base,
+        "Do not produce the final answer yet. Confirm only that the base context is loaded and wait for ordered source batches.",
+    ])]
+    request_texts.extend("\n\n".join([
+        f"Source batch {index}/{len(batches)} follows. Preserve exact source/Requirement identity and boundary observations for the final answer.",
+        section,
+        "Do not finalize yet. Return a compact ingestion acknowledgement listing the block IDs and Requirement IDs read from this batch.",
+    ]) for index, (_rel, section) in enumerate(batches, 1))
+    schema = None
+    if output_schema_path is not None:
+        schema = json.loads(output_schema_path.read_text(encoding="utf-8"))
+    request_texts.append("\n\n".join([
+        "All ordered source batches are now loaded in this same session.",
+        "Produce the final answer now, following the original instruction exactly.",
+        "Return only the requested final JSON object; do not include ingestion acknowledgements or markdown fences.",
+    ]))
+    cumulative = ""
+    for index, text in enumerate(request_texts):
+        cumulative += ("\n\n" if cumulative else "") + text
+        visible = cumulative + ('\n' + json.dumps(schema) if schema else '')
+        request_integrity.append(measure_request(visible, max_bytes=max_bytes,
+            max_input_tokens=max_input_tokens, reserved_tokens=4096 * (index + 1)))
+    atomic_json(workspace / REPORT_NAME, {'status': 'ready', 'complete': True,
+        'truncation_allowed': False, 'coverage': coverage, 'requests': request_integrity})
+    client = _openai_client(timeout_sec)
 
     def call(text: str, *, output_schema: dict[str, Any] | None = None) -> Any:
         nonlocal previous_id, request_count
@@ -256,6 +295,7 @@ def _run_batched_session(
             previous_response_id=previous_id,
             timeout_sec=remaining,
             output_schema=output_schema,
+            max_output_tokens=32768 if output_schema is not None or text == request_texts[-1] else 4096,
         )
         request_count += 1
         response_id = str(getattr(response, "id", "") or "").strip()
@@ -264,35 +304,14 @@ def _run_batched_session(
         previous_id = response_id
         return response
 
-    call(
-        "\n\n".join([
-            original_prompt,
-            base,
-            "Do not produce the final answer yet. Confirm only that the base context is loaded and wait for ordered source batches.",
-        ])
-    )
+    call(request_texts[0])
     for index, (rel, section) in enumerate(batches, 1):
-        response = call(
-            "\n\n".join([
-                f"Source batch {index}/{len(batches)} follows. Preserve exact source/Requirement identity and boundary observations for the final answer.",
-                section,
-                "Do not finalize yet. Return a compact ingestion acknowledgement listing the block IDs and Requirement IDs read from this batch.",
-            ])
-        )
+        response = call(request_texts[index])
         ack = _extract_response_output_text(response)
         if not ack:
             raise RuntimeError(f"empty ingestion acknowledgement for {rel}")
 
-    schema = None
-    if output_schema_path is not None:
-        schema = json.loads(output_schema_path.read_text(encoding="utf-8"))
-    final = call(
-        "\n\n".join([
-            "All ordered source batches are now loaded in this same session.",
-            "Produce the final answer now, following the original instruction exactly.",
-            "Return only the requested final JSON object; do not include ingestion acknowledgements or markdown fences.",
-        ]), output_schema=schema
-    )
+    final = call(request_texts[-1], output_schema=schema)
     output_text = _extract_response_output_text(final)
     if not output_text:
         raise RuntimeError("OpenAI batched session returned empty final output")
@@ -308,6 +327,8 @@ def _run_batched_session(
         "model_request_count": request_count,
         "request_count_observable": True,
         "batch_count": len(batches),
+        "input_integrity": request_integrity,
+        "input_coverage": coverage,
         "workspace": workspace.as_posix(),
     }
 
@@ -335,6 +356,7 @@ def run(args: argparse.Namespace) -> int:
             timeout_sec=args.timeout_sec,
             max_bytes=args.max_bytes,
             output_schema_path=schema_path,
+            max_input_tokens=args.max_input_tokens,
         )
         print(json.dumps(receipt, ensure_ascii=False))
         return 0
@@ -345,6 +367,12 @@ def run(args: argparse.Namespace) -> int:
         output_path=output_path,
         max_bytes=args.max_bytes,
     )
+    visible = payload
+    if schema_path is not None:
+        visible += "\n" + json.dumps({"text": {"format": {"type": "json_schema", "name": "newrouge_mvg_review",
+            "strict": True, "schema": load_json(schema_path)}}}, ensure_ascii=False)
+    integrity = check_workspace_request(workspace, visible, max_bytes=args.max_bytes,
+        max_input_tokens=getattr(args, "max_input_tokens", configured_input_limit()))
     rc, trace_text, command = run_llm_exec(
         backend="openai-api",
         root=workspace,
@@ -372,6 +400,7 @@ def run(args: argparse.Namespace) -> int:
         "batch_count": 0,
         "workspace": workspace.as_posix(),
         "command": command,
+        "input_integrity": integrity,
     }
     print(json.dumps(receipt, ensure_ascii=False))
     return 0
@@ -385,6 +414,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--output", default="")
     parser.add_argument("--timeout-sec", type=int, default=1800)
     parser.add_argument("--max-bytes", type=int, default=DEFAULT_MAX_BYTES)
+    parser.add_argument("--max-input-tokens", type=int, default=configured_input_limit())
     parser.add_argument("--output-schema", default="")
     args = parser.parse_args(argv)
     if args.describe:

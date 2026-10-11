@@ -36,6 +36,10 @@
 - `docs/testing/mvg/m1-critical.json`：当前默认可执行的多 flow critical regression，只引用 Taskmaster 中已 `done` 的关键 Continue/Resume 与 Combat→Reward→Return 边界。
 - `docs/testing/mvg/m1-full.json`：M1 自动化 full-scope 目标 inventory。它把 New Run→Map、Map→Node、Continue/Resume、Combat→Reward→Return 全部列入范围；只要 scoped task 仍非 `done`，就必须把对应 task id 写入 `coverage.blocking_task_ids`，`run` 模式会 fail-closed，不能产生 full runtime_verified。
 
+`m1-full` 的每条 flow 显式列出 `requirement_ids` 和 `capability_refs`，冻结的是该玩家旅程的语义范围。Task 103 保留为历史 Continue 评审证据 owner；其 `NFR-T0103` 要求拆分 Chapter 6 评审通道，属于工作流治理，不能由 Continue 运行时旅程证明，因此不列入这些 flow 的 Requirement 成员。Task 110 同样保留为历史证据引用，但地图节点路由清单不承担完整遗物 run-trigger 效果执行的 `FR-T0110`。这些需求仍保留在 GDD、任务和 Capability 中，未被延期、退役或声明已由该 MVG 验证。规划器仅对旧 flow 缺失的成员字段读取任务视图回退，不扩大已有显式成员。
+
+累计规划保留旧测试和原交接点的测试绑定，同时允许同一 flow 内追加 `planned` 验证。新增项由 CLI schema 与本地归属检查共同约束，必须给出真实 owner、Requirement、handoff 索引、输入、断言与实现验收；不得跨越所选 flow 范围或将旧测试重标为 planned。它是待实现的验证计划，不是已通过的运行时证据。只增加原交接点的测试义务不构成基线削弱；修改行为、归属或移除旧测试仍需规格依据及独立审查。审查返回结构化 `repair_action`，缺少验证修补当前 flow，只有错误归属才触发路由重分配；修复器接收该条审查 rationale，而不是只有错误编号。
+
 每个 manifest 必须包含 `coverage`：`mode`、`scope_id`、与 flow 顺序完全一致的 `required_flow_ids`、真实的 `blocking_task_ids` 和非空 `excluded_claims`。这让“跑完整个当前清单”与“整个 M1 MVG 已覆盖”成为两个不同命题。
 
 扩展时复制其结构，替换 mvg_id、coverage、flows 和 tests，并逐条核对范围：
@@ -132,6 +136,18 @@ Adding or removing `requirement_ids` or `capability_refs` on an incumbent flow i
 
 Admission repair is locally routed when a hard issue names a Requirement or flow. Existing cumulative flow Requirement/Capability ownership remains frozen unless that exact flow has an explicit reviewed change record. The deterministic coverage gate rejects a Requirement claimed by multiple flows or repeated coverage rows; the segment gate catches duplicate Requirement routes before merging. A requirement-scoped repair changes only its row and dependent flow/entrypoint/test data; a flow-scoped repair changes only that flow and its dependent sections. Internal correction calls count toward the current issue's three repair attempts and the hard 64-invocation lineage budget; repair cannot enable overflow. Retirement starts a clean replacement in the available slot immediately, without waiting for siblings. Aggregate semantic rejection is not queued as a second issue when the reviewer identifies blocked Requirement/flow rows; those concrete rows drive repair routing.
 
+
+### Capability-local append admission (current default)
+
+Fresh generation uses three independent Capability append ledgers. Each candidate processes in-scope Capabilities in the selected file's order, emits one CLI-schema-enforced increment and passes local machine checks plus a fresh independent semantic hard check before appending it. A Capability can participate in several flows or extend an accepted shared flow. The review includes every affected flow and handoff to accepted predecessors, observable consumer outcomes, and failure/recovery obligations. Shared membership never duplicates exclusive Requirement coverage. Complete selected Requirement/source-block/Acceptance evidence is retained; oversized requests stop before the model call without truncation.
+
+Each stable hard issue receives at most three repairs. Repairs preserve accepted predecessors and valid unrelated increment rows and cannot introduce new machine/semantic defects. Three failed repairs restart the same Capability using immutable prepared inputs plus accepted predecessors only, without failed proposals, findings, prompts, segments or workspaces. A Capability cannot be skipped. Generation, repair and semantic checks share one durable 64-call lineage budget; slice restarts do not reset it. Exhaustion retires the complete candidate batch without automatic full-batch replacement. Deterministic input/preparation failures stop locally.
+
+Missing Requirement rows are repair targets from the immutable cumulative Capability scope, even when absent from the failed proposal. Machine diagnostics carry explicit Requirement/flow/test addresses; missing entrypoints are routed to the affected handoff flows. Candidate defects receive the same three-repair policy rather than being treated as input preparation failures. Repairs cannot add unrelated runtime entrypoints. New or changed entrypoints and every flow linked through a shared entrypoint enter the independent increment review, including unchanged predecessors and their complete owner Acceptance/reference evidence. Admission recovery recomputes this projection and rejects proofs that omit those boundaries.
+
+Only after every Capability passes, perform complete machine/cumulative-delta validation. No final whole-candidate model semantic hard gate runs. Admission binds the ordered increment chain and each independent reviewer receipt to the final proposal. Final `review` and `validate` verify that chain locally. Three admitted candidates plus an eligible incumbent enter comparative ranking; the selector cannot add a hard veto. Progress, counters, findings and context restarts are durable under `logs/ci/mvg-planning/<run-id>/candidates/<candidate>/capability-append/`.
+
+The preceding segmented details apply only to explicit recovery of runs created under `independent-candidates-segmented`. Fresh page clicks allocate a new append run and never reuse previous generation artifacts.
 
 ### Incremental harness regression (T26)
 

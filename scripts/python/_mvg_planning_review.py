@@ -175,6 +175,9 @@ def semantic_review_errors(state: dict[str, Any], proposal: dict[str, Any], revi
                            semantics: dict[str, Any],
                            allowed_requirement_ids: set[str] | None = None) -> list[str]:
     errors = []
+    if review.get("schema_version") == "newrouge.mvg-capability-admission.v1":
+        from _mvg_capability_generation import append_proof_errors
+        return append_proof_errors(state, proposal, review, semantics, allowed_requirement_ids)
     if review.get("schema_version") != "newrouge.mvg-semantic-review.v1":
         return ["independent_semantic_review_missing"]
     if review.get("analysis_identity_sha256") != state["analysis_identity_sha256"]:
@@ -248,6 +251,9 @@ def semantic_review_errors(state: dict[str, Any], proposal: dict[str, Any], revi
 def review_execution_errors(state: dict[str, Any], proposal: dict[str, Any], execution: dict[str, Any],
                             review: dict[str, Any]) -> list[str]:
     from _planning_skill_common import validate_runner_description
+    if review.get("schema_version") == "newrouge.mvg-capability-admission.v1":
+        from _mvg_capability_generation import append_execution_errors
+        return append_execution_errors(state, proposal, execution, review)
     errors = []
     try:
         validate_runner_description(execution.get("runner_info") or {})

@@ -467,6 +467,19 @@ def cmd_chapter6_knowledge(args: argparse.Namespace) -> int:
     return 0 if result.get("status") == "knowledge_captured" else 1
 
 
+def cmd_publish_chapter6_semantics(args: argparse.Namespace) -> int:
+    from chapter6_semantic_publication import publish
+    try:
+        result = publish(Path(args.repo_root).resolve(), str(args.task_id),
+                         candidate_sha256=args.candidate_sha256, reviewed_by=args.reviewed_by,
+                         review_note=args.review_note, confirm=args.confirm)
+    except (OSError, ValueError, TypeError) as exc:
+        print(json.dumps({'status': 'blocked', 'error': str(exc)}, ensure_ascii=False))
+        return 1
+    print(json.dumps(result, ensure_ascii=False))
+    return 0
+
+
 def cmd_run_chapter3_guarded(args: argparse.Namespace) -> int:
     """Run one scripted Chapter 3 command inside the start/end attempt guard."""
 
@@ -1009,6 +1022,16 @@ def build_parser() -> argparse.ArgumentParser:
     p_c6k.add_argument("--semantic", action="store_true")
     p_c6k.add_argument("--llm-backend", default="codex-cli")
     p_c6k.set_defaults(func=cmd_chapter6_knowledge)
+
+    p_semantic_publish = sub.add_parser('publish-chapter6-semantics',
+                                       help='Preview or explicitly publish reviewed task-local semantic notes')
+    p_semantic_publish.add_argument('--repo-root', default='.')
+    p_semantic_publish.add_argument('--task-id', required=True)
+    p_semantic_publish.add_argument('--candidate-sha256', required=True)
+    p_semantic_publish.add_argument('--reviewed-by', required=True)
+    p_semantic_publish.add_argument('--review-note', required=True)
+    p_semantic_publish.add_argument('--confirm', action='store_true')
+    p_semantic_publish.set_defaults(func=cmd_publish_chapter6_semantics)
 
     p_ch3_guard = sub.add_parser(
         "run-chapter3-guarded",

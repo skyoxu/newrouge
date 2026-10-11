@@ -8,7 +8,6 @@ import json
 import shutil
 import subprocess
 import os
-import re
 from pathlib import Path
 
 from openai_isolated_model_runner import (
@@ -17,6 +16,10 @@ from openai_isolated_model_runner import (
     workspace_payload,
 )
 from _planning_skill_common import validate_output_schema
+from _capability_input_integrity import (
+    CODEX_MAX_TURN_BYTES, DEFAULT_MAX_INPUT_TOKENS, REPORT_NAME, check_workspace_request, configured_input_limit, measure_request, validate_batches,
+)
+from _planning_skill_common import atomic_json
 
 SCHEMA = "newrouge.isolated-model-runner.v1"
 
@@ -35,47 +38,6 @@ def _codex_executable() -> str:
         if candidate.is_file():
             return str(candidate)
     raise ValueError("Codex CLI is unavailable; set CODEX_MANAGED_PACKAGE_ROOT or add codex to PATH")
-
-
-def _trim_workspace_context(base: str) -> str:
-    """Keep Codex input below its 1 MiB turn limit.
-
-    The complete task-view JSON is already projected into the semantic
-    requirements and makes the otherwise valid two-batch prompt exceed the
-    Codex CLI limit.  Capability generation must use the requirements/source
-    evidence, so omit only those duplicated raw views.
-    """
-    sections = re.split(r"(?=^===== FILE: )", base, flags=re.MULTILINE)
-    kept = []
-    for section in sections:
-        match = re.match(r"===== FILE: ([^ ]+) =====", section)
-        if match and "/analysis-input/task-views/" in "/" + match.group(1):
-            # Keep only the identity and semantic cross-reference fields. The
-            # full views duplicate long descriptions/acceptance text already
-            # represented by the prepared requirements and source blocks.
-            try:
-                payload = json.loads(section.split("\n", 1)[1].rsplit("\n===== END FILE:", 1)[0])
-                if isinstance(payload, list):
-                    fields = {
-                        "id", "taskmaster_id", "title", "status", "priority",
-                        "semantic_refs", "requirement_ids", "source_refs",
-                    }
-                    compact = [
-                        {key: value for key, value in row.items() if key in fields}
-                        for row in payload if isinstance(row, dict)
-                    ]
-                    rel = match.group(1)
-                    kept.append(
-                        f"===== FILE: {rel} (compact semantic view) =====\n"
-                        + json.dumps(compact, ensure_ascii=False, separators=(",", ":"))
-                        + f"\n===== END FILE: {rel} (compact semantic view) ====="
-                    )
-                    continue
-            except (ValueError, json.JSONDecodeError, IndexError):
-                pass
-            continue
-        kept.append(section)
-    return "\n".join(kept)
 
 
 def _coverage_checklist(workspace: Path) -> str:
@@ -131,6 +93,7 @@ def description() -> dict[str, object]:
         "model_tools": [],
         "request_accounting": "codex-cli-invocation-only",
         "supports_batched_session": True,
+        "supports_input_preflight": True,
     }
 
 
@@ -145,6 +108,7 @@ def run(args: argparse.Namespace) -> int:
     if schema_path is not None and not schema_path.is_relative_to(workspace):
         raise ValueError("output schema path must be inside workspace")
     batch_index = workspace / "analysis-input/model-batches/batch-index.json"
+    integrity = None
     if batch_index.is_file():
         base, batches = batched_workspace_parts(
             workspace,
@@ -152,13 +116,21 @@ def run(args: argparse.Namespace) -> int:
             output_path=output_path,
             max_bytes=args.max_bytes,
         )
-        base = _trim_workspace_context(base)
         payload = "\n\n".join([
             prompt_path.read_text(encoding="utf-8").rstrip(),
             base.rstrip(),
             *[part for _name, part in batches],
             _coverage_checklist(workspace),
         ]) + "\n"
+        try:
+            integrity = {**validate_batches(workspace, json.loads(batch_index.read_text(encoding='utf-8'))),
+                **measure_request(payload, max_bytes=min(args.max_bytes, CODEX_MAX_TURN_BYTES),
+                    max_input_tokens=getattr(args, 'max_input_tokens', DEFAULT_MAX_INPUT_TOKENS))}
+            atomic_json(workspace / REPORT_NAME, {'status': 'ready', **integrity})
+        except ValueError as exc:
+            atomic_json(workspace / REPORT_NAME, {'status': 'blocked', 'reason': str(exc),
+                'complete_request_bytes': len(payload.encode('utf-8')), 'model_invoked': False})
+            raise
     else:
         payload = workspace_payload(
             workspace,
@@ -166,6 +138,12 @@ def run(args: argparse.Namespace) -> int:
             output_path=output_path,
             max_bytes=args.max_bytes,
         )
+        integrity = check_workspace_request(workspace, payload,
+            max_bytes=min(args.max_bytes, CODEX_MAX_TURN_BYTES),
+            max_input_tokens=getattr(args, "max_input_tokens", configured_input_limit()))
+    if getattr(args, 'preflight', False):
+        print(json.dumps({'status': 'ready', 'model_invoked': False, 'input_integrity': integrity}, ensure_ascii=False))
+        return 0
     executable = _codex_executable()
     command = [
         executable,
@@ -202,6 +180,7 @@ def run(args: argparse.Namespace) -> int:
         "request_count_observable": False,
         "output_chars": len(output_path.read_text(encoding="utf-8")),
         "workspace": workspace.as_posix(),
+        **({'input_integrity': integrity} if integrity is not None else {}),
     }, ensure_ascii=False))
     return 0
 
@@ -214,6 +193,8 @@ def main() -> int:
     parser.add_argument("--output")
     parser.add_argument("--timeout-sec", type=int, default=1800)
     parser.add_argument("--max-bytes", type=int, default=DEFAULT_MAX_BYTES)
+    parser.add_argument('--max-input-tokens', type=int, default=configured_input_limit())
+    parser.add_argument('--preflight', action='store_true', help='Validate Capability input without invoking Codex')
     parser.add_argument("--output-schema", default="")
     args = parser.parse_args()
     if args.describe:

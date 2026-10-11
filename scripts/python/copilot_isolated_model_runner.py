@@ -11,8 +11,9 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-from openai_isolated_model_runner import DEFAULT_MAX_BYTES, workspace_payload
-from _planning_skill_common import validate_output_schema
+from openai_isolated_model_runner import DEFAULT_MAX_BYTES, batched_workspace_parts, workspace_payload
+from _planning_skill_common import atomic_json, validate_output_schema
+from _capability_input_integrity import DEFAULT_MAX_INPUT_TOKENS, REPORT_NAME, check_workspace_request, configured_input_limit, measure_request, validate_batches
 
 SCHEMA = "newrouge.isolated-model-runner.v1"
 
@@ -139,6 +140,7 @@ def run(args: argparse.Namespace) -> int:
         raise ValueError("output schema path must be inside workspace")
 
     batch_index_path = workspace / "analysis-input/model-batches/batch-index.json"
+    integrity = None
     if batch_index_path.is_file():
         batch_index = json.loads(batch_index_path.read_text(encoding="utf-8"))
         batch_count = int(batch_index.get("batch_count") or 0)
@@ -148,12 +150,20 @@ def run(args: argparse.Namespace) -> int:
                 "use a runner with supports_batched_session=true"
             )
 
-    payload = workspace_payload(
-        workspace,
-        prompt_path=prompt_path,
-        output_path=output_path,
-        max_bytes=args.max_bytes,
-    )
+        base, batches = batched_workspace_parts(workspace, prompt_path=prompt_path,
+            output_path=output_path, max_bytes=args.max_bytes)
+        payload = '\n\n'.join([prompt_path.read_text(encoding='utf-8'), base,
+                               *[section for _name, section in batches]]) + '\n'
+        integrity = {**validate_batches(workspace, batch_index),
+            **measure_request(payload, max_bytes=args.max_bytes,
+                max_input_tokens=getattr(args, 'max_input_tokens', DEFAULT_MAX_INPUT_TOKENS))}
+        atomic_json(workspace / REPORT_NAME, {'status': 'ready', **integrity})
+    else:
+        payload = workspace_payload(
+            workspace, prompt_path=prompt_path, output_path=output_path, max_bytes=args.max_bytes,
+        )
+        integrity = check_workspace_request(workspace, payload, max_bytes=args.max_bytes,
+            max_input_tokens=getattr(args, "max_input_tokens", configured_input_limit()))
     executable = shutil.which("copilot")
     if not executable:
         raise ValueError("GitHub Copilot CLI is unavailable")
@@ -228,6 +238,7 @@ def run(args: argparse.Namespace) -> int:
         "request_count_observable": False,
         "output_chars": len(content),
         "workspace": workspace.as_posix(),
+        **({'input_integrity': integrity} if integrity is not None else {}),
     }, ensure_ascii=False))
     return 0
 
@@ -240,6 +251,7 @@ def main() -> int:
     parser.add_argument("--output")
     parser.add_argument("--timeout-sec", type=int, default=1800)
     parser.add_argument("--max-bytes", type=int, default=DEFAULT_MAX_BYTES)
+    parser.add_argument('--max-input-tokens', type=int, default=configured_input_limit())
     parser.add_argument("--output-schema", default="")
     args = parser.parse_args()
     if args.describe:

@@ -22,6 +22,7 @@ Create the derived Capability organization after the relevant Chapter 3-5 scope 
 ## Hard boundaries
 
 - Authoritative inputs are the cumulative source set, full Source Block Ledger, reviewed Requirements, task/Acceptance/contract semantics, and explicit Chapter 5 readiness scope.
+- Source transport must be lossless. JSON whitespace minification is allowed; dropping task descriptions, Acceptance, tests, Source Block text or Requirement fields to fit a request is forbidden. Before invoking a model, validate prepared file hashes, exact batch bodies/IDs and aggregate serialized input limits. ID coverage alone is not evidence that full source content was supplied.
 - The three initial candidates must use fresh sessions, the same model, the same prompt bytes, and the same blinded analysis bundle.
 - Formal generation requires an isolation runner that reports workspace-only reads and no outside-workspace access. If no such runner exists, stop after prepare/validation; never emulate independence in one chat.
 - Old formal Capability answers and task `capability_refs` are excluded from the candidate analysis view. Capability/module organization that is present in the authoritative GDD remains visible. An explicitly supplied diagnostic reference may be used only to explain migration differences; it must not anchor a new project's grouping.
@@ -65,6 +66,18 @@ Invocation contract:
 The runner may use Codex, an OpenAI-hosted sandbox, WSL/container isolation, or another approved executor, but the Skill never upgrades a native read-anywhere sandbox to “isolated” by assertion.
 
 ## Recovery and cost
+
+### Input integrity and context limits
+
+Built-in Capability transports verify every batch hash and compare each complete Source Block/Requirement object with the prepared authority, including repeated Requirement rows spanning batches. Missing batches, duplicate blocks, altered bodies or prepared-file drift block generation. Sanitized task views retain every field other than the explicitly recorded prior-Capability blinding; the former Codex task-field whitelist is removed.
+
+The Codex runner checks the **final combined request**, including task/readiness context, wrappers, all batches, candidate repair seed or anonymous review candidates, and its coverage checklist. It enforces the 1 MiB transport limit and a conservative default 96,000-token input allowance. Counting uses the larger of `o200k_base` and `cl100k_base` plus 10% headroom; without `tiktoken`, the UTF-8 byte count is a conservative upper bound. This is an operator safety allowance, not model-capacity discovery. `SC_CAPABILITY_MAX_INPUT_TOKENS` or runner `--max-input-tokens` may set a verified allowance for the environment default model; do not increase it blindly or explicitly switch the model. Keep output/reasoning/system capacity outside that allowance.
+
+For OpenAI batched continuation, the complete cumulative transcript is checked before creating the client, including bounded acknowledgement growth. Requests explicitly set `truncation=disabled`; batching does not make an oversized cumulative conversation safe. Copilot single-batch Capability input uses the same lossless/body/context checks; its multi-batch boundary remains unsupported.
+
+Codex exposes `--preflight` and `supports_input_preflight=true`. The planner runs this before reserving any candidate/review invocation budget. Deterministic input rejection stops immediately; retrying the three candidates cannot repair it. The workspace `runner-input-integrity.json` and execution receipt record full request identity, source/Requirement coverage and budget measurements. A preflight report is excluded from model-visible files so checking first does not alter the subsequent prompt.
+
+Oversized input preserves the current Capability and all prepared evidence, with no shortened replacement or implicit fallback. Supporting larger projects requires an explicitly designed bounded semantic ingestion/projection stage with source conservation and cross-batch boundary validation; it must not be implemented as hidden excerpts or summaries falsely called full input. These guards prove what bytes/objects were supplied, not that a model understood every sentence.
 
 Run state is durable under `logs/ci/capability-planning/<run-id>/`. Re-run the incomplete stage only. Existing valid candidates are evidence and should not be discarded just because a later stage failed. Candidate retries and total active-time budgets are operator-configured by the runner; never claim model-request counts or monetary cost when the runner cannot observe them.
 

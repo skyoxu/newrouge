@@ -411,7 +411,8 @@ def _mvg_valid_candidates(run_dir: Path, state: dict) -> list[str]:
             candidate_payload = load_json(path, {})
             proof_payload = load_json(proof_path, {})
             execution_payload = load_json(execution_path, {})
-            if (proof_payload.get('schema_version') != 'newrouge.mvg-semantic-review.v1'
+            if (proof_payload.get('schema_version') not in {
+                        'newrouge.mvg-semantic-review.v1', 'newrouge.mvg-capability-admission.v1'}
                     or proof_payload.get('analysis_identity_sha256') != state.get('analysis_identity_sha256')
                     or proof_payload.get('proposal_sha256') != canonical_sha(candidate_payload)
                     or proof_payload.get('verdict') != 'approved'

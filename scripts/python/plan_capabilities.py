@@ -11,6 +11,7 @@ import random
 import re
 import shutil
 import subprocess
+import sys
 import time
 from copy import deepcopy
 from pathlib import Path
@@ -704,6 +705,25 @@ def _valid_candidate_reusable(
     )
 
 
+def _preflight_model_input(run_path: Path, state: dict, *, runner: Path, runner_info: dict,
+                           workspace: Path, prompt_path: Path, output: Path, stage: str) -> None:
+    """Deterministic input errors spend no model attempt or activity reservation."""
+    if runner_info.get('supports_input_preflight') is not True:
+        return
+    prefix = [sys.executable, str(runner)] if runner.suffix.lower() == '.py' else [str(runner)]
+    result = subprocess.run([*prefix, '--preflight', '--workspace', str(workspace),
+        '--prompt-file', str(prompt_path), '--output', str(output)],
+        capture_output=True, text=True, encoding='utf-8', timeout=60)
+    if result.returncode:
+        detail = (result.stdout or result.stderr).strip()
+        error_type = next((kind for kind in ('runner_input_too_large',
+            'runner_context_budget_exceeded', 'capability_input_integrity_') if kind in detail), 'input_preflight_failed')
+        state.update(phase=stage + '-blocked', error_type=error_type,
+                     stop_reason='Capability input preflight failed: ' + detail)
+        atomic_json(run_path, state)
+        raise ValueError(state['stop_reason'])
+
+
 def generate(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict[str, Any]:
     run_path, state = _load_run(root, run_id)
     _recover_interrupted_attempts(run_path, state)
@@ -833,6 +853,8 @@ def generate(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict
                         )
             prompt_path.write_text(CANDIDATE_PROMPT + retry_guidance, encoding="utf-8", newline="\n")
             output = workspace / "candidate.json"
+            _preflight_model_input(run_path, state, runner=runner, runner_info=runner_info,
+                workspace=workspace, prompt_path=prompt_path, output=output, stage='generation')
             receipt: dict[str, Any] | None = None
             candidate: dict[str, Any] | None = None
             errors: list[str] = []
@@ -921,6 +943,14 @@ def generate(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict
             else:
                 last_errors = errors
             atomic_json(run_path, state)
+            input_error = next((kind for kind in (
+                'runner_input_too_large', 'runner_context_budget_exceeded', 'capability_input_integrity_'
+            ) if any(kind in error for error in errors)), None)
+            if input_error:
+                state.update(phase='generation-blocked', error_type=input_error,
+                    stop_reason='Capability input rejected before generation: ' + ';'.join(errors))
+                atomic_json(run_path, state)
+                raise ValueError(state['stop_reason'])
         outputs.append({
             "candidate": label,
             "valid": valid,
@@ -1317,6 +1347,8 @@ def review(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict[s
         prompt_path = workspace / "prompt.txt"
         prompt_path.write_text(review_prompt, encoding="utf-8", newline="\n")
         output = workspace / "review.json"
+        _preflight_model_input(run_path, state, runner=runner, runner_info=runner_info,
+            workspace=workspace, prompt_path=prompt_path, output=output, stage='review')
         receipt: dict[str, Any] | None = None
         result: dict[str, Any] | None = None
         errors: list[str] = []
