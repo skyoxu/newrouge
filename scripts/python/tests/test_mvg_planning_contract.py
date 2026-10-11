@@ -1877,6 +1877,40 @@ class MvgPlanningContractTests(unittest.TestCase):
         self.assertEqual(["FR-1", "FR-2"], [row["requirement_id"] for row in merged["coverage_table"]])
         self.assertEqual([7, 8], [row["owner_task"] for row in merged["entrypoints"]])
 
+    def test_segment_schema_forbids_file_refs_on_flow_coverage(self):
+        import jsonschema
+        schema = segment_output_schema(section="coverage", identity="sha256:x", scope_id="coverage-01",
+            allowed_requirement_ids=["RQ-1"], available_reference_paths=["docs/gdd.md", "Tests.Godot/test.gd"])
+        value = {"schema_version": SEGMENT_SCHEMA, "analysis_identity_sha256": "sha256:x",
+                 "section": "coverage", "scope_id": "coverage-01", "coverage_table": [{
+                     "requirement_id": "RQ-1", "flow_id": "flow-1", "capability_ref": "CAP-A",
+                     "task_id": 1, "disposition": "flow", "rationale": "route", "sink_id": None,
+                     "verification_ref": "Tests.Godot/test.gd", "authority_ref": "docs/gdd.md",
+                     "authority_review": {"status": "accepted", "rationale": "reviewed"}}]}
+        self.assertFalse(jsonschema.Draft202012Validator(schema).is_valid(value))
+
+    def test_segment_schema_limits_existing_verified_entrypoint_to_prepared_paths(self):
+        import jsonschema
+        schema = segment_output_schema(section="entrypoints", identity="sha256:x", scope_id="entrypoints-01",
+            available_reference_paths=["Game.Core/Services/SaveService.cs"],
+            available_entrypoint_paths=["Game.Core/Services/SaveService.cs"])
+        value = {"schema_version": SEGMENT_SCHEMA, "analysis_identity_sha256": "sha256:x",
+                 "section": "entrypoints", "scope_id": "entrypoints-01", "entrypoints": [{
+                     "status": "existing_verified", "flow_ids": ["flow-1"], "owner_task": 1,
+                     "path": "Game.Core/Services/Missing.cs", "symbol": "Missing",
+                     "inputs": None, "state": None, "assertions": None, "implementation_acceptance": None}]}
+        self.assertFalse(jsonschema.Draft202012Validator(schema).is_valid(value))
+
+    def test_reference_schema_stays_bounded_for_large_prepared_bundles(self):
+        import jsonschema
+        paths = [f"docs/evidence/{index:04d}/source.md" for index in range(2000)]
+        schema = segment_output_schema(section="coverage", identity="sha256:x", scope_id="coverage-01",
+            available_reference_paths=paths)
+        self.assertLess(len(json.dumps(schema, ensure_ascii=False)), 150000)
+        ref = schema["properties"]["coverage_table"]["items"]["properties"]["authority_ref"]
+        self.assertTrue(jsonschema.Draft202012Validator(ref).is_valid(paths[10]))
+        self.assertFalse(jsonschema.Draft202012Validator(ref).is_valid("docs/evidence/missing.md"))
+
     def test_segment_merge_preserves_multiple_runtime_boundaries_for_one_owner(self):
         base = {"entrypoints": [{"owner_task": 7, "path": "Game.Core/Services/Start.cs", "symbol": "Start"}]}
         merged = merge_planning_segments(base, [{"entrypoints": [
@@ -2039,6 +2073,19 @@ class MvgPlanningContractTests(unittest.TestCase):
             }]}}
             self.assertEqual(1, plan_mvg.normalize_dotnet_selectors(root, proposal))
             self.assertEqual("CombatServiceTests", proposal["manifest_candidate"]["tests"][0]["selector"])
+
+    def test_dotnet_selector_filter_is_reduced_for_append_top_level_tests(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            source = root / "Game.Core.Tests/Services/SaveServiceTests.cs"
+            source.parent.mkdir(parents=True)
+            source.write_text("public sealed class SaveServiceTests {}", encoding="utf-8")
+            proposal = {"manifest_candidate": {"tests": []}, "tests": [{
+                "kind": "dotnet", "path": "Game.Core.Tests/Services/SaveServiceTests.cs",
+                "selector": "FullyQualifiedName~SaveServiceTests", "test_refs": [],
+            }]}
+            self.assertEqual(1, plan_mvg.normalize_dotnet_selectors(root, proposal))
+            self.assertEqual("SaveServiceTests", proposal["tests"][0]["selector"])
     def _root(self, folder: str) -> Path:
         root = Path(folder)
         tasks = root / ".taskmaster/tasks"

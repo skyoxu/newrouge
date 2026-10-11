@@ -1308,7 +1308,19 @@ def normalize_dotnet_selectors(root: Path, proposal: dict[str, Any]) -> int:
     """Repair deterministic selector syntax when the referenced file has one class."""
     changed = 0
     manifest = proposal.get("manifest_candidate") or {}
-    for test in manifest.get("tests", []) if isinstance(manifest, dict) else []:
+    test_groups = []
+    if isinstance(manifest, dict):
+        test_groups.append(manifest.get("tests", []))
+    # Capability append proposals carry newly generated tests at the proposal
+    # root; normalize those with the same deterministic rule as manifest tests.
+    test_groups.append(proposal.get("tests", []))
+    seen = set()
+    for tests in test_groups:
+      for test in tests if isinstance(tests, list) else []:
+        marker = id(test)
+        if marker in seen:
+            continue
+        seen.add(marker)
         if not isinstance(test, dict) or test.get("kind") != "dotnet":
             continue
         selector = str(test.get("selector") or "")
@@ -1787,6 +1799,7 @@ def segment_output_schema(*, section: str, identity: str, scope_id: str,
                           allowed_test_ids: list[str] | None = None,
                           allowed_test_paths: list[str] | None = None,
                           available_reference_paths: list[str] | None = None,
+                          available_entrypoint_paths: list[str] | None = None,
                           allowed_change_ids: list[str] | None = None,
                           allowed_requirement_ids: list[str] | None = None,
                           allow_planned_verification: bool = False,
@@ -1828,10 +1841,10 @@ def segment_output_schema(*, section: str, identity: str, scope_id: str,
     if available_reference_paths is not None:
         paths = sorted({str(path).replace("\\", "/") for path in available_reference_paths
                         if str(path).strip()})
-        # Anchors are valid only after an exact prepared repository path.
-        reference_path = {"type": "string", "pattern": (
-            "^(?:" + "|".join(re.escape(path) for path in paths) + ")(?:#[^\\r\\n]+)?$"
-        )} if paths else {"type": "string", "const": ""}
+        # Keep the runner schema bounded. Exact prepared paths are enforced by
+        # the local reference gate; a giant path alternation can be rejected by
+        # Codex CLI before the model is invoked.
+        reference_path = {"type": "string", "enum": paths} if paths else {"type": "string", "const": ""}
     if section == "tests" and allowed_test_ids is None:
         test_id = {**nonempty_string, "pattern": "^" + re.escape(scope_id + "-")}
     if section == "flows" and allowed_flow_ids is None:
@@ -1881,6 +1894,21 @@ def segment_output_schema(*, section: str, identity: str, scope_id: str,
         "inputs": flexible_text, "state": flexible_text, "assertions": flexible_text,
         "implementation_acceptance": flexible_text,
     })
+    if available_entrypoint_paths is not None:
+        prepared_entrypoints = sorted({str(path).replace("\\", "/") for path in available_entrypoint_paths
+                                       if str(path).strip()})
+        existing_path = {"type": "string", "enum": prepared_entrypoints} if prepared_entrypoints else {
+            "type": "string", "const": "__no_prepared_existing_entrypoint__"}
+        entrypoint["allOf"] = [{
+            "if": {"properties": {"status": {"const": "existing_verified"}}, "required": ["status"]},
+            "then": {"properties": {"path": existing_path}},
+        }]
+    coverage["allOf"] = [{
+        "if": {"properties": {"disposition": {"const": "flow"}}, "required": ["disposition"]},
+        "then": {"properties": {"verification_ref": {"type": "null"},
+                                   "authority_ref": {"type": "null"},
+                                   "authority_review": {"type": "null"}}},
+    }]
     test_common = {
         "id": test_id, "flow_id": flow_id, "test_refs": array(nonempty_string),
         "state": {"type": "string", "enum": ["planned", "implemented"]},

@@ -1,5 +1,6 @@
 """Offline tests for Capability-local generation and admission."""
 from copy import deepcopy
+import json
 from pathlib import Path
 import sys
 import tempfile
@@ -15,6 +16,41 @@ from _planning_skill_common import atomic_json, file_sha, canonical_sha, RUNNER_
 
 
 class CapabilityAppendTests(unittest.TestCase):
+    def test_append_schema_uses_only_scope_prepared_evidence_paths(self):
+        import json
+        with tempfile.TemporaryDirectory() as folder:
+            prepared = Path(folder)
+            (prepared / "references").mkdir()
+            paths = [f"docs/reference/{index:04d}.md" for index in range(1500)]
+            for ref in paths:
+                path = prepared / "references" / ref
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text("evidence", encoding="utf-8")
+            atomic_json(prepared / "capabilities.v1.json", {"capabilities": [{"capability_id": "CAP-A"}]})
+            state = {"analysis_identity_sha256": "sha256:identity", "planning_scope": None}
+            scope = {"capability_id": "CAP-A", "requirement_ids": ["FR-A"],
+                     "new_requirement_ids": ["FR-A"], "cumulative_requirement_ids": ["FR-A"]}
+            base = {"manifest_candidate": {"flows": []}}
+            schema = generation.append_output_schema(state, scope, base, prepared,
+                evidence_paths=["Game.Core/Services/SaveService.cs", "Tests.Godot/test_save.gd"])
+            encoded = json.dumps(schema, ensure_ascii=False)
+            self.assertLess(len(encoded), 30000)
+            self.assertNotIn(paths[0], encoded)
+            self.assertNotIn('"pattern"', encoded)
+
+    def test_append_schema_falls_back_to_local_path_gate_for_large_evidence_sets(self):
+        with tempfile.TemporaryDirectory() as folder:
+            prepared = Path(folder)
+            (prepared / "references").mkdir()
+            atomic_json(prepared / "capabilities.v1.json", {"capabilities": [{"capability_id": "CAP-A"}]})
+            state = {"analysis_identity_sha256": "sha256:identity", "planning_scope": None}
+            scope = {"capability_id": "CAP-A", "requirement_ids": ["FR-A"],
+                     "new_requirement_ids": ["FR-A"], "cumulative_requirement_ids": ["FR-A"]}
+            base = {"manifest_candidate": {"flows": []}}
+            paths = [f"docs/reference/{index:04d}.md" for index in range(2000)]
+            schema = generation.append_output_schema(state, scope, base, prepared, evidence_paths=paths)
+            self.assertLess(len(__import__("json").dumps(schema)), 30000)
+
     def run_engine(self, *, propose=None, machine=None, semantic=None, final=None,
                    limit=64, scopes=None):
         directory = tempfile.TemporaryDirectory()
@@ -440,6 +476,7 @@ class CapabilityAppendTests(unittest.TestCase):
             context = generation.complete_scope_context(prepared, scope, base, revised)
             self.assertEqual({1, 9}, {row["id"] for row in context["task_master"]})
             self.assertEqual(["Recovery is observable"], context["task_views"][0]["acceptance"])
+            self.assertEqual("tasks_back.json", context["task_views"][0]["_source_view"])
             self.assertTrue(any(row.get("text") == "Full boundary evidence" for row in context["evidence"]))
 
     def test_repair_rejects_new_unrelated_entrypoint(self):
@@ -461,6 +498,47 @@ class CapabilityAppendTests(unittest.TestCase):
 
     def test_public_append_planned_verification_reaches_selection_and_validation(self):
         self.exercise_public_generation(planned_verification=True)
+
+    def test_oversized_auxiliary_sources_are_fully_inspected_before_append_admission(self):
+        with patch.dict(os.environ, {"SC_CAPABILITY_MAX_INPUT_TOKENS": "15000"}):
+            self.exercise_public_generation(fault="evidence_transport", failed_generations=0)
+
+    def test_synthesis_context_deduplicates_transport_citations_without_dropping_transport(self):
+        payload = {
+            "task_views": [
+                {"taskmaster_id": 1, "_source_view": "tasks_back.json", "title": "Combat",
+                 "acceptance": ["Ready"], "labels": ["back"], "unused_metadata": "preserve-me"},
+                {"taskmaster_id": 1, "_source_view": "tasks_gameplay.json", "title": "Combat",
+                 "acceptance": ["Ready"], "labels": ["gameplay"], "unused_metadata": "preserve-me"},
+            ],
+            "task_master": [{"id": 1, "title": "Combat", "status": "done",
+                             "unused_metadata": "preserve-master"}],
+            "available_reference_paths": ["unused/path.cs"],
+            "evidence": [{"path": "test.cs", "sha256": "sha256:test", "text": "complete source"}],
+        }
+        transport = {
+            "context": deepcopy(payload),
+            "plan": {"inventory": [{"path": "test.cs", "sha256": "sha256:test", "status": "complete"}],
+                     "context_sha256": "sha256:context"},
+            "audits": [{"audit": {"reports": {
+                "part-1": {"part_id": "part-1", "citations": [1],
+                            "citation_texts": [{"line": 1, "text": "complete source"}],
+                            "facts": ["fact"]}}}}],
+        }
+        reduced = generation.synthesis_context(payload, transport)
+        self.assertNotIn("citation_texts", json.dumps(reduced, ensure_ascii=False))
+        self.assertIn("preserve-me", json.dumps(reduced, ensure_ascii=False))
+        self.assertIn("preserve-master", json.dumps(reduced, ensure_ascii=False))
+        self.assertNotIn("text", reduced["evidence"][0])
+        group = reduced["task_views"][0]
+        self.assertEqual(["Ready"], group["shared"]["acceptance"])
+        rebuilt = [{"taskmaster_id": group["taskmaster_id"], **group["shared"], **view["fields"],
+                    "_source_view": view["source"]} for view in group["views"]]
+        self.assertEqual(payload["task_views"], rebuilt)
+        self.assertEqual([1], reduced["evidence_inspections"][0]["reports"]["part-1"]["citations"])
+        self.assertEqual("complete source", transport["audits"][0]["audit"]["reports"]["part-1"]["citation_texts"][0]["text"])
+        self.assertEqual("complete source", transport["context"]["evidence"][0]["text"])
+        self.assertEqual(["unused/path.cs"], transport["context"]["available_reference_paths"])
 
     def exercise_public_generation(self, planned_verification=False, fault=None, failed_generations=1):
         with tempfile.TemporaryDirectory() as directory:
@@ -502,7 +580,8 @@ class CapabilityAppendTests(unittest.TestCase):
             for ref in refs:
                 dest = root / ref
                 dest.parent.mkdir(parents=True, exist_ok=True)
-                dest.write_text("// RuntimeTests evidence", encoding="utf-8")
+                dest.write_text("// RuntimeTests evidence" + (
+                    "\n// Full auxiliary source line\n" * 2000 if fault == "evidence_transport" else ""), encoding="utf-8")
                 copy = prepared / "references" / ref
                 copy.parent.mkdir(parents=True, exist_ok=True)
                 copy.write_text(dest.read_text(encoding="utf-8"), encoding="utf-8")
@@ -524,7 +603,17 @@ class CapabilityAppendTests(unittest.TestCase):
                     props = output_schema["properties"]
                     value = {key: prop["const"] for key, prop in props.items() if "const" in prop}
                     seen.append((number, value["schema_version"], prompt))
-                    if value["schema_version"] == plan_mvg.MVG_SELECTION_SCHEMA:
+                    if value["schema_version"] == "newrouge.mvg-evidence-audit.v1":
+                        import json
+                        payload = json.loads(prompt.split("\n", 1)[1].split("\nSOURCE PART ", 1)[0])
+                        reports = {}
+                        for part in payload["parts"]:
+                            reports[part["part_id"]] = {"part_id": part["part_id"], "verdict": "relevant",
+                                "requirement_ids": [payload["core"]["requirements"][0]["requirement_id"]],
+                                "rationale": "Complete source inspected", "facts": ["Evidence supports runtime boundary"],
+                                "citations": [1], "hard_issues": []}
+                        value["reports"] = reports
+                    elif value["schema_version"] == plan_mvg.MVG_SELECTION_SCHEMA:
                         labels = props["candidate_reviews"]["items"]["properties"]["label"]["enum"]
                         value.update(status="selected", selected="A", tradeoffs=["Prefer clear journeys"], evidence_refs=[],
                                      rationale="All candidates are admitted", candidate_reviews=[
@@ -573,8 +662,12 @@ class CapabilityAppendTests(unittest.TestCase):
                                 for fid in props["flow_reviews"]["items"]["properties"]["flow_id"].get("enum", [])])
                     output = workspace / Path(output_name).name
                     atomic_json(output, value)
-                    return output, {"backend_info": description, "receipt": {"model": "fixture", "model_tools": [],
-                                                                                 "output_sha256": file_sha(output)}}
+                    receipt = {"model": "fixture", "model_tools": [], "output_sha256": file_sha(output)}
+                    name = Path(output_name).with_suffix("").as_posix().replace("/", "-")
+                    reports = list((workspace / "llm-sandbox" / f"attempt-{number}" / name).glob("runner-input-integrity.json"))
+                    if reports:
+                        receipt["input_integrity"] = plan_mvg.load_json(reports[0], {})
+                    return output, {"backend_info": description, "receipt": receipt}
                 return invoke
 
             result = generation.generate_append(root, state, candidate, invoke_factory=invoke_factory,
@@ -591,6 +684,17 @@ class CapabilityAppendTests(unittest.TestCase):
             proof = result["proof"]
             errors = plan_mvg.candidate_admission_errors(root, state, result["accepted"], proof)
             self.assertEqual([], errors)
+            if fault == "evidence_transport":
+                self.assertGreater(len(seen), 4)
+                self.assertEqual(len(seen), result["total_invocations"])
+                self.assertNotIn("citation_texts", generations[0])
+                for record in proof["records"]:
+                    transport = record["proof"]["evidence_transport"]
+                    self.assertEqual(3, len(transport["plan"]["inventory"]))
+                    self.assertTrue(all(len(row["text"]) > 50000 for row in transport["context"]["evidence"]))
+                corrupt_transport = deepcopy(proof)
+                corrupt_transport["records"][0]["proof"]["evidence_transport"]["audits"].pop()
+                self.assertTrue(plan_mvg.candidate_admission_errors(root, state, result["accepted"], corrupt_transport))
             from _mvg_planning_review import review_execution_errors
             execution = plan_mvg.load_json(candidate / "admission-execution.json", {})
             self.assertEqual([], review_execution_errors(state, result["accepted"], execution, proof))

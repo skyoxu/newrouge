@@ -9,6 +9,8 @@ from typing import Any
 
 from _planning_skill_common import atomic_json, canonical_sha, file_sha, load_json, parse_model_json, validate_output_schema
 from _mvg_capability_append import PROOF_SCHEMA, run_capability_append, preservation_errors
+from _mvg_evidence_transport import (audit_errors, audit_execution_errors, audit_prompt, audit_schema,
+    compact_schema, plan_errors, plan_transport, transport_proof_errors, wire_json)
 
 APPEND_SCHEMA = "newrouge.mvg-capability-append.v1"
 INPUT_LIMIT = 850_000
@@ -88,12 +90,33 @@ def seed_proposal(state, prepared):
             "coverage_review": {}, "notes": []}
 
 
-def append_output_schema(state, scope, base, prepared):
+def _runner_schema_without_patterns(value):
+    """Remove schema keywords unsupported by the isolated Codex CLI parser."""
+    if isinstance(value, dict):
+        return {key: _runner_schema_without_patterns(item)
+                for key, item in value.items() if key not in {"pattern", "allOf"}}
+    if isinstance(value, list):
+        return [_runner_schema_without_patterns(item) for item in value]
+    return value
+
+
+def append_output_schema(state, scope, base, prepared, *, evidence_paths=None):
     import plan_mvg as pm
     planning_scope = state.get("planning_scope")
-    refs = sorted({path.relative_to(prepared / family).as_posix()
-                   for family in ("sources", "references") for path in (prepared / family).rglob("*") if path.is_file()})
+    refs = sorted({str(path).replace("\\", "/") for path in (evidence_paths or []) if str(path).strip()})
+    if evidence_paths is None:
+        refs = sorted({path.relative_to(prepared / family).as_posix()
+                       for family in ("sources", "references") for path in (prepared / family).rglob("*") if path.is_file()})
     contracts = [ref for ref in refs if ref.startswith("Game.Core/Contracts/") and ref.endswith(".cs")]
+    entrypoint_paths = [ref for ref in refs if ref.endswith(".cs") and not ref.startswith((
+        "Game.Core.Tests/", "Tests.Godot/", "Game.Core/Contracts/"))]
+    test_paths = [ref for ref in refs if ref.startswith(("Game.Core.Tests/", "Tests.Godot/tests/"))
+                  and ref.endswith((".cs", ".gd"))]
+    # Large path enums make the external CLI reject an otherwise valid schema.
+    # The local prepared-evidence gate remains authoritative for exact paths.
+    schema_refs = refs if len(refs) <= 40 and sum(len(ref) for ref in refs) <= 12000 else None
+    schema_entrypoint_paths = (entrypoint_paths if len(entrypoint_paths) <= 20
+                               and sum(len(ref) for ref in entrypoint_paths) <= 6000 else None)
     known_capabilities = [cap["capability_id"] for cap in load_json(prepared / "capabilities.v1.json", {}).get("capabilities", [])]
     flows = planning_scope.get("flow_ids") if planning_scope else None
     tests = planning_scope.get("test_ids") if planning_scope else None
@@ -104,8 +127,11 @@ def append_output_schema(state, scope, base, prepared):
     for section, field in (("flows", "flows"), ("coverage", "coverage_table"),
                            ("entrypoints", "entrypoints"), ("tests", "tests")):
         schema = pm.segment_output_schema(section=section, identity=state["analysis_identity_sha256"],
-            scope_id="routing", available_source_paths=refs, available_contract_paths=contracts,
-            available_reference_paths=refs, allowed_flow_ids=flows, allowed_test_ids=tests,
+            scope_id="routing", available_source_paths=None, available_contract_paths=None,
+            available_reference_paths=None, allowed_flow_ids=flows, allowed_test_ids=tests,
+            allowed_test_paths=(test_paths if len(test_paths) <= 300
+                                and sum(len(ref) for ref in test_paths) <= 30000 else None),
+            available_entrypoint_paths=None,
             allowed_requirement_ids=scope["cumulative_requirement_ids"],
             allowed_change_ids=flows if flows else None,
             allow_planned_verification=bool((planning_scope or {}).get("allow_planned_verification")))
@@ -130,6 +156,17 @@ def append_output_schema(state, scope, base, prepared):
                 {"type": "string", "enum": scope["new_requirement_ids"]} if scope["new_requirement_ids"]
                 else {"type": "string", "const": ""})
             properties[field].update(minItems=len(scope["new_requirement_ids"]), maxItems=len(scope["new_requirement_ids"]))
+            # Append coverage is exclusively a flow disposition. File
+            # references are evidence for other dispositions and are rejected
+            # here and again by the local membership gate.
+            item = properties[field]["items"]
+            item["properties"]["verification_ref"] = {"type": "null"}
+            item["properties"]["authority_ref"] = {"type": "null"}
+            item["properties"]["authority_review"] = {"type": "null"}
+        if section == "entrypoints":
+            # Existing verification must be proven from prepared files by the
+            # deterministic gate; generation emits only explicit obligations.
+            properties[field]["items"]["properties"]["status"] = {"type": "string", "const": "planned"}
         if section == "flows" and "change_reviews" in schema["properties"]:
             properties["change_reviews"] = schema["properties"]["change_reviews"]
     if "change_reviews" not in properties:
@@ -137,7 +174,11 @@ def append_output_schema(state, scope, base, prepared):
             "type": "object", "properties": {}, "required": [], "additionalProperties": False}, "maxItems": 0}
     properties["gaps"] = {"type": "array", "items": {"type": "string", "minLength": 1}}
     properties["notes"] = {"type": "array", "items": {"type": "string", "minLength": 1}}
-    return {"type": "object", "properties": properties, "required": list(properties), "additionalProperties": False}
+    schema = {"type": "object", "properties": properties, "required": list(properties), "additionalProperties": False}
+    # Regex and cross-field constraints are rechecked by append machine
+    # validation and local prepared-evidence gates. Codex CLI rejects these
+    # keywords in nested branches before invocation, so keep transport portable.
+    return _runner_schema_without_patterns(schema)
 
 
 def complete_scope_context(prepared, scope, base, proposal=None):
@@ -151,7 +192,8 @@ def complete_scope_context(prepared, scope, base, proposal=None):
     owners = {tid for flow in affected["manifest_candidate"]["flows"] for tid in flow.get("task_ids", [])}
     owners |= {row.get("owner_task") for row in affected.get("entrypoints", []) + affected.get("tests", [])
                if row.get("owner_task") is not None}
-    views = [row for name in ("tasks_back.json", "tasks_gameplay.json")
+    views = [{**row, "_source_view": name}
+             for name in ("tasks_back.json", "tasks_gameplay.json")
              for row in load_json(prepared / "task-views" / name, [])
              if set(row.get("semantic_refs", row.get("requirement_ids", []))) & rids
              or row.get("taskmaster_id") in owners]
@@ -209,6 +251,54 @@ def preflight_runner_payload(attempt_root, attempt, prompt, schema, output_name)
     payload = workspace_payload(sandbox, prompt_path=prompt_path, output_path=output_path, max_bytes=INPUT_LIMIT)
     return check_workspace_request(sandbox, payload, max_bytes=INPUT_LIMIT,
         max_input_tokens=configured_input_limit())
+
+
+def _compact_task_views(rows):
+    """Encode repeated task-view fields once while preserving each exact source row."""
+    groups = {}
+    order = []
+    for ordinal, row in enumerate(rows):
+        task_id = row.get("taskmaster_id")
+        key = ("task", canonical_sha(task_id)) if task_id is not None else ("row", str(ordinal))
+        if key not in groups:
+            groups[key] = {"taskmaster_id": task_id, "views": []}
+            order.append(key)
+        groups[key]["views"].append({
+            "source": row.get("_source_view", "unknown"),
+            "fields": {name: value for name, value in row.items()
+                       if name not in {"taskmaster_id", "_source_view"}},
+        })
+    result = []
+    for key in order:
+        group = groups[key]
+        view_rows = [row["fields"] for row in group["views"]]
+        shared_keys = set(view_rows[0]) if view_rows else set()
+        for row in view_rows[1:]:
+            shared_keys = {name for name in shared_keys if name in row and row[name] == view_rows[0][name]}
+        group["shared"] = {name: view_rows[0][name] for name in sorted(shared_keys)} if view_rows else {}
+        for view, row in zip(group["views"], view_rows):
+            view["fields"] = {name: value for name, value in row.items() if name not in shared_keys}
+        result.append(group)
+    return result
+
+
+def synthesis_context(payload, transport):
+    """Build a compact model view while retaining complete source text in transport."""
+    reduced = deepcopy(payload)
+    reduced["evidence"] = deepcopy(transport["plan"]["inventory"])
+    reduced["task_views"] = _compact_task_views(reduced.get("task_views", []))
+    # Exact source refs remain in the task views and evidence inventory. The
+    # repository-wide names-only index remains in transport for local checks.
+    reduced.pop("available_reference_paths", None)
+    inspections = []
+    for record in transport["audits"]:
+        audit = deepcopy(record["audit"])
+        for row in audit.get("reports", {}).values():
+            row.pop("citation_texts", None)
+        inspections.append(audit)
+    reduced["evidence_inspections"] = inspections
+    reduced["evidence_context_sha256"] = transport["plan"]["context_sha256"]
+    return reduced
 
 
 def machine_validation_issues(validation, scope, proposal):
@@ -333,12 +423,94 @@ def generate_append(root, state, candidate_root, *, invoke_factory, before_call,
     baseline = load_json(prepared / "existing-manifest.json", None)
     seed = seed_proposal(state, prepared)
 
+    def next_attempt():
+        return int(load_json(candidate_root / "capability-append/append-ledger.json", {}).get("total_invocations", 0)) + 1
+
+    def preflight(prompt, schema, output_name):
+        number = next_attempt()
+        return preflight_runner_payload(candidate_root / "capability-append" / f"call-{number}",
+                                        number, prompt, schema, output_name)
+
+    def input_prompt(payload, instruction, schema, output_name, phase, context, call):
+        """Prefer complete inline input; route oversize auxiliary files losslessly."""
+        prompt = instruction + wire_json(payload)
+        try:
+            preflight(prompt, schema, output_name)
+            return prompt, None
+        except ValueError as exc:
+            if not any(code in str(exc) for code in ("runner_input_too_large", "runner_context_budget_exceeded")):
+                raise
+        # Inspectors never see failed proposal/issue context. The final repair
+        # request still gets both objects, complete and without clipping.
+        inspect_context = deepcopy(payload)
+        if phase == "inspect":
+            inspect_context.pop("repair_proposal", None)
+            inspect_context.pop("hard_issue", None)
+        cache = candidate_root / "capability-append/evidence-contexts" / str(context) / phase / canonical_sha(inspect_context).split(":")[-1]
+        path = cache / "transport.json"
+        transport = load_json(path, None)
+        if transport is None:
+            probe_count = 0
+            def probe(text, output_schema):
+                nonlocal probe_count
+                probe_count += 1
+                return preflight_runner_payload(cache / "preflight" / str(probe_count), 1, text, output_schema,
+                                                f"segments/evidence-{phase}.json")
+            plan = plan_transport(inspect_context, phase=phase, probe=probe)
+            # No model call is made until every full-text batch fits and its
+            # exact reassembly has passed the local conservation gate.
+            transport = {"context": inspect_context, "plan": plan, "audits": []}
+            atomic_json(cache / "plan.json", plan)
+            for batch in plan["batches"]:
+                text = audit_prompt(plan, batch["parts"])
+                output_schema = audit_schema(plan, batch["parts"])
+                name = f"segments/evidence-{phase}.json"
+                admitted = preflight(text, output_schema, name)
+                if admitted["request_sha256"] != batch["input_report"]["request_sha256"]:
+                    raise ValueError("mvg_evidence_request_changed_after_preflight")
+                number = call("evidence-" + phase)
+                workspace = candidate_root / "capability-append" / f"call-{number}"
+                output, execution = invoke_factory(workspace)(text, number, output_name=name,
+                    output_schema_path=workspace / "output-schema.json", output_schema=output_schema)
+                validate_output_schema(output, workspace / "output-schema.json")
+                audit = parse_model_json(output)
+                execution = dict(execution, output_sha256=file_sha(output), audit_sha256=canonical_sha(audit))
+                errors = audit_errors(plan, batch, audit) + audit_execution_errors(batch, audit, execution)
+                atomic_json(workspace / "evidence-execution.json", execution)
+                if errors:
+                    raise ValueError("mvg_evidence_audit_invalid:" + ";".join(errors))
+                transport["audits"].append({"audit": audit, "execution": execution})
+            atomic_json(path, transport)
+        if transport.get("context") != inspect_context:
+            raise ValueError("mvg_evidence_context_changed")
+        plan = transport["plan"]
+        errors = plan_errors(inspect_context, plan)
+        if len(transport["audits"]) != len(plan["batches"]):
+            errors.append("evidence_transport_audits_incomplete")
+        for batch, record in zip(plan["batches"], transport["audits"]):
+            errors += audit_errors(plan, batch, record["audit"])
+            errors += audit_execution_errors(batch, record["audit"], record["execution"])
+        if errors:
+            raise ValueError("mvg_evidence_transport_invalid:" + ";".join(errors))
+        reduced = synthesis_context(payload, transport)
+        prompt = (instruction +
+            "Auxiliary evidence was sent in full to isolated inspectors; every file/part has an exact "
+            "hash-bound report below. Core authority is complete here. Use all reports, distinguish "
+            "context-only material from relevant facts, and honor every source-backed hard contradiction. "
+            "Inspector facts are derived evidence, not new requirements or runtime proof. Citation line "
+            "addresses remain bound to immutable source parts and are rechecked locally; do not reproduce "
+            "or invent quote text. Complete source text, full task records, path inventory and exact citation "
+            "lines remain in the hash-bound transport proof.\n" + wire_json(reduced))
+        preflight(prompt, schema, output_name)
+        return prompt, transport
+
     def request(scope, base, prior, issue, context, call):
-        schema = append_output_schema(state, scope, base, prepared)
         payload = complete_scope_context(prepared, scope, base, prior)
+        schema = compact_schema(append_output_schema(state, scope, base, prepared,
+            evidence_paths=[row["path"] for row in payload.get("evidence", []) if row.get("status") != "not_prepared"]))
         payload.update(accepted_proposal=base, repair_proposal=prior, hard_issue=issue,
                        planning_scope=state.get("planning_scope"))
-        prompt = (
+        instruction = (
             "Generate only this Capability's MVG increment. The selected Capability is the primary input; "
             "all other objects are supporting evidence. Return the strict schema JSON. A flow may span "
             "Capabilities. Extend shared flows when useful, preserve all accepted coverage rows, tests, "
@@ -349,11 +521,9 @@ def generate_append(root, state, candidate_root, *, invoke_factory, before_call,
             "flows/tests remain cumulative; an explicit change_reviews authority is required for semantic "
             "membership additions to frozen flows. Do not modify another Capability's accepted mapping. "
             "Report true missing upstream semantics in gaps, never invent evidence. Repairs change only "
-            "the current issue and necessary dependencies, preserve other valid increment rows. No tools.\n"
-            + json.dumps(payload, ensure_ascii=False))
-        attempt_number = int(load_json(candidate_root / "capability-append/append-ledger.json", {}).get("total_invocations", 0)) + 1
-        preflight_runner_payload(candidate_root / "capability-append" / f"call-{attempt_number}",
-            attempt_number, prompt, schema, "segments/capability-append.json")
+            "the current issue and necessary dependencies, preserve other valid increment rows. No tools.\n")
+        prompt, transport = input_prompt(payload, instruction, schema, "segments/capability-append.json",
+                                        "inspect", context, call)
         number = call("generate" if issue is None else "repair")
         workspace = candidate_root / "capability-append" / f"call-{number}"
         output, execution = invoke_factory(workspace)(prompt, number,
@@ -362,6 +532,8 @@ def generate_append(root, state, candidate_root, *, invoke_factory, before_call,
         validate_output_schema(output, workspace / "output-schema.json")
         delta = parse_model_json(output)
         atomic_json(workspace / "generation-execution.json", execution)
+        if transport is not None:
+            atomic_json(workspace / "evidence-transport.json", transport)
         return delta
 
     def machine(scope, base, proposal):
@@ -388,9 +560,10 @@ def generate_append(root, state, candidate_root, *, invoke_factory, before_call,
         schema = pm.semantic_review_output_schema(state=state, proposal=projection)
         if not projection["coverage_table"]:
             schema["properties"]["requirement_reviews"]["maxItems"] = 0
+        schema = compact_schema(schema)
         payload = complete_scope_context(prepared, scope, base, proposal)
         payload.update(proposal=projection, accepted_proposal=base)
-        prompt = (
+        instruction = (
             "Independently check this Capability increment and every affected cross-Capability handoff. "
             "The selected Capability is the primary input. Check Requirement meaning, producer/consumer "
             "roles, observable outcomes, failures/recovery, ownership, test/entrypoint feasibility, "
@@ -399,11 +572,9 @@ def generate_append(root, state, candidate_root, *, invoke_factory, before_call,
             "accounting and proposal identity. Review exactly each supplied coverage row and projected flow. "
             "Accept concrete planned implementation obligations without claiming runtime success. Block only "
             "real hard issues and describe each precise repair in its row. Return complete review JSON, "
-            "repair_action=none for accepted rows. Do not edit the proposal. No tools.\n"
-            + json.dumps(payload, ensure_ascii=False))
-        attempt_number = int(load_json(candidate_root / "capability-append/append-ledger.json", {}).get("total_invocations", 0)) + 1
-        preflight_runner_payload(candidate_root / "capability-append" / f"call-{attempt_number}",
-            attempt_number, prompt, schema, "segments/capability-review.json")
+            "repair_action=none for accepted rows. Do not edit the proposal. No tools.\n")
+        prompt, transport = input_prompt(payload, instruction, schema, "segments/capability-review.json",
+                                        "review", context, call)
         number = call("semantic")
         workspace = candidate_root / "capability-append" / f"call-{number}"
         output, execution = invoke_factory(workspace)(prompt, number,
@@ -438,8 +609,19 @@ def generate_append(root, state, candidate_root, *, invoke_factory, before_call,
                 intent["repair_action"] = str(row.get("repair_action") or "repair_sections")
             issues.append({"code": code, "path": "semantic-review", "detail": detail,
                            "findings": deepcopy(proof.get("findings", [])), **intent})
-        return {"issues": issues, "proof": {"projection": projection, "required_requirement_ids": sorted(required),
-                "review": proof}, "execution": bound_execution}
+        if transport is not None:
+            for record in transport["audits"]:
+                for row in record["audit"]["reports"].values():
+                    for conflict in row["hard_issues"]:
+                        family = "requirement_reviews" if conflict["requirement_ids"] else "flow_reviews"
+                        for identifier in conflict["requirement_ids"] or conflict["flow_ids"]:
+                            issues.append({"code": "semantic_review_blocked:" + family + ":" + identifier,
+                                           "path": "semantic-review", "detail": conflict["detail"],
+                                           "repair_action": "repair_sections"})
+        bound_proof = {"projection": projection, "required_requirement_ids": sorted(required), "review": proof}
+        if transport is not None:
+            bound_proof["evidence_transport"] = transport
+        return {"issues": issues, "proof": bound_proof, "execution": bound_execution}
 
     result = run_capability_append(candidate_root / "capability-append", scopes=scopes, seed=seed,
         identity=state["analysis_identity_sha256"], propose=request, machine=machine, semantic=semantic,
@@ -495,6 +677,9 @@ def append_proof_errors(state, proposal, proof, semantics, allowed=None):
         bound = record.get("proof") or {}
         if bound.get("projection") != projection or set(bound.get("required_requirement_ids", [])) != requirements:
             return errors + ["capability_admission_projection_changed"]
+        if "evidence_transport" in bound:
+            errors.extend(transport_proof_errors(bound["evidence_transport"], scope=scope,
+                                                base=accepted, proposal=projection))
         review = bound.get("review") or {}
         errors.extend(semantic_review_errors(state, projection, review, semantics, requirements))
         errors.extend(review_execution_errors(state, projection, record.get("execution") or {}, review))
