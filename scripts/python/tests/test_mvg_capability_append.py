@@ -399,6 +399,15 @@ class CapabilityAppendTests(unittest.TestCase):
     def test_real_cumulative_generation_admission_and_proof_verification(self):
         self.exercise_public_generation()
 
+    def test_bound_source_drift_after_first_dispatch_blocks_next_dispatch(self):
+        self.exercise_public_generation(drift_after_first_dispatch=True)
+
+    def test_bound_source_drift_after_final_dispatch_blocks_admission(self):
+        self.exercise_public_generation(drift_after_final_dispatch=True)
+
+    def test_public_generate_rejects_drifted_candidate_without_recopying(self):
+        self.exercise_public_generation(public_candidate_drift=True)
+
     def test_missing_requirement_is_repaired_from_authoritative_scope(self):
         self.exercise_public_generation(fault="duplicate_coverage")
 
@@ -459,24 +468,42 @@ class CapabilityAppendTests(unittest.TestCase):
 
     def test_entrypoint_review_includes_owner_acceptance_and_evidence(self):
         with tempfile.TemporaryDirectory() as directory:
-            prepared = Path(directory)
-            scope = {"capability": {}, "requirement_ids": ["FR-A"], "cumulative_requirement_ids": ["FR-A"]}
-            base = {"manifest_candidate": {"flows": [{"id": "flow-a", "requirement_ids": ["FR-A"],
-                    "task_ids": [1], "test_ids": []}]}, "coverage_table": [], "tests": [], "entrypoints": []}
+            import planning_acceptance_fixture as fixture
+            import chapter5_semantic_reconciliation as chapter5
+            root = Path(directory) / "fixture"
+            fixture.build_fixture(root)
+            semantics = plan_mvg.load_json(root / plan_mvg.SEMANTICS)
+            req = semantics["requirements"][0]
+            rid = req["requirement_id"]
+            capabilities = root / "docs/planning/semantic-topology/capabilities.v1.json"
+            atomic_json(capabilities, {"schema_version": "newrouge.capabilities.v1",
+                "source_revision": semantics["source_revision"], "capabilities": [
+                    {"capability_id": "CAP-" + str(index), "requirement_ids": [row["requirement_id"]],
+                     "source_block_ids": row["source_block_ids"]}
+                    for index, row in enumerate(semantics["requirements"], 1)]})
+            views = plan_mvg.load_json(root / plan_mvg.TASK_VIEWS[1])
+            owner = next(row for row in views if row["taskmaster_id"] == 42)
+            owner["source_refs"] = ["owner.md"]
+            atomic_json(root / plan_mvg.TASK_VIEWS[1], views)
+            (root / "owner.md").write_text("Full boundary evidence", encoding="utf-8")
+            fixture._write_readiness(root, plan_mvg.load_json(root / chapter5.DEFAULT_EXTRACTION_SNAPSHOT),
+                semantics, {block: row["requirement_id"] for row in semantics["requirements"]
+                            for block in row["source_block_ids"]},
+                {str(row["taskmaster_id"]): row["semantic_refs"] for row in views})
+            plan_mvg.prepare(root, run_id="owner-context", capabilities_path=capabilities,
+                manifest_path=root / "docs/testing/mvg/owner-context.json", task_ids=["7", "42"],
+                allow_unready=False, evidence_refs=["owner.md"])
+            prepared = root / plan_mvg.DEFAULT_RUN_ROOT / "owner-context/analysis-input"
+            scope = {"capability": {}, "requirement_ids": [rid], "cumulative_requirement_ids": [rid]}
+            base = {"manifest_candidate": {"flows": [{"id": "flow-a", "requirement_ids": [rid],
+                    "task_ids": [7], "test_ids": []}]}, "coverage_table": [], "tests": [], "entrypoints": []}
             revised = deepcopy(base)
-            revised["entrypoints"] = [{"owner_task": 9, "flow_ids": ["flow-a"], "path": "runtime.cs", "symbol": "Run"}]
-            atomic_json(prepared / "semantic-requirements.v1.json", {"requirements": [{"requirement_id": "FR-A"}]})
-            atomic_json(prepared / "capabilities.v1.json", {"capabilities": []})
-            atomic_json(prepared / "task-master.json", {"master": {"tasks": [{"id": 1}, {"id": 9, "details": "Boundary owner"}]}})
-            atomic_json(prepared / "task-views/tasks_back.json", [{"taskmaster_id": 9, "semantic_refs": [],
-                "acceptance": ["Recovery is observable"], "source_refs": ["owner.md"]}])
-            atomic_json(prepared / "task-views/tasks_gameplay.json", [])
-            (prepared / "references").mkdir()
-            (prepared / "references/owner.md").write_text("Full boundary evidence", encoding="utf-8")
+            revised["entrypoints"] = [{"owner_task": 42, "flow_ids": ["flow-a"], "path": "runtime.cs", "symbol": "Run"}]
             context = generation.complete_scope_context(prepared, scope, base, revised)
-            self.assertEqual({1, 9}, {row["id"] for row in context["task_master"]})
-            self.assertEqual(["Recovery is observable"], context["task_views"][0]["acceptance"])
-            self.assertEqual("tasks_back.json", context["task_views"][0]["_source_view"])
+            self.assertEqual({7, 42}, {row["id"] for row in context["task_master"]})
+            owner_context = next(row for row in context["task_views"] if row["taskmaster_id"] == 42)
+            self.assertEqual(owner["acceptance"], owner_context["acceptance"])
+            self.assertEqual("tasks_gameplay.json", owner_context["_source_view"])
             self.assertTrue(any(row.get("text") == "Full boundary evidence" for row in context["evidence"]))
 
     def test_repair_rejects_new_unrelated_entrypoint(self):
@@ -500,7 +527,9 @@ class CapabilityAppendTests(unittest.TestCase):
         self.exercise_public_generation(planned_verification=True)
 
     def test_oversized_auxiliary_sources_are_fully_inspected_before_append_admission(self):
-        with patch.dict(os.environ, {"SC_CAPABILITY_MAX_INPUT_TOKENS": "15000"}):
+        # The production fixture includes the full Chapter 5 authority. Its
+        # core context must fit while the three large sources still require transport.
+        with patch.dict(os.environ, {"SC_CAPABILITY_MAX_INPUT_TOKENS": "24000"}):
             self.exercise_public_generation(fault="evidence_transport", failed_generations=0)
 
     def test_synthesis_context_deduplicates_transport_citations_without_dropping_transport(self):
@@ -540,29 +569,44 @@ class CapabilityAppendTests(unittest.TestCase):
         self.assertEqual("complete source", transport["context"]["evidence"][0]["text"])
         self.assertEqual(["unused/path.cs"], transport["context"]["available_reference_paths"])
 
-    def exercise_public_generation(self, planned_verification=False, fault=None, failed_generations=1):
+    def exercise_public_generation(self, planned_verification=False, fault=None, failed_generations=1,
+                                   drift_after_first_dispatch=False, drift_after_final_dispatch=False,
+                                   public_candidate_drift=False):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
+            import planning_acceptance_fixture as fixture
+            import chapter5_semantic_reconciliation as chapter5
+            original_semantics = fixture._build_semantics
+            def fixture_semantics(ledger):
+                semantics, by_block = original_semantics(ledger)
+                mapping = {row["requirement_id"]: "FR-" + letter
+                           for row, letter in zip(semantics["requirements"], ("a", "b"))}
+                for row in semantics["requirements"]:
+                    row["requirement_id"] = mapping[row["requirement_id"]]
+                return semantics, {block: mapping[rid] for block, rid in by_block.items()}
+            with patch.object(fixture, "_build_semantics", fixture_semantics):
+                fixture.build_fixture(root)
             run = root / "logs/ci/mvg-planning/fixture"
             candidate = run / "candidates/candidate-1"
             prepared = candidate / "analysis-input"
-            tasks = {"master": {"tasks": [{"id": 1, "status": "done"}, {"id": 2, "status": "done"}]}}
-            atomic_json(root / ".taskmaster/tasks/tasks.json", tasks)
-            atomic_json(prepared / "task-master.json", tasks)
             flows, tests, caps, views, reqs = [], [], [], [], []
+            real_semantics = plan_mvg.load_json(root / plan_mvg.SEMANTICS)
+            real_views = plan_mvg.load_json(root / plan_mvg.TASK_VIEWS[1])
             for index, letter in enumerate(("a", "b"), 1):
+                task_id = fixture.TASK_IDS[index - 1]
                 rid, cid, fid, tid = "FR-" + letter, "CAP-" + letter, "flow-" + letter, "test-" + letter
-                refs = ["Game.Core/Contracts/Event.cs", "Game.Core/Runtime.cs", "Game.Core.Tests/RuntimeTests.cs"]
+                refs = [fixture.CONTRACT_PATH.as_posix(), "Game.Core/Runtime.cs", fixture.TEST_PATH.as_posix()]
                 flows.append({"id": fid, "outcome": letter, "requirement_ids": [rid], "capability_refs": [cid],
-                    "task_ids": [index], "source_paths": [refs[1]], "test_ids": [tid], "handoffs": [
-                        {"producer_task": index, "consumer_task": index, "owner_task": index,
+                    "task_ids": [task_id], "source_paths": [fixture.GDD_PATH.as_posix()], "test_ids": [tid], "handoffs": [
+                        {"producer_task": task_id, "consumer_task": task_id, "owner_task": task_id,
                          "contract_ref": refs[0], "behavior": letter, "test_ids": [tid]}]})
                 tests.append({"id": tid, "kind": "dotnet", "state": "implemented", "path": refs[2],
                               "selector": "RuntimeTests", "evidence_level": "domain-integration", "min_tests": 1})
-                caps.append({"capability_id": cid, "requirement_ids": [rid], "description": letter})
-                reqs.append({"requirement_id": rid, "statement": letter})
-                views.append({"taskmaster_id": index, "semantic_refs": [rid], "capability_refs": [cid],
-                              "contractRefs": [refs[0]], "test_refs": [refs[2]]})
+                real_req = next(row for row in real_semantics["requirements"] if row["requirement_id"] == rid)
+                caps.append({"capability_id": cid, "requirement_ids": [rid], "description": letter,
+                             "source_block_ids": real_req["source_block_ids"]})
+                reqs.append(real_req)
+                views.append(dict(next(row for row in real_views if row["taskmaster_id"] == task_id), capability_refs=[cid]))
             manifest = {"schema_version": "newrouge.mvg-integration.v1", "mvg_id": "fixture", "flows": flows,
                         "tests": tests, "coverage": {"mode": "critical", "scope_id": "fixture",
                         "required_flow_ids": ["flow-a", "flow-b"], "blocking_task_ids": [],
@@ -571,29 +615,53 @@ class CapabilityAppendTests(unittest.TestCase):
                 caps = [dict(caps[0], requirement_ids=["FR-a", "FR-b"])]
                 flows[1]["capability_refs"] = ["CAP-a"]
                 views[1]["capability_refs"] = ["CAP-a"]
-            atomic_json(prepared / "existing-manifest.json", manifest)
-            atomic_json(prepared / "capabilities.v1.json", {"schema_version": "newrouge.capabilities.v1", "capabilities": caps})
-            atomic_json(prepared / "semantic-requirements.v1.json", {"requirements": reqs})
-            atomic_json(prepared / "task-views/tasks_back.json", views)
-            atomic_json(prepared / "task-views/tasks_gameplay.json", [])
-            authority, files = {}, {}
+            manifest_path = root / "docs/testing/mvg/fixture.json"
+            capabilities_path = root / "docs/planning/semantic-topology/capabilities.v1.json"
+            atomic_json(manifest_path, manifest)
+            atomic_json(capabilities_path, {"schema_version": "newrouge.capabilities.v1", "capabilities": caps,
+                                          "source_revision": real_semantics["source_revision"]})
+            for view_path in plan_mvg.TASK_VIEWS:
+                atomic_json(root / view_path, views)
             for ref in refs:
                 dest = root / ref
                 dest.parent.mkdir(parents=True, exist_ok=True)
-                dest.write_text("// RuntimeTests evidence" + (
+                dest.write_text("public class RuntimeTests {}" + (
                     "\n// Full auxiliary source line\n" * 2000 if fault == "evidence_transport" else ""), encoding="utf-8")
-                copy = prepared / "references" / ref
-                copy.parent.mkdir(parents=True, exist_ok=True)
-                copy.write_text(dest.read_text(encoding="utf-8"), encoding="utf-8")
-                authority[ref], files["references/" + ref] = file_sha(dest), file_sha(copy)
-            atomic_json(prepared / "analysis-index.json", {"authority_inputs": authority, "files": files})
+            snapshot = plan_mvg.load_json(root / chapter5.DEFAULT_EXTRACTION_SNAPSHOT)
+            by_block = {block: row["requirement_id"] for row in reqs for block in row["source_block_ids"]}
+            by_task = {str(row["taskmaster_id"]): row["semantic_refs"] for row in views}
+            fixture._write_readiness(root, snapshot, real_semantics, by_block, by_task)
+            state = plan_mvg.prepare(root, run_id="fixture", capabilities_path=capabilities_path,
+                manifest_path=manifest_path, task_ids=list(map(str, fixture.TASK_IDS)), allow_unready=False, evidence_refs=refs)
             import shutil
-            shutil.copytree(prepared, run / "analysis-input")
-            state = {"run_id": "fixture", "analysis_identity_sha256": "sha256:fixture", "capabilities_path": "unused",
-                     "capabilities_sha256": "sha256:fixture", "planning_scope": plan_mvg._manifest_planning_scope(manifest, views)}
+            shutil.copytree(run / "analysis-input", prepared)
             description = {"schema_version": RUNNER_SCHEMA, "filesystem_scope": "workspace_only",
                            "fresh_session_per_invocation": True, "can_read_outside_workspace": False,
                            "model": "fixture", "model_tools": []}
+            if public_candidate_drift:
+                changed = {}
+                for label in plan_mvg.MVG_CANDIDATE_LABELS:
+                    candidate_input = run / "candidates" / label / "analysis-input"
+                    if not candidate_input.exists():
+                        shutil.copytree(run / "analysis-input", candidate_input)
+                    target = candidate_input / "capabilities.v1.json"
+                    data = plan_mvg.load_json(target)
+                    data["capabilities"].reverse()
+                    atomic_json(target, data)
+                    changed[label] = target.read_bytes()
+                with patch.object(plan_mvg, "inspect_isolated_runner", return_value=description), \
+                     patch.object(plan_mvg, "run_isolated_model") as dispatch:
+                    with self.assertRaises(ValueError):
+                        plan_mvg.generate(root, run_id="fixture", timeout_sec=1, llm_backend="codex-cli")
+                    dispatch.assert_not_called()
+                for label in plan_mvg.MVG_CANDIDATE_LABELS:
+                    candidate_root = run / "candidates" / label
+                    self.assertEqual(changed[label], (candidate_root / "analysis-input/capabilities.v1.json").read_bytes())
+                    freshness = plan_mvg.load_json(candidate_root / "input-freshness.json")
+                    self.assertEqual("blocked", freshness["status"])
+                    self.assertIn("analysis-input/capabilities.v1.json", freshness["drift"])
+                self.assertFalse((run / "proposal.json").exists())
+                return
             seen = []
             generations = []
 
@@ -622,17 +690,18 @@ class CapabilityAppendTests(unittest.TestCase):
                     elif value["schema_version"] == generation.APPEND_SCHEMA:
                         cid = value["capability_id"]
                         index = next(i for i, cap in enumerate(caps) if cap["capability_id"] == cid)
+                        task_id = fixture.TASK_IDS[index]
                         value.update(flows=[], tests=[], change_reviews=[], gaps=[], notes=[],
                             coverage_table=[{"requirement_id": reqs[index]["requirement_id"], "flow_id": flows[index]["id"],
-                                "capability_ref": cid, "task_id": index + 1, "disposition": "flow", "rationale": "Concrete journey",
+                                "capability_ref": cid, "task_id": task_id, "disposition": "flow", "rationale": "Concrete journey",
                                 "sink_id": None, "verification_ref": None, "authority_ref": None, "authority_review": None}],
-                            entrypoints=[{"status": "planned", "flow_ids": [flows[index]["id"]], "owner_task": index + 1,
+                            entrypoints=[{"status": "planned", "flow_ids": [flows[index]["id"]], "owner_task": task_id,
                                 "path": "Game.Core/Runtime.cs", "symbol": "Execute", "inputs": "Request", "state": "Ready",
                                 "assertions": "Consumer state observed", "implementation_acceptance": "Test failure recovery"}])
                         if fault == "duplicate_coverage":
                             value["coverage_table"].append(dict(value["coverage_table"][0],
-                                requirement_id="FR-b", flow_id="flow-b", task_id=2))
-                            value["entrypoints"].append(dict(value["entrypoints"][0], flow_ids=["flow-b"], owner_task=2))
+                                requirement_id="FR-b", flow_id="flow-b", task_id=fixture.TASK_IDS[1]))
+                            value["entrypoints"].append(dict(value["entrypoints"][0], flow_ids=["flow-b"], owner_task=fixture.TASK_IDS[1]))
                         generations.append(prompt)
                         if len(generations) <= failed_generations:
                             if fault == "duplicate_coverage":
@@ -641,13 +710,13 @@ class CapabilityAppendTests(unittest.TestCase):
                                 value["entrypoints"] = []
                         if fault == "predecessor_entrypoint" and cid == "CAP-b":
                             value["entrypoints"].append(dict(value["entrypoints"][0],
-                                flow_ids=["flow-a"], owner_task=1, symbol="Resume"))
+                                flow_ids=["flow-a"], owner_task=fixture.TASK_IDS[0], symbol="Resume"))
                         if planned_verification:
                             value["tests"] = [{"id": "verify-" + flows[index]["id"] + "-failure",
                                 "flow_id": flows[index]["id"], "state": "planned", "kind": "dotnet",
                                 "path": "Game.Core.Tests/PlannedFailureTests.cs", "selector": "PlannedFailureTests",
                                 "evidence_level": "domain-integration", "min_tests": 1, "test_refs": [],
-                                "owner_task": index + 1, "requirement_ids": [reqs[index]["requirement_id"]],
+                                "owner_task": task_id, "requirement_ids": [reqs[index]["requirement_id"]],
                                 "handoff_indexes": [0], "inputs": "Invalid request", "assertions": "Recovery preserves state",
                                 "implementation_acceptance": "Exercise actual consumer recovery"}]
                     else:
@@ -662,6 +731,14 @@ class CapabilityAppendTests(unittest.TestCase):
                                 for fid in props["flow_reviews"]["items"]["properties"]["flow_id"].get("enum", [])])
                     output = workspace / Path(output_name).name
                     atomic_json(output, value)
+                    if drift_after_first_dispatch and len(seen) == 1:
+                        source = root / fixture.GDD_PATH
+                        source.write_text(source.read_text(encoding="utf-8") + "\nBound source drift.\n",
+                                          encoding="utf-8")
+                    if drift_after_final_dispatch and len(seen) == 4:
+                        source = root / fixture.GDD_PATH
+                        source.write_text(source.read_text(encoding="utf-8") + "\nFinal dispatch drift.\n",
+                                          encoding="utf-8")
                     receipt = {"model": "fixture", "model_tools": [], "output_sha256": file_sha(output)}
                     name = Path(output_name).with_suffix("").as_posix().replace("/", "-")
                     reports = list((workspace / "llm-sandbox" / f"attempt-{number}" / name).glob("runner-input-integrity.json"))
@@ -670,9 +747,27 @@ class CapabilityAppendTests(unittest.TestCase):
                     return output, {"backend_info": description, "receipt": receipt}
                 return invoke
 
+            if drift_after_first_dispatch:
+                result = generation.generate_append(root, state, candidate, invoke_factory=invoke_factory,
+                                                   before_call=lambda phase: None, checkpoint=lambda ledger: None)
+                self.assertEqual("blocked", result["status"])
+                self.assertEqual(1, len(seen))
+                freshness = plan_mvg.load_json(candidate / "input-freshness.json")
+                self.assertEqual("blocked", freshness["status"])
+                self.assertTrue(any(fixture.GDD_PATH.as_posix() in str(row) for row in freshness["drift"]))
+                return
+            if drift_after_final_dispatch:
+                result = generation.generate_append(root, state, candidate, invoke_factory=invoke_factory,
+                                                   before_call=lambda phase: None, checkpoint=lambda ledger: None)
+                self.assertEqual("blocked", result["status"])
+                self.assertEqual(4, len(seen))
+                freshness = plan_mvg.load_json(candidate / "input-freshness.json")
+                self.assertEqual("blocked", freshness["status"])
+                self.assertTrue(any(fixture.GDD_PATH.as_posix() in str(row) for row in freshness["drift"]))
+                return
             result = generation.generate_append(root, state, candidate, invoke_factory=invoke_factory,
                                                  before_call=lambda phase: None, checkpoint=lambda ledger: None)
-            self.assertEqual("admitted", result["status"], result.get("issue_events", [])[:1])
+            self.assertEqual("admitted", result["status"], result.get("errors", result.get("issue_events", [])[:1]))
             if not fault:
                 self.assertEqual(4, len(seen))
             if planned_verification:
@@ -690,8 +785,11 @@ class CapabilityAppendTests(unittest.TestCase):
                 self.assertNotIn("citation_texts", generations[0])
                 for record in proof["records"]:
                     transport = record["proof"]["evidence_transport"]
-                    self.assertEqual(3, len(transport["plan"]["inventory"]))
-                    self.assertTrue(all(len(row["text"]) > 50000 for row in transport["context"]["evidence"]))
+                    inventory = {row["path"] for row in transport["plan"]["inventory"]}
+                    evidence = {row["path"]: row for row in transport["context"]["evidence"]}
+                    self.assertTrue(set(refs) <= inventory)
+                    self.assertTrue(all(len(evidence[ref]["text"]) > 50000 for ref in refs))
+                    self.assertIn(chapter5.DEFAULT_EXTRACTION_SNAPSHOT.as_posix(), inventory)
                 corrupt_transport = deepcopy(proof)
                 corrupt_transport["records"][0]["proof"]["evidence_transport"]["audits"].pop()
                 self.assertTrue(plan_mvg.candidate_admission_errors(root, state, result["accepted"], corrupt_transport))
@@ -725,7 +823,7 @@ class CapabilityAppendTests(unittest.TestCase):
 
             # Exercise the actual public generate -> selection -> review ->
             # validate chain using the same schema-enforcing fake transport.
-            state.update(schema_version=plan_mvg.RUN_SCHEMA, formal_ready=True, task_scope=[1, 2])
+            state.update(schema_version=plan_mvg.RUN_SCHEMA, formal_ready=True, task_scope=list(fixture.TASK_IDS))
             atomic_json(run / "run.json", state)
             seen.clear()
 
@@ -737,8 +835,7 @@ class CapabilityAppendTests(unittest.TestCase):
                 self.assertEqual(generated, output_path)
                 return execution["receipt"]
 
-            with patch.object(plan_mvg, "_validate_input_freshness"), \
-                 patch.object(plan_mvg, "inspect_isolated_runner", return_value=description), \
+            with patch.object(plan_mvg, "inspect_isolated_runner", return_value=description), \
                  patch.object(plan_mvg, "run_isolated_model", side_effect=runner):
                 result = plan_mvg.generate(root, run_id="fixture", timeout_sec=1, llm_backend="codex-cli")
                 self.assertEqual(3, result["candidate_count"])

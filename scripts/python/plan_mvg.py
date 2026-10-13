@@ -4047,11 +4047,26 @@ def prepare(
     run_dir = _run_dir(root, run_id)
     if (run_dir / "run.json").is_file():
         raise ValueError("MVG run already exists; resume its incomplete stage or use a new run ID")
+    # A failed readiness/freeze must leave a durable blocked receipt without
+    # publishing run.json.  This gives callers one consistent diagnostic even
+    # when failure occurs before the immutable bundle is complete.
+    run_dir.mkdir(parents=True, exist_ok=True)
     bundle = run_dir / "analysis-input"
     if bundle.exists():
         shutil.rmtree(bundle)
     bundle.mkdir(parents=True)
-    readiness = _task_readiness(root, task_ids, allow_unready)
+    from _mvg_input_envelope import freeze_envelope, _reference_path
+    try:
+        readiness = _task_readiness(root, task_ids, allow_unready)
+        envelope = freeze_envelope(root, run_id=run_id, capabilities_path=capabilities_path,
+            readiness=readiness, manifest_path=manifest_path, evidence_refs=evidence_refs)
+    except (OSError, ValueError, TypeError, KeyError, AttributeError, UnicodeError) as exc:
+        atomic_json(run_dir / "input-freshness.json", {
+            "status": "blocked", "run_id": run_id,
+            "analysis_identity_sha256": None,
+            "drift": ["prepare:" + str(exc)],
+        })
+        raise
 
     files: dict[str, str] = {}
     authority: dict[str, str | None] = {}
@@ -4090,23 +4105,24 @@ def prepare(
             referenced.update(str(h["contract_ref"]) for h in flow.get("handoffs", []))
         referenced.update(str(t["path"]) for t in existing_manifest.get("tests", []))
     for ref in evidence_refs or []:
-        path = repo_path(root, ref)
+        normalized_ref = _reference_path(ref)
+        path = repo_path(root, normalized_ref)
         if not path.is_file():
-            raise ValueError(f"explicit MVG evidence file is missing:{ref}")
+            raise ValueError(f"explicit MVG evidence file is missing:{normalized_ref}")
         referenced.add(path.relative_to(root.resolve()).as_posix())
+    from _mvg_input_envelope import _acceptance_refs
     for row in _task_view_rows(root):
         for field in ("overlay_refs", "contractRefs", "test_refs"):
             for value in _list_field(row, field):
-                text = str(value).strip().replace("\\", "/")
+                text = _reference_path(value)
                 if text:
                     referenced.add(text)
         for acceptance in _list_field(row, "acceptance"):
             text = str(acceptance)
             if "Refs:" not in text:
                 continue
-            tail = text.split("Refs:", 1)[1]
-            for value in tail.replace(";", ",").split(","):
-                cleaned = value.strip().replace("\\", "/")
+            for value in _acceptance_refs(acceptance):
+                cleaned = _reference_path(value)
                 if cleaned:
                     referenced.add(cleaned)
     for value in sorted(referenced):
@@ -4116,6 +4132,13 @@ def prepare(
             continue
         if path.is_file():
             files[f"references/{value}"] = _copy_file(root, path, bundle, f"references/{value}")
+
+    # Preserve full Chapter 5 owning documents and all classified evidence,
+    # rather than exposing only the derived readiness summary to candidates.
+    for row in envelope["inventory"]:
+        rel = row.get("prepared_path")
+        if row["sha256"] is not None and rel not in files:
+            files[rel] = _copy_file(root, repo_path(root, row["path"]), bundle, rel)
 
     atomic_json(bundle / "readiness-summary.json", readiness)
     files["readiness-summary.json"] = file_sha(bundle / "readiness-summary.json")
@@ -4138,6 +4161,7 @@ def prepare(
         "task_scope": task_ids,
         "planning_scope": planning_scope,
         "authority_inputs": authority,
+        "input_envelope": envelope,
         "existing_manifest": (
             {"path": manifest_path.resolve().relative_to(root.resolve()).as_posix(), "sha256": file_sha(manifest_path)}
             if manifest_path is not None and manifest_path.is_file()
@@ -4179,6 +4203,7 @@ def prepare(
         "created_at_utc": now(),
         "formal_ready": readiness["formal_ready"],
         "analysis_identity_sha256": index["analysis_identity_sha256"],
+        "input_envelope_sha256": canonical_sha(envelope),
         "capabilities_path": capabilities_path.resolve().relative_to(root.resolve()).as_posix(),
         "capabilities_sha256": index["capabilities_sha256"],
         "manifest_path": (
@@ -4192,6 +4217,9 @@ def prepare(
         "planning_scope": planning_scope,
         "applied": False,
     }
+    # The capture predates all copying. Fail closed on changes during prepare
+    # before publishing a run that claims to be prepared.
+    _validate_input_freshness(root, run_dir, state)
     atomic_json(run_dir / "run.json", state)
     return state
 
@@ -4636,8 +4664,9 @@ Frozen manifest scope:
         discard_candidate_routing_pending(candidate_root)
         prepared = candidate_root / "analysis-input"
         if prepared.exists():
-            shutil.rmtree(prepared)
-        shutil.copytree(run_dir / "analysis-input", prepared)
+            _validate_input_freshness(root, candidate_root, state)
+        else:
+            shutil.copytree(run_dir / "analysis-input", prepared)
         for name in ("coverage-skeleton.json", "entrypoint-skeleton.json"):
             source = prepared / name
             if source.is_file():
@@ -5282,6 +5311,10 @@ Frozen manifest scope:
         raise ValueError("MVG independent candidate generation attempt budget exhausted; incomplete: "
                          + ",".join(row["label"] for row in results if not row["valid"])
                          + ("; reasons: " + " | ".join(reasons) if reasons else ""))
+
+    # The last candidate admission may finish after its final model call.
+    # Revalidate the frozen envelope before constructing comparative selection.
+    _validate_input_freshness(root, run_dir, state)
 
     existing_manifest = load_json(run_dir / "analysis-input/existing-manifest.json", None)
     incumbent_present = isinstance(existing_manifest, dict) and existing_manifest.get("schema_version") == "newrouge.mvg-integration.v1"
@@ -6225,29 +6258,36 @@ def validate(root: Path, *, run_id: str) -> dict[str, Any]:
 
 
 def _validate_input_freshness(root: Path, run_dir: Path, state: dict[str, Any]) -> None:
+    # Preserve validation for runs created before the input-envelope schema.
+    # New runs carry input_envelope_sha256 and must use the stricter validator.
     index = load_json(run_dir / "analysis-input/analysis-index.json", {})
-    identity = index.pop("analysis_identity_sha256", None)
-    # Repository revision/dirty state is provenance, not the planning input
-    # identity. Local commits may advance without invalidating unchanged inputs.
-    index.pop("repository_identity", None)
-    if canonical_sha(index) != identity or identity != state.get("analysis_identity_sha256"):
-        raise ValueError("MVG prepared analysis identity changed")
-    authority = index.get("authority_inputs")
-    if not isinstance(authority, dict) or not authority:
-        raise ValueError("MVG original authority identity is incomplete; prepare again")
-    drift = []
-    for rel, expected in authority.items():
-        path = repo_path(root, rel)
-        if ((normalized_file_sha(path) if path.is_file() else None) != expected
-                and (file_sha(path) if path.is_file() else None) != expected):
-            drift.append(rel)
-    for rel, expected in index["files"].items():
-        path = repo_path(run_dir / "analysis-input", rel)
-        if not path.is_file() or file_sha(path) != expected:
-            drift.append("analysis-input/" + rel)
-    atomic_json(run_dir / "input-freshness.json", {"status": "blocked" if drift else "current", "drift": drift})
-    if drift:
-        raise ValueError("MVG input drift: " + ",".join(drift))
+    if not isinstance(index.get("input_envelope"), dict) and not state.get("input_envelope_sha256"):
+        identity = index.get("analysis_identity_sha256")
+        canonical_index = dict(index)
+        canonical_index.pop("analysis_identity_sha256", None)
+        canonical_index.pop("repository_identity", None)
+        if canonical_sha(canonical_index) != identity or identity != state.get("analysis_identity_sha256"):
+            raise ValueError("MVG prepared analysis identity changed")
+        authority = index.get("authority_inputs")
+        if not isinstance(authority, dict) or not authority:
+            raise ValueError("MVG original authority identity is incomplete; prepare again")
+        drift = []
+        for rel, expected in authority.items():
+            path = repo_path(root, rel)
+            actual = normalized_file_sha(path) if path.is_file() else None
+            if actual != expected and (file_sha(path) if path.is_file() else None) != expected:
+                drift.append(rel)
+        for rel, expected in (index.get("files") or {}).items():
+            path = repo_path(run_dir / "analysis-input", rel)
+            if not path.is_file() or file_sha(path) != expected:
+                drift.append("analysis-input/" + rel)
+        atomic_json(run_dir / "input-freshness.json", {
+            "status": "blocked" if drift else "current", "drift": sorted(set(drift))})
+        if drift:
+            raise ValueError("MVG input drift: " + ",".join(sorted(set(drift))))
+        return
+    from _mvg_input_envelope import validate_envelope
+    validate_envelope(root, run_dir / "analysis-input", state)
 
 
 def apply(root: Path, *, run_id: str, confirm: bool) -> dict[str, Any]:

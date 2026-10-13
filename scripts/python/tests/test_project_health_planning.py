@@ -186,6 +186,51 @@ class ProjectHealthPlanningTests(unittest.TestCase):
         candidate.write_text('{"analysis_identity_sha256":"sha256:changed"}', encoding='utf-8')
         self.assertEqual([], planning._mvg_valid_candidates(run_dir, state))
 
+    def test_mvg_recovery_rejects_envelope_drift_before_candidate_reuse(self):
+        run_dir = self.root / 'logs/ci/mvg-planning/envelope-recovery'
+        _proposal, candidate, proof, execution = self._write_admitted_mvg_candidate(
+            run_dir, 'candidates/candidate-1')
+        atomic_json(run_dir / 'analysis-input/analysis-index.json', {
+            'input_envelope': {'schema_version': 'newrouge.mvg-input-envelope.v1'},
+        })
+        state = {'run_id': 'envelope-recovery', 'analysis_identity_sha256': 'sha256:current',
+            'candidate_attempts': {'candidate-1': {
+                'status': 'valid', 'proposal_sha256': planning.file_sha(candidate),
+                'validation': {'status': 'passed', 'formal_applicable': True},
+            }}, 'candidate_admissions': {'candidate-1': {
+                'status': 'admitted', 'workspace': 'candidates/candidate-1',
+                'review_path': proof.relative_to(self.root).as_posix(),
+                'review_execution_path': execution.relative_to(self.root).as_posix(),
+                'proof_sha256': planning.file_sha(proof),
+                'execution_sha256': planning.file_sha(execution),
+            }}}
+        with patch('_mvg_input_envelope.validate_envelope', side_effect=ValueError('drift')):
+            self.assertEqual([], planning._mvg_valid_candidates(run_dir, state))
+
+    def test_mvg_recovery_missing_envelope_does_not_fallback_to_legacy(self):
+        run_dir = self.root / 'logs/ci/mvg-planning/missing-envelope'
+        _proposal, candidate, proof, execution = self._write_admitted_mvg_candidate(
+            run_dir, 'candidates/candidate-1')
+        analysis = run_dir / 'analysis-input'
+        atomic_json(analysis / 'analysis-index.json', {
+            'files': {},
+            'authority_inputs': {},
+        })
+        state = {'run_id': 'missing-envelope', 'input_envelope_sha256': 'sha256:frozen',
+            'analysis_identity_sha256': 'sha256:current', 'candidate_attempts': {'candidate-1': {
+                'status': 'valid', 'proposal_sha256': planning.file_sha(candidate),
+                'validation': {'status': 'passed', 'formal_applicable': True},
+            }}, 'candidate_admissions': {'candidate-1': {
+                'status': 'admitted', 'workspace': 'candidates/candidate-1',
+                'review_path': proof.relative_to(self.root).as_posix(),
+                'review_execution_path': execution.relative_to(self.root).as_posix(),
+                'proof_sha256': planning.file_sha(proof),
+                'execution_sha256': planning.file_sha(execution),
+            }}}
+        with patch('_mvg_input_envelope.validate_envelope', side_effect=ValueError('input envelope missing')) as validator:
+            self.assertEqual([], planning._mvg_valid_candidates(run_dir, state))
+        validator.assert_called_once()
+
     def test_mvg_recovery_reads_nested_candidate_proposals(self):
         run_dir = self.root / 'logs/ci/mvg-planning/nested-recovery'
         _proposal, candidate, proof, execution = self._write_admitted_mvg_candidate(

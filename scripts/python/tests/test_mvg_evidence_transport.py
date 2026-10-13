@@ -215,6 +215,27 @@ class EvidenceTransportTests(unittest.TestCase):
         execution["receipt"]["input_integrity"] = dict(batch["input_report"], request_sha256="sha256:clipped")
         self.assertTrue(module.audit_execution_errors(batch, audit, execution))
 
+    def test_same_sources_in_another_run_reject_old_audit_and_request_receipt(self):
+        from _planning_skill_common import RUNNER_SCHEMA
+        module = self.transport()
+        first = self.context()
+        first["input_identity"] = {"run_id": "first", "envelope_sha256": "sha256:first",
+                                   "analysis_identity_sha256": "sha256:first-analysis"}
+        second = deepcopy(first)
+        second["input_identity"] = {"run_id": "second", "envelope_sha256": "sha256:second",
+                                    "analysis_identity_sha256": "sha256:second-analysis"}
+        old_plan, new_plan = self.plan(first), self.plan(second)
+        old_batch, new_batch = old_plan["batches"][0], new_plan["batches"][0]
+        old_audit = self.audit(old_plan, old_batch)
+        self.assertTrue(module.audit_errors(new_plan, new_batch, old_audit))
+        execution = {"backend_info": {"schema_version": RUNNER_SCHEMA, "filesystem_scope": "workspace_only",
+            "fresh_session_per_invocation": True, "can_read_outside_workspace": False,
+            "model": "fixture", "model_tools": []}, "output_sha256": "sha256:output",
+            "audit_sha256": canonical_sha(old_audit), "receipt": {"model": "fixture", "model_tools": [],
+                "output_sha256": "sha256:output", "input_integrity": old_batch["input_report"]}}
+        self.assertEqual([], module.audit_execution_errors(old_batch, old_audit, execution))
+        self.assertTrue(module.audit_execution_errors(new_batch, old_audit, execution))
+
     def test_conflicts_require_exact_requirement_or_flow_addresses(self):
         module = self.transport()
         plan = self.plan(self.context())

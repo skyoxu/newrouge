@@ -71,6 +71,20 @@ def _planning_input_fresh(root: Path, job: dict) -> bool:
     family = 'capability-planning' if job.get('action') == 'capability' else 'mvg-planning'
     index_path = checkout / 'logs/ci' / family / job['job_id'] / 'analysis-input' / 'analysis-index.json'
     index = load_json(index_path, {}) if index_path.is_file() else {}
+    # Story 1.1 runs carry a single input envelope whose inventory includes
+    # Chapter 5 evidence and explicit references that are not all represented
+    # by the older authority_inputs map. Validate that envelope before the
+    # legacy hash loop; pre-envelope runs retain the historical behavior.
+    run_state = load_json(index_path.parent.parent / 'run.json', {}) if index_path.parent.parent.is_dir() else {}
+    if job.get('action') == 'mvg' and (
+            isinstance(run_state.get('input_envelope_sha256'), str)
+            or isinstance(index.get('input_envelope'), dict)):
+        try:
+            from _mvg_input_envelope import validate_envelope
+            validate_envelope(
+                checkout, index_path.parent, run_state or job)
+        except (OSError, ValueError, TypeError, KeyError, AttributeError, UnicodeError):
+            return False
     authority = index.get('authority_inputs')
     if not isinstance(authority, dict) or not authority:
         return False
@@ -203,8 +217,7 @@ def create_job(root: Path, action: str, manifest: str | None = None, *, fresh: b
             prior.get('checkout_job_id') == current_capability_id and
             prior.get('capabilities_sha256') == current_capability_hash
         )
-        if prior.get('manifest') == manifest and same_capability and (
-                prior.get('revision') == revision or _planning_input_fresh(root, prior)):
+        if prior.get('manifest') == manifest and same_capability and _planning_input_fresh(root, prior):
             # Resume interrupted planner stages, but never keep retrying a
             # prepare failure that happened before the planner created its
             # durable run state (for example, Git could not create the worktree).
@@ -359,6 +372,21 @@ def _capability_valid_candidates(run_dir: Path, state: dict) -> list[str]:
 
 def _mvg_valid_candidates(run_dir: Path, state: dict) -> list[str]:
     """Return MVG candidates whose durable file and formal validation agree."""
+    # A prepared MVG run must be checked against the frozen envelope before
+    # any admitted candidate can be reused. Older synthetic recovery fixtures
+    # have no envelope and intentionally continue through the legacy checks.
+    prepared = run_dir / 'analysis-input'
+    run_index = load_json(prepared / 'analysis-index.json', {}) if prepared.is_dir() else {}
+    run_state = load_json(run_dir / 'run.json', state) if (run_dir / 'run.json').is_file() else state
+    run_has_envelope = (isinstance(run_state.get('input_envelope_sha256'), str)
+                        or isinstance(run_index.get('input_envelope'), dict))
+    checkout_root = run_dir.parents[3] if len(run_dir.parents) > 3 else run_dir
+    if run_has_envelope:
+        try:
+            from _mvg_input_envelope import validate_envelope
+            validate_envelope(checkout_root, prepared, state)
+        except (OSError, ValueError, TypeError, KeyError, AttributeError, UnicodeError):
+            return []
     valid: list[str] = []
     for label, record in (state.get('candidate_attempts') or {}).items():
         if label not in {'candidate-1', 'candidate-2', 'candidate-3'} or not isinstance(record, dict):
@@ -368,7 +396,6 @@ def _mvg_valid_candidates(run_dir: Path, state: dict) -> list[str]:
         admission = (state.get('candidate_admissions') or {}).get(label)
         if not isinstance(admission, dict) or admission.get('status') != 'admitted':
             continue
-        checkout_root = run_dir.parents[3] if len(run_dir.parents) > 3 else run_dir
         workspace_path = str(admission.get('workspace') or '')
         if workspace_path:
             try:
@@ -383,6 +410,14 @@ def _mvg_valid_candidates(run_dir: Path, state: dict) -> list[str]:
             paths = (run_dir / 'candidates' / label / 'proposal.json',
                      run_dir / 'candidates' / f'{label}.json')
         path = next((candidate_path for candidate_path in paths if candidate_path.is_file()), paths[0])
+        if run_has_envelope:
+            candidate_input = candidate_root / 'analysis-input' if candidate_root is not None else None
+            if candidate_input is None or not candidate_input.is_dir():
+                continue
+            try:
+                validate_envelope(checkout_root, candidate_input, state)
+            except (OSError, ValueError, TypeError, KeyError, AttributeError, UnicodeError):
+                continue
         validation = record.get('validation') or {}
         if not isinstance(admission, dict):
             admission = {}

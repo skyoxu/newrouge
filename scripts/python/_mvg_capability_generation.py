@@ -184,6 +184,7 @@ def append_output_schema(state, scope, base, prepared, *, evidence_paths=None):
 def complete_scope_context(prepared, scope, base, proposal=None):
     """Never truncate a selected Requirement, Acceptance or evidence file."""
     import plan_mvg as pm
+    from _mvg_input_envelope import input_identity, _reference_path
     semantics = load_json(prepared / "semantic-requirements.v1.json", {})
     rids = set(scope["requirement_ids"])
     affected, _ = review_projection(scope, base, proposal or base)
@@ -211,8 +212,11 @@ def complete_scope_context(prepared, scope, base, proposal=None):
             for field in ("authority_ref", "verification_ref"):
                 if row.get(field):
                     dependencies.add(str(row[field]).split("#", 1)[0])
-    dependencies |= {str(ref).split("#", 1)[0] for row in views
-                     for field in ("contractRefs", "test_refs", "source_refs") for ref in row.get(field, [])}
+    dependencies |= {_reference_path(ref) for row in views
+                     for field in ("overlay_refs", "contractRefs", "test_refs", "source_refs") for ref in row.get(field, [])}
+    envelope = load_json(prepared / "analysis-index.json", {}).get("input_envelope", {})
+    dependencies |= {row["path"] for row in envelope.get("inventory", []) if row["required"]
+                     and row.get("prepared_path", "").startswith(("sources/", "references/"))}
     evidence = []
     for ref in sorted(dependencies):
         path = pm._prepared_reference(prepared, ref)
@@ -222,7 +226,9 @@ def complete_scope_context(prepared, scope, base, proposal=None):
             evidence.append({"path": ref, "sha256": file_sha(path), "text": path.read_text(encoding="utf-8")})
         else:
             evidence.append({"path": ref, "status": "not_prepared"})
-    return {"scope": scope, "requirements": requirements, "source_blocks": blocks,
+    return {"input_identity": input_identity(prepared),
+            "chapter5": deepcopy(envelope["chapter5"]),
+            "scope": scope, "requirements": requirements, "source_blocks": blocks,
             "task_views": views, "task_master": tasks, "evidence": evidence,
             "capabilities": load_json(prepared / "capabilities.v1.json", {}),
             "available_reference_paths": sorted({p.relative_to(prepared / family).as_posix()
@@ -412,6 +418,10 @@ def generate_append(root, state, candidate_root, *, invoke_factory, before_call,
     import plan_mvg as pm
     from _mvg_planning_review import semantic_review_errors, review_execution_errors
     prepared = candidate_root / "analysis-input"
+    from _mvg_input_envelope import validate_envelope
+    validate_envelope(root, prepared, state)
+    if state.get("formal_ready") is not True:
+        raise ValueError("MVG formal generation requires current Chapter 5 readiness")
     capabilities = load_json(prepared / "capabilities.v1.json", {})
     semantics = load_json(prepared / "semantic-requirements.v1.json", {})
     task_statuses = {str(row["id"]): str(row.get("status", "")).lower()
@@ -427,6 +437,7 @@ def generate_append(root, state, candidate_root, *, invoke_factory, before_call,
         return int(load_json(candidate_root / "capability-append/append-ledger.json", {}).get("total_invocations", 0)) + 1
 
     def preflight(prompt, schema, output_name):
+        validate_envelope(root, prepared, state)
         number = next_attempt()
         return preflight_runner_payload(candidate_root / "capability-append" / f"call-{number}",
                                         number, prompt, schema, output_name)
@@ -470,6 +481,7 @@ def generate_append(root, state, candidate_root, *, invoke_factory, before_call,
                     raise ValueError("mvg_evidence_request_changed_after_preflight")
                 number = call("evidence-" + phase)
                 workspace = candidate_root / "capability-append" / f"call-{number}"
+                validate_envelope(root, prepared, state)
                 output, execution = invoke_factory(workspace)(text, number, output_name=name,
                     output_schema_path=workspace / "output-schema.json", output_schema=output_schema)
                 validate_output_schema(output, workspace / "output-schema.json")
@@ -526,6 +538,7 @@ def generate_append(root, state, candidate_root, *, invoke_factory, before_call,
                                         "inspect", context, call)
         number = call("generate" if issue is None else "repair")
         workspace = candidate_root / "capability-append" / f"call-{number}"
+        validate_envelope(root, prepared, state)
         output, execution = invoke_factory(workspace)(prompt, number,
             output_name="segments/capability-append.json", output_schema_path=workspace / "output-schema.json",
             output_schema=schema)
@@ -577,6 +590,7 @@ def generate_append(root, state, candidate_root, *, invoke_factory, before_call,
                                         "review", context, call)
         number = call("semantic")
         workspace = candidate_root / "capability-append" / f"call-{number}"
+        validate_envelope(root, prepared, state)
         output, execution = invoke_factory(workspace)(prompt, number,
             output_name="segments/capability-review.json", output_schema_path=workspace / "output-schema.json",
             output_schema=schema)
@@ -623,9 +637,21 @@ def generate_append(root, state, candidate_root, *, invoke_factory, before_call,
             bound_proof["evidence_transport"] = transport
         return {"issues": issues, "proof": bound_proof, "execution": bound_execution}
 
+    def final_machine(proposal):
+        # Recheck after the final model dispatch as well as before each call.
+        # Sources may drift while the last semantic response is being written.
+        try:
+            validate_envelope(root, prepared, state)
+        except ValueError as exc:
+            # The append engine treats returned issues as a terminal admission
+            # result.  Do not leak a freshness exception past the ledger: the
+            # candidate must be recorded as blocked, with its receipt intact.
+            return ["input_freshness_blocked:" + str(exc)]
+        return pm.candidate_admission_errors(root, state, proposal)
+
     result = run_capability_append(candidate_root / "capability-append", scopes=scopes, seed=seed,
         identity=state["analysis_identity_sha256"], propose=request, machine=machine, semantic=semantic,
-        final_machine=lambda proposal: pm.candidate_admission_errors(root, state, proposal),
+        final_machine=final_machine,
         invocation_limit=pm.MVG_CANDIDATE_INVOCATION_LIMIT, before_call=before_call, checkpoint=checkpoint,
         repair_check=repair_scope_errors)
     if result["status"] == "admitted":
@@ -678,6 +704,12 @@ def append_proof_errors(state, proposal, proof, semantics, allowed=None):
         if bound.get("projection") != projection or set(bound.get("required_requirement_ids", [])) != requirements:
             return errors + ["capability_admission_projection_changed"]
         if "evidence_transport" in bound:
+            identity = bound["evidence_transport"].get("context", {}).get("input_identity", {})
+            if (identity.get("run_id") != state.get("run_id")
+                    or identity.get("analysis_identity_sha256") != state.get("analysis_identity_sha256")
+                    or (state.get("input_envelope_sha256") is not None
+                        and identity.get("envelope_sha256") != state.get("input_envelope_sha256"))):
+                errors.append("evidence_transport_run_identity_changed")
             errors.extend(transport_proof_errors(bound["evidence_transport"], scope=scope,
                                                 base=accepted, proposal=projection))
         review = bound.get("review") or {}

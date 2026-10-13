@@ -597,7 +597,10 @@ class PlanningAuditRepairTests(unittest.TestCase):
         (run / "semantic-review-execution.json").unlink()
         # An unreferenced prepared evidence file must not consume the Codex
         # turn budget merely because it is present in the immutable bundle.
-        noise = run / "analysis-input/references/unused-large-evidence.txt"
+        # Unregistered files are rejected inside the immutable input bundle;
+        # keep this compression fixture outside the bundle so it represents
+        # unrelated workspace noise rather than hidden evidence.
+        noise = run / "unused-large-evidence.txt"
         noise.write_text("x" * 1_100_000, encoding="utf-8")
         observed_sizes = []
 
