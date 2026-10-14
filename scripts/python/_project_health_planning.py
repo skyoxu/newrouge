@@ -77,8 +77,7 @@ def _planning_input_fresh(root: Path, job: dict) -> bool:
     # legacy hash loop; pre-envelope runs retain the historical behavior.
     run_state = load_json(index_path.parent.parent / 'run.json', {}) if index_path.parent.parent.is_dir() else {}
     if job.get('action') == 'mvg' and (
-            isinstance(run_state.get('input_envelope_sha256'), str)
-            or isinstance(index.get('input_envelope'), dict)):
+            'input_envelope_sha256' in run_state or 'input_envelope' in index):
         try:
             from _mvg_input_envelope import validate_envelope
             validate_envelope(
@@ -378,13 +377,15 @@ def _mvg_valid_candidates(run_dir: Path, state: dict) -> list[str]:
     prepared = run_dir / 'analysis-input'
     run_index = load_json(prepared / 'analysis-index.json', {}) if prepared.is_dir() else {}
     run_state = load_json(run_dir / 'run.json', state) if (run_dir / 'run.json').is_file() else state
-    run_has_envelope = (isinstance(run_state.get('input_envelope_sha256'), str)
-                        or isinstance(run_index.get('input_envelope'), dict))
+    if not isinstance(run_state, dict):
+        return []
+    state = run_state
+    run_has_envelope = ('input_envelope_sha256' in state or 'input_envelope' in run_index)
     checkout_root = run_dir.parents[3] if len(run_dir.parents) > 3 else run_dir
     if run_has_envelope:
         try:
             from _mvg_input_envelope import validate_envelope
-            validate_envelope(checkout_root, prepared, state)
+            validate_envelope(checkout_root, prepared, run_state)
         except (OSError, ValueError, TypeError, KeyError, AttributeError, UnicodeError):
             return []
     valid: list[str] = []
@@ -415,7 +416,7 @@ def _mvg_valid_candidates(run_dir: Path, state: dict) -> list[str]:
             if candidate_input is None or not candidate_input.is_dir():
                 continue
             try:
-                validate_envelope(checkout_root, candidate_input, state)
+                validate_envelope(checkout_root, candidate_input, run_state)
             except (OSError, ValueError, TypeError, KeyError, AttributeError, UnicodeError):
                 continue
         validation = record.get('validation') or {}

@@ -53,3 +53,6 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-scene-composition-load-sync.md`
   summary: Preserve the last valid Composition graph state when a later graph refresh fails.
   evidence: Existing loadGraph assigns the failed response to graphState before checking response.ok; later Composition interactions can rebuild from that invalid state and clear the previous table.
+- source_spec: `_bmad-output/implementation-artifacts/spec-mvg-review-receipts-and-recovery-hardening.md`
+  summary: 适配两个既有 project-health 生产消费者夹具的 planned test schema，不放宽生产准入。
+  evidence: 复审仍复现两个既有候选零准入失败；对象已有 test_refs，需依据实际 schema 分支修正，已登记 docs/technical-debt.md。

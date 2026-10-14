@@ -76,9 +76,9 @@ context:
 
 期望：定向测试通过，缺失/漂移/跨 run 用例模型调用为零；日志写入 `logs/ci/2026-10-13/mvg-story-1-1/`。本轮不宣称完整 MVG 工作流或运行时验收通过。
 
-2026-10-14 实测：输入封套 25/25、完整传输 14/14、累计生成 45/45 通过。新增回归覆盖状态 scope/manifest 身份镜像、旧版无封套运行兼容、Acceptance `Refs` 的 Markdown 标记与尾随标点清理。累计生成夹具使用真实 Chapter 5 reconciliation 与 prepare，不绕过 freshness；缺失、漂移和跨 run 用例均证明在模型 dispatch 前零调用阻断。
+2026-10-14 补充验证：输入封套、规划契约与累计生成合计 209 项通过；最终消费者与回执定向验证 36 项通过，其中输入封套 29 项。日志位于 `logs/ci/2026-10-14/mvg-review-repair/`。新增回归覆盖新运行删除封套、复制失败和重试的最新回执、详细漂移诊断保留，以及状态 scope/manifest 身份镜像、旧版同 schema 无封套运行兼容、Acceptance `Refs` 的 Markdown 标记与尾随标点清理。累计生成夹具使用真实 Chapter 5 reconciliation 与 prepare，不绕过 freshness；缺失、漂移和跨 run 用例均证明在模型 dispatch 前零调用阻断。
 
-规划审计 36/37 通过；`test_segmented_generation_runner_failure_is_not_retired_as_semantic_issue` 的预算错误消息断言在未修改 HEAD 同样失败，实际错误为 `MVG independent candidate generation attempt budget exhausted`，证据为 `logs/ci/2026-10-13/mvg-story-1-1/baseline-regression.txt`。项目健康规划 35/37 通过；两个既有 fake runner fixture 输出缺少 `test_refs` 的 schema-invalid 结果，分别为 `test_capability_then_mvg_use_actual_planner_stages_without_mutating_main` 与 `test_mvg_consumes_capabilities_already_committed_in_main`，不由本 Story 引入。上述既有失败未通过放宽封套或准入校验处理。
+既有失败记录：规划审计原有执行失败测试使用过期预算/phase 断言，本轮已适配明确不足候选阻断与当前 append worker 边界，单项通过。项目健康规划的两个既有 fake runner fixture 输出与现行测试 schema 不匹配，分别为 `test_capability_then_mvg_use_actual_planner_stages_without_mutating_main` 与 `test_mvg_consumes_capabilities_already_committed_in_main`；对象已有 `test_refs`，不能将失败归因为缺少该字段。这两个夹具问题尚未修复，未通过放宽封套或准入校验处理；不能宣称完整项目健康规划测试全绿。
 
 静态验证：目标模块 `py_compile` 与 `git diff --check` 通过。未修改 GDD、Requirement、Taskmaster 三联、游戏代码、Godot 资源或运行时验收状态；未执行付费模型全流程。
 

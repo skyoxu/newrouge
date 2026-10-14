@@ -40,12 +40,124 @@ from plan_mvg import (
     build_selection_input_identity,
     candidate_resume_attempt_numbers,
     reserve_candidate_model_invocation,
+    _block_selection_for_insufficient_admitted_candidates,
 )
 from update_mvg_baseline import apply_delta
 from _planning_skill_common import atomic_json
 
 
 class MvgPlanningContractTests(unittest.TestCase):
+
+    def test_selection_blocks_explicitly_when_three_admitted_candidates_are_unavailable(self):
+        with tempfile.TemporaryDirectory() as temp:
+            run_dir = Path(temp) / "run"
+            run_dir.mkdir(parents=True)
+            state = {"run_id": "selection-block", "selected_candidate": "candidate-3",
+                     "selection_input_candidates": ["candidate-1", "candidate-2", "candidate-3"],
+                     "selection_input_sha256": "stale", "selected_admission_review": {"stale": True},
+                     "admission_stop_reason": "replacement_round_budget_exhausted",
+                     "candidate_attempts": {"candidate-2": {"error": "transport failed"}}}
+            atomic_json(run_dir / "model-execution.json", {
+                "backend": "codex-cli", "audit": "preserve", "selected_candidate": "candidate-3", "selected_alias": "A"})
+            results = [
+                {"label": "candidate-1", "admitted": True},
+                {"label": "candidate-2", "admitted": False},
+                {"label": "candidate-3", "admitted": False},
+            ]
+            with self.assertRaisesRegex(
+                ValueError, "selection_blocked_insufficient_admitted_candidates"
+            ):
+                _block_selection_for_insufficient_admitted_candidates(run_dir, state, results)
+            self.assertEqual("blocked", state["selection_status"])
+            self.assertEqual(
+                "selection_blocked_insufficient_admitted_candidates",
+                state["selection_block_reason"],
+            )
+            self.assertEqual(["candidate-1"], state["admitted_candidates"])
+            self.assertNotIn("selection_input_candidates", state)
+            self.assertNotIn("selected_candidate", state)
+            self.assertNotIn("selection_input_sha256", state)
+            self.assertNotIn("selected_admission_review", state)
+            receipt = json.loads((run_dir / "model-execution.json").read_text(encoding="utf-8"))
+            self.assertEqual(
+                "selection_blocked_insufficient_admitted_candidates",
+                receipt["selection_error"],
+            )
+            self.assertEqual("preserve", receipt["audit"])
+            self.assertEqual("codex-cli", receipt["backend"])
+            self.assertEqual(state["candidate_attempts"], receipt["candidate_attempts"])
+            self.assertNotIn("selected_candidate", receipt)
+            self.assertNotIn("selected_alias", receipt)
+            self.assertEqual("replacement_round_budget_exhausted", state["admission_stop_reason"])
+
+    def test_generate_terminal_append_failures_block_before_selection(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            run_dir = root / "logs/ci/mvg-planning/terminal"
+            (run_dir / "analysis-input").mkdir(parents=True)
+            state = {"run_id": "terminal", "formal_ready": True,
+                     "analysis_identity_sha256": "sha256:fixture", "task_scope": []}
+            baseline = root / "docs/testing/mvg/baseline.json"
+            atomic_json(baseline, {"untouched": True})
+            before = baseline.read_bytes()
+            with patch.object(plan_mvg, "_load_run", return_value=(run_dir / "run.json", state)), \
+                 patch.object(plan_mvg, "_validate_input_freshness"), \
+                 patch.object(plan_mvg, "inspect_isolated_runner", return_value={}), \
+                 patch.object(plan_mvg, "_task_ids", return_value=set()), \
+                 patch.object(plan_mvg, "_task_view_rows", return_value=[]), \
+                 patch("_mvg_capability_generation.generate_append", return_value={
+                     "status": "blocked", "errors": [{"code": "fixture_hard_issue"}]}) as append, \
+                 patch.object(plan_mvg, "run_isolated_model") as model:
+                with self.assertRaisesRegex(ValueError, "selection_blocked_insufficient_admitted_candidates"):
+                    plan_mvg.generate(root, run_id="terminal", timeout_sec=1, llm_backend="codex-cli")
+            self.assertEqual(3, append.call_count)
+            model.assert_not_called()
+            self.assertFalse((run_dir / "selection-workspace").exists())
+            self.assertEqual(before, baseline.read_bytes())
+            saved = json.loads((run_dir / "run.json").read_text(encoding="utf-8"))
+            receipt = json.loads((run_dir / "model-execution.json").read_text(encoding="utf-8"))
+            self.assertEqual("blocked", saved["selection_status"])
+            self.assertEqual("codex-cli", receipt["backend"])
+            self.assertEqual(3, len(receipt["candidate_failures"]))
+
+    def test_corrupt_execution_receipt_cannot_prevent_selection_block(self):
+        with tempfile.TemporaryDirectory() as temp:
+            run_dir = Path(temp)
+            (run_dir / "model-execution.json").write_text("{broken", encoding="utf-8")
+            state = {"model_backend": "codex-cli", "selected_candidate": "candidate-1"}
+            with self.assertRaisesRegex(ValueError, "selection_blocked_insufficient_admitted_candidates"):
+                _block_selection_for_insufficient_admitted_candidates(run_dir, state, [])
+            saved = json.loads((run_dir / "run.json").read_text(encoding="utf-8"))
+            receipt = json.loads((run_dir / "model-execution.json").read_text(encoding="utf-8"))
+            self.assertEqual("blocked", saved["selection_status"])
+            self.assertNotIn("selected_candidate", saved)
+            self.assertIn("previous_receipt_error", receipt)
+
+    def test_blocked_selection_cannot_review_validate_or_apply_historical_winner(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            run_dir = root / "logs/ci/mvg-planning/stale-winner"
+            state = {"schema_version": plan_mvg.RUN_SCHEMA, "run_id": "stale-winner",
+                     "selection_status": "blocked",
+                     "selection_block_reason": "selection_blocked_insufficient_admitted_candidates"}
+            atomic_json(run_dir / "run.json", state)
+            for name in ("proposal.json", "semantic-review.json", "semantic-review-execution.json", "apply-journal.json"):
+                atomic_json(run_dir / name, {"historical": "preserve"})
+            before = {path.name: path.read_bytes() for path in run_dir.iterdir() if path.is_file()}
+            with patch.object(plan_mvg, "run_isolated_model") as model, \
+                 patch("_planning_apply_journal.resume_journal") as resume, \
+                 patch.object(plan_mvg, "validate_proposal") as validator:
+                for operation in (
+                    lambda: plan_mvg.review(root, run_id="stale-winner", runner=Path("fixture"), timeout_sec=1),
+                    lambda: plan_mvg.validate(root, run_id="stale-winner"),
+                    lambda: plan_mvg.apply(root, run_id="stale-winner", confirm=True),
+                ):
+                    with self.assertRaisesRegex(ValueError, "selection_blocked_insufficient_admitted_candidates"):
+                        operation()
+                model.assert_not_called()
+                resume.assert_not_called()
+                validator.assert_not_called()
+            self.assertEqual(before, {path.name: path.read_bytes() for path in run_dir.iterdir() if path.is_file()})
 
     def test_atomic_generation_rejects_pollution_then_accepts_a_with_b_remaining(self):
         with tempfile.TemporaryDirectory() as temp:
@@ -91,6 +203,13 @@ class MvgPlanningContractTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "replacement budget exhausted"):
                     plan_mvg.generate(root, run_id="atomic", timeout_sec=1, llm_backend="codex-cli")
             reviewer.assert_not_called()
+            self.assertEqual("selection-blocked-insufficient-admitted-candidates", state["phase"])
+            self.assertEqual("selection_blocked_insufficient_admitted_candidates", state["selection_block_reason"])
+            self.assertEqual("replacement_round_budget_exhausted", state["admission_stop_reason"])
+            receipt = json.loads((run_dir / "model-execution.json").read_text(encoding="utf-8"))
+            self.assertEqual("selection_blocked_insufficient_admitted_candidates", receipt["selection_error"])
+            self.assertEqual("codex-cli", receipt["backend"])
+            self.assertEqual(3, len(receipt["candidate_failures"]))
             for label, values in seeds.items():
                 self.assertEqual(original, values[2], "Rejected proposal must never become the next seed")
                 self.assertEqual("fixed", values[3]["coverage_table"][0]["rationale"])

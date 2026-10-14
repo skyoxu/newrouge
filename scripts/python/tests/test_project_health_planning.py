@@ -231,11 +231,24 @@ class ProjectHealthPlanningTests(unittest.TestCase):
             self.assertEqual([], planning._mvg_valid_candidates(run_dir, state))
         validator.assert_called_once()
 
+    def test_mvg_recovery_null_envelope_hash_does_not_fallback(self):
+        run_dir = self.root / 'logs/ci/mvg-planning/schema-only-envelope'
+        analysis = run_dir / 'analysis-input'
+        analysis.mkdir(parents=True)
+        atomic_json(analysis / 'analysis-index.json', {'files': {}, 'authority_inputs': {}})
+        state = {'schema_version': mvg.RUN_SCHEMA, 'input_envelope_sha256': None,
+                 'run_id': 'schema-only-envelope',
+                 'candidate_attempts': {}, 'candidate_admissions': {}}
+        with patch('_mvg_input_envelope.validate_envelope', side_effect=ValueError('input envelope missing')) as validator:
+            self.assertEqual([], planning._mvg_valid_candidates(run_dir, state))
+        validator.assert_called_once()
+
     def test_mvg_recovery_reads_nested_candidate_proposals(self):
         run_dir = self.root / 'logs/ci/mvg-planning/nested-recovery'
         _proposal, candidate, proof, execution = self._write_admitted_mvg_candidate(
             run_dir, 'candidates/candidate-1')
-        state = {'analysis_identity_sha256': 'sha256:current', 'candidate_attempts': {'candidate-1': {
+        state = {'schema_version': mvg.RUN_SCHEMA,
+            'analysis_identity_sha256': 'sha256:current', 'candidate_attempts': {'candidate-1': {
             'status': 'valid', 'proposal_sha256': planning.file_sha(candidate),
             'validation': {'status': 'passed', 'formal_applicable': True},
         }}, 'candidate_admissions': {'candidate-1': {
@@ -246,6 +259,39 @@ class ProjectHealthPlanningTests(unittest.TestCase):
             'execution_sha256': planning.file_sha(execution),
         }}}
         self.assertEqual(['candidate-1'], planning._mvg_valid_candidates(run_dir, state))
+        atomic_json(run_dir / 'run.json', state)
+        with patch('_mvg_input_envelope.validate_envelope') as validator:
+            self.assertEqual(['candidate-1'], planning._mvg_valid_candidates(
+                run_dir, {'analysis_identity_sha256': 'sha256:stale', 'candidate_attempts': {}}))
+        validator.assert_not_called()
+        state['input_envelope_sha256'] = 'sha256:envelope'
+        atomic_json(run_dir / 'run.json', state)
+        (candidate.parent / 'analysis-input').mkdir()
+        with patch('_mvg_input_envelope.validate_envelope') as validator:
+            self.assertEqual(['candidate-1'], planning._mvg_valid_candidates(
+                run_dir, {'analysis_identity_sha256': 'sha256:stale', 'candidate_attempts': {}}))
+        self.assertEqual(2, validator.call_count)
+        for call in validator.call_args_list:
+            self.assertEqual(state, call.args[2])
+        state['candidate_admissions']['candidate-1']['status'] = 'retired'
+        atomic_json(run_dir / 'run.json', state)
+        self.assertEqual([], planning._mvg_valid_candidates(run_dir, {'candidate_attempts': {}}))
+
+    def test_mvg_envelope_validation_does_not_replace_current_source_freshness(self):
+        run_dir = self.root / 'logs/ci/mvg-planning/source-freshness'
+        job = {'job_id': 'source-freshness', 'action': 'mvg'}
+        index = {'input_envelope': {},
+                 'authority_inputs': {GDD_PATH.as_posix(): planning.normalized_file_sha(self.root / GDD_PATH)}}
+        atomic_json(run_dir / 'analysis-input/analysis-index.json', index)
+        atomic_json(run_dir / 'run.json', {'input_envelope_sha256': 'sha256:envelope'})
+        with patch.object(planning, 'execution_root', return_value=self.root), \
+             patch('_mvg_input_envelope.validate_envelope'):
+            self.assertTrue(planning._planning_input_fresh(self.root, job))
+            (self.root / GDD_PATH).write_text('Changed local source', encoding='utf-8')
+            self.assertFalse(planning._planning_input_fresh(self.root, job))
+            index['authority_inputs'] = {}
+            atomic_json(run_dir / 'analysis-input/analysis-index.json', index)
+            self.assertFalse(planning._planning_input_fresh(self.root, job))
 
     def test_mvg_recovery_reads_admitted_replacement_workspace(self):
         run_dir = self.root / 'logs/ci/mvg-planning/replacement-recovery'

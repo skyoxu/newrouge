@@ -70,7 +70,8 @@ class InputEnvelopeTests(unittest.TestCase):
         }
         index["analysis_identity_sha256"] = canonical_sha(index)
         atomic_json(prepared / "analysis-index.json", index)
-        state = {"analysis_identity_sha256": index["analysis_identity_sha256"]}
+        state = {"schema_version": mvg.RUN_SCHEMA,
+                 "analysis_identity_sha256": index["analysis_identity_sha256"]}
         mvg._validate_input_freshness(self.root, legacy, state)
         source.write_text(source.read_text(encoding="utf-8") + "\nlegacy drift\n", encoding="utf-8")
         try:
@@ -123,7 +124,11 @@ class InputEnvelopeTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "drift"):
                 self.prepare()
         self.assertFalse((self.run / "run.json").exists())
-        self.assertEqual("blocked", load_json(self.run / "input-freshness.json")["status"])
+        receipt = load_json(self.run / "input-freshness.json")
+        self.assertEqual("blocked", receipt["status"])
+        self.assertTrue(receipt["analysis_identity_sha256"])
+        self.assertIn(GDD_PATH.as_posix(), receipt["drift"])
+        self.assertFalse(any(item.startswith("prepare:") for item in receipt["drift"]))
 
     def test_candidate_drift_blocks_before_any_model_dispatch(self):
         state = self.prepare()
@@ -172,6 +177,19 @@ class InputEnvelopeTests(unittest.TestCase):
             generate_append(self.root, state, self.run, invoke_factory=invoke,
                             before_call=Mock(), checkpoint=Mock())
         invoke.assert_not_called()
+
+    def test_new_run_cannot_fall_back_to_legacy_freshness_when_envelope_is_removed(self):
+        state = self.prepare()
+        index_path = self.run / "analysis-input/analysis-index.json"
+        index = load_json(index_path)
+        index.pop("input_envelope", None)
+        index["analysis_identity_sha256"] = canonical_sha({
+            key: value for key, value in index.items() if key != "analysis_identity_sha256"
+        })
+        atomic_json(index_path, index)
+        state["input_envelope_sha256"] = None
+        with self.assertRaisesRegex(ValueError, "input_envelope_missing"):
+            mvg._validate_input_freshness(self.root, self.run, state)
 
     def test_state_scope_and_manifest_identity_drift_blocks_before_dispatch(self):
         state = self.prepare()
@@ -254,6 +272,36 @@ class InputEnvelopeTests(unittest.TestCase):
         receipt = load_json(self.run / "input-freshness.json")
         self.assertEqual("blocked", receipt["status"])
         self.assertTrue(any("readiness" in item for item in receipt["drift"]))
+
+    def test_copy_failure_writes_prepare_blocked_receipt_without_run(self):
+        with patch.object(mvg, "_copy_file", side_effect=OSError("Fixture copy failed")):
+            with self.assertRaisesRegex(OSError, "Fixture copy failed"):
+                self.prepare()
+        self.assertFalse((self.run / "run.json").exists())
+        receipt = load_json(self.run / "input-freshness.json")
+        self.assertEqual("blocked", receipt["status"])
+        self.assertTrue(any("Fixture copy failed" in item for item in receipt["drift"]))
+
+    def test_prepare_retry_replaces_old_failure_diagnostic(self):
+        with self.assertRaisesRegex(ValueError, "missing or invalid"):
+            self.prepare(capabilities_path=self.root / "missing.json")
+        with patch.object(mvg, "_copy_file", side_effect=OSError("Latest copy failure")):
+            with self.assertRaisesRegex(OSError, "Latest copy failure"):
+                self.prepare()
+        receipt = load_json(self.run / "input-freshness.json")
+        self.assertEqual(["prepare:Latest copy failure"], receipt["drift"])
+        self.assertFalse((self.run / "run.json").exists())
+
+    def test_successful_prepare_retry_clears_old_failure_and_existing_run_is_preserved(self):
+        with self.assertRaises(ValueError):
+            self.prepare(capabilities_path=self.root / "missing.json")
+        state = self.prepare()
+        receipt = load_json(self.run / "input-freshness.json")
+        self.assertEqual("current", receipt["status"])
+        with self.assertRaisesRegex(ValueError, "already exists"):
+            self.prepare()
+        self.assertEqual(state, load_json(self.run / "run.json"))
+        self.assertEqual(receipt, load_json(self.run / "input-freshness.json"))
 
     def test_missing_extensionless_source_ref_is_required(self):
         views_path = self.root / mvg.TASK_VIEWS[1]

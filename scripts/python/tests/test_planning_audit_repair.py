@@ -861,14 +861,17 @@ class PlanningAuditRepairTests(unittest.TestCase):
             calls += 1
             raise RuntimeError("fixture runner unavailable")
         with patch.object(mvg, "inspect_isolated_runner", return_value={"available": True}), \
-             patch.object(mvg, "run_isolated_model", side_effect=invoke):
-            with self.assertRaisesRegex(ValueError, "replacement budget exhausted"):
+             patch.object(mvg, "run_isolated_model", side_effect=invoke), \
+             patch("_mvg_capability_generation.generate_append", side_effect=RuntimeError("fixture runner unavailable")) as worker:
+            with self.assertRaisesRegex(ValueError, "selection_blocked_insufficient_admitted_candidates"):
                 mvg.generate(self.root, run_id="repair", timeout_sec=1,
                              llm_backend="copilot-cli", segmented=True)
         state = load_json(self.root / "logs/ci/mvg-planning/repair/run.json")
-        self.assertEqual("candidate-admission-replacement-budget-exhausted", state["phase"])
+        self.assertEqual("selection-blocked-insufficient-admitted-candidates", state["phase"])
         self.assertEqual("blocked", state["selection_status"])
-        self.assertEqual(mvg.MVG_REPLACEMENT_ROUND_LIMIT, state["replacement_rounds_used"])
+        self.assertEqual("selection_blocked_insufficient_admitted_candidates", state["selection_block_reason"])
+        self.assertEqual(0, state.get("replacement_rounds_used", 0))
+        self.assertTrue(all(row["append_terminal"] for row in state["candidate_admissions"].values()))
         self.assertTrue(all(row["admission_status"] == "execution-failed"
                             for row in state["candidate_attempts"].values()))
         self.assertTrue(state["admission_events"])
@@ -878,7 +881,8 @@ class PlanningAuditRepairTests(unittest.TestCase):
                             for row in state["admission_events"]))
         self.assertFalse(any(row["event"] == "candidate-retired"
                              for row in state["admission_events"]))
-        self.assertGreater(calls, 0)
+        self.assertEqual(3, worker.call_count)
+        self.assertEqual(0, calls)
 
     def test_generation_pins_task_status_during_full_structural_correction(self):
         _, proposal, _ = prepared_mvg(self.root)

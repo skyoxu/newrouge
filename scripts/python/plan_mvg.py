@@ -4031,7 +4031,7 @@ def _task_readiness(root: Path, task_ids: list[str], allow_unready: bool) -> dic
     }
 
 
-def prepare(
+def _prepare_impl(
     root: Path,
     *,
     run_id: str,
@@ -4056,17 +4056,9 @@ def prepare(
         shutil.rmtree(bundle)
     bundle.mkdir(parents=True)
     from _mvg_input_envelope import freeze_envelope, _reference_path
-    try:
-        readiness = _task_readiness(root, task_ids, allow_unready)
-        envelope = freeze_envelope(root, run_id=run_id, capabilities_path=capabilities_path,
-            readiness=readiness, manifest_path=manifest_path, evidence_refs=evidence_refs)
-    except (OSError, ValueError, TypeError, KeyError, AttributeError, UnicodeError) as exc:
-        atomic_json(run_dir / "input-freshness.json", {
-            "status": "blocked", "run_id": run_id,
-            "analysis_identity_sha256": None,
-            "drift": ["prepare:" + str(exc)],
-        })
-        raise
+    readiness = _task_readiness(root, task_ids, allow_unready)
+    envelope = freeze_envelope(root, run_id=run_id, capabilities_path=capabilities_path,
+        readiness=readiness, manifest_path=manifest_path, evidence_refs=evidence_refs)
 
     files: dict[str, str] = {}
     authority: dict[str, str | None] = {}
@@ -4224,6 +4216,45 @@ def prepare(
     return state
 
 
+def prepare(
+    root: Path,
+    *,
+    run_id: str,
+    capabilities_path: Path,
+    task_ids: list[str],
+    manifest_path: Path | None,
+    allow_unready: bool,
+    evidence_refs: list[str] | None = None,
+) -> dict[str, Any]:
+    """Prepare an MVG run and persist one diagnostic for every pre-run failure."""
+    run_dir = _run_dir(root, run_id)
+    diagnostic = run_dir / "input-freshness.json"
+    try:
+        if not (run_dir / "run.json").is_file():
+            # A retry must not inherit the previous attempt's blocked receipt.
+            diagnostic.unlink(missing_ok=True)
+        return _prepare_impl(
+            root,
+            run_id=run_id,
+            capabilities_path=capabilities_path,
+            task_ids=task_ids,
+            manifest_path=manifest_path,
+            allow_unready=allow_unready,
+            evidence_refs=evidence_refs,
+        )
+    except (OSError, ValueError, TypeError, KeyError, AttributeError, UnicodeError, RuntimeError) as exc:
+        if not (run_dir / "run.json").is_file() and (
+                not diagnostic.is_file() or load_json(diagnostic, {}).get("status") != "blocked"):
+            run_dir.mkdir(parents=True, exist_ok=True)
+            atomic_json(run_dir / "input-freshness.json", {
+                "status": "blocked",
+                "run_id": run_id,
+                "analysis_identity_sha256": None,
+                "drift": ["prepare:" + _compact_exception_message(exc)],
+            })
+        raise
+
+
 def _build_incumbent_proposal(root: Path, run_dir: Path, state: dict[str, Any],
                               manifest: dict[str, Any]) -> dict[str, Any]:
     """Project the current manifest into the proposal envelope for comparison.
@@ -4312,6 +4343,60 @@ def _build_incumbent_proposal(root: Path, run_dir: Path, state: dict[str, Any],
         "coverage_review": {},
         "notes": ["Current MVG incumbent projected for comparative evaluation; no Capability membership was inferred."],
     }
+
+
+def _block_selection_for_insufficient_admitted_candidates(
+    run_dir: Path, state: dict[str, Any], results: list[dict[str, Any]]
+) -> None:
+    """Persist the explicit selection gate when three candidates are unavailable."""
+    admitted = []
+    for row in results:
+        label = str(row.get("label") or "")
+        if row.get("admitted") and label in MVG_CANDIDATE_LABELS and label not in admitted:
+            admitted.append(label)
+    reason = "selection_blocked_insufficient_admitted_candidates"
+    state.update(
+        phase="selection-blocked-insufficient-admitted-candidates",
+        selection_status="blocked",
+        selection_block_reason=reason,
+        admitted_candidates=admitted,
+        retired_candidates=[str(row.get("label")) for row in results if not row.get("admitted")],
+    )
+    for field in ("selected_candidate", "selection_alias", "selection_path", "selection_receipt",
+                  "selection_input_candidates", "selection_input_identity", "selection_input_sha256",
+                  "selection_execution", "selected_admission_review", "selection_incumbent_path",
+                  "selection_incumbent_status", "selection_schema", "model_execution"):
+        state.pop(field, None)
+    execution_path = run_dir / "model-execution.json"
+    try:
+        receipt = load_json(execution_path, {}) if execution_path.is_file() else {}
+    except (OSError, ValueError, UnicodeError) as exc:
+        receipt = {"previous_receipt_error": _compact_exception_message(exc)}
+    if not isinstance(receipt, dict):
+        receipt = {}
+    for field in ("selected_candidate", "selected_alias", "selection_status", "selection_error"):
+        receipt.pop(field, None)
+    receipt.update({
+        "schema_version": "newrouge.mvg-planning-model-execution.v1",
+        "backend": state.get("model_backend") or receipt.get("backend"),
+        "candidate_attempts": state.get("candidate_attempts", {}),
+        "selection_status": "blocked",
+        "selection_error": reason,
+        "admitted_candidates": admitted,
+        "required_admitted_candidates": len(MVG_CANDIDATE_LABELS),
+        "candidate_count": len(results),
+        "candidate_failures": {
+            str(row.get("label")): row.get("summary") or row.get("error")
+            for row in results if not row.get("admitted")
+        },
+    })
+    atomic_json(execution_path, receipt)
+    atomic_json(run_dir / "run.json", state)
+    detail = ("; MVG candidate replacement budget exhausted"
+              if state.get("admission_stop_reason") == "replacement_round_budget_exhausted" else "")
+    raise ValueError(
+        f"{reason}: expected {len(MVG_CANDIDATE_LABELS)} admitted candidates, got {len(admitted)}{detail}"
+    )
 
 
 PROMPT = """You are planning cumulative MVG integration scope after Capability planning.
@@ -4474,6 +4559,7 @@ Frozen manifest scope:
     state.setdefault("candidate_attempts", {})
     state.setdefault("candidate_admissions", {})
     state.setdefault("admission_events", [])
+    state["model_backend"] = llm_backend
     atomic_json(run_path, state)
     state_lock = threading.Lock()
     def ensure_generation_active() -> None:
@@ -5280,37 +5366,12 @@ Frozen manifest scope:
                 pending[executor.submit(generate_candidate_guarded, label)] = label
     results = [results_by_label[label] for label in MVG_CANDIDATE_LABELS]
     if exhausted:
-        state.update(phase="candidate-admission-replacement-budget-exhausted", selection_status="blocked",
-                     admission_stop_reason="replacement_round_budget_exhausted")
-        atomic_json(run_path, state)
-        raise ValueError("MVG candidate replacement budget exhausted; admitted candidates: "
-                         + str(sum(bool(row.get("admitted")) for row in results)))
+        state["admission_stop_reason"] = "replacement_round_budget_exhausted"
     valid_results = [row for row in results if row.get("admitted")]
     state["admitted_candidates"] = [str(row.get("label")) for row in valid_results]
     state["retired_candidates"] = [str(row.get("label")) for row in results if not row.get("admitted")]
     if len(valid_results) != len(MVG_CANDIDATE_LABELS):
-        atomic_json(run_dir / "model-execution.json", {
-            "schema_version": "newrouge.mvg-planning-model-execution.v1",
-            "backend": llm_backend, "candidate_attempts": state["candidate_attempts"],
-            "selection_status": "blocked", "selection_error": "all three independent candidates must be valid",
-        })
-        reasons = []
-        for row in results:
-            if row.get("admitted"):
-                continue
-            summary = row.get("summary") or {}
-            validation_errors = ((summary.get("validation") or {}).get("errors")
-                                 or (summary.get("capability_append") or {}).get("errors") or [])
-            attempt_errors = [str(item.get("error") or "") for item in (summary.get("attempts") or [])
-                              if isinstance(item, dict) and item.get("error")]
-            if not validation_errors and not attempt_errors and summary.get("admission_error"):
-                attempt_errors = [str(summary["admission_error"].get("error") or
-                                      summary["admission_error"].get("error_type") or "execution_failed")]
-            detail = ";".join(str(value) for value in (validation_errors or attempt_errors)[:4])
-            reasons.append(f"{row['label']}={_compact_exception_message(detail or 'unknown_candidate_failure', 500)}")
-        raise ValueError("MVG independent candidate generation attempt budget exhausted; incomplete: "
-                         + ",".join(row["label"] for row in results if not row["valid"])
-                         + ("; reasons: " + " | ".join(reasons) if reasons else ""))
+        _block_selection_for_insufficient_admitted_candidates(run_dir, state, results)
 
     # The last candidate admission may finish after its final model call.
     # Revalidate the frozen envelope before constructing comparative selection.
@@ -5897,6 +5958,7 @@ def review(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict[s
     """Run a fresh text-only reviewer against sources and the fixed proposal."""
     from _mvg_planning_review import semantic_review_errors, review_execution_errors
     run_path, state = _load_run(root, run_id)
+    _require_unblocked_selection(state)
     run_dir = run_path.parent
     _validate_input_freshness(root, run_dir, state)
     proposal = load_json(run_dir / "proposal.json", {})
@@ -6220,6 +6282,7 @@ def build_delta(existing: dict[str, Any], proposal: dict[str, Any]) -> dict[str,
 
 def validate(root: Path, *, run_id: str) -> dict[str, Any]:
     run_path, state = _load_run(root, run_id)
+    _require_unblocked_selection(state)
     run_dir = run_path.parent
     _validate_input_freshness(root, run_dir, state)
     proposal = load_json(run_dir / "proposal.json", {})
@@ -6261,7 +6324,14 @@ def _validate_input_freshness(root: Path, run_dir: Path, state: dict[str, Any]) 
     # Preserve validation for runs created before the input-envelope schema.
     # New runs carry input_envelope_sha256 and must use the stricter validator.
     index = load_json(run_dir / "analysis-input/analysis-index.json", {})
-    if not isinstance(index.get("input_envelope"), dict) and not state.get("input_envelope_sha256"):
+    requires_envelope = (
+        "input_envelope_sha256" in state or "input_envelope" in index
+    )
+    if not isinstance(index.get("input_envelope"), dict) and requires_envelope:
+        from _mvg_input_envelope import validate_envelope
+        validate_envelope(root, run_dir / "analysis-input", state)
+        return
+    if not isinstance(index.get("input_envelope"), dict) and not requires_envelope:
         identity = index.get("analysis_identity_sha256")
         canonical_index = dict(index)
         canonical_index.pop("analysis_identity_sha256", None)
@@ -6290,10 +6360,17 @@ def _validate_input_freshness(root: Path, run_dir: Path, state: dict[str, Any]) 
     validate_envelope(root, run_dir / "analysis-input", state)
 
 
+def _require_unblocked_selection(state: dict[str, Any]) -> None:
+    """Historical proposal files cannot override a blocked selection gate."""
+    if state.get("selection_status") == "blocked":
+        raise ValueError(str(state.get("selection_block_reason") or "MVG selection is blocked"))
+
+
 def apply(root: Path, *, run_id: str, confirm: bool) -> dict[str, Any]:
     if not confirm:
         raise ValueError("MVG planning apply requires --confirm")
     run_path, state = _load_run(root, run_id)
+    _require_unblocked_selection(state)
     run_dir = run_path.parent
     from _planning_apply_journal import create_journal, resume_journal
     journal_path = run_dir / "apply-journal.json"
