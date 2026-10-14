@@ -16,6 +16,47 @@ from _planning_skill_common import atomic_json, file_sha, canonical_sha, RUNNER_
 
 
 class CapabilityAppendTests(unittest.TestCase):
+    def test_coordinator_replaces_corrupt_execution_receipt_with_authoritative_block(self):
+        self.exercise_corrupt_execution_receipt(corrupt_json=True)
+
+    def test_coordinator_replaces_non_object_execution_receipt_with_authoritative_block(self):
+        self.exercise_corrupt_execution_receipt(corrupt_json=False)
+
+    def exercise_corrupt_execution_receipt(self, *, corrupt_json):
+        import _mvg_capability_selection as coordinator
+        from _planning_skill_common import load_json
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            run = root / "logs/ci/mvg-planning/corrupt-receipt"
+            run.mkdir(parents=True)
+            receipt_path = run / "model-execution.json"
+            if not corrupt_json:
+                atomic_json(receipt_path, ["old non-object receipt"])
+            state = {"run_id": "corrupt-receipt", "analysis_identity_sha256": "sha256:fixture",
+                     "generation_strategy": coordinator.STRATEGY}
+            original_loader = coordinator.load_json
+            calls = []
+            def loader(path, default=None):
+                if corrupt_json and path == receipt_path and not path.is_file():
+                    raise ValueError("fixture corrupt JSON at line 1 column 1")
+                return original_loader(path, default)
+            with patch.object(coordinator, "frozen_scopes", return_value=[]), \
+                 patch.object(coordinator, "seed_proposal", return_value={}), \
+                 patch.object(coordinator, "verified_prefix", side_effect=ValueError("fixture frozen input rejection")), \
+                 patch.object(coordinator, "load_json", side_effect=loader):
+                with self.assertRaisesRegex(ValueError, "fixture frozen input rejection"):
+                    coordinator.generate_selected_capabilities(root, run, state, backend="fixture",
+                        invoke_factory=lambda *args: calls.append(args), selector_factory=lambda *args: calls.append(args))
+            self.assertEqual([], calls)
+            persisted = load_json(run / "run.json", {})
+            execution = load_json(receipt_path, {})
+            self.assertEqual("blocked", persisted["selection_status"])
+            self.assertEqual("fixture frozen input rejection", persisted["selection_block_reason"])
+            self.assertEqual("fixture frozen input rejection", execution["selection_error"])
+            self.assertEqual("blocked", execution["selection_status"])
+            self.assertTrue(execution["previous_receipt_error"])
+            self.assertEqual(persisted["capability_selection"], execution["capability_selection"])
+
     def test_append_schema_uses_only_scope_prepared_evidence_paths(self):
         import json
         with tempfile.TemporaryDirectory() as folder:
@@ -399,6 +440,33 @@ class CapabilityAppendTests(unittest.TestCase):
     def test_real_cumulative_generation_admission_and_proof_verification(self):
         self.exercise_public_generation()
 
+    def test_public_selection_uses_mixed_winners_and_one_shared_next_seed(self):
+        self.exercise_public_generation(coordinator_case="mixed")
+
+    def test_public_incomplete_current_candidates_preserve_selected_prefix(self):
+        self.exercise_public_generation(coordinator_case="incomplete")
+
+    def test_public_recovery_rejects_prefix_scope_and_receipt_tampering_without_models(self):
+        self.exercise_public_generation(coordinator_case="tamper")
+
+    def test_public_selection_receipt_recovers_before_prefix_publication_without_models(self):
+        self.exercise_public_generation(coordinator_case="receipt-recovery")
+
+    def test_public_selected_chain_apply_replay_uses_existing_journal_without_models(self):
+        self.exercise_public_generation(coordinator_case="apply-replay")
+
+    def test_public_worker_exception_isolates_slot_and_preserves_failure_receipt(self):
+        self.exercise_public_generation(coordinator_case="worker-exception")
+
+    def test_public_selector_preparation_error_stops_without_selector_attempt(self):
+        self.exercise_public_generation(coordinator_case="selector-preparation")
+
+    def test_public_run_budget_boundary_preserves_prefix_and_stays_terminal(self):
+        self.exercise_public_generation(coordinator_case="run-budget")
+
+    def test_public_reserved_worker_call_interruption_keeps_charge_on_recovery(self):
+        self.exercise_public_generation(coordinator_case="reserved-interruption")
+
     def test_bound_source_drift_after_first_dispatch_blocks_next_dispatch(self):
         self.exercise_public_generation(drift_after_first_dispatch=True)
 
@@ -571,7 +639,7 @@ class CapabilityAppendTests(unittest.TestCase):
 
     def exercise_public_generation(self, planned_verification=False, fault=None, failed_generations=1,
                                    drift_after_first_dispatch=False, drift_after_final_dispatch=False,
-                                   public_candidate_drift=False):
+                                   public_candidate_drift=False, coordinator_case=None):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             import planning_acceptance_fixture as fixture
@@ -641,7 +709,7 @@ class CapabilityAppendTests(unittest.TestCase):
             if public_candidate_drift:
                 changed = {}
                 for label in plan_mvg.MVG_CANDIDATE_LABELS:
-                    candidate_input = run / "candidates" / label / "analysis-input"
+                    candidate_input = run / "candidates" / label / "scope-1/analysis-input"
                     if not candidate_input.exists():
                         shutil.copytree(run / "analysis-input", candidate_input)
                     target = candidate_input / "capabilities.v1.json"
@@ -655,11 +723,13 @@ class CapabilityAppendTests(unittest.TestCase):
                         plan_mvg.generate(root, run_id="fixture", timeout_sec=1, llm_backend="codex-cli")
                     dispatch.assert_not_called()
                 for label in plan_mvg.MVG_CANDIDATE_LABELS:
-                    candidate_root = run / "candidates" / label
+                    candidate_root = run / "candidates" / label / "scope-1"
                     self.assertEqual(changed[label], (candidate_root / "analysis-input/capabilities.v1.json").read_bytes())
-                    freshness = plan_mvg.load_json(candidate_root / "input-freshness.json")
-                    self.assertEqual("blocked", freshness["status"])
-                    self.assertIn("analysis-input/capabilities.v1.json", freshness["drift"])
+                # Sequential preflight stops at the first corrupt workspace.
+                freshness = plan_mvg.load_json(run / "candidates" /
+                    plan_mvg.MVG_CANDIDATE_LABELS[0] / "scope-1/input-freshness.json")
+                self.assertEqual("blocked", freshness["status"])
+                self.assertIn("analysis-input/capabilities.v1.json", freshness["drift"])
                 self.assertFalse((run / "proposal.json").exists())
                 return
             seen = []
@@ -672,7 +742,6 @@ class CapabilityAppendTests(unittest.TestCase):
                     value = {key: prop["const"] for key, prop in props.items() if "const" in prop}
                     seen.append((number, value["schema_version"], prompt))
                     if value["schema_version"] == "newrouge.mvg-evidence-audit.v1":
-                        import json
                         payload = json.loads(prompt.split("\n", 1)[1].split("\nSOURCE PART ", 1)[0])
                         reports = {}
                         for part in payload["parts"]:
@@ -683,13 +752,27 @@ class CapabilityAppendTests(unittest.TestCase):
                         value["reports"] = reports
                     elif value["schema_version"] == plan_mvg.MVG_SELECTION_SCHEMA:
                         labels = props["candidate_reviews"]["items"]["properties"]["label"]["enum"]
-                        value.update(status="selected", selected="A", tradeoffs=["Prefer clear journeys"], evidence_refs=[],
+                        self.assertEqual(["A", "B", "C"], labels)
+                        self.assertFalse((workspace / "D.json").exists())
+                        alias = "A"
+                        if coordinator_case == "mixed":
+                            identity = json.loads(prompt.split("\n", 1)[1])["identity"]
+                            target = "candidate-1" if identity["order_index"] == 0 else "candidate-2"
+                            alias = next(label for label in labels if f"scope-{identity['order_index'] + 1}:{target}" in
+                                         plan_mvg.load_json(workspace / f"{label}.json")["notes"])
+                        ordered = [alias] + [label for label in labels if label != alias]
+                        value.update(status="selected", selected=alias, tradeoffs=["Prefer clear journeys"], evidence_refs=[],
                                      rationale="All candidates are admitted", candidate_reviews=[
                                          {"label": label, "verdict": "viable", "rank": rank,
-                                          "rationale": "Valid complete proposal"} for rank, label in enumerate(labels, 1)])
+                                          "rationale": "Valid complete proposal"} for rank, label in enumerate(ordered, 1)])
                     elif value["schema_version"] == generation.APPEND_SCHEMA:
                         cid = value["capability_id"]
                         index = next(i for i, cap in enumerate(caps) if cap["capability_id"] == cid)
+                        if coordinator_case == "mixed" and "scope-" in workspace.as_posix():
+                            label = next(part for part in workspace.parts if part in plan_mvg.MVG_CANDIDATE_LABELS)
+                            marker = f"scope-{index + 1}:{label}"
+                        else:
+                            marker = None
                         task_id = fixture.TASK_IDS[index]
                         value.update(flows=[], tests=[], change_reviews=[], gaps=[], notes=[],
                             coverage_table=[{"requirement_id": reqs[index]["requirement_id"], "flow_id": flows[index]["id"],
@@ -698,6 +781,8 @@ class CapabilityAppendTests(unittest.TestCase):
                             entrypoints=[{"status": "planned", "flow_ids": [flows[index]["id"]], "owner_task": task_id,
                                 "path": "Game.Core/Runtime.cs", "symbol": "Execute", "inputs": "Request", "state": "Ready",
                                 "assertions": "Consumer state observed", "implementation_acceptance": "Test failure recovery"}])
+                        if marker is not None:
+                            value["notes"] = [marker]
                         if fault == "duplicate_coverage":
                             value["coverage_table"].append(dict(value["coverage_table"][0],
                                 requirement_id="FR-b", flow_id="flow-b", task_id=fixture.TASK_IDS[1]))
@@ -804,7 +889,6 @@ class CapabilityAppendTests(unittest.TestCase):
                 self.assertEqual(failed_generations, len(result.get("issue_events", [])))
                 if failed_generations == 4:
                     self.assertEqual(3, result["restarts"][0]["repair_attempts"])
-                    import json
                     restarted = json.loads(generations[4].split("\n", 1)[1])
                     self.assertIsNone(restarted["repair_proposal"])
                     self.assertIsNone(restarted["hard_issue"])
@@ -837,6 +921,95 @@ class CapabilityAppendTests(unittest.TestCase):
 
             with patch.object(plan_mvg, "inspect_isolated_runner", return_value=description), \
                  patch.object(plan_mvg, "run_isolated_model", side_effect=runner):
+                if coordinator_case in {"incomplete", "worker-exception"}:
+                    real_append = generation.generate_append
+                    def incomplete(*args, **kwargs):
+                        workspace = args[2]
+                        if kwargs.get("scope_index") == 1 and "candidate-2" in workspace.parts:
+                            if coordinator_case == "worker-exception":
+                                raise RuntimeError("fixture_worker_failed_after_complete_source_preparation")
+                            return {"status": "blocked", "total_invocations": 0,
+                                    "errors": [{"code": "fixture_admission_blocked"}]}
+                        return real_append(*args, **kwargs)
+                    with patch.object(generation, "generate_append", side_effect=incomplete), \
+                         patch("_mvg_capability_selection.generate_append", side_effect=incomplete):
+                        with self.assertRaisesRegex(ValueError, "selection_blocked_insufficient_admitted_candidates"):
+                            plan_mvg.generate(root, run_id="fixture", timeout_sec=1, llm_backend="codex-cli")
+                    blocked = plan_mvg.load_json(run / "run.json")
+                    ledger = blocked["capability_selection"]
+                    self.assertEqual(1, len(ledger["selected"]))
+                    self.assertEqual("CAP-b", ledger["current"]["capability_id"])
+                    self.assertEqual(ledger["accepted_sha256"], ledger["current"]["base_sha256"])
+                    self.assertNotIn("selection_input_candidates", blocked)
+                    self.assertEqual(1, sum(schema == plan_mvg.MVG_SELECTION_SCHEMA for _, schema, _ in seen))
+                    self.assertEqual("selection_blocked_insufficient_admitted_candidates",
+                                     plan_mvg.load_json(run / "model-execution.json")["selection_error"])
+                    self.assertEqual(3, plan_mvg.load_json(run / "model-execution.json")["candidate_count"])
+                    self.assertIn("candidate-2", plan_mvg.load_json(run / "model-execution.json")["candidate_failures"])
+                    calls = len(seen)
+                    if coordinator_case == "worker-exception":
+                        failed = ledger["current"]["admissions"]["candidate-2"]
+                        self.assertEqual("execution-failed", failed["status"])
+                        self.assertTrue(failed["retryable"])
+                        resumed = plan_mvg.generate(root, run_id="fixture", timeout_sec=1, llm_backend="codex-cli")
+                        self.assertEqual("winner-chain", resumed["selected"])
+                        self.assertEqual(calls + 3, len(seen))
+                        return
+                    with self.assertRaisesRegex(ValueError, "selection_blocked_insufficient_admitted_candidates"):
+                        plan_mvg.generate(root, run_id="fixture", timeout_sec=1, llm_backend="codex-cli")
+                    self.assertEqual(calls, len(seen))
+                    from _project_health_planning import _mvg_valid_candidates
+                    self.assertEqual(["candidate-1", "candidate-3"], _mvg_valid_candidates(run, blocked))
+                    return
+                if coordinator_case in {"selector-preparation", "run-budget"}:
+                    if coordinator_case == "run-budget":
+                        updated = plan_mvg.load_json(run / "run.json")
+                        updated["mvg.run_invocation_limit"] = 8
+                        atomic_json(run / "run.json", updated)
+                        failure_pattern = "selection_blocked_insufficient_admitted_candidates"
+                        guard = patch.object(generation, "preflight_runner_payload", wraps=generation.preflight_runner_payload)
+                    else:
+                        real_preflight = generation.preflight_runner_payload
+                        def fail_selector(*args, **kwargs):
+                            if args[4] == "selection.json":
+                                raise ValueError("runner_input_too_large:fixture_selector_bound")
+                            return real_preflight(*args, **kwargs)
+                        guard = patch.object(generation, "preflight_runner_payload", side_effect=fail_selector)
+                        failure_pattern = "runner_input_too_large"
+                    with guard, self.assertRaisesRegex(ValueError, failure_pattern):
+                        plan_mvg.generate(root, run_id="fixture", timeout_sec=1, llm_backend="codex-cli")
+                    failed = plan_mvg.load_json(run / "run.json")
+                    selection_ledger = failed["capability_selection"]
+                    self.assertTrue(selection_ledger["terminal"])
+                    if coordinator_case == "selector-preparation":
+                        self.assertEqual([], selection_ledger["current"]["selection_attempts"])
+                        self.assertIn("runner_input_too_large", selection_ledger["current"]["preparation_error"]["detail"])
+                        self.assertEqual(6, selection_ledger["total_invocations"])
+                    else:
+                        self.assertEqual(8, selection_ledger["total_invocations"])
+                        self.assertEqual(1, len(selection_ledger["selected"]))
+                    calls = len(seen)
+                    with self.assertRaises(ValueError):
+                        plan_mvg.generate(root, run_id="fixture", timeout_sec=1, llm_backend="codex-cli")
+                    self.assertEqual(calls, len(seen))
+                    from _mvg_capability_selection import recovery_available
+                    self.assertFalse(recovery_available(root, run, failed))
+                    return
+                if coordinator_case == "reserved-interruption":
+                    import _mvg_capability_selection as selection_module
+                    writer = selection_module.atomic_json
+                    def interrupt_reservation(path, payload):
+                        writer(path, payload)
+                        if path == run / "run.json" and payload.get("capability_selection", {}).get("total_invocations") == 8:
+                            raise SystemExit("fixture_crash_after_host_reservation_before_worker_charge")
+                    with patch.object(selection_module, "atomic_json", side_effect=interrupt_reservation), \
+                         self.assertRaisesRegex(SystemExit, "fixture_crash_after_host_reservation"):
+                        plan_mvg.generate(root, run_id="fixture", timeout_sec=1, llm_backend="codex-cli")
+                    interrupted = plan_mvg.load_json(run / "run.json")
+                    self.assertEqual(1, len(interrupted["capability_selection"]["selected"]))
+                    self.assertEqual(8, interrupted["capability_selection"]["total_invocations"])
+                    self.assertEqual(2, plan_mvg.load_json(run / "candidates/candidate-1/lineage-execution.json")["model_invocation_count"])
+                    self.assertEqual(0, plan_mvg.load_json(run / "candidates/candidate-1/scope-2/capability-append/append-ledger.json")["total_invocations"])
                 result = plan_mvg.generate(root, run_id="fixture", timeout_sec=1, llm_backend="codex-cli")
                 self.assertEqual(3, result["candidate_count"])
                 calls_before_review = len(seen)
@@ -848,10 +1021,105 @@ class CapabilityAppendTests(unittest.TestCase):
                 reused = plan_mvg.generate(root, run_id="fixture", timeout_sec=1, llm_backend="codex-cli")
                 self.assertEqual(result["selected"], reused["selected"])
                 self.assertEqual(calls_before_review, len(seen), "Resume must verify hash-bound artifacts locally")
+                persisted = plan_mvg.load_json(run / "run.json")
+                if coordinator_case == "reserved-interruption":
+                    self.assertEqual(15, persisted["capability_selection"]["total_invocations"])
+                    self.assertEqual(5, persisted["capability_selection"]["lineage_invocations"]["candidate-1"])
+                    local = plan_mvg.load_json(run / "candidates/candidate-1/scope-2/capability-append/append-ledger.json")
+                    self.assertEqual(3, local["total_invocations"])
+                    self.assertEqual(1, len(local["interrupted_reservations"]))
+                    self.assertEqual(1, local["interrupted_reservations"][0]["through"])
+                    self.assertEqual(14, calls_before_review)
+                    return
+                if coordinator_case == "mixed":
+                    self.assertEqual(["candidate-1", "candidate-2"],
+                        [step["selected_candidate"] for step in persisted["capability_selection"]["selected"]])
+                    payloads = [json.loads(prompt.split("\n", 1)[1]) for _, schema, prompt in seen
+                                if schema == generation.APPEND_SCHEMA]
+                    seeds = [row["accepted_proposal"] for row in payloads if row["scope"]["capability_id"] == "CAP-b"]
+                    self.assertEqual(3, len(seeds))
+                    self.assertTrue(all(seed == seeds[0] for seed in seeds))
+                    self.assertIn("scope-1:candidate-1", seeds[0]["notes"])
+                    self.assertNotIn("scope-1:candidate-2", seeds[0]["notes"])
+                    self.assertEqual(14, persisted["capability_selection"]["total_invocations"])
+                    self.assertEqual({label: 4 for label in plan_mvg.MVG_CANDIDATE_LABELS},
+                                     persisted["capability_selection"]["lineage_invocations"])
+                if coordinator_case == "tamper":
+                    from _project_health_planning import _mvg_valid_candidates
+                    original = deepcopy(persisted)
+                    for mutation in ("prefix", "scope", "receipt", "candidate-clone", "candidate-lineage", "execution-total"):
+                        changed = deepcopy(original)
+                        if mutation == "prefix":
+                            changed["capability_selection"]["selected"][0]["record"]["base_sha256"] = "sha256:tampered"
+                        elif mutation == "scope":
+                            changed["capability_selection"]["order"].reverse()
+                        elif mutation == "receipt":
+                            changed["capability_selection"]["selected"][0]["receipt_sha256"] = "sha256:tampered"
+                        elif mutation == "candidate-clone":
+                            step = changed["capability_selection"]["selected"][0]
+                            step["admissions"]["candidate-2"] = deepcopy(step["admissions"]["candidate-1"])
+                        elif mutation == "candidate-lineage":
+                            changed["capability_selection"]["selected"][0]["admissions"]["candidate-1"]["lineage"] = "candidate-2-r1"
+                        else:
+                            changed["capability_selection"]["selected"][0]["admissions"]["candidate-1"]["total_invocations"] += 1
+                        atomic_json(run / "run.json", changed)
+                        self.assertEqual([], _mvg_valid_candidates(run, changed))
+                        with self.assertRaises(ValueError):
+                            plan_mvg.generate(root, run_id="fixture", timeout_sec=1, llm_backend="codex-cli")
+                        self.assertEqual(calls_before_review, len(seen))
+                        for operation in (lambda: plan_mvg.review(root, run_id="fixture", runner=Path("unused"), timeout_sec=1),
+                                          lambda: plan_mvg.validate(root, run_id="fixture"),
+                                          lambda: plan_mvg.apply(root, run_id="fixture", confirm=True)):
+                            atomic_json(run / "run.json", changed)
+                            with self.assertRaises(ValueError):
+                                operation()
+                    atomic_json(run / "run.json", original)
+                    execution_path = root / original["selected_admission_review"]["execution_path"]
+                    original_execution = plan_mvg.load_json(execution_path)
+                    corrupted_execution = deepcopy(original_execution)
+                    corrupted_execution["total_invocations"] += 1
+                    first_lineage = next(iter(corrupted_execution["lineage_invocations"]))
+                    corrupted_execution["lineage_invocations"][first_lineage] += 1
+                    atomic_json(execution_path, corrupted_execution)
+                    changed = deepcopy(original)
+                    changed["selected_admission_review"]["execution_sha256"] = file_sha(execution_path)
+                    atomic_json(run / "run.json", changed)
+                    self.assertEqual([], _mvg_valid_candidates(run, changed),
+                        "Completed Knowledge recovery must reject aggregate costs that disagree with selected scopes")
+                    with self.assertRaises(ValueError):
+                        plan_mvg.generate(root, run_id="fixture", timeout_sec=1, llm_backend="codex-cli")
+                    self.assertEqual(calls_before_review, len(seen))
+                    atomic_json(execution_path, original_execution)
+                    atomic_json(run / "run.json", original)
+                if coordinator_case == "receipt-recovery":
+                    interrupted = deepcopy(persisted)
+                    selection_ledger = interrupted["capability_selection"]
+                    step = selection_ledger["selected"].pop()
+                    step["status"] = "running"
+                    selection_ledger.update(accepted_sha256=step["input_identity"]["base_sha256"], current={
+                        "capability_id": "CAP-b", "order_index": 1,
+                        "base_sha256": step["input_identity"]["base_sha256"], "admissions": step["admissions"],
+                        "aliases": step["aliases"], "input_identity": step["input_identity"],
+                        "input_sha256": step["input_sha256"], "selection_attempts": [step]})
+                    interrupted.update(selection_status="pending", phase="generating-capability")
+                    atomic_json(run / "run.json", interrupted)
+                    resumed = plan_mvg.generate(root, run_id="fixture", timeout_sec=1, llm_backend="codex-cli")
+                    self.assertEqual("winner-chain", resumed["selected"])
+                    self.assertEqual(calls_before_review, len(seen))
+                    self.assertEqual(2, len(plan_mvg.load_json(run / "run.json")["capability_selection"]["selected"]))
+                if coordinator_case == "apply-replay":
+                    applied = plan_mvg.apply(root, run_id="fixture", confirm=True)
+                    replayed = plan_mvg.apply(root, run_id="fixture", confirm=True)
+                    self.assertEqual(applied, replayed)
+                    self.assertEqual("applied", replayed["status"])
+                    self.assertEqual(calls_before_review, len(seen))
+                    return
                 for label in plan_mvg.MVG_CANDIDATE_LABELS:
-                    ledger = plan_mvg.load_json(run / "candidates" / label / "capability-append/append-ledger.json", {})
-                    self.assertEqual(["CAP-a", "CAP-b"], ledger["completed"])
-                    self.assertEqual(4, ledger["total_invocations"])
+                    for index, capability_id in enumerate(("CAP-a", "CAP-b"), 1):
+                        ledger = plan_mvg.load_json(run / "candidates" / label /
+                            f"scope-{index}/capability-append/append-ledger.json", {})
+                        self.assertEqual([capability_id], ledger["completed"])
+                        self.assertEqual(2, ledger["total_invocations"])
                 from _project_health_planning import _mvg_valid_candidates
                 persisted = plan_mvg.load_json(run / "run.json", {})
                 self.assertEqual(list(plan_mvg.MVG_CANDIDATE_LABELS), _mvg_valid_candidates(run, persisted),

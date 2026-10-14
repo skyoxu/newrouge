@@ -414,7 +414,8 @@ def repair_scope_errors(old, new, issue, scope=None):
     return errors
 
 
-def generate_append(root, state, candidate_root, *, invoke_factory, before_call, checkpoint):
+def generate_append(root, state, candidate_root, *, invoke_factory, before_call, checkpoint,
+                    scope_index=None, accepted_seed=None, selected_records=None):
     import plan_mvg as pm
     from _mvg_planning_review import semantic_review_errors, review_execution_errors
     prepared = candidate_root / "analysis-input"
@@ -426,12 +427,30 @@ def generate_append(root, state, candidate_root, *, invoke_factory, before_call,
     semantics = load_json(prepared / "semantic-requirements.v1.json", {})
     task_statuses = {str(row["id"]): str(row.get("status", "")).lower()
                     for row in load_json(prepared / "task-master.json", {}).get("master", {}).get("tasks", [])}
-    scopes = capability_scopes(capabilities, semantics, state.get("planning_scope"), task_statuses)
+    all_scopes = capability_scopes(capabilities, semantics, state.get("planning_scope"), task_statuses)
+    scopes = all_scopes
+    baseline = load_json(prepared / "existing-manifest.json", None)
+    original_seed = seed_proposal(state, prepared)
+    seed = original_seed
+    prefix = deepcopy(selected_records or [])
+    if scope_index is not None:
+        if not isinstance(scope_index, int) or not 0 <= scope_index < len(all_scopes):
+            raise ValueError("capability_append_scope_index_invalid")
+        scopes = [all_scopes[scope_index]]
+        if len(prefix) != scope_index or not isinstance(accepted_seed, dict):
+            raise ValueError("capability_append_selected_prefix_missing")
+        seed = deepcopy(accepted_seed)
+        if prefix:
+            prefix_proof = admission_proof(state, original_seed, all_scopes[:scope_index], prefix, seed)
+            errors = append_proof_errors(state, seed, prefix_proof, semantics,
+                                         set(all_scopes[scope_index - 1]["cumulative_requirement_ids"]))
+            if errors:
+                raise ValueError("capability_append_selected_prefix_invalid:" + ";".join(errors))
+        elif seed != original_seed:
+            raise ValueError("capability_append_original_seed_changed")
     if 2 * len(scopes) > pm.MVG_CANDIDATE_INVOCATION_LIMIT:
         raise ValueError("capability_append_budget_insufficient_for_scope:"
                          f"minimum_calls={2 * len(scopes)};limit={pm.MVG_CANDIDATE_INVOCATION_LIMIT}")
-    baseline = load_json(prepared / "existing-manifest.json", None)
-    seed = seed_proposal(state, prepared)
 
     def next_attempt():
         return int(load_json(candidate_root / "capability-append/append-ledger.json", {}).get("total_invocations", 0)) + 1
@@ -647,6 +666,8 @@ def generate_append(root, state, candidate_root, *, invoke_factory, before_call,
             # result.  Do not leak a freshness exception past the ledger: the
             # candidate must be recorded as blocked, with its receipt intact.
             return ["input_freshness_blocked:" + str(exc)]
+        if scope_index is not None:
+            return machine(scopes[-1], seed, proposal)
         return pm.candidate_admission_errors(root, state, proposal)
 
     result = run_capability_append(candidate_root / "capability-append", scopes=scopes, seed=seed,
@@ -656,6 +677,14 @@ def generate_append(root, state, candidate_root, *, invoke_factory, before_call,
         repair_check=repair_scope_errors)
     if result["status"] == "admitted":
         proof = result["proof"]
+        if scope_index is not None:
+            proof = admission_proof(state, original_seed, all_scopes[:scope_index + 1],
+                                    prefix + result["records"], result["accepted"])
+            errors = append_proof_errors(state, result["accepted"], proof, semantics,
+                                         set(scopes[-1]["cumulative_requirement_ids"]))
+            if errors:
+                raise ValueError("capability_append_combined_proof_invalid:" + ";".join(errors))
+            result["proof"] = proof
         execution = {"schema_version": "newrouge.mvg-capability-admission-execution.v1",
                      "analysis_identity_sha256": state["analysis_identity_sha256"],
                      "proposal_sha256": canonical_sha(result["accepted"]), "semantic_review_sha256": canonical_sha(proof),
@@ -664,6 +693,14 @@ def generate_append(root, state, candidate_root, *, invoke_factory, before_call,
         atomic_json(candidate_root / "admission-review.json", proof)
         atomic_json(candidate_root / "admission-execution.json", execution)
     return result
+
+
+def admission_proof(state, seed, scopes, records, proposal):
+    """Compose admitted increments without inventing a whole-batch review."""
+    return {"schema_version": PROOF_SCHEMA, "analysis_identity_sha256": state["analysis_identity_sha256"],
+            "proposal_sha256": canonical_sha(proposal), "verdict": "approved", "findings": [],
+            "seed": deepcopy(seed), "scopes": deepcopy(scopes), "records": deepcopy(records),
+            "final_machine_status": "passed"}
 
 
 def append_proof_errors(state, proposal, proof, semantics, allowed=None):
@@ -696,6 +733,9 @@ def append_proof_errors(state, proposal, proof, semantics, allowed=None):
             errors.append("capability_admission_scope_order_invalid")
         if record.get("scope") != scope or record.get("base_sha256") != canonical_sha(accepted):
             return errors + ["capability_admission_chain_identity_invalid"]
+        if record.get("record_sha256") != canonical_sha({key: value for key, value in record.items()
+                                                       if key != "record_sha256"}):
+            errors.append("capability_admission_record_identity_invalid")
         revised = merge_append(accepted, record["delta"], scope)
         if record.get("proposal_sha256") != canonical_sha(revised) or preservation_errors(accepted, revised):
             return errors + ["capability_admission_chain_mutated"]
@@ -722,11 +762,17 @@ def append_proof_errors(state, proposal, proof, semantics, allowed=None):
 
 
 def append_execution_errors(state, proposal, execution, proof):
+    lineages = execution.get("lineage_invocations")
+    if lineages is not None:
+        if (not isinstance(lineages, dict) or not lineages
+                or any(type(count) is not int or not 0 < count <= 64 for count in lineages.values())
+                or execution.get("total_invocations") != sum(lineages.values())):
+            return ["capability_admission_lineage_execution_invalid"]
     if (execution.get("schema_version") != "newrouge.mvg-capability-admission-execution.v1"
             or execution.get("analysis_identity_sha256") != state["analysis_identity_sha256"]
             or execution.get("proposal_sha256") != canonical_sha(proposal)
             or execution.get("semantic_review_sha256") != canonical_sha(proof)
             or execution.get("records_sha256") != canonical_sha(proof.get("records"))
-            or not 0 < int(execution.get("total_invocations", 0)) <= 64):
+            or (lineages is None and not 0 < int(execution.get("total_invocations", 0)) <= 64)):
         return ["capability_admission_execution_invalid"]
     return []

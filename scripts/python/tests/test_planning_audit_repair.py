@@ -77,6 +77,18 @@ def prepared_mvg(root):
     dest = root / "docs/testing/mvg/repair.json"
     state = mvg.prepare(root, run_id="repair", capabilities_path=root / cap.FORMAL_CAPABILITIES,
         task_ids=["7", "42"], manifest_path=dest, allow_unready=False)
+    # This helper constructs historical whole-proposal review evidence. New
+    # Capability-local runs are exercised by the public append fixture.
+    state['generation_strategy'] = 'independent-candidates-single'
+    index_path = root / 'logs/ci/mvg-planning/repair/analysis-input/analysis-index.json'
+    index = load_json(index_path)
+    index.pop('generation_strategy', None)
+    canonical_index = {key: value for key, value in index.items()
+                       if key not in {'analysis_identity_sha256', 'repository_identity'}}
+    index['analysis_identity_sha256'] = canonical_sha(canonical_index)
+    state['analysis_identity_sha256'] = index['analysis_identity_sha256']
+    atomic_json(index_path, index)
+    atomic_json(root / 'logs/ci/mvg-planning/repair/run.json', state)
     caps = load_json(root / cap.FORMAL_CAPABILITIES)["capabilities"]
     reqs = [c["requirement_ids"][0] for c in caps]
     gameplay = load_json(root / ".taskmaster/tasks/tasks_gameplay.json")

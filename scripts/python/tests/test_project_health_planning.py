@@ -381,6 +381,52 @@ class ProjectHealthPlanningTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'Capability identity mismatch'):
             planning.validate_mvg_capability_binding(self.root, checkout, job)
 
+    def test_mvg_recovery_preserves_selected_prefix_without_current_candidates(self):
+        import _mvg_capability_selection as selection
+
+        prepared_mvg(self.root)
+        git(self.root, 'add', '.')
+        git(self.root, 'commit', '-m', 'fixture: reviewed capabilities for prefix recovery')
+        invoke, invocations = self._production_consumers()
+        worker = selection.generate_append
+
+        def interrupt_current_scope(*args, **kwargs):
+            if kwargs.get('scope_index') == 1:
+                raise OSError('Fixture interrupted before current candidates')
+            return worker(*args, **kwargs)
+
+        with patch.object(planning, 'invoke', side_effect=invoke), \
+             patch.object(planning, 'runner_path', return_value=Path('fixture')), \
+             patch.dict(os.environ, {'SC_KNOWLEDGE_MVG_BACKEND': 'openai-api'}):
+            job = planning.create_job(self.root, 'mvg')
+            with patch.object(selection, 'generate_append', side_effect=interrupt_current_scope):
+                result = planning.run_job(self.root, job)
+            self.assertEqual('failed', result['status'], result)
+            self.assertEqual('generate', result['stage'])
+            stored = planning.read_job(self.root, job['job_id'])
+            checkout = planning.execution_root(self.root, stored)
+            run_dir = checkout / 'logs/ci/mvg-planning' / job['job_id']
+            state = load_json(run_dir / 'run.json')
+            self.assertEqual(1, len(state['capability_selection']['selected']))
+            self.assertEqual([], planning._mvg_valid_candidates(run_dir, state))
+            self.assertTrue(selection.recovery_available(checkout, run_dir, state))
+            resumed = planning.create_job(self.root, 'mvg')
+            self.assertEqual(job['job_id'], resumed['job_id'])
+            before = len(invocations)
+            result = planning.run_job(self.root, resumed)
+            self.assertEqual('completed', result['status'], result)
+            self.assertEqual(3, sum(path.endswith('capability-append.json')
+                                    for path in invocations[before:]))
+            fresh = planning.create_job(self.root, 'mvg', fresh=True)
+            self.assertNotEqual(job['job_id'], fresh['job_id'])
+            state['capability_selection']['terminal'] = True
+            atomic_json(run_dir / 'run.json', state)
+            atomic_json(planning.job_path(self.root, job['job_id']), stored)
+            atomic_json(self.root / planning.JOB_ROOT / 'mvg-attempt.json', {'job_id': job['job_id']})
+            self.assertFalse(selection.recovery_available(checkout, run_dir, state))
+            replacement = planning.create_job(self.root, 'mvg')
+            self.assertNotEqual(job['job_id'], replacement['job_id'])
+
     def test_new_main_commit_with_unchanged_inputs_allows_publication(self):
         job = planning.create_job(self.root, 'capability')
         git(self.root, 'commit', '--allow-empty', '-m', 'fixture: new main')
@@ -433,7 +479,7 @@ class ProjectHealthPlanningTests(unittest.TestCase):
                             'sink_id': None, 'verification_ref': None, 'authority_ref': None, 'authority_review': None}
                             for rid in scope['new_requirement_ids']],
                         tests=[{'id': tid, 'kind': 'dotnet', 'state': 'planned', 'flow_id': fid, 'test_refs': [],
-                            'path': 'Game.Core.Tests/Tasks/RelayTests.cs', 'selector': 'RelayTests',
+                            'path': 'Game.Core.Tests/Tasks/PlanningAcceptanceTests.cs', 'selector': 'PlanningAcceptanceTests',
                             'evidence_level': 'domain-integration', 'min_tests': 1}],
                         entrypoints=[{'status': 'planned', 'flow_ids': prior_flow_ids + [fid], 'owner_task': 42,
                             'path': 'Game.Core/Tasks/Relay42.cs', 'symbol': 'Run', 'inputs': 'Request',
@@ -682,7 +728,8 @@ class ProjectHealthPlanningTests(unittest.TestCase):
                              'capability_ids': [n['capability_id'] for n in nodes if b['block_id'] in n['source_block_ids']],
                              'rationale': 'Source obligation or heading'} for b in blocks]}
             atomic_json(kwargs['output_path'], payload)
-            return {'model': RUNNER['model'], 'model_tools': []}
+            return {'model': RUNNER['model'], 'model_tools': [],
+                    'output_sha256': planning.file_sha(kwargs['output_path'])}
 
         def invoke(checkout, script, args, log):
             module = cap if script == 'plan_capabilities.py' else mvg
@@ -734,16 +781,16 @@ class ProjectHealthPlanningTests(unittest.TestCase):
             self.assertNotEqual(cap_checkout, mvg_checkout)
             result = planning.run_job(self.root, mvg_job)
             ledger = load_json(mvg_checkout / 'logs/ci/mvg-planning' / mvg_job['job_id'] /
-                               'candidates/candidate-1/capability-append/append-ledger.json', {})
+                               'candidates/candidate-1/scope-1/capability-append/append-ledger.json', {})
             self.assertEqual('completed', result['status'], (result, ledger.get('issue_events', [])[:2]))
             self.assertEqual(self.revision, git(mvg_checkout, 'rev-parse', 'HEAD'))
             self.assertEqual(
                 (cap_checkout / 'docs/planning/semantic-topology/capabilities.v1.json').read_bytes(),
                 (mvg_checkout / 'docs/planning/semantic-topology/capabilities.v1.json').read_bytes(),
             )
-            # Capability uses five model calls; MVG generation uses three
-            # independent candidates with admission review, one selection
-            # review, and one final admission-proof verification.
+            # Capability uses five model calls. Each MVG scope generates and
+            # admits three independent increments before comparative selection.
+            # Final admission-proof verification is local and invokes no model.
             generated_invocation_count = len(invocations)
             self.assertEqual(6, sum(path.endswith('capability-append.json') for path in invocations))
             admission_state = load_json(mvg_checkout / 'logs/ci/mvg-planning' / mvg_job['job_id'] / 'run.json')
@@ -787,6 +834,40 @@ class ProjectHealthPlanningTests(unittest.TestCase):
         self.assertEqual('completed', result['status'], result)
         self.assertEqual(6, sum(path.endswith('capability-append.json') for path in invocations))
         self.assertEqual(main_revision(self.root), planning.generated_view(self.root, 'mvg')['revision'])
+        stored = planning.read_job(self.root, job['job_id'])
+        checkout = planning.execution_root(self.root, stored)
+        run = checkout / 'logs/ci/mvg-planning' / job['job_id']
+        state = load_json(run / 'run.json')
+        self.assertTrue(planning._planning_input_fresh(self.root, stored))
+        for path in (checkout / job['manifest'],
+                     checkout / 'logs/ci/chapter5/readiness/task-7.json',
+                     run / 'analysis-input/capabilities.v1.json'):
+            original = path.read_bytes()
+            try:
+                path.write_bytes(original + b'\nFixture unauthorized edit.\n')
+                self.assertFalse(planning._planning_input_fresh(self.root, stored), str(path))
+            finally:
+                path.write_bytes(original)
+        journal_path = run / 'apply-journal.json'
+        journal = load_json(journal_path)
+        changed = deepcopy(journal)
+        next(row for row in changed['entries'] if row['path'] == state['manifest_path'])['after_sha256'] = 'sha256:foreign'
+        atomic_json(journal_path, changed)
+        self.assertFalse(planning._planning_input_fresh(self.root, stored))
+        atomic_json(journal_path, journal)
+        self.assertTrue(planning._planning_input_fresh(self.root, stored))
+        manifest_path = checkout / job['manifest']
+        original = manifest_path.read_bytes()
+        try:
+            manifest_path.unlink()
+            self.assertFalse(planning._planning_input_fresh(self.root, stored))
+            manifest_path.mkdir()
+            self.assertFalse(planning._planning_input_fresh(self.root, stored))
+        finally:
+            if manifest_path.is_dir():
+                manifest_path.rmdir()
+            manifest_path.write_bytes(original)
+        self.assertTrue(planning._planning_input_fresh(self.root, stored))
 
     def test_resume_reuses_generated_candidates_and_original_attempt(self):
         invoke, invocations = self._production_consumers()

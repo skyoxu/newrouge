@@ -56,3 +56,6 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-mvg-review-receipts-and-recovery-hardening.md`
   summary: 适配两个既有 project-health 生产消费者夹具的 planned test schema，不放宽生产准入。
   evidence: 复审仍复现两个既有候选零准入失败；对象已有 test_refs，需依据实际 schema 分支修正，已登记 docs/technical-debt.md。
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-1-select-complete-admitted-candidates.md`
+  summary: 已关闭前述两个 Knowledge fixture 适配项。
+  evidence: 假 runner 固定路径不属于 prepared schema 允许清单，改用已准备测试路径；两个完整生产消费者链通过，未放宽准入。另补 apply 输出/readiness/prepared 输入/journal 篡改负例通过。

@@ -406,9 +406,10 @@ def build_selection_input_identity(analysis_identity_sha256: str,
 
 def candidate_admission_errors(root: Path, state: dict[str, Any],
                                proposal: dict[str, Any],
-                               semantic_review: dict[str, Any] | None = None) -> list[dict[str, str]]:
+                               semantic_review: dict[str, Any] | None = None, *,
+                               append_requirement_ids: set[str] | None = None) -> list[dict[str, str]]:
     """Return ordered hard issues that prevent a proposal entering selection."""
-    validation = validate_proposal(root, state, proposal)
+    validation = validate_proposal(root, state, proposal, append_requirement_ids=append_requirement_ids)
     issues: list[dict[str, str]] = [
         {"code": str(error), "path": "proposal"} for error in validation.get("errors", [])
     ]
@@ -433,10 +434,21 @@ def candidate_admission_errors(root: Path, state: dict[str, Any],
                 load_json(prepared / "semantic-requirements.v1.json", {}), state.get("planning_scope"),
                 {str(row["id"]): str(row.get("status", "")).lower() for row in
                  load_json(prepared / "task-master.json", {}).get("master", {}).get("tasks", [])})
+            if append_requirement_ids is not None:
+                matching = [index for index, scope in enumerate(expected_scopes)
+                            if set(scope["cumulative_requirement_ids"]) == append_requirement_ids]
+                # Shared membership may repeat; the proof still binds the exact
+                # frozen ordered prefix, including scopes with no new coverage.
+                count = len(semantic_review.get("scopes", []))
+                if count - 1 not in matching:
+                    issues.append({"code": "capability_admission_prefix_scope_invalid", "path": "admission-review"})
+                expected_scopes = expected_scopes[:count]
             if semantic_review.get("scopes") != expected_scopes or semantic_review.get("seed") != seed_proposal(state, prepared):
                 issues.append({"code": "capability_admission_prepared_binding_invalid", "path": "admission-review"})
         scope = state.get("planning_scope") if isinstance(state.get("planning_scope"), dict) else None
         allowed = set(scope.get("requirement_ids", [])) if scope else None
+        if append_requirement_ids is not None:
+            allowed = append_requirement_ids
         semantics_path = _run_dir(root, str(state.get("run_id"))) / "analysis-input/semantic-requirements.v1.json"
         semantics = load_json(semantics_path, None)
         if (not isinstance(semantics, dict) or not isinstance(semantics.get("requirements"), list)
@@ -4148,6 +4160,7 @@ def _prepare_impl(
     files["entrypoint-skeleton.json"] = file_sha(bundle / "entrypoint-skeleton.json")
     index = {
         "schema_version": "newrouge.mvg-planning-input.v1",
+        "generation_strategy": "capability-local-selection.v1",
         "capabilities_sha256": file_sha(capabilities_path),
         "files": files,
         "task_scope": task_ids,
@@ -4190,6 +4203,7 @@ def _prepare_impl(
 
     state = {
         "schema_version": RUN_SCHEMA,
+        "generation_strategy": "capability-local-selection.v1",
         "run_id": run_id,
         "phase": "prepared",
         "created_at_utc": now(),
@@ -4443,13 +4457,24 @@ def generate(root: Path, *, run_id: str, timeout_sec: int, llm_backend: str, seg
     run_path, state = _load_run(root, run_id)
     _validate_input_freshness(root, run_path.parent, state)
     legacy_segmented_run = state.get("generation_strategy") == "independent-candidates-segmented"
+    from _mvg_capability_selection import STRATEGY, generate_selected_capabilities
+    strategy = state.get("generation_strategy")
+    # New prepared runs carry an explicit strategy marker. Synthetic/legacy
+    # recovery fixtures without that marker must stay on their historical
+    # path so their evidence is not silently reinterpreted.
+    incremental = strategy == STRATEGY
+    if strategy not in {None, STRATEGY, "independent-candidates-segmented",
+                        "independent-candidates-capability-append", "independent-candidates-single"}:
+        raise ValueError("MVG generation strategy is unsupported")
+    if incremental and not segmented:
+        raise ValueError("new MVG runs require Capability-local selection")
     if state.get("formal_ready") is not True:
         raise ValueError("formal MVG planning is blocked until the explicit Chapter 5 scope is ready")
     if llm_backend not in SUPPORTED_LLM_BACKENDS:
         raise ValueError("MVG planning requires one of: " + ", ".join(sorted(SUPPORTED_LLM_BACKENDS)))
     run_dir = run_path.parent
     existing_proposal = load_json(run_dir / "proposal.json", {})
-    if state.get("selection_status") == "selected" and isinstance(existing_proposal, dict):
+    if not incremental and state.get("selection_status") == "selected" and isinstance(existing_proposal, dict):
         validation = validate_proposal(root, state, existing_proposal)
         selected_admission = state.get("selected_admission_review") or {}
         selected_candidate = str(state.get("selected_candidate") or "")
@@ -4554,8 +4579,9 @@ Frozen manifest scope:
             "scope_id", "mode", "flow_ids", "requirement_ids", "capability_refs",
             "task_ids", "test_ids", "source_paths", "excluded_claims")}, ensure_ascii=False)
     prompt = PROMPT + "\n" + strict_contract
-    state["generation_strategy"] = ("independent-candidates-segmented" if legacy_segmented_run else
+    state["generation_strategy"] = STRATEGY if incremental else (("independent-candidates-segmented" if legacy_segmented_run else
                                     "independent-candidates-capability-append") if segmented else "independent-candidates-single"
+                                    )
     state.setdefault("candidate_attempts", {})
     state.setdefault("candidate_admissions", {})
     state.setdefault("admission_events", [])
@@ -4589,6 +4615,9 @@ Frozen manifest scope:
             # Segmented requests already contain their scoped evidence inline.
             # Copying the complete bundle defeats the section's input boundary.
             if relative_output.parts[0] != "segments":
+                if incremental and relative_output.name == "selection.json":
+                    for name in ("A.json", "B.json", "C.json", "accepted-seed.json"):
+                        shutil.copyfile(candidate_root / name, llm_workspace / name)
                 admission_proposal = candidate_root / "admission-review" / "proposal.json"
                 if not admission_proposal.is_file():
                     admission_proposal = candidate_root / "proposal.json"
@@ -4638,6 +4667,12 @@ Frozen manifest scope:
                 raise RuntimeError(f"MVG planning model failed: {stdout[-2000:]}")
             return output, execution
         return invoke
+
+    if incremental:
+        return generate_selected_capabilities(root, run_dir, state, backend=llm_backend,
+            invoke_factory=lambda budget_root, workspace, label: invoke_for(
+                budget_root, workspace, candidate_label=label, lineage=f"{label}-r1"),
+            selector_factory=lambda workspace: invoke_for(workspace, workspace))
 
     def generate_candidate(label: str) -> dict[str, Any]:
         prior_admission = state.get("candidate_admissions", {}).get(label) or {}
@@ -5962,6 +5997,9 @@ def review(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict[s
     run_dir = run_path.parent
     _validate_input_freshness(root, run_dir, state)
     proposal = load_json(run_dir / "proposal.json", {})
+    if state.get("generation_strategy") == "capability-local-selection.v1":
+        from _mvg_capability_selection import verify_published_chain
+        verify_published_chain(root, run_dir, state)
     if validate_proposal(root, state, proposal)["status"] != "passed":
         raise ValueError("MVG semantic review requires a structurally valid proposal")
     # Candidate admission already performed the independent semantic hard gate
@@ -6285,6 +6323,9 @@ def validate(root: Path, *, run_id: str) -> dict[str, Any]:
     _require_unblocked_selection(state)
     run_dir = run_path.parent
     _validate_input_freshness(root, run_dir, state)
+    if state.get("generation_strategy") == "capability-local-selection.v1":
+        from _mvg_capability_selection import verify_published_chain
+        verify_published_chain(root, run_dir, state)
     proposal = load_json(run_dir / "proposal.json", {})
     result = validate_proposal(root, state, proposal)
     from _mvg_planning_review import semantic_review_errors, review_execution_errors
@@ -6321,6 +6362,12 @@ def validate(root: Path, *, run_id: str) -> dict[str, Any]:
 
 
 def _validate_input_freshness(root: Path, run_dir: Path, state: dict[str, Any]) -> None:
+    prepared_strategy = load_json(run_dir / "analysis-input/analysis-index.json", {}).get("generation_strategy")
+    if prepared_strategy is not None and prepared_strategy != state.get("generation_strategy"):
+        atomic_json(run_dir / "input-freshness.json", {"status": "blocked", "run_id": state.get("run_id"),
+            "analysis_identity_sha256": state.get("analysis_identity_sha256"),
+            "drift": ["run:generation_strategy"]})
+        raise ValueError("MVG generation strategy changed after prepare")
     # Preserve validation for runs created before the input-envelope schema.
     # New runs carry input_envelope_sha256 and must use the stricter validator.
     index = load_json(run_dir / "analysis-input/analysis-index.json", {})
@@ -6385,6 +6432,9 @@ def apply(root: Path, *, run_id: str, confirm: bool) -> dict[str, Any]:
         atomic_json(run_path, state)
         atomic_json(run_dir / "apply-summary.json", result)
         return result
+    if state.get("generation_strategy") == "capability-local-selection.v1":
+        from _mvg_capability_selection import verify_published_chain
+        verify_published_chain(root, run_dir, state)
     proposal = load_json(run_dir / "proposal.json", {})
     validation = validate(root, run_id=run_id)
     if validation.get("status") != "passed":

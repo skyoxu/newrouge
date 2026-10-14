@@ -80,6 +80,8 @@ Given 旧 caller 与磁盘 run 不一致，when 恢复，then 以磁盘 admissio
 
 未执行付费模型或 Godot 运行时。两个既有 project-health fake runner fixture 尚与现行 schema 不匹配，不能宣称全仓测试通过。
 
+后续状态：Story 2.1 已定位并修复夹具的未准备测试路径，Knowledge planning 39 项通过；本段原声明保留为当时的验证边界，不代表当前仍有该夹具故障。当前证据见 `logs/ci/2026-10-14/story-2-1/`。
+
 三层复审发现的旧 winner 绕过、损坏回执阻止落盘和 replacement exhaustion 验证缺口均已修复，并补充定向测试。它们的证据分别保存在 `final-block-gate-tests.txt`、`replacement-exhaustion-test.txt` 和 `post-gate-regression.txt`。
 
 ## Suggested Review Order

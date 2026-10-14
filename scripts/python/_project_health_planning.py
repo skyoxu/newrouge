@@ -76,12 +76,38 @@ def _planning_input_fresh(root: Path, job: dict) -> bool:
     # by the older authority_inputs map. Validate that envelope before the
     # legacy hash loop; pre-envelope runs retain the historical behavior.
     run_state = load_json(index_path.parent.parent / 'run.json', {}) if index_path.parent.parent.is_dir() else {}
+    applied_outputs = {}
+    if (job.get('action') == 'mvg' and job.get('status') == 'completed'
+            and run_state.get('applied') is True):
+        manifest = run_state.get('manifest_path')
+        expected = (job.get('output_hashes') or {}).get(manifest)
+        journal = load_json(index_path.parent.parent / 'apply-journal.json', {})
+        entries = journal.get('entries', [])
+        bound = next((row for row in entries if row.get('path') == manifest), {})
+        if (journal.get('schema_version') != 'newrouge.planning-apply-journal.v1'
+                or journal.get('status') != 'complete' or not expected
+                or expected != run_state.get('applied_manifest_sha256')
+                or expected != bound.get('after_sha256')):
+            return False
+        manifest_path = repo_path(checkout, manifest)
+        if not manifest_path.is_file() or file_sha(manifest_path) != expected:
+            return False
+        applied_outputs[manifest] = expected
     if job.get('action') == 'mvg' and (
             'input_envelope_sha256' in run_state or 'input_envelope' in index):
         try:
             from _mvg_input_envelope import validate_envelope
-            validate_envelope(
-                checkout, index_path.parent, run_state or job)
+            try:
+                validate_envelope(checkout, index_path.parent, run_state or job)
+            except ValueError:
+                # A completed apply may introduce/replace its manifest. The
+                # full original-source and Chapter 5 gate has already run;
+                # accept only that exact journal/output-bound predecessor drift.
+                diagnostic = load_json(index_path.parent.parent / 'input-freshness.json', {})
+                if (not applied_outputs or diagnostic.get('status') != 'blocked'
+                        or diagnostic.get('drift') != sorted(applied_outputs)):
+                    raise
+                validate_envelope(checkout, index_path.parent, run_state or job, check_originals=False)
         except (OSError, ValueError, TypeError, KeyError, AttributeError, UnicodeError):
             return False
     authority = index.get('authority_inputs')
@@ -97,6 +123,10 @@ def _planning_input_fresh(root: Path, job: dict) -> bool:
             return False
     for relative, expected in authority.items():
         relative = str(relative).replace('\\', '/')
+        if relative in applied_outputs:
+            if file_sha(repo_path(checkout, relative)) != applied_outputs[relative]:
+                return False
+            continue
         if expected is None:
             # An initial MVG run may intentionally plan a manifest that is not
             # yet present in the local repository. Its absence is part of the
@@ -234,6 +264,16 @@ def create_job(root: Path, action: str, manifest: str | None = None, *, fresh: b
                 state = load_json(run_state, {}) if run_state.is_file() else {}
                 if action == 'mvg':
                     reusable = bool(_mvg_valid_candidates(run_state.parent, state))
+                    if state.get('generation_strategy') == 'capability-local-selection.v1':
+                        try:
+                            from _mvg_capability_selection import recovery_available
+                            checkout = execution_root(root, prior)
+                            # Current admissions and the selected prefix are
+                            # independent recovery assets; never lose a valid
+                            # prefix because this scope has no admitted slot.
+                            reusable = recovery_available(checkout, run_state.parent, state)
+                        except (OSError, ValueError, KeyError, TypeError, AttributeError):
+                            reusable = False
                 else:
                     candidates = state.get('candidate_attempts') or {}
                     reusable = any(
@@ -386,6 +426,12 @@ def _mvg_valid_candidates(run_dir: Path, state: dict) -> list[str]:
         try:
             from _mvg_input_envelope import validate_envelope
             validate_envelope(checkout_root, prepared, run_state)
+        except (OSError, ValueError, TypeError, KeyError, AttributeError, UnicodeError):
+            return []
+    if state.get('generation_strategy') == 'capability-local-selection.v1':
+        try:
+            from _mvg_capability_selection import valid_current_candidates
+            return valid_current_candidates(checkout_root, run_dir, state)
         except (OSError, ValueError, TypeError, KeyError, AttributeError, UnicodeError):
             return []
     valid: list[str] = []

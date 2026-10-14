@@ -80,6 +80,8 @@ context:
 
 既有失败记录：规划审计原有执行失败测试使用过期预算/phase 断言，本轮已适配明确不足候选阻断与当前 append worker 边界，单项通过。项目健康规划的两个既有 fake runner fixture 输出与现行测试 schema 不匹配，分别为 `test_capability_then_mvg_use_actual_planner_stages_without_mutating_main` 与 `test_mvg_consumes_capabilities_already_committed_in_main`；对象已有 `test_refs`，不能将失败归因为缺少该字段。这两个夹具问题尚未修复，未通过放宽封套或准入校验处理；不能宣称完整项目健康规划测试全绿。
 
+后续状态：Story 2.1 已修复上述夹具的未准备测试路径，完整 Knowledge planning 39 项通过。前段保留为本规格交付时的历史验证记录；当前证据见 `logs/ci/2026-10-14/story-2-1/`。
+
 静态验证：目标模块 `py_compile` 与 `git diff --check` 通过。未修改 GDD、Requirement、Taskmaster 三联、游戏代码、Godot 资源或运行时验收状态；未执行付费模型全流程。
 
 ## Suggested Review Order
