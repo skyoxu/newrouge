@@ -684,6 +684,15 @@ def build_plan_mvg_cmd(args) -> list[str]:
         cmd += ["--timeout-sec", str(args.timeout_sec), "--runner", args.runner]
     elif args.stage == "apply" and args.confirm:
         cmd.append("--confirm")
+    elif args.stage in {"audit", "reopen-plan", "reopen"}:
+        names = {"audit": ("conflict_report", "conflict_report_sha256"),
+            "reopen-plan": ("audit", "audit_sha256"), "reopen": ("plan", "plan_sha256")}[args.stage]
+        values = [getattr(args, name, "") for name in names]
+        if bool(values[0]) != bool(values[1]) or (args.stage != "audit" and not all(values)):
+            raise ValueError("plan-mvg " + args.stage + " requires the exact artifact and SHA-256 pair")
+        for name, value in zip(names, values):
+            if value:
+                cmd += ["--" + name.replace("_", "-"), value]
     elif args.stage == "rebind-handoff":
         if not args.task_id or len(args.task_id) != 1:
             raise ValueError("plan-mvg rebind-handoff requires exactly one --task-id")

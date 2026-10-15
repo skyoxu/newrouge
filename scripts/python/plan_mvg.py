@@ -4872,7 +4872,8 @@ Frozen manifest scope:
     if incremental:
         return generate_selected_capabilities(root, run_dir, state, backend=llm_backend,
             invoke_factory=lambda budget_root, workspace, label: invoke_for(
-                budget_root, workspace, candidate_label=label, lineage=f"{label}-r1"),
+                budget_root, workspace, candidate_label=label,
+                lineage=f"{label}-r{state['capability_selection'].get('generation', 1)}"),
             selector_factory=lambda workspace: invoke_for(workspace, workspace))
 
     def generate_candidate(label: str) -> dict[str, Any]:
@@ -6556,6 +6557,14 @@ def validate(root: Path, *, run_id: str) -> dict[str, Any]:
     review_errors.extend(review_execution_errors(state, proposal,
         load_json(run_dir / "semantic-review-execution.json", {}),
         load_json(run_dir / "semantic-review.json", {})))
+    if state.get("generation_strategy") == "capability-local-selection.v1":
+        from _mvg_global_audit import verified_audit
+        try:
+            global_receipt = verified_audit(root, run_dir, state)
+            if global_receipt.get("status") != "passed":
+                review_errors.append("global_audit_hard_conflicts_or_evidence_gaps")
+        except (OSError, ValueError, KeyError, TypeError) as exc:
+            review_errors.append("global_audit_invalid:" + str(exc))
     if review_errors:
         result["formal_applicable"] = False
         result["formal_blockers"].extend(review_errors)
@@ -6640,10 +6649,13 @@ def _require_unblocked_selection(state: dict[str, Any]) -> None:
 
 
 def _apply_checkpoint_projection(state: dict[str, Any]) -> dict[str, Any]:
-    return {key: deepcopy(state.get(key)) for key in (
+    projection = {key: deepcopy(state.get(key)) for key in (
         "run_id", "analysis_identity_sha256", "generation_strategy", "checkpoint_strategy",
         "checkpoint_schema_version", "capability_selection", "selected_admission_review",
         "selection_status", "selected_candidate")}
+    projection.update({key: deepcopy(state[key]) for key in (
+        "global_audit", "global_conflict_report", "reopen_history", "reopen_contexts") if key in state})
+    return projection
 
 
 def _freeze_apply_checkpoint_binding(root: Path, run_dir: Path, state: dict[str, Any]) -> dict[str, Any] | None:
@@ -6652,7 +6664,7 @@ def _freeze_apply_checkpoint_binding(root: Path, run_dir: Path, state: dict[str,
     from _mvg_capability_checkpoint import enabled
     if not enabled(state):
         return None
-    from _mvg_capability_selection import verify_published_chain
+    from _mvg_capability_selection import verify_published_chain, candidate_root
     verify_published_chain(root, run_dir, state)
     evidence = {}
 
@@ -6671,22 +6683,44 @@ def _freeze_apply_checkpoint_binding(root: Path, run_dir: Path, state: dict[str,
     bind(run_dir / "proposal.json", selected["proposal_sha256"], canonical=True)
     bind(repo_path(root, selected["path"]), selected["proof_sha256"])
     bind(repo_path(root, selected["execution_path"]), selected["execution_sha256"])
-    for step in state["capability_selection"]["selected"]:
-        pointer = step["checkpoint"]
-        bind(repo_path(run_dir, pointer["path"]), pointer["payload_sha256"], canonical=True)
-        for name in ("selection", "receipt"):
-            bind(repo_path(run_dir, step[name + "_path"]), step[name + "_sha256"])
-        comparison = repo_path(run_dir, step["selection_path"]).parent
-        bind(comparison / "accepted-seed.json", step["input_identity"]["base_sha256"], canonical=True)
-        for alias, label in step["aliases"].items():
-            admission = step["admissions"][label]
-            proposal = repo_path(run_dir, admission["proposal_path"])
-            bind(comparison / (alias + ".json"), canonical_sha(load_json(proposal)), canonical=True)
-        for label, admission in step["admissions"].items():
-            for name in ("proposal", "proof", "execution"):
-                bind(repo_path(run_dir, admission[name + "_path"]), admission[name + "_sha256"])
-            bind(repo_path(run_dir, admission["workspace"]) / "capability-append/append-ledger.json")
-            bind(run_dir / "candidates" / label / "lineage-execution.json")
+    from _mvg_global_audit import historical_states
+    for saved in [state] + historical_states(run_dir, state):
+        saved_review = saved.get("selected_admission_review")
+        if saved_review:
+            bind(repo_path(root, saved_review["path"]), saved_review["proof_sha256"])
+            bind(repo_path(root, saved_review["execution_path"]), saved_review["execution_sha256"])
+        for step in saved["capability_selection"]["selected"]:
+            pointer = step["checkpoint"]
+            bind(repo_path(run_dir, pointer["path"]), pointer["payload_sha256"], canonical=True)
+            for name in ("selection", "receipt"):
+                bind(repo_path(run_dir, step[name + "_path"]), step[name + "_sha256"])
+            comparison = repo_path(run_dir, step["selection_path"]).parent
+            bind(comparison / "accepted-seed.json", step["input_identity"]["base_sha256"], canonical=True)
+            for alias, label in step["aliases"].items():
+                admission = step["admissions"][label]
+                proposal = repo_path(run_dir, admission["proposal_path"])
+                bind(comparison / (alias + ".json"), canonical_sha(load_json(proposal)), canonical=True)
+            for label, admission in step["admissions"].items():
+                for name in ("proposal", "proof", "execution"):
+                    bind(repo_path(run_dir, admission[name + "_path"]), admission[name + "_sha256"])
+                bind(repo_path(run_dir, admission["workspace"]) / "capability-append/append-ledger.json")
+                bind(candidate_root(run_dir, label, admission.get("generation", 1)) / "lineage-execution.json")
+        for key in ("global_audit", "global_conflict_report"):
+            pointer = saved.get(key)
+            if pointer:
+                bind(repo_path(run_dir, pointer["path"]), pointer["sha256"])
+        for call in saved["capability_selection"].get("calls", []):
+            request = call.get("request_identity")
+            if request:
+                for path in repo_path(run_dir, request["workspace"]).rglob("*"):
+                    if path.is_file():
+                        bind(path)
+                outcome = run_dir / "dispatch-receipts" / f"dispatch-{call['number']}.json"
+                if outcome.is_file():
+                    bind(outcome)
+    for history in state.get("reopen_history", []):
+        bind(repo_path(run_dir, history["path"]), history["sha256"])
+        bind(repo_path(run_dir, history["plan"]["path"]), history["plan"]["sha256"])
     for prepared in run_dir.rglob("analysis-input"):
         if prepared.is_dir():
             for path in prepared.rglob("*"):
@@ -7061,6 +7095,19 @@ def main(argv: list[str] | None = None) -> int:
     p_apply.add_argument("--run-id", required=True)
     p_apply.add_argument("--confirm", action="store_true")
 
+    p_audit = sub.add_parser("audit")
+    p_audit.add_argument("--run-id", required=True)
+    p_audit.add_argument("--conflict-report", default="")
+    p_audit.add_argument("--conflict-report-sha256", default="")
+    p_reopen_plan = sub.add_parser("reopen-plan")
+    p_reopen_plan.add_argument("--run-id", required=True)
+    p_reopen_plan.add_argument("--audit", required=True)
+    p_reopen_plan.add_argument("--audit-sha256", required=True)
+    p_reopen = sub.add_parser("reopen")
+    p_reopen.add_argument("--run-id", required=True)
+    p_reopen.add_argument("--plan", required=True)
+    p_reopen.add_argument("--plan-sha256", required=True)
+
     p_handoff = sub.add_parser(
         "rebind-handoff",
         help="rebuild one applicable milestone handoff against the applied MVG manifest and current Chapter 5 readiness",
@@ -7096,6 +7143,18 @@ def main(argv: list[str] | None = None) -> int:
             result = review(root, run_id=args.run_id, runner=Path(args.runner).resolve(), timeout_sec=args.timeout_sec)
         elif args.command == "apply":
             result = apply(root, run_id=args.run_id, confirm=bool(args.confirm))
+        elif args.command in {"audit", "reopen-plan", "reopen"}:
+            from _mvg_global_audit import operate
+            if args.command == "audit":
+                if bool(args.conflict_report) != bool(args.conflict_report_sha256):
+                    raise ValueError("audit requires both --conflict-report and --conflict-report-sha256")
+                options = {"conflict_report": str(repo_path(root, args.conflict_report)) if args.conflict_report else None,
+                    "conflict_report_sha256": args.conflict_report_sha256 or None}
+            elif args.command == "reopen-plan":
+                options = {"audit_path": args.audit, "audit_sha256": args.audit_sha256}
+            else:
+                options = {"plan_path": args.plan, "plan_sha256": args.plan_sha256}
+            result = operate(root, run_id=args.run_id, operation=args.command, **options)
         elif args.command == "rebind-handoff":
             result = rebind_handoff(
                 root,

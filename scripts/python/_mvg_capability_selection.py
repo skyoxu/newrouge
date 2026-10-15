@@ -14,6 +14,22 @@ from _mvg_capability_append import RunBudgetExhausted
 STRATEGY = "capability-local-selection.v1"
 
 
+def generation(state):
+    value = state.get("capability_selection", {}).get("generation", 1)
+    if type(value) is not int or value < 1:
+        raise ValueError("capability_selection_generation_invalid")
+    return value
+
+
+def candidate_root(run_dir, label, attempt):
+    root = run_dir / "candidates" / label
+    return root if attempt == 1 else root / f"generation-{attempt}"
+
+
+def scope_workspace(run_dir, label, index, attempt):
+    return candidate_root(run_dir, label, attempt) / f"scope-{index + 1}"
+
+
 def frozen_scopes(state, prepared):
     statuses = {str(row["id"]): str(row.get("status", "")).lower()
                 for row in load_json(prepared / "task-master.json", {}).get("master", {}).get("tasks", [])}
@@ -38,9 +54,12 @@ def candidate_artifacts(root, run_dir, state, scopes, index, accepted, prefix, a
     if label not in {"candidate-1", "candidate-2", "candidate-3"}:
         raise ValueError("capability_selection_candidate_label_invalid")
     workspace = repo_path(run_dir, admission["workspace"])
-    if workspace != (run_dir / "candidates" / label / f"scope-{index + 1}").resolve():
+    attempt = admission.get("generation", 1)
+    if type(attempt) is not int or not 1 <= attempt <= generation(state):
+        raise ValueError("capability_selection_candidate_generation_invalid")
+    if workspace != scope_workspace(run_dir, label, index, attempt).resolve():
         raise ValueError("capability_selection_candidate_workspace_binding_invalid")
-    if admission.get("lineage") != f"{label}-r1":
+    if admission.get("lineage") != f"{label}-r{attempt}":
         raise ValueError("capability_selection_candidate_lineage_invalid")
     pm._validate_input_freshness(root, workspace, state)
     proposal_path = _artifact(run_dir, admission["proposal_path"], admission["proposal_sha256"])
@@ -49,6 +68,9 @@ def candidate_artifacts(root, run_dir, state, scopes, index, accepted, prefix, a
     if any(not path.is_relative_to(workspace) for path in (proposal_path, proof_path, execution_path)):
         raise ValueError("capability_selection_candidate_workspace_changed")
     proposal, proof, execution = (load_json(path, {}) for path in (proposal_path, proof_path, execution_path))
+    from _mvg_global_audit import reopen_context
+    if proof.get("records", [{}])[-1].get("proof", {}).get("reopen_context") != reopen_context(state, scopes[index], attempt):
+        raise ValueError("capability_selection_candidate_reopen_context_changed")
     if (proof.get("records", [])[:-1] != prefix or proof.get("scopes") != scopes[:index + 1]
             or proof.get("records", [{}])[-1].get("base_sha256") != canonical_sha(accepted)):
         raise ValueError("capability_selection_candidate_prefix_changed")
@@ -60,6 +82,7 @@ def candidate_artifacts(root, run_dir, state, scopes, index, accepted, prefix, a
     local_ledger = load_json(workspace / "capability-append/append-ledger.json", {})
     calls = state["capability_selection"].get("calls", [])
     expected_calls = sum(row.get("candidate") == label and row.get("capability_id") == scopes[index]["capability_id"]
+                         and row.get("generation", 1) == attempt
                          for row in calls)
     if (type(admission.get("total_invocations")) is not int
             or admission["total_invocations"] != execution.get("total_invocations")
@@ -120,13 +143,16 @@ def _selected_step(root, run_dir, state, scopes, index, base, prefix, step):
     return proposals[label], record
 
 
-def verified_prefix(root, run_dir, state):
+def verified_prefix(root, run_dir, state, *, verify_history=True, recover_counters=True):
     """Return frozen scope, selected proposal and records without model dispatch."""
     import plan_mvg as pm
     pm._validate_input_freshness(root, run_dir, state)
     scopes = frozen_scopes(state, run_dir / "analysis-input")
     seed = seed_proposal(state, run_dir / "analysis-input")
     ledger = state.get("capability_selection") or {}
+    from _mvg_global_audit import verify_reopen_history
+    if verify_history:
+        verify_reopen_history(root, run_dir, state)
     binding = canonical_sha({"strategy": STRATEGY, "scopes": scopes, "seed": seed})
     if ledger.get("binding") != binding or ledger.get("order") != [scope["capability_id"] for scope in scopes]:
         raise ValueError("capability_selection_frozen_scope_changed")
@@ -147,29 +173,37 @@ def verified_prefix(root, run_dir, state):
             if (row.get("reservation_id") != state["run_id"] + ":dispatch:" + str(row["number"])
                     or row.get("run_id") != state["run_id"] or not row.get("reserved_at_utc")
                     or not isinstance(row.get("request_identity"), dict)
-                    or row.get("lineage") != (f"{row['candidate']}-r1" if row.get("candidate") else None)):
+                    or type(row.get("generation", 1)) is not int
+                    or not 1 <= row.get("generation", 1) <= generation(state)
+                    or row.get("lineage") != (f"{row['candidate']}-r{row.get('generation', 1)}" if row.get("candidate") else None)):
                 raise ValueError("capability_selection_reservation_identity_changed")
     from _mvg_capability_generation import verify_dispatch_receipts
     verify_dispatch_receipts(run_dir, calls)
-    for label in pm.MVG_CANDIDATE_LABELS:
-        counter_path = run_dir / "candidates" / label / "lineage-execution.json"
+    for attempt in range(1, generation(state) + 1):
+      for label in pm.MVG_CANDIDATE_LABELS:
+        charged = [row for row in calls if row.get("candidate") == label and row.get("generation", 1) == attempt]
+        counter_path = candidate_root(run_dir, label, attempt) / "lineage-execution.json"
         if counter_path.is_file():
             counter = load_json(counter_path, {})
             count = counter.get("model_invocation_count")
-            if (type(count) is not int or count > costs[label]
-                    or counter.get("candidate") != label or counter.get("lineage") != f"{label}-r1"):
+            if (type(count) is not int or count > len(charged)
+                    or counter.get("candidate") != label or counter.get("lineage") != f"{label}-r{attempt}"):
                 raise ValueError("capability_selection_lineage_budget_changed")
             if "mvg.run_invocation_limit_source" in state and counter.get("reservation_ids") != [
-                    row["reservation_id"] for row in calls if row.get("candidate") == label][:count]:
+                    row["reservation_id"] for row in charged][:count]:
                 raise ValueError("capability_selection_lineage_reservations_changed")
-            if count < costs[label]:
-                atomic_json(counter_path, {"candidate": label, "lineage": f"{label}-r1",
-                    "model_invocation_count": costs[label], "recovered_reserved_invocations": costs[label] - count,
-                    "reservation_ids": [row.get("reservation_id") for row in calls if row.get("candidate") == label]})
-        elif costs[label]:
-            atomic_json(counter_path, {"candidate": label, "lineage": f"{label}-r1",
-                "model_invocation_count": costs[label], "recovered_reserved_invocations": costs[label],
-                "reservation_ids": [row.get("reservation_id") for row in calls if row.get("candidate") == label]})
+            if count < len(charged):
+                if not recover_counters:
+                    raise ValueError("capability_selection_historical_counter_incomplete")
+                atomic_json(counter_path, {"candidate": label, "lineage": f"{label}-r{attempt}",
+                    "model_invocation_count": len(charged), "recovered_reserved_invocations": len(charged) - count,
+                    "reservation_ids": [row.get("reservation_id") for row in charged]})
+        elif charged:
+            if not recover_counters:
+                raise ValueError("capability_selection_historical_counter_missing")
+            atomic_json(counter_path, {"candidate": label, "lineage": f"{label}-r{attempt}",
+                "model_invocation_count": len(charged), "recovered_reserved_invocations": len(charged),
+                "reservation_ids": [row.get("reservation_id") for row in charged]})
     selected = ledger.get("selected", [])
     if not isinstance(selected, list) or len(selected) > len(scopes):
         raise ValueError("capability_selection_prefix_length_invalid")
@@ -211,12 +245,13 @@ def verified_prefix(root, run_dir, state):
         raise ValueError("capability_selection_current_scope_changed")
     if current is not None:
         for label in pm.MVG_CANDIDATE_LABELS:
-            local_path = run_dir / "candidates" / label / f"scope-{len(selected) + 1}" / "capability-append/append-ledger.json"
+            local_path = scope_workspace(run_dir, label, len(selected), generation(state)) / "capability-append/append-ledger.json"
             local = load_json(local_path, None)
             if local is None:
                 continue
             charged = [row for row in calls if row.get("candidate") == label
-                       and row.get("capability_id") == current["capability_id"]]
+                       and row.get("capability_id") == current["capability_id"]
+                       and row.get("generation", 1) == generation(state)]
             count = local.get("total_invocations")
             if type(count) is not int or count > len(charged):
                 raise ValueError("capability_selection_worker_budget_changed")
@@ -224,6 +259,8 @@ def verified_prefix(root, run_dir, state):
                     row["reservation_id"] for row in charged[:count]]:
                 raise ValueError("capability_selection_worker_reservations_changed")
             if count < len(charged):
+                if not recover_counters:
+                    raise ValueError("capability_selection_historical_worker_incomplete")
                 if local.get("status") == "admitted" or local.get("records"):
                     raise ValueError("capability_selection_admitted_worker_budget_changed")
                 # The host reservation precedes the worker journal. Recover its
@@ -287,12 +324,13 @@ def recovery_available(root, run_dir, state):
         for row in current.get("admissions", {}).values()))
 
 
-def verify_published_chain(root, run_dir, state):
+def verify_published_chain(root, run_dir, state, *, verified=None, proposal=None):
     """Require the selected prefix and published proof to describe one chain."""
     import plan_mvg as pm
     from _mvg_planning_review import review_execution_errors
-    scopes, accepted, records = verified_prefix(root, run_dir, state)
-    if len(records) != len(scopes) or load_json(run_dir / "proposal.json", {}) != accepted:
+    scopes, accepted, records = verified if verified is not None else verified_prefix(root, run_dir, state)
+    published = load_json(run_dir / "proposal.json", {}) if proposal is None else proposal
+    if len(records) != len(scopes) or published != accepted:
         raise ValueError("capability_selection_published_proposal_changed")
     selected = state.get("selected_admission_review") or {}
     paths = []
@@ -370,7 +408,8 @@ def _generate_selected_capabilities(root, run_dir, state, *, backend, invoke_fac
             ledger["lineage_invocations"][label] += 1
         receipt = {"number": ledger["total_invocations"], "phase": phase, "candidate": label,
             "capability_id": ledger["current"]["capability_id"], "run_id": state["run_id"],
-            "lineage": f"{label}-r1" if label else None,
+            "lineage": f"{label}-r{generation(state)}" if label else None,
+            "generation": generation(state),
             "reservation_id": state["run_id"] + ":dispatch:" + str(ledger["total_invocations"]),
             "reserved_at_utc": pm.now(), "status": "reserved"}
         if request_identity is not None:
@@ -380,14 +419,18 @@ def _generate_selected_capabilities(root, run_dir, state, *, backend, invoke_fac
             publish(receipt)
         persist()
         if label is not None:
-            atomic_json(run_dir / "candidates" / label / "lineage-execution.json", {
-                "candidate": label, "lineage": f"{label}-r1",
-                "model_invocation_count": ledger["lineage_invocations"][label],
-                "reservation_ids": [row.get("reservation_id") for row in ledger["calls"] if row.get("candidate") == label]})
+            charged = [row for row in ledger["calls"] if row.get("candidate") == label
+                       and row.get("generation", 1) == generation(state)]
+            atomic_json(candidate_root(run_dir, label, generation(state)) / "lineage-execution.json", {
+                "candidate": label, "lineage": f"{label}-r{generation(state)}",
+                "model_invocation_count": len(charged),
+                "reservation_ids": [row.get("reservation_id") for row in charged]})
         return deepcopy(receipt)
 
     try:
         scopes, accepted, prefix = verified_prefix(root, run_dir, state)
+        rebuild_replacement_selections(state, scopes)
+        persist()
         if ledger.get("terminal") is True:
             if state.get("selection_block_reason") == "run_blocked_budget_exhausted":
                 raise RunBudgetExhausted("run_blocked_budget_exhausted")
@@ -414,14 +457,14 @@ def _generate_selected_capabilities(root, run_dir, state, *, backend, invoke_fac
             state.pop("selection_block_reason", None)
             persist()
             for label in pm.MVG_CANDIDATE_LABELS:
-                existing = run_dir / "candidates" / label / f"scope-{index + 1}"
+                existing = scope_workspace(run_dir, label, index, generation(state))
                 if (existing / "analysis-input").exists():
                     pm._validate_input_freshness(root, existing, state)
             results = []
             for label in pm.MVG_CANDIDATE_LABELS:
                 admission = current["admissions"].get(label)
                 if admission is None or admission.get("retryable") is True:
-                    budget_root = run_dir / "candidates" / label
+                    budget_root = candidate_root(run_dir, label, generation(state))
                     workspace = budget_root / f"scope-{index + 1}"
                     def checkpoint(progress, label=label):
                         state["candidate_attempts"][label] = {"status": progress["status"],
@@ -440,7 +483,8 @@ def _generate_selected_capabilities(root, run_dir, state, *, backend, invoke_fac
                             before_call=lambda phase, request_identity=None, label=label: reserve(
                                 phase, label, request_identity), checkpoint=checkpoint,
                             scope_index=index, accepted_seed=accepted, selected_records=prefix)
-                        admission = {"candidate": label, "status": result["status"], "lineage": f"{label}-r1",
+                        admission = {"candidate": label, "status": result["status"], "lineage": f"{label}-r{generation(state)}",
+                            "generation": generation(state),
                             "workspace": workspace.relative_to(run_dir).as_posix(), "errors": result.get("errors", []),
                             "append_terminal": result["status"] != "admitted", "retryable": False,
                             "total_invocations": result["total_invocations"]}
@@ -457,12 +501,14 @@ def _generate_selected_capabilities(root, run_dir, state, *, backend, invoke_fac
                     except RunBudgetExhausted:
                         raise
                     except (OSError, RuntimeError, ValueError, KeyError, TypeError) as exc:
-                        admission = {"candidate": label, "status": "execution-failed", "lineage": f"{label}-r1",
+                        admission = {"candidate": label, "status": "execution-failed", "lineage": f"{label}-r{generation(state)}",
+                            "generation": generation(state),
                             "workspace": workspace.relative_to(run_dir).as_posix(),
                             "retryable": isinstance(exc, (OSError, RuntimeError)),
                             "append_terminal": not isinstance(exc, (OSError, RuntimeError)),
                             "total_invocations": sum(row.get("candidate") == label and
-                                row.get("capability_id") == scope["capability_id"] for row in ledger.get("calls", [])),
+                                row.get("capability_id") == scope["capability_id"] and
+                                row.get("generation", 1) == generation(state) for row in ledger.get("calls", [])),
                             "errors": [{"code": "candidate_execution_failed", "error_type": pm.classify_review_error(exc),
                                         "detail": str(exc)[:2000]}]}
                         state["candidate_attempts"][label] = deepcopy(admission)
@@ -495,6 +541,8 @@ def _generate_selected_capabilities(root, run_dir, state, *, backend, invoke_fac
             persist()
             selection = None
             selection_root = run_dir / "capability-selection" / f"scope-{index + 1}"
+            if generation(state) > 1:
+                selection_root = run_dir / "capability-selection" / f"generation-{generation(state)}" / f"scope-{index + 1}"
             attempts = current["selection_attempts"]
             for recorded in attempts:
                 if recorded.get("status") == "running":
@@ -624,6 +672,7 @@ def _generate_selected_capabilities(root, run_dir, state, *, backend, invoke_fac
                 ledger.update(accepted_sha256=canonical_sha(proposal), current=None)
             accepted = proposal
             prefix.append(record)
+            rebuild_replacement_selections(state, scopes)
             persist()
         proof = admission_proof(state, seed, scopes, prefix, accepted)
         errors = pm.candidate_admission_errors(root, state, accepted, proof)
@@ -638,8 +687,11 @@ def _generate_selected_capabilities(root, run_dir, state, *, backend, invoke_fac
             "semantic_review_sha256": canonical_sha(proof), "records_sha256": canonical_sha(prefix),
             "total_invocations": sum(selected_costs.values()), "lineage_invocations": selected_costs}
         workspace = run_dir / "accepted-chain"
+        if generation(state) > 1:
+            workspace /= f"generation-{generation(state)}"
         atomic_json(workspace / "admission-review.json", proof)
         atomic_json(workspace / "admission-execution.json", execution)
+        atomic_json(workspace / "proposal.json", accepted)
         atomic_json(run_dir / "proposal.json", accepted)
         state.update(phase="generated", selection_status="selected", selected_candidate="winner-chain",
             selected_admission_review={"path": (workspace / "admission-review.json").relative_to(root).as_posix(),
@@ -648,6 +700,8 @@ def _generate_selected_capabilities(root, run_dir, state, *, backend, invoke_fac
                 "execution_sha256": file_sha(workspace / "admission-execution.json")})
         state.pop("selection_block_reason", None)
         persist()
+        from _mvg_global_audit import audit
+        audit(root, run_dir, state)
         return {"run_id": state["run_id"], "proposal_sha256": file_sha(run_dir / "proposal.json"),
                 "selected": "winner-chain", "candidate_count": 3, "capability_count": len(scopes)}
     except selected_checkpoint.CheckpointCommitOutcomeUnknown:
@@ -673,3 +727,12 @@ def _generate_selected_capabilities(root, run_dir, state, *, backend, invoke_fac
             state.update(phase="selection-blocked", selection_status="blocked", selection_block_reason=str(exc))
         persist()
         raise
+
+
+def rebuild_replacement_selections(state, scopes):
+    """Recover this derived projection from committed checkpoints, never from attempts."""
+    for reopened in state.get("reopen_history", []):
+        reopened["replacement_selections"] = [{"capability_id": scopes[position]["capability_id"],
+            "selected_candidate": step["selected_candidate"], "checkpoint": deepcopy(step["checkpoint"])}
+            for position, step in enumerate(state["capability_selection"]["selected"])
+            if step["admissions"][step["selected_candidate"]].get("generation", 1) == reopened["generation"]]

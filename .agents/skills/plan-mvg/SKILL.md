@@ -94,6 +94,8 @@ Use the MVG runner's newline-normalized content hash for committed manifests, mi
 
 ## Refresh rules
 
+After a complete Capability-local selection chain, deterministic global audit is automatic and may be rerun with `dev_cli.py plan-mvg --stage audit --run-id <id>`. Ordinary Requirement/Contract/journey overlap never authorizes reopening. Explicit reviewed source-conflict declarations use `--conflict-report <logs-file> --conflict-report-sha256 <hash>`; see `docs/workflows/mvg-integration-acceptance.md` for the exact declaration contract. Inspect the audit and request `--stage reopen-plan --audit <run-relative-path> --audit-sha256 <hash>`, then inspect and explicitly execute `--stage reopen --plan <run-relative-path> --plan-sha256 <hash>`. Changed head/sources/budget or any apply journal block reopening. Retain the old chain and all charges; new generations use isolated candidate/selection/proof paths. The existing three-candidate admission and comparison lifecycle resolves the source-bound conflicts explicitly before final audit can pass. Never change product authority to resolve a conflict without its owner.
+
 Task status or small reference edits do not automatically regenerate Capability or MVG planning. A new code revision invalidates runtime evidence when appropriate, not the planning manifest by itself. Capability rename/regrouping triggers MVG reference/behavior impact review, not automatic wholesale flow regeneration.
 
 Never prepare over an existing run ID: resume its incomplete stage, or choose a new ID for changed source inputs. Deltas are computed against the prepared manifest copy, never silently rebased onto a later manifest.

@@ -738,6 +738,10 @@ def generate_append(root, state, candidate_root, *, invoke_factory, before_call,
 
     def request(scope, base, prior, issue, context, call):
         payload = complete_scope_context(prepared, scope, base, prior)
+        from _mvg_global_audit import reopen_context
+        directive = reopen_context(state, scope)
+        if directive:
+            payload["reopen_context"] = directive
         schema = compact_schema(append_output_schema(state, scope, base, prepared,
             evidence_paths=[row["path"] for row in payload.get("evidence", []) if row.get("status") != "not_prepared"]))
         payload.update(accepted_proposal=base, repair_proposal=prior, hard_issue=issue,
@@ -802,10 +806,26 @@ def generate_append(root, state, candidate_root, *, invoke_factory, before_call,
     def semantic(scope, base, proposal, call, context):
         projection, required = review_projection(scope, base, proposal)
         schema = pm.semantic_review_output_schema(state=state, proposal=projection)
+        from _mvg_global_audit import reopen_context, reopen_review_errors
+        directive = reopen_context(state, scope)
+        if directive:
+            variants = [{"type": "object", "properties": {
+                "conflict_id": {"type": "string", "const": issue["id"]},
+                "plan_sha256": {"type": "string", "const": directive["plan"]["sha256"]},
+                "verdict": {"type": "string", "enum": ["resolved", "blocked"]},
+                "rationale": {"type": "string", "minLength": 1}},
+                "required": ["conflict_id", "plan_sha256", "verdict", "rationale"], "additionalProperties": False}
+                for issue in directive["conflicts"] if issue["id"] in directive["resolution_required_conflict_ids"]]
+            schema["properties"]["reopen_reviews"] = {"type": "array", "items": {"anyOf": variants} if variants else {
+                "type": "object", "properties": {}, "required": [], "additionalProperties": False},
+                "minItems": len(variants), "maxItems": len(variants)}
+            schema["required"].append("reopen_reviews")
         if not projection["coverage_table"]:
             schema["properties"]["requirement_reviews"]["maxItems"] = 0
         schema = compact_schema(schema)
         payload = complete_scope_context(prepared, scope, base, proposal)
+        if directive:
+            payload["reopen_context"] = directive
         payload.update(proposal=projection, accepted_proposal=base)
         instruction = (
             "Independently check this Capability increment and every affected cross-Capability handoff. "
@@ -815,7 +835,12 @@ def generate_append(root, state, candidate_root, *, invoke_factory, before_call,
             "are context; do not demand missing future Capability coverage. The output schema binds exact "
             "accounting and proposal identity. Review exactly each supplied coverage row and projected flow. "
             "Accept concrete planned implementation obligations without claiming runtime success. Block only "
-            "real hard issues and describe each precise repair in its row. Return complete review JSON, "
+            "real hard issues and describe each precise repair in its row. If reopen_context is present, "
+            "independently check each source-bound declared contradiction against this replacement and its "
+            "accepted predecessor, and return one explicit reopen_reviews resolution for each ID in "
+            "resolution_required_conflict_ids. Earlier scopes must not certify future Capability replacements. "
+            "Source authority is immutable; an unresolved authority contradiction must remain blocked. "
+            "Return complete review JSON, "
             "repair_action=none for accepted rows. Do not edit the proposal. No tools.\n")
         prompt, transport = input_prompt(payload, instruction, schema, "segments/capability-review.json",
                                         "review", context, call)
@@ -840,6 +865,8 @@ def generate_append(root, state, candidate_root, *, invoke_factory, before_call,
         if exec_errors:
             raise ValueError("capability_review_execution_invalid:" + ";".join(exec_errors))
         errors = semantic_review_errors(state, projection, proof, semantics, required)
+        if directive:
+            errors.extend(reopen_review_errors(directive, proof))
         specific = [code for code in errors if code.startswith("semantic_review_blocked:")]
         if specific:
             errors = [code for code in errors if code != "semantic_review_not_approved"]
@@ -864,6 +891,8 @@ def generate_append(root, state, candidate_root, *, invoke_factory, before_call,
                                            "path": "semantic-review", "detail": conflict["detail"],
                                            "repair_action": "repair_sections"})
         bound_proof = {"projection": projection, "required_requirement_ids": sorted(required), "review": proof}
+        if directive:
+            bound_proof["reopen_context"] = directive
         if transport is not None:
             bound_proof["evidence_transport"] = transport
         return {"issues": issues, "proof": bound_proof, "execution": bound_execution}
@@ -957,7 +986,7 @@ def append_proof_errors(state, proposal, proof, semantics, allowed=None, *, root
     if errors:
         return ['capability_admission_prefix:seed:' + error for error in errors]
     seen = {row["requirement_id"] for row in accepted.get("coverage_table", [])} & required
-    for scope, record in zip(scopes, records):
+    for index, (scope, record) in enumerate(zip(scopes, records)):
         from _mvg_capability_append import merge_append
         seen |= set(scope["requirement_ids"])
         if set(scope["cumulative_requirement_ids"]) != seen:
@@ -1005,6 +1034,16 @@ def append_proof_errors(state, proposal, proof, semantics, allowed=None, *, root
             errors.extend(transport_proof_errors(bound["evidence_transport"], scope=scope,
                                                 base=accepted, proposal=projection))
         review = bound.get("review") or {}
+        directive = bound.get("reopen_context")
+        from _mvg_global_audit import reopen_context, reopen_review_errors, record_generation
+        try:
+            expected = reopen_context(state, scope, record_generation(state, index))
+            if directive != expected:
+                errors.append("capability_admission_reopen_context_changed")
+            if expected is not None:
+                errors.extend(reopen_review_errors(directive, review))
+        except (AttributeError, TypeError, KeyError, ValueError):
+            errors.append("capability_admission_reopen_context_invalid")
         if any(key in record['execution'] and not isinstance(record['execution'][key], dict)
                for key in ('receipt', 'runner_info')):
             return errors + ['capability_admission_record_invalid:' + scope['capability_id'] + ':execution_shape']

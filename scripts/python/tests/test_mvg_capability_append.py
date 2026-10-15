@@ -768,7 +768,7 @@ class CapabilityAppendTests(unittest.TestCase):
     def exercise_public_generation(self, planned_verification=False, fault=None, failed_generations=1,
                                    drift_after_first_dispatch=False, drift_after_final_dispatch=False,
                                    public_candidate_drift=False, coordinator_case=None, multi_route=False, legacy_next=False,
-                                   accounting_evidence=False):
+                                   accounting_evidence=False, on_completed=None):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             import planning_acceptance_fixture as fixture
@@ -1005,6 +1005,10 @@ class CapabilityAppendTests(unittest.TestCase):
                         value.update(verdict="approved", findings=[], requirement_reviews=rows,
                             flow_reviews=[{"flow_id": fid, "verdict": "sound", "rationale": "Owned handoff"}
                                 for fid in props["flow_reviews"]["items"]["properties"]["flow_id"].get("enum", [])])
+                        if "reopen_reviews" in props:
+                            value["reopen_reviews"] = [{**{key: prop["const"] for key, prop in item["properties"].items()
+                                if "const" in prop}, "verdict": "resolved", "rationale": "Frozen sources support the replacement"}
+                                for item in props["reopen_reviews"]["items"].get("anyOf", [])]
                     output = workspace / Path(output_name).name
                     atomic_json(output, value)
                     if drift_after_first_dispatch and len(seen) == 1:
@@ -1671,6 +1675,8 @@ class CapabilityAppendTests(unittest.TestCase):
                 persisted = plan_mvg.load_json(run / "run.json", {})
                 self.assertEqual(list(plan_mvg.MVG_CANDIDATE_LABELS), _mvg_valid_candidates(run, persisted),
                                  "HTTP recovery must recognize append admission proofs")
+                if on_completed:
+                    on_completed(root, run)
 
 
 if __name__ == "__main__":

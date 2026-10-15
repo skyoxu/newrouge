@@ -840,7 +840,8 @@ def build_parser() -> argparse.ArgumentParser:
     p_mvg_plan.add_argument(
         "--stage",
         required=True,
-        choices=["prepare", "generate", "review", "validate", "apply", "rebind-handoff", "status"],
+        choices=["prepare", "generate", "review", "validate", "apply", "rebind-handoff", "status",
+                 "audit", "reopen-plan", "reopen"],
     )
     p_mvg_plan.add_argument("--repo-root", default=".")
     p_mvg_plan.add_argument("--run-id", required=True)
@@ -856,6 +857,12 @@ def build_parser() -> argparse.ArgumentParser:
     p_mvg_plan.add_argument("--confirm", action="store_true")
     p_mvg_plan.add_argument("--change-plan", default="")
     p_mvg_plan.add_argument("--handoff-out", default="")
+    p_mvg_plan.add_argument("--conflict-report", default="")
+    p_mvg_plan.add_argument("--conflict-report-sha256", default="")
+    p_mvg_plan.add_argument("--audit", default="")
+    p_mvg_plan.add_argument("--audit-sha256", default="")
+    p_mvg_plan.add_argument("--plan", default="")
+    p_mvg_plan.add_argument("--plan-sha256", default="")
     p_mvg_plan.set_defaults(func=cmd_plan_mvg)
 
 
