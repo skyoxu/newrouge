@@ -17,7 +17,7 @@ def frozen_scopes(state, prepared):
     statuses = {str(row["id"]): str(row.get("status", "")).lower()
                 for row in load_json(prepared / "task-master.json", {}).get("master", {}).get("tasks", [])}
     return capability_scopes(load_json(prepared / "capabilities.v1.json", {}),
-        load_json(prepared / "semantic-requirements.v1.json", {}), state.get("planning_scope"), statuses)
+        load_json(prepared / "semantic-requirements.v1.json", {}), state.get("planning_scope"), statuses, prepared=prepared)
 
 
 def _artifact(run_dir, relative, expected):

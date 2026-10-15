@@ -83,6 +83,9 @@ def prepared_mvg(root):
     index_path = root / 'logs/ci/mvg-planning/repair/analysis-input/analysis-index.json'
     index = load_json(index_path)
     index.pop('generation_strategy', None)
+    for key in ('checkpoint_strategy', 'checkpoint_schema_version'):
+        index.pop(key, None)
+        state.pop(key, None)
     canonical_index = {key: value for key, value in index.items()
                        if key not in {'analysis_identity_sha256', 'repository_identity'}}
     index['analysis_identity_sha256'] = canonical_sha(canonical_index)
@@ -120,6 +123,9 @@ def prepared_mvg(root):
             "symbol": f"Relay{tid}.Run", "inputs": ["route"], "state": "cargo transfer",
             "assertions": ["accepted or retry visible"], "implementation_acceptance": ["relay journey"]}
             for tid in (7, 42)]}
+    proposal['requirement_route_memberships'] = [
+        {'requirement_id': rid, 'flow_id': 'relay-delivery',
+         'observable_role': 'Launch or resolve relay'} for rid in reqs]
     run = root / "logs/ci/mvg-planning/repair"
     atomic_json(run / "proposal.json", proposal)
     # Reviewed fixture evidence tests deterministic consumers; no model execution is claimed.

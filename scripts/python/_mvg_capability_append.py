@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from _planning_skill_common import atomic_json, canonical_sha, load_json
+from _mvg_requirement_routes import FIELD, memberships, pair_errors
 
 PROOF_SCHEMA = "newrouge.mvg-capability-admission.v1"
 
@@ -21,6 +22,13 @@ def issue_key(issue: dict[str, Any]) -> str:
 def preservation_errors(base: dict[str, Any], revised: dict[str, Any]) -> list[dict[str, str]]:
     """Protect accepted coverage, tests and boundaries; allow shared-flow extension."""
     errors = []
+    current_routes = memberships(revised)
+    if not isinstance(current_routes, list):
+        current_routes = []
+    for row in memberships(base):
+        if row not in current_routes:
+            errors.append({"code": "append_accepted_requirement_route_changed",
+                           "path": f"{FIELD}:{row.get('requirement_id')}:{row.get('flow_id')}"})
     for family in ("coverage_table", "tests", "entrypoints"):
         rows = revised.get(family, [])
         for row in base.get(family, []):
@@ -58,6 +66,14 @@ def preservation_errors(base: dict[str, Any], revised: dict[str, Any]) -> list[d
 
 def merge_append(base: dict[str, Any], delta: dict[str, Any], scope: dict[str, Any] | None = None) -> dict[str, Any]:
     from plan_mvg import bind_planned_verification, merge_planning_segments
+    if FIELD in delta:
+        errors = pair_errors(delta[FIELD])
+        existing = {row.get("requirement_id") for row in base.get("coverage_table", []) if isinstance(row, dict)}
+        errors += ["append_coverage_requirement_already_accepted:" + str(row.get("requirement_id"))
+                   for row in delta.get("coverage_table", []) if isinstance(row, dict)
+                   and row.get("requirement_id") in existing]
+        if errors:
+            raise ValueError(";".join(errors))
     result = merge_planning_segments(base, [delta])
     result["gaps"] = deepcopy(delta.get("gaps", []))
     result["notes"] = list(dict.fromkeys(base.get("notes", []) + delta.get("notes", [])))

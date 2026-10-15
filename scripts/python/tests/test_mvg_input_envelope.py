@@ -104,6 +104,18 @@ class InputEnvelopeTests(unittest.TestCase):
         atomic_json(self.run / 'run.json', state)
         mvg._validate_input_freshness(self.root, self.run, state)
 
+    def test_requirement_route_protocol_state_is_bound_before_dispatch(self):
+        from copy import deepcopy
+        state = self.prepare()
+        for value in (None, 'unknown-protocol'):
+            changed = deepcopy(state)
+            changed['requirement_routes_protocol'] = value
+            atomic_json(self.run / 'run.json', changed)
+            with patch.object(mvg, 'run_isolated_model') as dispatch:
+                with self.assertRaisesRegex(ValueError, 'run:requirement_routes_protocol'):
+                    mvg.generate(self.root, run_id='envelope', timeout_sec=1, llm_backend='codex-cli')
+                dispatch.assert_not_called()
+
     def test_busy_incremental_generator_cannot_write_run_or_dispatch(self):
         from _mvg_capability_checkpoint import coordinator_lock
         self.prepare()

@@ -5,6 +5,17 @@ import json
 from pathlib import Path
 
 from _mvg_manifest import manifest_sha256
+from _mvg_requirement_routes import FIELD, memberships, trace_errors, authority_ids
+
+
+def attach_planning_routes(manifest: dict, proposal: dict, source: dict, *, requirement_ids, applied_manifest) -> bool:
+    """Attach descriptive routes only after the caller binds this exact manifest."""
+    if trace_errors(proposal, applied_manifest, requirement_ids):
+        return False
+    manifest[FIELD] = memberships(proposal)
+    manifest['coverage_table'] = proposal.get('coverage_table', [])
+    manifest['requirement_routes_source'] = source
+    return True
 
 
 def build_overview(snapshot, details: list[dict], topology: dict, graph: dict) -> dict:
@@ -103,9 +114,29 @@ def build_overview(snapshot, details: list[dict], topology: dict, graph: dict) -
                           'task_ids': sorted(ids), 'test_ids': flow.get('test_ids', []),
                           'handoffs': flow.get('handoffs', []),
                           'version_ids': [version['id'] for version in versions if ids.intersection(version['task_ids'])]})
-        manifests.append({'path': path, 'sha256': manifest_sha256(data),
+        item = {'path': path, 'sha256': manifest_sha256(data),
                           'mvg_id': manifest.get('mvg_id'), 'coverage': manifest.get('coverage', {}),
-                          'flows': flows, 'tests': manifest.get('tests', [])})
+                          'flows': flows, 'tests': manifest.get('tests', []),
+                          FIELD: [], 'requirement_routes_source': None}
+        traces = []
+        for trace_path in sorted(p for p in paths if p.startswith('docs/testing/mvg/planning/') and p.endswith('.json')):
+            try:
+                trace = json.loads(snapshot.read_text(trace_path))
+            except (OSError, ValueError):
+                continue
+            if not isinstance(trace, dict):
+                continue
+            if (trace.get('applied_manifest_path') == path
+                    and trace.get('applied_manifest_sha256') == item['sha256']
+                    and trace.get('applied_manifest_candidate', trace.get('manifest_candidate')) == manifest):
+                traces.append((str(trace.get('applied_at_utc') or ''), trace_path, trace))
+        for _, trace_path, trace in sorted(traces, key=lambda row: (row[0], row[1]), reverse=True):
+            if attach_planning_routes(item, trace, {'kind': 'formal_planning_trace',
+                    'path': trace_path, 'sha256': snapshot.digest(trace_path)},
+                    requirement_ids=authority_ids({'requirements': topology.get('nodes', {}).get('requirements', [])})
+                    if trustworthy else set(), applied_manifest=manifest):
+                break
+        manifests.append(item)
     return {'schema_version': 'newrouge.knowledge-mvg-overview.v1', 'revision': snapshot.commit,
             'topology_fresh': trustworthy, 'versions': versions, 'manifests': manifests,
             'limitations': 'GDD source-set registration and static scene reachability do not prove Chapter 3 consumption or playability. Historical GDD revisions require separately published provenance.'}

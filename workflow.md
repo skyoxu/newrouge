@@ -777,6 +777,8 @@ Default isolation runner: `scripts/python/openai_isolated_model_runner.py`; it r
 
 MVG Planning is a separate lifecycle. It consumes one explicit Capability file/version and never invokes Capability generation.
 
+Story 3.1 persists `requirement_route_memberships` independently by `(requirement_id, flow_id)`, with a nonempty `observable_role` for every route. New default append output requires this field and may add routes for cumulative Requirements; `coverage_table` still has exactly one authoritative row per Requirement. Machine gates reject duplicate/unknown pairs, missing roles and invalid flow membership before semantic admission. Accepted roles and coverage owners survive append, repair and checkpoint replay. Legacy artifacts are projected on read without changing their bytes or hashes; formal trace and local selected-proposal Knowledge views require the exact manifest path/hash binding. Route counts never increase Requirement completion or grant runtime verification. The verification/evidence model for Stories 3.2/3.3 remains outside this deployed boundary.
+
 Stable entrypoint:
 
 ```powershell

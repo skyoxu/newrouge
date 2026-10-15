@@ -739,7 +739,7 @@ class CapabilityAppendTests(unittest.TestCase):
 
     def exercise_public_generation(self, planned_verification=False, fault=None, failed_generations=1,
                                    drift_after_first_dispatch=False, drift_after_final_dispatch=False,
-                                   public_candidate_drift=False, coordinator_case=None):
+                                   public_candidate_drift=False, coordinator_case=None, multi_route=False, legacy_next=False):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             import planning_acceptance_fixture as fixture
@@ -783,6 +783,8 @@ class CapabilityAppendTests(unittest.TestCase):
                 caps = [dict(caps[0], requirement_ids=["FR-a", "FR-b"])]
                 flows[1]["capability_refs"] = ["CAP-a"]
                 views[1]["capability_refs"] = ["CAP-a"]
+            if multi_route:
+                caps[1]["requirement_ids"].append("FR-a")
             manifest_path = root / "docs/testing/mvg/fixture.json"
             capabilities_path = root / "docs/planning/semantic-topology/capabilities.v1.json"
             atomic_json(manifest_path, manifest)
@@ -886,6 +888,8 @@ class CapabilityAppendTests(unittest.TestCase):
                             marker = None
                         task_id = fixture.TASK_IDS[index]
                         value.update(flows=[], tests=[], change_reviews=[], gaps=[], notes=[],
+                            requirement_route_memberships=[{"requirement_id": reqs[index]["requirement_id"],
+                                "flow_id": flows[index]["id"], "observable_role": "Concrete journey"}],
                             coverage_table=[{"requirement_id": reqs[index]["requirement_id"], "flow_id": flows[index]["id"],
                                 "capability_ref": cid, "task_id": task_id, "disposition": "flow", "rationale": "Concrete journey",
                                 "sink_id": None, "verification_ref": None, "authority_ref": None, "authority_review": None}],
@@ -894,9 +898,28 @@ class CapabilityAppendTests(unittest.TestCase):
                                 "assertions": "Consumer state observed", "implementation_acceptance": "Test failure recovery"}])
                         if marker is not None:
                             value["notes"] = [marker]
+                        if multi_route and cid == "CAP-b":
+                            value["flows"] = [deepcopy(flows[index])]
+                            value["flows"][0]["requirement_ids"].append("FR-a")
+                            for handoff in value["flows"][0]["handoffs"]:
+                                handoff.update(contract_refs=None, **{"from": None, "to": None})
+                            value["requirement_route_memberships"].append({"requirement_id": "FR-a",
+                                "flow_id": "flow-b", "observable_role": "Recover accepted state in the later journey"})
+                            value["change_reviews"] = [{"id": "flow-b", "reason": "Shared source-backed route",
+                                "authority_ref": fixture.GDD_PATH.as_posix(),
+                                "authority_review": {"status": "reviewed", "rationale": "Same requirement in later journey"}}]
+                        if props["coverage_table"].get("maxItems") == 0:
+                            value["coverage_table"] = []
+                            value["flows"] = []
+                            value["change_reviews"] = []
+                        if legacy_next and cid == 'CAP-a' and 'next-run' in workspace.parts:
+                            value['requirement_route_memberships'].append({'requirement_id': 'FR-a',
+                                'flow_id': 'flow-b', 'observable_role': 'Recover accepted state in the later journey'})
                         if fault == "duplicate_coverage":
                             value["coverage_table"].append(dict(value["coverage_table"][0],
                                 requirement_id="FR-b", flow_id="flow-b", task_id=fixture.TASK_IDS[1]))
+                            value["requirement_route_memberships"].append({"requirement_id": "FR-b",
+                                "flow_id": "flow-b", "observable_role": "Concrete later journey"})
                             value["entrypoints"].append(dict(value["entrypoints"][0], flow_ids=["flow-b"], owner_task=fixture.TASK_IDS[1]))
                         generations.append(prompt)
                         if len(generations) <= failed_generations:
@@ -963,7 +986,8 @@ class CapabilityAppendTests(unittest.TestCase):
                 return
             result = generation.generate_append(root, state, candidate, invoke_factory=invoke_factory,
                                                  before_call=lambda phase: None, checkpoint=lambda ledger: None)
-            self.assertEqual("admitted", result["status"], result.get("errors", result.get("issue_events", [])[:1]))
+            self.assertEqual("admitted", result["status"], {"errors": result.get("errors"),
+                "issues": result.get("issue_events", [])[:2], "execution": result.get("execution_errors", [])[:2]})
             if not fault:
                 self.assertEqual(4, len(seen))
             if planned_verification:
@@ -1417,6 +1441,81 @@ class CapabilityAppendTests(unittest.TestCase):
                     self.assertEqual(applied, replayed)
                     self.assertEqual("applied", replayed["status"])
                     self.assertEqual(calls_before_review, len(seen))
+                    if multi_route:
+                        proposal = plan_mvg.load_json(run / "proposal.json")
+                        trace = plan_mvg.load_json(root / applied["trace_path"])
+                        routes = proposal["requirement_route_memberships"]
+                        self.assertEqual(3, len(routes))
+                        self.assertEqual(2, len(proposal["coverage_table"]))
+                        self.assertEqual(routes, trace["requirement_route_memberships"])
+                        self.assertEqual("flow-a", proposal["coverage_table"][0]["flow_id"])
+                        pointer = persisted["capability_selection"]["checkpoint_head"]
+                        payload = plan_mvg.load_json(run / pointer["path"])
+                        self.assertEqual(routes, payload["accepted"]["requirement_route_memberships"])
+                        from _project_health_planning import build_result
+                        def local_result():
+                            return build_result(root, {"manifest": applied["manifest_path"], "revision": "fixture",
+                                "job_id": "fixture"})
+                        with patch('_project_health_tasks.task_details', return_value=[]), \
+                             patch('_semantic_topology.build_topology_view', return_value={}), \
+                             patch('_project_health_mvg_versions.build_overview', side_effect=lambda *args: {"manifests": [{
+                                "path": applied["manifest_path"], "sha256": applied["manifest_sha256"]}]}):
+                            result = local_result()
+                            for mutation in ('proposal_role', 'run_applied', 'run_hash', 'trace_path', 'trace_hash'):
+                                with self.subTest(local_binding=mutation):
+                                    target = (run / 'proposal.json' if mutation == 'proposal_role' else
+                                        run / 'run.json' if mutation.startswith('run_') else
+                                        run / 'apply-summary.json' if mutation == 'trace_path' else root / applied['trace_path'])
+                                    original_payload = plan_mvg.load_json(target)
+                                    changed_payload = deepcopy(original_payload)
+                                    if mutation == 'proposal_role':
+                                        changed_payload['requirement_route_memberships'][0]['observable_role'] = 'Tampered role'
+                                    elif mutation == 'run_applied':
+                                        changed_payload['applied'] = False
+                                    elif mutation == 'run_hash':
+                                        changed_payload['applied_manifest_sha256'] = 'sha256:tampered'
+                                    elif mutation == 'trace_path':
+                                        changed_payload['trace_path'] = '../../outside.json'
+                                    else:
+                                        changed_payload['applied_manifest_sha256'] = 'sha256:tampered'
+                                    atomic_json(target, changed_payload)
+                                    try:
+                                        projected = local_result()['overview']['manifests'][0]
+                                        self.assertNotIn('requirement_routes_source', projected)
+                                        self.assertNotIn('requirement_route_memberships', projected)
+                                    finally:
+                                        atomic_json(target, original_payload)
+                        self.assertEqual(routes, result["overview"]["manifests"][0]["requirement_route_memberships"])
+                        from _mvg_capability_generation import seed_proposal
+                        if legacy_next:
+                            # Historical traces know only the original coverage owners.
+                            trace.pop('requirement_route_memberships')
+                            atomic_json(root / applied['trace_path'], trace)
+                        next_state = plan_mvg.prepare(root, run_id="next-run", capabilities_path=capabilities_path,
+                            manifest_path=manifest_path, task_ids=list(map(str, fixture.TASK_IDS)),
+                            allow_unready=False, evidence_refs=refs)
+                        next_prepared = root / plan_mvg.DEFAULT_RUN_ROOT / "next-run/analysis-input"
+                        next_seed = seed_proposal(next_state, next_prepared)
+                        if not legacy_next:
+                            self.assertEqual(routes, next_seed['requirement_route_memberships'])
+                        else:
+                            self.assertEqual([row for row in routes if
+                                (row['requirement_id'], row['flow_id']) != ('FR-a', 'flow-b')],
+                                next_seed['requirement_route_memberships'])
+                            self.assertEqual('legacy_owner_only', next_seed['requirement_routes_projection'])
+                        self.assertEqual(proposal["coverage_table"], next_seed["coverage_table"])
+                        try:
+                            next_result = plan_mvg.generate(root, run_id="next-run", timeout_sec=1, llm_backend="codex-cli")
+                        except ValueError as exc:
+                            errors = [{"path": str(path), "errors": plan_mvg.load_json(path).get('errors'),
+                                "issues": plan_mvg.load_json(path).get('issue_events', [])[:1]}
+                                for path in next_prepared.parent.rglob('append-ledger.json')]
+                            self.fail(str(exc) + str(errors)[:3000])
+                        self.assertEqual("winner-chain", next_result["selected"])
+                        next_proposal = plan_mvg.load_json(next_prepared.parent / "proposal.json")
+                        self.assertEqual(routes, next_proposal["requirement_route_memberships"])
+                        self.assertNotIn('requirement_routes_projection', next_proposal)
+                        self.assertEqual(proposal["coverage_table"], next_proposal["coverage_table"])
                     return
                 for label in plan_mvg.MVG_CANDIDATE_LABELS:
                     for index, capability_id in enumerate(("CAP-a", "CAP-b"), 1):

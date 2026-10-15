@@ -19,6 +19,8 @@ from pathlib import Path
 from typing import Any
 
 from _mvg_manifest import validate_manifest
+from _mvg_requirement_routes import (FIELD as ROUTE_FIELD, PROJECTION as ROUTE_PROJECTION,
+    memberships, pair_errors, project_routes, route_errors, protocol_errors)
 from _planning_skill_common import (
     atomic_json,
     canonical_sha,
@@ -433,7 +435,7 @@ def candidate_admission_errors(root: Path, state: dict[str, Any],
             expected_scopes = capability_scopes(load_json(prepared / "capabilities.v1.json", {}),
                 load_json(prepared / "semantic-requirements.v1.json", {}), state.get("planning_scope"),
                 {str(row["id"]): str(row.get("status", "")).lower() for row in
-                 load_json(prepared / "task-master.json", {}).get("master", {}).get("tasks", [])})
+                 load_json(prepared / "task-master.json", {}).get("master", {}).get("tasks", [])}, prepared=prepared)
             if append_requirement_ids is not None:
                 matching = [index for index, scope in enumerate(expected_scopes)
                             if set(scope["cumulative_requirement_ids"]) == append_requirement_ids]
@@ -2184,17 +2186,9 @@ def validate_segment_routing(value: dict[str, Any], *, section: str,
                 or not str(authority_review.get("rationale") or "").strip()):
             errors.append("segment_change_review_invalid")
 
-    if section == "flows":
-        requirement_owners: dict[str, set[str]] = {}
-        for flow in rows:
-            if not isinstance(flow, dict):
-                continue
-            flow_id = str(flow.get("id") or "")
-            for requirement_id in flow.get("requirement_ids", []):
-                requirement_owners.setdefault(str(requirement_id), set()).add(flow_id)
-        for requirement_id, owners in requirement_owners.items():
-            if len(owners) > 1:
-                errors.append(f"segment_flow_requirement_multiple_routes:{requirement_id}")
+    if ROUTE_FIELD in value:
+        errors.extend(route_errors({**value, "manifest_candidate": {
+            "flows": rows if section == "flows" else (flow_context or [])}}, allowed_requirements))
 
     for row in rows:
         if not isinstance(row, dict):
@@ -2768,7 +2762,7 @@ def build_flow_scopes(semantics: dict[str, Any], capabilities: dict[str, Any],
     return scopes
 
 
-def merge_planning_segments(base: dict[str, Any], segments: list[dict[str, Any]]) -> dict[str, Any]:
+def merge_planning_segments(base: dict[str, Any], segments: list[dict[str, Any]], *, repair=False) -> dict[str, Any]:
     """Merge bounded model sections without allowing replacement or deletion."""
     result = json.loads(json.dumps(base))
     manifest = result.setdefault("manifest_candidate", {})
@@ -2779,7 +2773,32 @@ def merge_planning_segments(base: dict[str, Any], segments: list[dict[str, Any]]
         result["tests"] = json.loads(json.dumps(manifest["tests"]))
     flows = manifest.setdefault("flows", [])
     flow_map = {str(row.get("id")): row for row in flows if isinstance(row, dict)}
+    input_pairs = set()
     for segment in segments:
+        if ROUTE_FIELD in segment:
+            errors = pair_errors(segment[ROUTE_FIELD])
+            if errors:
+                raise ValueError(";".join(errors))
+            if ROUTE_FIELD not in result:
+                result[ROUTE_FIELD] = memberships(result)
+            target_routes = result[ROUTE_FIELD]
+            route_map = {(row["requirement_id"], row["flow_id"]): row for row in target_routes}
+            for row in segment[ROUTE_FIELD]:
+                pair = (row["requirement_id"], row["flow_id"])
+                if pair in input_pairs:
+                    raise ValueError(f'requirement_route_pair_duplicate:{pair[0]}:{pair[1]}:segments')
+                input_pairs.add(pair)
+                if pair in route_map:
+                    if route_map[pair] != row and not repair:
+                        raise ValueError(f'requirement_route_pair_conflict:{pair[0]}:{pair[1]}')
+                    route_map[pair].update(deepcopy(row))
+                else:
+                    target_routes.append(deepcopy(row))
+                    route_map[pair] = target_routes[-1]
+        coverage_ids = [row.get("requirement_id") for row in segment.get("coverage_table", []) if isinstance(row, dict)]
+        duplicate_ids = sorted({rid for rid in coverage_ids if coverage_ids.count(rid) > 1}, key=str)
+        if duplicate_ids:
+            raise ValueError(";".join(f"coverage_requirement_duplicate:{rid}" for rid in duplicate_ids))
         if "change_reviews" in segment:
             # Replace reviews for this flow segment so repaired rows cannot
             # retain a stale justification from an earlier proposal attempt.
@@ -2836,6 +2855,11 @@ def merge_planning_segments(base: dict[str, Any], segments: list[dict[str, Any]]
             str(row.get("id")) for row in flows
             if isinstance(row, dict) and str(row.get("id") or "").strip()
         ]
+    if ROUTE_PROJECTION in result and any(ROUTE_FIELD in segment for segment in segments):
+        candidate = {key: value for key, value in result.items() if key != ROUTE_PROJECTION}
+        known = {rid for flow in flows for rid in flow.get('requirement_ids', [])}
+        if not route_errors(candidate, known):
+            result.pop(ROUTE_PROJECTION)
     return result
 
 
@@ -4069,11 +4093,25 @@ def _prepare_impl(
     bundle.mkdir(parents=True)
     from _mvg_input_envelope import freeze_envelope, _reference_path
     readiness = _task_readiness(root, task_ids, allow_unready)
+    prior_trace = None
+    if manifest_path is not None and manifest_path.is_file():
+        from _mvg_requirement_routes import matching_trace, authority_ids
+        prior_trace = matching_trace(root, manifest_path, authority_ids(load_json(root / SEMANTICS, {}), capabilities))
+        if prior_trace is not None:
+            previous = load_json(prior_trace, {})
+            historical_refs = []
+            for row in previous.get('coverage_table', []):
+                key = {'deferred': 'authority_ref', 'other_verification': 'verification_ref'}.get(row.get('disposition'))
+                if key and row.get(key):
+                    historical_refs.append(str(row[key]))
+            evidence_refs = [*(evidence_refs or []), prior_trace.relative_to(root).as_posix(), *historical_refs]
     envelope = freeze_envelope(root, run_id=run_id, capabilities_path=capabilities_path,
         readiness=readiness, manifest_path=manifest_path, evidence_refs=evidence_refs)
 
     files: dict[str, str] = {}
     authority: dict[str, str | None] = {}
+    if prior_trace is not None:
+        files["existing-planning-trace.json"] = _copy_file(root, prior_trace, bundle, "existing-planning-trace.json")
     files["capabilities.v1.json"] = _copy_file(root, capabilities_path, bundle, "capabilities.v1.json")
     files["source-manifest.v1.json"] = _copy_file(root, root / SOURCE_MANIFEST, bundle, "source-manifest.v1.json")
     files["source-blocks.v1.json"] = _copy_file(root, root / LEDGER, bundle, "source-blocks.v1.json")
@@ -4103,6 +4141,11 @@ def _prepare_impl(
     if manifest_path is not None and manifest_path.is_file():
         existing_manifest = load_json(manifest_path, {})
         planning_scope = _manifest_planning_scope(existing_manifest, _task_view_rows(root))
+        if prior_trace is not None:
+            previous = load_json(bundle / 'existing-planning-trace.json', {})
+            previous_ids = {row['requirement_id'] for row in previous.get('coverage_table', [])}
+            planning_scope['requirement_ids'] = sorted(set(planning_scope['requirement_ids']) | previous_ids)
+            envelope['historical_authority_requirement_ids'] = sorted(previous_ids)
         files["existing-manifest.json"] = _copy_file(root, manifest_path, bundle, "existing-manifest.json")
         for flow in existing_manifest.get("flows", []):
             referenced.update(str(p) for p in flow.get("source_paths", []))
@@ -4158,9 +4201,16 @@ def _prepare_impl(
     atomic_json(bundle / "entrypoint-skeleton.json", {"schema_version": "newrouge.mvg-entrypoint-skeleton.v1",
         "rows": build_entrypoint_skeleton(entrypoint_tasks)})
     files["entrypoint-skeleton.json"] = file_sha(bundle / "entrypoint-skeleton.json")
+    if prior_trace is not None:
+        from _mvg_capability_generation import capability_scopes
+        prior = load_json(bundle / "existing-planning-trace.json", {})
+        envelope["requirement_routes_protocol"] = "newrouge.requirement-routes.v1"
+        envelope["scopes"] = capability_scopes(capabilities, load_json(root / SEMANTICS, {}), planning_scope,
+            accepted_requirement_ids=[row["requirement_id"] for row in prior.get("coverage_table", [])])
     index = {
         "schema_version": "newrouge.mvg-planning-input.v1",
         "generation_strategy": "capability-local-selection.v1",
+        "requirement_routes_protocol": "newrouge.requirement-routes.v1",
         "checkpoint_strategy": "capability-selected-checkpoint.v1",
         "checkpoint_schema_version": "newrouge.mvg-capability-checkpoint.v1",
         "capabilities_sha256": file_sha(capabilities_path),
@@ -4207,6 +4257,7 @@ def _prepare_impl(
         "schema_version": RUN_SCHEMA,
         "generation_strategy": "capability-local-selection.v1",
         "checkpoint_strategy": index["checkpoint_strategy"],
+        "requirement_routes_protocol": index["requirement_routes_protocol"],
         "checkpoint_schema_version": index["checkpoint_schema_version"],
         "run_id": run_id,
         "phase": "prepared",
@@ -5799,6 +5850,7 @@ def validate_proposal(root: Path, state: dict[str, Any], proposal: dict[str, Any
                            if error != "At least one flow and test are required"]
     errors.extend(manifest_errors)
     prepared = _run_dir(root, str(state.get("run_id"))) / "analysis-input"
+    errors.extend(protocol_errors(load_json(prepared / 'analysis-index.json', {}), proposal))
     # Validate against the byte-bound prepared snapshot. The selected local
     # Capability is the planning SSoT; live auxiliary files cannot drift into
     # a candidate after prepare.
@@ -6274,6 +6326,11 @@ def _review_map(value: Any) -> dict[str, dict[str, Any]]:
 def build_delta(existing: dict[str, Any], proposal: dict[str, Any]) -> dict[str, Any]:
     from update_mvg_baseline import _canonical_sha
 
+    if ROUTE_FIELD in proposal:
+        errors = route_errors(proposal, [row.get("requirement_id") for row in proposal.get("coverage_table", [])])
+        if errors:
+            raise ValueError(";".join(errors))
+
     desired = proposal["manifest_candidate"]
     change_reviews = _review_map(proposal.get("change_reviews"))
     retirement_reviews = _review_map(proposal.get("retirement_reviews"))
@@ -6575,7 +6632,8 @@ def apply(root: Path, *, run_id: str, confirm: bool) -> dict[str, Any]:
             raise ValueError("initial MVG manifest invalid: " + "; ".join(errors))
         updated = candidate
 
-    trace = deepcopy(proposal)
+    trace = project_routes(proposal)
+    trace["applied_manifest_candidate"] = deepcopy(updated)
     trace["applied_manifest_path"] = manifest_path.resolve().relative_to(root.resolve()).as_posix()
     trace["applied_manifest_sha256"] = text_sha(json.dumps(updated, ensure_ascii=False, indent=2) + "\n")
     trace["capabilities_sha256"] = state["capabilities_sha256"]

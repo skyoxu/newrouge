@@ -9,6 +9,7 @@ from typing import Any
 
 from _planning_skill_common import atomic_json, canonical_sha, file_sha, load_json, parse_model_json, validate_output_schema
 from _mvg_capability_append import PROOF_SCHEMA, run_capability_append, preservation_errors
+from _mvg_requirement_routes import FIELD, PROJECTION, membership_schema, memberships, prepared_trace, project_routes
 from _mvg_evidence_transport import (audit_errors, audit_execution_errors, audit_prompt, audit_schema,
     compact_schema, plan_errors, plan_transport, transport_proof_errors, wire_json)
 
@@ -16,12 +17,14 @@ APPEND_SCHEMA = "newrouge.mvg-capability-append.v1"
 INPUT_LIMIT = 850_000
 
 
-def capability_scopes(capabilities, semantics, planning_scope, task_statuses=None):
+def capability_scopes(capabilities, semantics, planning_scope, task_statuses=None, *, prepared=None,
+                      accepted_requirement_ids=()):
     required = {str(row["requirement_id"]) for row in semantics.get("requirements", [])
                 if row.get("status", "active") == "active" and row.get("delivery_relevant", True)}
     if planning_scope is not None:
         required &= set(planning_scope["requirement_ids"])
-    seen = set()
+    trace = prepared_trace(prepared) if prepared else {}
+    seen = ({row["requirement_id"] for row in trace.get("coverage_table", [])} | set(accepted_requirement_ids)) & required
     scopes = []
     ids = set()
     for cap in capabilities.get("capabilities", []):
@@ -49,6 +52,11 @@ def review_projection(scope, base, proposal):
     flows = proposal["manifest_candidate"].get("flows", [])
     ids = {row["id"] for row in flows if row != prior.get(row["id"])
            or set(row.get("requirement_ids", [])) & set(scope["requirement_ids"])}
+    if FIELD in proposal:
+        old_routes = {(row['requirement_id'], row['flow_id']): row for row in memberships(base)}
+        new_routes = {(row['requirement_id'], row['flow_id']): row for row in memberships(proposal)}
+        ids.update(pair[1] for pair in set(old_routes) | set(new_routes)
+                   if old_routes.get(pair) != new_routes.get(pair))
     entries = proposal.get("entrypoints", [])
     for row in entries:
         if row not in base.get("entrypoints", []):
@@ -58,6 +66,9 @@ def review_projection(scope, base, proposal):
     while True:
         linked = {fid for row in entries if set(row.get("flow_ids", [])) & ids
                   for fid in row.get("flow_ids", [])}
+        if FIELD in proposal:
+            related = {rid for row in flows if row['id'] in ids for rid in row.get('requirement_ids', [])}
+            linked |= {row['id'] for row in flows if related.intersection(row.get('requirement_ids', []))}
         if linked <= ids:
             break
         ids |= linked
@@ -70,6 +81,9 @@ def review_projection(scope, base, proposal):
     result = deepcopy(proposal)
     result["manifest_candidate"]["flows"] = affected
     result["coverage_table"] = [row for row in result["coverage_table"] if row["requirement_id"] in requirements]
+    if FIELD in result:
+        result[FIELD] = [row for row in result[FIELD]
+                         if row["requirement_id"] in requirements and row["flow_id"] in ids]
     test_ids = {tid for row in affected for tid in row.get("test_ids", [])}
     result["tests"] = [row for row in result.get("tests", []) if row["id"] in test_ids]
     result["manifest_candidate"]["tests"] = deepcopy(result["tests"])
@@ -83,11 +97,24 @@ def seed_proposal(state, prepared):
     baseline = load_json(prepared / "existing-manifest.json", None)
     statuses = {str(row["id"]): row.get("status", "") for row in load_json(prepared / "task-master.json", {}).get("master", {}).get("tasks", [])}
     manifest = deepcopy(baseline) if baseline else pm.build_manifest_skeleton(state["run_id"], [], statuses)
-    return {"schema_version": pm.PROPOSAL_SCHEMA, "analysis_identity_sha256": state["analysis_identity_sha256"],
+    result = {"schema_version": pm.PROPOSAL_SCHEMA, "analysis_identity_sha256": state["analysis_identity_sha256"],
             "planning_status": "ready_for_validation", "manifest_candidate": manifest,
             "coverage_table": [], "entrypoints": [], "tests": deepcopy(manifest.get("tests", [])),
             "gaps": [], "manual_obligations": [], "change_reviews": [], "retirement_reviews": [],
             "coverage_review": {}, "notes": []}
+    trace = prepared_trace(prepared)
+    if trace:
+        trace = project_routes(trace)
+        selected = set((state.get("planning_scope") or {}).get("requirement_ids", []))
+        previous = {row['requirement_id'] for row in trace.get('coverage_table', [])}
+        if selected and previous - selected:
+            raise ValueError('existing_planning_trace_authority_outside_scope:' + ','.join(sorted(previous - selected)))
+        result["coverage_table"] = deepcopy(trace.get("coverage_table", []))
+        result[FIELD] = memberships(trace)
+        if PROJECTION in trace:
+            result[PROJECTION] = trace[PROJECTION]
+        result["entrypoints"] = deepcopy(trace.get("entrypoints", []))
+    return result
 
 
 def _runner_schema_without_patterns(value):
@@ -124,6 +151,7 @@ def append_output_schema(state, scope, base, prepared, *, evidence_paths=None):
                   "analysis_identity_sha256": {"type": "string", "const": state["analysis_identity_sha256"]},
                   "capability_id": {"type": "string", "const": scope["capability_id"]},
                   "base_sha256": {"type": "string", "const": canonical_sha(base)}}
+    properties[FIELD] = membership_schema(scope["cumulative_requirement_ids"], flows)
     for section, field in (("flows", "flows"), ("coverage", "coverage_table"),
                            ("entrypoints", "entrypoints"), ("tests", "tests")):
         schema = pm.segment_output_schema(section=section, identity=state["analysis_identity_sha256"],
@@ -384,6 +412,16 @@ def repair_scope_errors(old, new, issue, scope=None):
     for row in old.get("coverage_table", []):
         if row["requirement_id"] not in target_requirements and row not in new.get("coverage_table", []):
             errors.append("repair_unrelated_coverage_changed:" + row["requirement_id"])
+    old_routes, new_routes = memberships(old), memberships(new)
+    if not isinstance(new_routes, list):
+        new_routes = []
+    route_targets = {fid for fid in set(flows) | set(new_flows) if named(fid)} or target_flows
+    for row in old_routes:
+        if not (row["requirement_id"] in target_requirements and row["flow_id"] in route_targets) and row not in new_routes:
+            errors.append(f"repair_unrelated_requirement_route_changed:{row['requirement_id']}:{row['flow_id']}")
+    for row in new_routes:
+        if row not in old_routes and not (row["requirement_id"] in target_requirements and row["flow_id"] in route_targets):
+            errors.append(f"repair_unrelated_requirement_route_added:{row['requirement_id']}:{row['flow_id']}")
     for fid, row in flows.items():
         if fid not in target_flows and row != new_flows.get(fid):
             errors.append("repair_unrelated_flow_changed:" + fid)
@@ -427,7 +465,7 @@ def generate_append(root, state, candidate_root, *, invoke_factory, before_call,
     semantics = load_json(prepared / "semantic-requirements.v1.json", {})
     task_statuses = {str(row["id"]): str(row.get("status", "")).lower()
                     for row in load_json(prepared / "task-master.json", {}).get("master", {}).get("tasks", [])}
-    all_scopes = capability_scopes(capabilities, semantics, state.get("planning_scope"), task_statuses)
+    all_scopes = capability_scopes(capabilities, semantics, state.get("planning_scope"), task_statuses, prepared=prepared)
     scopes = all_scopes
     baseline = load_json(prepared / "existing-manifest.json", None)
     original_seed = seed_proposal(state, prepared)
@@ -548,7 +586,10 @@ def generate_append(root, state, candidate_root, *, invoke_factory, before_call,
             "handoffs and outcomes. Do not enumerate tasks as APIs. Provide real runtime boundaries, "
             "testable success/failure/recovery assertions and producer/consumer roles. Planned tests and "
             "entrypoints are obligations, never runtime proof. Account exactly once for each new Requirement "
-            "in this scope. Other Requirements are context, not additional coverage. Existing-manifest "
+            "in this scope. Other Requirements are context, not additional coverage. Return requirement_route_memberships "
+            "for every new (requirement_id, flow_id) pair in the cumulative Requirement scope, each with its own "
+            "nonempty observable_role. A Requirement may participate in several flows; preserve accepted pair roles "
+            "and its unique coverage owner. Do not repeat accepted coverage rows. Existing-manifest "
             "flows/tests remain cumulative; an explicit change_reviews authority is required for semantic "
             "membership additions to frozen flows. Do not modify another Capability's accepted mapping. "
             "Report true missing upstream semantics in gaps, never invent evidence. Repairs change only "
@@ -717,15 +758,16 @@ def append_proof_errors(state, proposal, proof, semantics, allowed=None):
         return ["capability_admission_identity_invalid"]
     scopes = proof.get("scopes", [])
     records = proof.get("records", [])
+    seed_requirements = {row["requirement_id"] for row in (proof.get("seed") or {}).get("coverage_table", [])}
     if (not scopes or len(scopes) != len(records)
             or len({scope["capability_id"] for scope in scopes}) != len(scopes)
-            or {rid for scope in scopes for rid in scope["requirement_ids"]} != required):
+            or ({rid for scope in scopes for rid in scope["requirement_ids"]} | seed_requirements) != required):
         return ["capability_admission_scope_incomplete"]
     accepted = proof.get("seed")
     if not isinstance(accepted, dict):
         return ["capability_admission_seed_missing"]
     errors = []
-    seen = set()
+    seen = {row["requirement_id"] for row in accepted.get("coverage_table", [])} & required
     for scope, record in zip(scopes, records):
         from _mvg_capability_append import merge_append
         seen |= set(scope["requirement_ids"])

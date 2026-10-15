@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Any
 
 from _planning_skill_common import canonical_sha, file_sha, load_json, normalized_file_sha, repo_path
+from _mvg_requirement_routes import route_errors
 
 
 def prepared_evidence_errors(root: Path, proposal: dict[str, Any], prepared: Path) -> list[str]:
@@ -79,12 +80,11 @@ def coverage_errors(root: Path, proposal: dict[str, Any], semantics: dict[str, A
     flow_rows = [f for f in proposal["manifest_candidate"].get("flows", []) if isinstance(f, dict)]
     flows = {str(f["id"]): f for f in flow_rows}
     rows = proposal.get("coverage_table")
-    errors = []
+    errors = route_errors(proposal, requirements)
     if not isinstance(rows, list) or not rows:
-        return ["coverage_table_missing_or_empty"]
+        return errors + ["coverage_table_missing_or_empty"]
     accounted = set()
     coverage_row_counts: dict[str, int] = {}
-    requirement_flow_owners: dict[str, set[str]] = {}
     for flow in flow_rows:
         flow_id = str(flow.get("id") or "")
         seen_in_flow: set[str] = set()
@@ -93,12 +93,6 @@ def coverage_errors(root: Path, proposal: dict[str, Any], semantics: dict[str, A
             if rid in seen_in_flow:
                 errors.append(f"flow_requirement_duplicate:{flow_id}:{rid}")
             seen_in_flow.add(rid)
-            requirement_flow_owners.setdefault(rid, set()).add(flow_id)
-    errors.extend(
-        f"flow_requirement_multiple_routes:{rid}"
-        for rid, owners in sorted(requirement_flow_owners.items())
-        if len(owners) > 1
-    )
     for row in rows:
         if not isinstance(row, dict):
             errors.append("invalid_coverage_row")

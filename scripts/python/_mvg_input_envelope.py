@@ -201,13 +201,15 @@ def validate_envelope(root, prepared, state, *, check_originals=True):
         index = load_json(prepared / "analysis-index.json", None)
         if not isinstance(index, dict):
             raise ValueError("analysis-index is not an object")
+        from _mvg_requirement_routes import protocol_errors
+        drift.extend(protocol_errors(index))
         identity = index.get("analysis_identity_sha256")
         canonical_index = dict(index)
         canonical_index.pop("analysis_identity_sha256", None)
         canonical_index.pop("repository_identity", None)
         if canonical_sha(canonical_index) != identity or identity != state.get("analysis_identity_sha256"):
             drift.append("analysis-input/analysis-index.json:analysis_identity")
-        for key in ("checkpoint_strategy", "checkpoint_schema_version"):
+        for key in ("checkpoint_strategy", "checkpoint_schema_version", "requirement_routes_protocol"):
             if index.get(key) != state.get(key):
                 drift.append("run:" + key)
         envelope = index.get("input_envelope")

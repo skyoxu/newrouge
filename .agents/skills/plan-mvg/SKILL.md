@@ -28,6 +28,8 @@ Design cumulative player-journey integration coverage after Capability planning.
 
 ### Capability append generation (current default)
 
+Story 3.1 requires `requirement_route_memberships` in new default append output. Each `(requirement_id, flow_id)` has its own nonempty `observable_role`; use the cumulative Requirement scope for new pairs while adding authoritative `coverage_table` rows only for newly accounted Requirements. Preserve accepted route roles and the unique coverage owner through repair, merge and checkpoint replay. Deterministic route validation runs before semantic admission, and original delta duplicates cannot be merged away. Legacy artifacts receive a lossless read projection from the original owner and rationale (or the original legacy coverage explanation); never rewrite hash-bound inputs or infer extra routes. Formal trace and local selected-proposal Knowledge projections require exact manifest path/hash provenance. Membership counts do not change completion accounting; independent verification/evidence accounting remains for Stories 3.2/3.3.
+
 新 `generate` 使用 `capability-local-selection.v1`，按冻结 Capability 顺序逐项执行。当前项的三个独立候选从相同的已接受累计 seed 生成增量，包含 flows、新 Requirement 记账、entrypoints、tests 与有来源依据的累计变更说明。每项恰好三个增量准入后才比较排名；选定增量成为下一项唯一 seed。累计基线只读，不作为第四候选或 fallback。跨 Capability 的 flow 可以扩展，不能弱化已接受 outcome、映射、handoff 或测试。共享 Requirement 只记账一次，同时保留参与上下文。
 
 Before accepting an increment, run deterministic reference/membership/coverage/cumulative-delta checks and a fresh independent semantic hard check of that Capability and every affected cross-Capability flow/handoff. Preserve complete selected Requirement, source-block and Acceptance text. Accepted predecessors are visible to the next Capability.

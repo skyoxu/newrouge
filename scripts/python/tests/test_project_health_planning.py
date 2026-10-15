@@ -473,6 +473,8 @@ class ProjectHealthPlanningTests(unittest.TestCase):
                         'handoffs': [{'producer_task': 7, 'consumer_task': 42, 'owner_task': 42,
                             'contract_ref': 'Game.Core/Contracts/RelayHandoff.cs', 'contract_refs': None,
                             'behavior': 'Deliver or preserve retry state.', 'test_ids': [tid], 'from': None, 'to': None}]}],
+                        requirement_route_memberships=[{'requirement_id': rid, 'flow_id': fid,
+                            'observable_role': 'Owned observable relay behavior.'} for rid in scope['new_requirement_ids']],
                         coverage_table=[{'requirement_id': rid, 'capability_ref': scope['capability_id'],
                             'task_id': next(row['taskmaster_id'] for row in context['task_views'] if rid in row.get('semantic_refs', [])),
                             'flow_id': fid, 'disposition': 'flow', 'rationale': 'Owned observable relay behavior.',

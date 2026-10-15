@@ -473,7 +473,7 @@ class MvgSegmentScopeTests(unittest.TestCase):
         self.assertIn("segment_change_review_invalid", plan_mvg.validate_segment_routing(
             value, section="flows", request=request))
 
-    def test_flow_segment_rejects_duplicate_requirement_routes(self):
+    def test_flow_segment_accepts_distinct_requirement_routes(self):
         flow = lambda flow_id: {
             "id": flow_id, "outcome": flow_id, "requirement_ids": ["FR-1"],
             "capability_refs": ["CAP-1"], "task_ids": [1],
@@ -488,7 +488,7 @@ class MvgSegmentScopeTests(unittest.TestCase):
             "scope_id": "scope-a", "requirement_ids": ["FR-1"], "task_ids": [1],
             "capabilities": [{"capability_id": "CAP-1"}],
         })
-        self.assertIn("segment_flow_requirement_multiple_routes:FR-1", errors)
+        self.assertEqual([], errors)
 
     def test_flow_metadata_presence_and_value_change_matrix(self):
         absent = object()

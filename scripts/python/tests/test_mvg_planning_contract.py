@@ -1265,7 +1265,7 @@ class MvgPlanningContractTests(unittest.TestCase):
                 {"capabilities": [{"capability_id": "CAP-A", "requirement_ids": ["RQ-1"]}]}, [])
         self.assertEqual([], errors)
 
-    def test_coverage_rejects_duplicate_requirement_ownership_and_rows(self):
+    def test_coverage_allows_multiple_routes_but_rejects_duplicate_authority_rows(self):
         from _mvg_planning_review import coverage_errors
         first = {"id": "flow-a", "requirement_ids": ["RQ-1"],
                  "capability_refs": ["CAP-A"], "task_ids": [7], "handoffs": []}
@@ -1282,7 +1282,7 @@ class MvgPlanningContractTests(unittest.TestCase):
                 {"capabilities": [{"capability_id": "CAP-A", "requirement_ids": ["RQ-1"]}]},
                 [],
             )
-        self.assertIn("flow_requirement_multiple_routes:RQ-1", errors)
+        self.assertNotIn("flow_requirement_multiple_routes:RQ-1", errors)
         self.assertIn("coverage_requirement_duplicate:RQ-1", errors)
 
     def test_candidate_repair_routes_to_affected_requirement_and_flow_sections(self):

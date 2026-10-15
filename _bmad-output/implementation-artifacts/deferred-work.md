@@ -59,3 +59,7 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-1-select-complete-admitted-candidates.md`
   summary: 已关闭前述两个 Knowledge fixture 适配项。
   evidence: 假 runner 固定路径不属于 prepared schema 允许清单，改用已准备测试路径；两个完整生产消费者链通过，未放宽准入。另补 apply 输出/readiness/prepared 输入/journal 篡改负例通过。
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-1-requirement-route-memberships.md`
+  summary: 对齐七项既有 segment anchor/schema 夹具，保留 prepared 路径和 scope 校验。
+  evidence: 未修改 HEAD 的 plan_mvg.py 直接内存加载复现相同七项错误；见 logs/ci/2026-10-15/story-3-1/head-segment-baseline.log，已登记 docs/technical-debt.md。
