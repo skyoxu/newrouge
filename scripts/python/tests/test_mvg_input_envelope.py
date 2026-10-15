@@ -537,6 +537,96 @@ class InputEnvelopeTests(unittest.TestCase):
         text = "Done. Refs: `Tests.Godot/a.gd`, Game.Core.Tests/b.cs."
         self.assertEqual(["Tests.Godot/a.gd", "Game.Core.Tests/b.cs"], _acceptance_refs(text))
 
+    def test_draft_prepare_copies_all_files_around_acceptance_anchor_annotations(self):
+        views_path = self.root / mvg.TASK_VIEWS[1]
+        views = load_json(views_path)
+        acceptance = (f"Done. Refs: {TEST_PATH.as_posix()} (anchor: ACC:T7.1) "
+                      f"{GDD_PATH.as_posix()} (anchor: ACC:T7.2)")
+        views[0]["acceptance"] = [acceptance]
+        atomic_json(views_path, views)
+        # Changing acceptance intentionally invalidates Chapter 5 readiness.
+        # A draft isolates reference transport without granting formal approval.
+        state = self.prepare(allow_unready=True)
+        self.assertFalse(state["formal_ready"])
+        prepared = self.run / "analysis-input"
+        index = load_json(prepared / "analysis-index.json")
+        rows = {row["path"]: row for row in index["input_envelope"]["inventory"]}
+        for ref in (TEST_PATH.as_posix(), GDD_PATH.as_posix()):
+            with self.subTest(ref=ref):
+                self.assertIn("acceptance_context", rows[ref]["roles"])
+                self.assertTrue(rows[ref]["required"])
+                self.assertEqual((self.root / ref).read_bytes(),
+                                 (prepared / rows[ref]["prepared_path"]).read_bytes())
+        self.assertEqual(acceptance, load_json(prepared / "task-views/tasks_gameplay.json")[0]["acceptance"][0])
+        self.assertFalse(any("anchor:" in ref or ref.startswith("ACC:") for ref in rows))
+        mvg._validate_input_freshness(self.root, self.run, state)
+
+    def test_missing_file_after_acceptance_anchor_still_blocks_preparation(self):
+        views_path = self.root / mvg.TASK_VIEWS[1]
+        views = load_json(views_path)
+        views[0]["acceptance"] = [
+            f"Done. Refs: {TEST_PATH.as_posix()} (anchor: ACC:T7.1) LICENSE"]
+        atomic_json(views_path, views)
+        with self.assertRaisesRegex(ValueError, "MVG required input missing:LICENSE"):
+            self.prepare(allow_unready=True)
+        self.assertFalse((self.run / "run.json").exists())
+        self.assertEqual("blocked", load_json(self.run / "input-freshness.json")["status"])
+
+    def test_template_evidence_reference_is_planned_not_required(self):
+        views_path = self.root / mvg.TASK_VIEWS[1]
+        views = load_json(views_path)
+        template = "logs/ci/<date>/single-task-light-lane/summary.json"
+        views[0]["test_refs"] = [template]
+        atomic_json(views_path, views)
+        state = self.prepare()
+        rows = {row["path"]: row for row in load_json(
+            self.run / "analysis-input/analysis-index.json")["input_envelope"]["inventory"]}
+        self.assertIn(template, rows)
+        self.assertEqual("planned", rows[template]["classification"])
+        self.assertFalse(rows[template]["required"])
+        self.assertIsNone(rows[template]["sha256"])
+        mvg._validate_input_freshness(self.root, self.run, state)
+
+    def test_missing_concrete_log_reference_still_blocks_done_task(self):
+        views_path = self.root / mvg.TASK_VIEWS[1]
+        views = load_json(views_path)
+        reference = "logs/ci/2026-10-15/missing/summary.json"
+        views[0]["test_refs"] = [reference]
+        atomic_json(views_path, views)
+        with self.assertRaisesRegex(ValueError, "MVG required input missing:" + reference):
+            self.prepare()
+
+    def test_template_source_reference_is_not_downgraded_to_log_example(self):
+        views_path = self.root / mvg.TASK_VIEWS[1]
+        views = load_json(views_path)
+        reference = "logs/ci/<date>/authority.json"
+        views[0]["source_refs"] = [reference]
+        atomic_json(views_path, views)
+        with self.assertRaisesRegex(ValueError, "MVG required input missing:" + reference):
+            self.prepare()
+
+
+class AcceptanceReferenceTests(unittest.TestCase):
+    def test_anchor_annotations_do_not_replace_or_hide_file_references(self):
+        cases = [
+            ("Tests.Godot/a.gd (anchor: ACC:T44.8)", ["Tests.Godot/a.gd"]),
+            ("Tests.Godot/a.gd (anchor: ACC:T59.4) Tests.Godot/b.gd (anchor: ACC:T59.4)",
+             ["Tests.Godot/a.gd", "Tests.Godot/b.gd"]),
+            ("`Tests.Godot/a.gd` (anchor: ACC:T7.1), Game.Core.Tests/b.cs; LICENSE",
+             ["Tests.Godot/a.gd", "Game.Core.Tests/b.cs", "LICENSE"]),
+            ("Tests.Godot/a.gd#ACC:T7.1 (anchor: ACC:T7.1) docs/design.md:18:2",
+             ["Tests.Godot/a.gd#ACC:T7.1", "docs/design.md:18:2"]),
+            ("Tests.Godot/a.gd ( Anchor: ACC:T7.1 ) Game.Core.Tests/b.cs.",
+             ["Tests.Godot/a.gd", "Game.Core.Tests/b.cs"]),
+        ]
+        for tail, expected in cases:
+            with self.subTest(tail=tail):
+                self.assertEqual(expected, _acceptance_refs("Done. Refs: " + tail))
+
+    def test_unrecognized_parenthesized_references_are_not_silently_discarded(self):
+        self.assertEqual(["Tests.Godot/a.gd", "(anchor:", "docs/missing.md"],
+                         _acceptance_refs("Done. Refs: Tests.Godot/a.gd (anchor: docs/missing.md)"))
+
 
 if __name__ == "__main__":
     unittest.main()

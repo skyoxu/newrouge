@@ -21,9 +21,18 @@ def _looks_like_path(value):
         ".cs", ".gd", ".md", ".json", ".txt", ".yaml", ".yml", ".tscn", ".tres"}
 
 
+def _is_log_template(value):
+    """Recognize dated log examples, not executable test or authority paths."""
+    return str(value).startswith(("logs/ci/<date>/", "logs/ci/<YYYY-MM-DD>/"))
+
+
 def _acceptance_refs(value):
-    """Extract path-like Refs tokens from comma, semicolon, or space lists."""
+    """Extract Refs files, excluding explicit acceptance-anchor annotations."""
     tail = str(value).split("Refs:", 1)[1]
+    # Anchors describe the preceding file; they are not repository paths.
+    # Remove only the established annotation form so unknown/missing file
+    # references, including extensionless files after an anchor, stay required.
+    tail = re.sub(r"\(\s*anchor:\s*ACC:T\d+\.\d+\s*\)", " ", tail, flags=re.IGNORECASE)
     refs = []
     for token in re.split(r"[\s,;]+", tail.strip()):
         token = token.strip().strip("`").rstrip(".,;)")
@@ -107,6 +116,7 @@ def freeze_envelope(root, *, run_id, capabilities_path, readiness, manifest_path
             for value in pm._list_field(row, field):
                 file_ref = _looks_like_path(_reference_path(value))
                 is_test = field == "test_refs"
+                log_template = is_test and _is_log_template(_reference_path(value))
                 role = "task_contract" if field == "contractRefs" else "task_context"
                 # source/overlay/test fields are explicit repository-file
                 # references even when the filename has no extension (for
@@ -115,10 +125,10 @@ def freeze_envelope(root, *, run_id, capabilities_path, readiness, manifest_path
                 # context.  ContractRefs may still contain symbolic contract
                 # identifiers and retain the legacy distinction.
                 explicit_file = field in ("source_refs", "overlay_refs")
-                bind(value, role, required=explicit_file or (is_test and owner_done) or
-                     (file_ref and not is_test),
+                bind(value, role, required=not log_template and (explicit_file or (is_test and owner_done) or
+                     (file_ref and not is_test)),
                      force_file=field in ("source_refs", "overlay_refs", "test_refs"),
-                     planned=(not owner_done and is_test))
+                     planned=log_template or (not owner_done and is_test))
         for acceptance in pm._list_field(row, "acceptance"):
             if "Refs:" in str(acceptance):
                 for value in _acceptance_refs(acceptance):
