@@ -15,6 +15,19 @@ from dev_cli_builders import build_plan_capabilities_cmd, build_plan_mvg_cmd
 
 
 class PlanningDevCliTests(unittest.TestCase):
+    def test_mvg_prepare_budget_preserves_default_or_explicit_source(self):
+        for limit in (None, 7):
+            values = ["plan-mvg", "--stage", "prepare", "--run-id", "budget"]
+            if limit is not None:
+                values += ["--run-invocation-limit", str(limit)]
+            args = dev_cli.build_parser().parse_args(values)
+            cmd = build_plan_mvg_cmd(args)
+            self.assertEqual(limit, args.run_invocation_limit)
+            if limit is None:
+                self.assertNotIn("--run-invocation-limit", cmd)
+            else:
+                self.assertEqual("7", cmd[cmd.index("--run-invocation-limit") + 1])
+
     def test_capability_prepare_entrypoint(self) -> None:
         args = dev_cli.build_parser().parse_args([
             "plan-capabilities", "--stage", "prepare", "--run-id", "r1",

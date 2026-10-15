@@ -849,6 +849,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_mvg_plan.add_argument("--evidence-ref", action="append", default=[])
     p_mvg_plan.add_argument("--task-id", action="append", default=[])
     p_mvg_plan.add_argument("--allow-unready-draft", action="store_true")
+    p_mvg_plan.add_argument("--run-invocation-limit", type=int, default=None)
     p_mvg_plan.add_argument("--timeout-sec", type=int, default=1800)
     p_mvg_plan.add_argument("--llm-backend", default="codex-cli")
     p_mvg_plan.add_argument("--runner", default="scripts/python/openai_isolated_model_runner.py")

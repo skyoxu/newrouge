@@ -666,6 +666,8 @@ def build_plan_mvg_cmd(args) -> list[str]:
     if args.run_id:
         cmd += ["--run-id", args.run_id]
     if args.stage == "prepare":
+        if getattr(args, "run_invocation_limit", None) is not None:
+            cmd += ["--run-invocation-limit", str(args.run_invocation_limit)]
         if args.capabilities:
             cmd += ["--capabilities", args.capabilities]
         if args.manifest:

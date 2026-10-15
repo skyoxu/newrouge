@@ -262,6 +262,10 @@ def create_job(root: Path, action: str, manifest: str | None = None, *, fresh: b
                 # one reusable candidate.  A run whose candidates all failed
                 # must start fresh so a changed runner gets new retry slots.
                 state = load_json(run_state, {}) if run_state.is_file() else {}
+                if action == 'mvg' and state.get('selection_block_reason') == 'run_blocked_budget_exhausted':
+                    # Explicit recovery retains the ended run and its receipts.
+                    # A fresh page action intentionally bypasses this pointer.
+                    return prior
                 if action == 'mvg':
                     reusable = bool(_mvg_valid_candidates(run_state.parent, state))
                     if state.get('generation_strategy') == 'capability-local-selection.v1':

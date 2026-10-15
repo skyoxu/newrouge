@@ -17,6 +17,10 @@ class AppendBudgetExhausted(RuntimeError):
     """The complete candidate lineage exhausted its model-call budget."""
 
 
+class RunBudgetExhausted(ValueError):
+    """A frozen run budget ended; this is never a candidate finding."""
+
+
 def issue_key(issue: dict[str, Any]) -> str:
     return str(issue.get("code", "invalid")) + "@" + str(issue.get("path", ""))
 
@@ -151,15 +155,19 @@ def run_capability_append(workspace: Path, *, scopes: list[dict[str, Any]], seed
         if checkpoint:
             checkpoint(deepcopy(ledger))
 
-    def call(phase):
+    def call(phase, request_identity=None):
         if ledger["total_invocations"] >= invocation_limit:
             raise AppendBudgetExhausted("capability_append_invocation_budget_exhausted")
+        reservation = None
         if before_call:
-            before_call(phase)
+            reservation = (before_call(phase, request_identity=request_identity)
+                           if request_identity is not None else before_call(phase))
         ledger["total_invocations"] += 1
         ledger.setdefault("calls", []).append({"number": ledger["total_invocations"], "phase": phase,
                                                "capability_id": ledger["current"]["capability_id"],
                                                "context": ledger["current"]["context"]})
+        if isinstance(reservation, dict):
+            ledger["calls"][-1]["reservation_id"] = reservation["reservation_id"]
         persist()
         return ledger["total_invocations"]
 
@@ -249,7 +257,7 @@ def run_capability_append(workspace: Path, *, scopes: list[dict[str, Any]], seed
                             "context": current["context"], "invocations": ledger["total_invocations"], "errors": rejection})
                         proposal, delta = deepcopy(current["proposal"]), deepcopy(current["delta"])
                         issues = deepcopy(current.get("issues") or [issue])
-                except AppendBudgetExhausted:
+                except (AppendBudgetExhausted, RunBudgetExhausted):
                     raise
                 except (OSError, RuntimeError, ValueError) as exc:
                     from plan_mvg import classify_review_error

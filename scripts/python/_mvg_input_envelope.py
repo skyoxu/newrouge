@@ -222,6 +222,15 @@ def validate_envelope(root, prepared, state, *, check_originals=True):
         if not isinstance(envelope, dict) or envelope.get("schema_version") != ENVELOPE_SCHEMA:
             drift.append("analysis-input/analysis-index.json:input_envelope_missing")
             envelope = {}
+        for key in ("mvg.run_invocation_limit", "mvg.run_invocation_limit_source"):
+            if key in index or key in envelope:
+                if (canonical_sha(index.get(key)) != canonical_sha(state.get(key))
+                        or canonical_sha(envelope.get(key)) != canonical_sha(index.get(key))):
+                    drift.append("run:" + key)
+        if "mvg.run_invocation_limit" in index:
+            limit = index["mvg.run_invocation_limit"]
+            if type(limit) is not int or limit <= 0:
+                drift.append("input_envelope:mvg_run_invocation_limit_invalid")
         if envelope.get("run_id") != state.get("run_id"):
             drift.append("input_envelope:run_id")
         index_task_scope = [str(value) for value in (index.get("task_scope") or [])]

@@ -57,6 +57,111 @@ class InputEnvelopeTests(unittest.TestCase):
         self.assertIn(DEFAULT_EXTRACTION_SNAPSHOT.as_posix(), required)
         mvg._validate_input_freshness(self.root, self.run, state)
 
+    def test_run_budget_default_and_explicit_are_frozen_with_source(self):
+        state = self.prepare()
+        index = load_json(self.run / "analysis-input/analysis-index.json")
+        for bound in (state, index, index["input_envelope"]):
+            self.assertEqual(192, bound["mvg.run_invocation_limit"])
+            self.assertEqual("default", bound["mvg.run_invocation_limit_source"])
+        state["mvg.run_invocation_limit"] = 193
+        with self.assertRaisesRegex(ValueError, "run:mvg.run_invocation_limit"):
+            mvg._validate_input_freshness(self.root, self.run, state)
+        explicit = self.prepare(run_id="explicit", run_invocation_limit=9)
+        self.assertEqual(9, explicit["mvg.run_invocation_limit"])
+        self.assertEqual("explicit", explicit["mvg.run_invocation_limit_source"])
+
+    def test_invalid_run_budgets_are_rejected_before_preparation(self):
+        for limit in (0, -1, True, False, 1.5, "8"):
+            with self.subTest(limit=limit):
+                with self.assertRaisesRegex(ValueError, "mvg_run_invocation_limit_invalid"):
+                    self.prepare(run_invocation_limit=limit)
+                self.assertFalse((self.run / "run.json").exists())
+
+    def test_budget_binding_rejects_source_deletion_and_one_sided_drift(self):
+        from copy import deepcopy
+        state = self.prepare()
+        path = self.run / "analysis-input/analysis-index.json"
+        index = load_json(path)
+        for owner in ("state", "index", "envelope"):
+            for key in ("mvg.run_invocation_limit", "mvg.run_invocation_limit_source"):
+                for deletion in (True, False):
+                    changed, altered = deepcopy(state), deepcopy(index)
+                    target = changed if owner == "state" else altered if owner == "index" else altered["input_envelope"]
+                    if deletion:
+                        target.pop(key)
+                    else:
+                        target[key] = 193 if key.endswith("limit") else "modified-source"
+                    atomic_json(path, altered)
+                    with self.subTest(owner=owner, key=key, deletion=deletion):
+                        with self.assertRaisesRegex(ValueError, "MVG input drift"):
+                            mvg._validate_input_freshness(self.root, self.run, changed)
+        atomic_json(path, index)
+
+    def test_final_preflight_rejects_invalid_schema_and_unexpected_batches(self):
+        from _mvg_capability_generation import preflight_dispatch
+        workspace = self.root / "logs/preflight-invalid"
+        workspace.mkdir(parents=True)
+        prompt = workspace / "prompt.txt"
+        prompt.write_text("Return JSON", encoding="utf-8")
+        schema = workspace / "output-schema.json"
+        atomic_json(schema, {"type": "not-a-json-schema-type"})
+        args = dict(workspace=workspace, prompt_path=prompt, output_path=workspace / "output.json",
+                    output_schema=schema, timeout_sec=1)
+        with self.assertRaisesRegex(ValueError, "runner_output_schema_preparation_invalid"):
+            preflight_dispatch(Path("codex_isolated_model_runner.py"), **args)
+        atomic_json(schema, {"type": "object"})
+        atomic_json(workspace / "analysis-input/model-batches/batch-index.json", {})
+        for runner in ("codex", "openai", "copilot"):
+            with self.subTest(runner=runner), self.assertRaisesRegex(ValueError, "mvg_runner_batched_input_unsupported"):
+                preflight_dispatch(Path(runner + "_isolated_model_runner.py"), **args)
+
+    def test_final_codex_preflight_uses_complete_sandbox_without_dispatch(self):
+        from _mvg_capability_generation import preflight_dispatch
+        import codex_isolated_model_runner as codex
+        workspace = self.root / "logs/final-sandbox"
+        workspace.mkdir(parents=True)
+        prompt = workspace / "prompt.txt"
+        prompt.write_text("Return JSON", encoding="utf-8")
+        schema = workspace / "output-schema.json"
+        atomic_json(schema, {"type": "object"})
+        runner = Path("codex_isolated_model_runner.py")
+        with patch.object(codex, "_codex_executable", return_value="fixture-codex") as available, \
+             patch.object(codex.subprocess, "run") as dispatch:
+            preflight_dispatch(runner, workspace=workspace, prompt_path=prompt,
+                output_path=workspace / "output.json", output_schema=schema, timeout_sec=1)
+            available.assert_called_once()
+            dispatch.assert_not_called()
+        (workspace / "late-copy.txt").write_text("Complete late evidence line.\n" * 35_000, encoding="utf-8")
+        with patch.object(codex, "_codex_executable", return_value="fixture-codex"), \
+             patch.object(codex.subprocess, "run") as dispatch:
+            with self.assertRaisesRegex(ValueError, "too_large|budget_exceeded"):
+                preflight_dispatch(runner, workspace=workspace, prompt_path=prompt,
+                    output_path=workspace / "output.json", output_schema=schema, timeout_sec=1)
+            dispatch.assert_not_called()
+
+    def test_concurrent_generate_rejects_second_coordinator_before_dispatch(self):
+        import threading
+        from concurrent.futures import ThreadPoolExecutor
+        self.prepare()
+        entered, release = threading.Event(), threading.Event()
+        def execute(*args, **kwargs):
+            entered.set()
+            if not release.wait(10):
+                raise RuntimeError("fixture_coordinator_wait_expired")
+            return {"status": "fixture-completed"}
+        with patch.object(mvg, "_generate", side_effect=execute) as dispatch, \
+             ThreadPoolExecutor(max_workers=1) as executor:
+            first = executor.submit(mvg.generate, self.root, run_id="envelope", timeout_sec=1,
+                                    llm_backend="codex-cli")
+            try:
+                self.assertTrue(entered.wait(10))
+                with self.assertRaisesRegex(ValueError, "capability_coordinator_busy"):
+                    mvg.generate(self.root, run_id="envelope", timeout_sec=1, llm_backend="codex-cli")
+            finally:
+                release.set()
+            self.assertEqual("fixture-completed", first.result()["status"])
+            self.assertEqual(1, dispatch.call_count)
+
     def test_legacy_run_keeps_historical_freshness_validation(self):
         legacy = self.root / mvg.DEFAULT_RUN_ROOT / "legacy"
         prepared = legacy / "analysis-input"

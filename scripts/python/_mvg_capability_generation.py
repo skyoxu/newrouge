@@ -317,6 +317,129 @@ def preflight_runner_payload(attempt_root, attempt, prompt, schema, output_name)
         max_input_tokens=configured_input_limit())
 
 
+def preflight_dispatch(runner, *, workspace, prompt_path, output_path, output_schema, timeout_sec):
+    """Validate the final sandbox and backend availability without model dispatch."""
+    import argparse
+    import contextlib
+    import io
+    import os
+    import shutil
+    from _capability_input_integrity import check_workspace_request, configured_input_limit
+    from openai_isolated_model_runner import DEFAULT_MAX_BYTES, workspace_payload
+    if (workspace / "analysis-input/model-batches/batch-index.json").exists():
+        raise ValueError("mvg_runner_batched_input_unsupported")
+    if output_schema is not None:
+        schema = load_json(output_schema, None)
+        if not isinstance(schema, dict) or not output_schema.resolve().is_relative_to(workspace.resolve()):
+            raise ValueError("runner_output_schema_preparation_invalid")
+        import jsonschema
+        try:
+            jsonschema.validators.validator_for(schema).check_schema(schema)
+        except jsonschema.exceptions.SchemaError as exc:
+            raise ValueError("runner_output_schema_preparation_invalid") from exc
+    if runner.name == "codex_isolated_model_runner.py":
+        import codex_isolated_model_runner as codex
+        args = argparse.Namespace(workspace=str(workspace), prompt_file=str(prompt_path),
+            output=str(output_path), output_schema=str(output_schema) if output_schema else "",
+            max_bytes=DEFAULT_MAX_BYTES, max_input_tokens=configured_input_limit(),
+            timeout_sec=timeout_sec, preflight=True)
+        with contextlib.redirect_stdout(io.StringIO()):
+            codex.run(args)
+        codex._codex_executable()
+        return
+    payload = workspace_payload(workspace, prompt_path=prompt_path, output_path=output_path,
+                                max_bytes=DEFAULT_MAX_BYTES)
+    if runner.name == "openai_isolated_model_runner.py":
+        from openai_isolated_model_runner import inspect_llm_backend
+        backend = inspect_llm_backend("openai-api")
+        if backend.get("available") is not True:
+            raise ValueError("openai-api backend unavailable: " + "; ".join(backend.get("blocking_errors", [])))
+        if output_schema is not None:
+            payload += "\n" + json.dumps({"text": {"format": {"type": "json_schema", "name": "newrouge_mvg_review",
+                "strict": True, "schema": schema}}}, ensure_ascii=False)
+    elif runner.name == "copilot_isolated_model_runner.py":
+        if not shutil.which("copilot"):
+            raise ValueError("GitHub Copilot CLI is unavailable")
+        if not str(os.environ.get("COPILOT_GITHUB_TOKEN") or os.environ.get("GITHUB_TOKEN") or "").strip():
+            raise ValueError("GITHUB_TOKEN/COPILOT_GITHUB_TOKEN is unavailable")
+    else:
+        raise ValueError("MVG runner preflight is unsupported")
+    check_workspace_request(workspace, payload, max_bytes=DEFAULT_MAX_BYTES,
+                            max_input_tokens=configured_input_limit())
+
+
+def dispatch_request_identity(run_dir, runner, *, workspace, prompt_path, output_path, output_schema, attempt):
+    """Bind every final sandbox input and runner wrapper before reservation."""
+    from _capability_input_integrity import REPORT_NAME
+    workspace = workspace.resolve()
+    def relative(path):
+        path = path.resolve()
+        if not path.is_relative_to(run_dir.resolve()):
+            raise ValueError("mvg_dispatch_request_path_invalid")
+        return path.relative_to(run_dir.resolve()).as_posix()
+    excluded = {output_path.resolve(), (workspace / REPORT_NAME).resolve()}
+    files = {path.relative_to(workspace).as_posix(): file_sha(path) for path in sorted(workspace.rglob("*"))
+             if path.is_file() and path.resolve() not in excluded}
+    identity = {"attempt": attempt, "workspace": relative(workspace), "prompt_path": relative(prompt_path),
+        "schema_path": relative(output_schema) if output_schema else None, "output_path": relative(output_path),
+        "runner": runner.name, "runner_sha256": file_sha(runner) if runner.is_file() else None,
+        "input_files": files}
+    identity["request_sha256"] = canonical_sha(identity)
+    return identity
+
+
+def verify_dispatch_receipts(run_dir, calls):
+    """The coordinator owns request and outcome identity; sidecars are projections."""
+    from _planning_skill_common import repo_path
+    from _capability_input_integrity import REPORT_NAME
+    for row in calls:
+        request = row.get("request_identity")
+        if request is None:
+            continue  # Historical calls remain read-only and retain their original identity.
+        if not isinstance(request, dict) or canonical_sha({key: value for key, value in request.items()
+                if key != "request_sha256"}) != request.get("request_sha256"):
+            raise ValueError("mvg_dispatch_request_identity_changed")
+        def safe_path(value):
+            path = repo_path(run_dir, value)
+            if not path.is_relative_to(run_dir.resolve()):
+                raise ValueError("mvg_dispatch_request_path_invalid")
+            return path
+        workspace, output = safe_path(request["workspace"]), safe_path(request["output_path"])
+        prompt = safe_path(request["prompt_path"])
+        schema = safe_path(request["schema_path"]) if request.get("schema_path") else None
+        if (type(request.get("attempt")) is not int or request["attempt"] <= 0
+                or not output.is_relative_to(workspace) or not prompt.is_relative_to(workspace)
+                or (schema is not None and not schema.is_relative_to(workspace))):
+            raise ValueError("mvg_dispatch_request_path_invalid")
+        excluded = {output.resolve(), (workspace / REPORT_NAME).resolve()}
+        if request.get("runner") == "copilot_isolated_model_runner.py" and "copilot-model-evidence.json" not in request.get("input_files", {}):
+            excluded.add((workspace / "copilot-model-evidence.json").resolve())
+        files = {path.relative_to(workspace).as_posix(): file_sha(path) for path in sorted(workspace.rglob("*"))
+                 if path.is_file() and path.resolve() not in excluded}
+        if files != request.get("input_files"):
+            raise ValueError("mvg_dispatch_request_inputs_changed:" + request["workspace"] + ":" + str([
+                key for key in set(files) | set(request.get("input_files", {}))
+                if files.get(key) != request.get("input_files", {}).get(key)]))
+        outcome = load_json(run_dir / "dispatch-receipts" / f"dispatch-{row['number']}.json", None)
+        bound = row.get("outcome")
+        reserved_projection = {key: deepcopy(value) for key, value in row.items() if key != "outcome"}
+        expected = deepcopy(reserved_projection)
+        if bound is not None:
+            expected.update(bound)
+        if (outcome is not None and canonical_sha(outcome) != canonical_sha(expected)
+                and canonical_sha(outcome) != canonical_sha(reserved_projection)):
+            raise ValueError("mvg_dispatch_outcome_projection_changed")
+        if bound is not None:
+            if bound.get("status") == "completed":
+                if not output.is_file() or file_sha(output) != bound.get("output_sha256"):
+                    raise ValueError("mvg_dispatch_completed_output_changed")
+                if schema is not None:
+                    validate_output_schema(output, schema)
+                parse_model_json(output)
+            elif bound.get("status") != "failed" or not bound.get("error_type") or not bound.get("error_class"):
+                raise ValueError("mvg_dispatch_failed_outcome_invalid")
+
+
 def _compact_task_views(rows):
     """Encode repeated task-view fields once while preserving each exact source row."""
     groups = {}
@@ -575,11 +698,12 @@ def generate_append(root, state, candidate_root, *, invoke_factory, before_call,
                 admitted = preflight(text, output_schema, name)
                 if admitted["request_sha256"] != batch["input_report"]["request_sha256"]:
                     raise ValueError("mvg_evidence_request_changed_after_preflight")
-                number = call("evidence-" + phase)
+                number = next_attempt()
                 workspace = candidate_root / "capability-append" / f"call-{number}"
                 validate_envelope(root, prepared, state)
                 output, execution = invoke_factory(workspace)(text, number, output_name=name,
-                    output_schema_path=workspace / "output-schema.json", output_schema=output_schema)
+                    output_schema_path=workspace / "output-schema.json", output_schema=output_schema,
+                    before_dispatch=lambda request_identity=None: call("evidence-" + phase, request_identity))
                 validate_output_schema(output, workspace / "output-schema.json")
                 audit = parse_model_json(output)
                 execution = dict(execution, output_sha256=file_sha(output), audit_sha256=canonical_sha(audit))
@@ -643,12 +767,12 @@ def generate_append(root, state, candidate_root, *, invoke_factory, before_call,
             "the current issue and necessary dependencies, preserve other valid increment rows. No tools.\n")
         prompt, transport = input_prompt(payload, instruction, schema, "segments/capability-append.json",
                                         "inspect", context, call)
-        number = call("generate" if issue is None else "repair")
+        number = next_attempt()
         workspace = candidate_root / "capability-append" / f"call-{number}"
         validate_envelope(root, prepared, state)
         output, execution = invoke_factory(workspace)(prompt, number,
             output_name="segments/capability-append.json", output_schema_path=workspace / "output-schema.json",
-            output_schema=schema)
+            output_schema=schema, before_dispatch=lambda request_identity=None: call("generate" if issue is None else "repair", request_identity))
         validate_output_schema(output, workspace / "output-schema.json")
         delta = parse_model_json(output)
         atomic_json(workspace / "generation-execution.json", execution)
@@ -695,12 +819,12 @@ def generate_append(root, state, candidate_root, *, invoke_factory, before_call,
             "repair_action=none for accepted rows. Do not edit the proposal. No tools.\n")
         prompt, transport = input_prompt(payload, instruction, schema, "segments/capability-review.json",
                                         "review", context, call)
-        number = call("semantic")
+        number = next_attempt()
         workspace = candidate_root / "capability-append" / f"call-{number}"
         validate_envelope(root, prepared, state)
         output, execution = invoke_factory(workspace)(prompt, number,
             output_name="segments/capability-review.json", output_schema_path=workspace / "output-schema.json",
-            output_schema=schema)
+            output_schema=schema, before_dispatch=lambda request_identity=None: call("semantic", request_identity))
         validate_output_schema(output, workspace / "output-schema.json")
         proof = parse_model_json(output)
         shape = pm.validate_review_shape(state, projection, proof, requirement_ids=required,

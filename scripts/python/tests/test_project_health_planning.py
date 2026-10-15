@@ -426,6 +426,14 @@ class ProjectHealthPlanningTests(unittest.TestCase):
             self.assertFalse(selection.recovery_available(checkout, run_dir, state))
             replacement = planning.create_job(self.root, 'mvg')
             self.assertNotEqual(job['job_id'], replacement['job_id'])
+            state['selection_block_reason'] = 'run_blocked_budget_exhausted'
+            atomic_json(run_dir / 'run.json', state)
+            atomic_json(self.root / planning.JOB_ROOT / 'mvg-attempt.json', {'job_id': job['job_id']})
+            with patch.object(planning, '_planning_input_fresh', return_value=True):
+                exhausted = planning.create_job(self.root, 'mvg')
+                self.assertEqual(job['job_id'], exhausted['job_id'])
+                fresh = planning.create_job(self.root, 'mvg', fresh=True)
+                self.assertNotEqual(job['job_id'], fresh['job_id'])
 
     def test_new_main_commit_with_unchanged_inputs_allows_publication(self):
         job = planning.create_job(self.root, 'capability')
@@ -741,6 +749,7 @@ class ProjectHealthPlanningTests(unittest.TestCase):
             module = cap if script == 'plan_capabilities.py' else mvg
             output = io.StringIO()
             with contextlib.redirect_stdout(output), patch.object(module, 'inspect_isolated_runner', return_value=RUNNER), \
+                 patch('_mvg_capability_generation.preflight_dispatch'), \
                  patch.object(module, 'run_isolated_model', side_effect=model):
                 code = module.main(['--repo-root', str(checkout), *args])
             text = output.getvalue(); log.write_text(text, encoding='utf-8')

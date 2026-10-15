@@ -219,6 +219,14 @@ class CapabilityAppendTests(unittest.TestCase):
         self.assertEqual(3, result["total_invocations"])
         self.assertEqual(["CAP-A"], result["completed"])
 
+    def test_lineage_64_calls_retires_across_clean_context_restarts(self):
+        result, seen = self.run_engine(limit=64,
+            machine=lambda *args: [{"code": "persistent-hard-issue", "path": "coverage_table"}])
+        self.assertEqual("retired", result["status"])
+        self.assertEqual(64, result["total_invocations"])
+        self.assertEqual(64, len(result["calls"]))
+        self.assertGreater(len(result["restarts"]), 1)
+
     def test_failed_final_machine_never_invokes_another_semantic_review(self):
         result, _ = self.run_engine(final=lambda proposal: [{"code": "global_handoff_gap"}])
         self.assertEqual("blocked", result["status"])
@@ -567,6 +575,26 @@ class CapabilityAppendTests(unittest.TestCase):
     def test_public_reserved_worker_call_interruption_keeps_charge_on_recovery(self):
         self.exercise_public_generation(coordinator_case="reserved-interruption")
 
+    def test_public_runner_preparation_failure_is_not_charged(self):
+        self.exercise_public_generation(coordinator_case="runner-preparation")
+
+    def test_public_final_runner_preflight_failure_is_not_charged(self):
+        self.exercise_public_generation(coordinator_case="final-preflight")
+
+    def test_selector_final_preflight_failure_is_not_charged(self):
+        self.exercise_public_generation(coordinator_case="selector-final-preflight")
+
+    def test_selector_dispatch_last_failure_stays_budget_terminal(self):
+        self.exercise_public_generation(coordinator_case="selector-last-budget")
+
+    def test_selector_reservation_and_attempt_are_atomic_on_interruption(self):
+        self.exercise_public_generation(coordinator_case="selector-reserved-interruption")
+
+    def test_public_dispatched_failures_remain_charged_once(self):
+        for failure in ("timeout", "transport", "malformed"):
+            with self.subTest(failure=failure):
+                self.exercise_public_generation(coordinator_case="dispatch-" + failure)
+
     def test_bound_source_drift_after_first_dispatch_blocks_next_dispatch(self):
         self.exercise_public_generation(drift_after_first_dispatch=True)
 
@@ -810,7 +838,10 @@ class CapabilityAppendTests(unittest.TestCase):
             by_task = {str(row["taskmaster_id"]): row["semantic_refs"] for row in views}
             fixture._write_readiness(root, snapshot, real_semantics, by_block, by_task)
             state = plan_mvg.prepare(root, run_id="fixture", capabilities_path=capabilities_path,
-                manifest_path=manifest_path, task_ids=list(map(str, fixture.TASK_IDS)), allow_unready=False, evidence_refs=refs)
+                manifest_path=manifest_path, task_ids=list(map(str, fixture.TASK_IDS)), allow_unready=False, evidence_refs=refs,
+                run_invocation_limit=(9 if coordinator_case == "selector-last-budget" else
+                    8 if coordinator_case == "run-budget" else
+                    1 if str(coordinator_case).startswith("dispatch-") else None))
             if coordinator_case == "legacy-prefix":
                 index = plan_mvg.load_json(run / "analysis-input/analysis-index.json")
                 for key in ("checkpoint_strategy", "checkpoint_schema_version", "analysis_identity_sha256",
@@ -858,8 +889,10 @@ class CapabilityAppendTests(unittest.TestCase):
             generations = []
 
             def invoke_factory(workspace):
-                def invoke(prompt, number, *, output_name, output_schema_path, output_schema):
+                def invoke(prompt, number, *, output_name, output_schema_path, output_schema, before_dispatch=None):
                     atomic_json(output_schema_path, output_schema)
+                    if before_dispatch:
+                        before_dispatch()
                     props = output_schema["properties"]
                     value = {key: prop["const"] for key, prop in props.items() if "const" in prop}
                     seen.append((number, value["schema_version"], prompt))
@@ -1071,6 +1104,17 @@ class CapabilityAppendTests(unittest.TestCase):
             seen.clear()
 
             def runner(_runner, *, workspace, prompt_path, output_path, output_schema, **kwargs):
+                if coordinator_case == "selector-last-budget" and output_path.name == "selection.json":
+                    seen.append((1, "selector-failed", ""))
+                    raise RuntimeError("fixture_selector_transport_failed")
+                if str(coordinator_case).startswith("dispatch-"):
+                    seen.append((1, "dispatched", ""))
+                    if coordinator_case == "dispatch-timeout":
+                        raise TimeoutError("fixture_dispatch_timeout")
+                    if coordinator_case == "dispatch-transport":
+                        raise RuntimeError("fixture_transport_failure")
+                    output_path.write_text("invalid-json", encoding="utf-8")
+                    return {}
                 invoke = invoke_factory(workspace)
                 schema = plan_mvg.load_json(output_schema, {})
                 generated, execution = invoke(prompt_path.read_text(encoding="utf-8"), len(seen) + 1,
@@ -1078,8 +1122,81 @@ class CapabilityAppendTests(unittest.TestCase):
                 self.assertEqual(generated, output_path)
                 return execution["receipt"]
 
+            def final_preflight(_runner, **kwargs):
+                if coordinator_case == "final-preflight" or (coordinator_case == "selector-final-preflight"
+                        and kwargs["output_path"].name == "selection.json"):
+                    raise ValueError("fixture_final_runner_preflight_failed")
             with patch.object(plan_mvg, "inspect_isolated_runner", return_value=description), \
+                 patch.object(generation, "preflight_dispatch", side_effect=final_preflight) as final_check, \
                  patch.object(plan_mvg, "run_isolated_model", side_effect=runner):
+                if coordinator_case in {"runner-preparation", "final-preflight"}:
+                    writer = plan_mvg.atomic_json
+                    def fail_schema(path, value):
+                        if coordinator_case == "runner-preparation" and path.name == "output-schema.json" and "call-1" in path.parts:
+                            raise ValueError("fixture_schema_preparation_failed")
+                        return writer(path, value)
+                    with patch.object(plan_mvg, "atomic_json", side_effect=fail_schema):
+                        with self.assertRaises(ValueError):
+                            plan_mvg.generate(root, run_id="fixture", timeout_sec=1, llm_backend="codex-cli")
+                    failed = plan_mvg.load_json(run / "run.json")
+                    self.assertEqual(0, failed["capability_selection"]["total_invocations"])
+                    self.assertEqual([], seen)
+                    if coordinator_case == "final-preflight":
+                        self.assertTrue(final_check.called)
+                        self.assertIn("fixture_final_runner_preflight_failed", str(failed))
+                    return
+                if coordinator_case in {"selector-final-preflight", "selector-last-budget"}:
+                    with self.assertRaisesRegex(ValueError, "fixture_final_runner_preflight_failed" if
+                            coordinator_case == "selector-final-preflight" else "run_blocked_budget_exhausted"):
+                        plan_mvg.generate(root, run_id="fixture", timeout_sec=1, llm_backend="codex-cli")
+                    failed = plan_mvg.load_json(run / "run.json")
+                    self.assertTrue(any(call.kwargs["output_path"].name == "selection.json" for call in final_check.call_args_list))
+                    if coordinator_case == "selector-final-preflight":
+                        self.assertEqual(6, failed["capability_selection"]["total_invocations"])
+                        self.assertEqual([], failed["capability_selection"]["current"]["selection_attempts"])
+                        self.assertEqual(6, len(seen))
+                    else:
+                        self.assertEqual(9, failed["capability_selection"]["total_invocations"])
+                        from _mvg_capability_append import RunBudgetExhausted
+                        with self.assertRaises(RunBudgetExhausted):
+                            plan_mvg.generate(root, run_id="fixture", timeout_sec=1, llm_backend="codex-cli")
+                        self.assertEqual("run_blocked_budget_exhausted", plan_mvg.load_json(run / "run.json")["phase"])
+                        self.assertEqual(9, len(seen))
+                    return
+                if coordinator_case == "selector-reserved-interruption":
+                    import _mvg_capability_selection as coordinator
+                    writer = coordinator.atomic_json
+                    def interrupt_selector(path, payload):
+                        writer(path, payload)
+                        if path == run / "run.json" and payload.get("capability_selection", {}).get("total_invocations") == 7:
+                            raise SystemExit("fixture_selector_reserved")
+                    with patch.object(coordinator, "atomic_json", side_effect=interrupt_selector), self.assertRaises(SystemExit):
+                        plan_mvg.generate(root, run_id="fixture", timeout_sec=1, llm_backend="codex-cli")
+                    charged = plan_mvg.load_json(run / "run.json")
+                    attempts = charged["capability_selection"]["current"]["selection_attempts"]
+                    self.assertEqual(1, len(attempts))
+                    self.assertEqual("running", attempts[0]["status"])
+                    plan_mvg.generate(root, run_id="fixture", timeout_sec=1, llm_backend="codex-cli")
+                    recovered = plan_mvg.load_json(run / "run.json")
+                    self.assertEqual(15, recovered["capability_selection"]["total_invocations"])
+                    self.assertEqual(2, recovered["capability_selection"]["selected"][0]["attempt"])
+                    self.assertEqual(14, len(seen))
+                    return
+                if str(coordinator_case).startswith("dispatch-"):
+                    with self.assertRaisesRegex(ValueError, "run_blocked_budget_exhausted"):
+                        plan_mvg.generate(root, run_id="fixture", timeout_sec=1, llm_backend="codex-cli")
+                    failed = plan_mvg.load_json(run / "run.json")
+                    self.assertEqual(1, failed["capability_selection"]["total_invocations"])
+                    self.assertEqual(1, len(seen))
+                    reservation = failed["capability_selection"]["calls"][0]
+                    outcome = plan_mvg.load_json(run / "dispatch-receipts/dispatch-1.json")
+                    self.assertEqual(reservation["reservation_id"], outcome["reservation_id"])
+                    self.assertEqual("failed", outcome["status"])
+                    self.assertTrue(outcome["error_type"].startswith("runner_"))
+                    with self.assertRaisesRegex(ValueError, "run_blocked_budget_exhausted"):
+                        plan_mvg.generate(root, run_id="fixture", timeout_sec=1, llm_backend="codex-cli")
+                    self.assertEqual(1, len(seen))
+                    return
                 if coordinator_case in {"incomplete", "worker-exception"}:
                     real_append = generation.generate_append
                     def incomplete(*args, **kwargs):
@@ -1122,10 +1239,7 @@ class CapabilityAppendTests(unittest.TestCase):
                     return
                 if coordinator_case in {"selector-preparation", "run-budget"}:
                     if coordinator_case == "run-budget":
-                        updated = plan_mvg.load_json(run / "run.json")
-                        updated["mvg.run_invocation_limit"] = 8
-                        atomic_json(run / "run.json", updated)
-                        failure_pattern = "selection_blocked_insufficient_admitted_candidates"
+                        failure_pattern = "run_blocked_budget_exhausted"
                         guard = patch.object(generation, "preflight_runner_payload", wraps=generation.preflight_runner_payload)
                     else:
                         real_preflight = generation.preflight_runner_payload

@@ -9,6 +9,7 @@ from pathlib import Path
 from _planning_skill_common import atomic_json, canonical_sha, file_sha, load_json, parse_model_json, repo_path
 from _mvg_capability_generation import capability_scopes, seed_proposal, generate_append, admission_proof
 import _mvg_capability_checkpoint as selected_checkpoint
+from _mvg_capability_append import RunBudgetExhausted
 
 STRATEGY = "capability-local-selection.v1"
 
@@ -139,6 +140,17 @@ def verified_prefix(root, run_dir, state):
                 row.get("candidate") == label for row in calls) or not 0 <= costs[label] <= 64
                 for label in pm.MVG_CANDIDATE_LABELS)):
         raise ValueError("capability_selection_invocation_accounting_changed")
+    if "mvg.run_invocation_limit_source" in state:
+        if total > state["mvg.run_invocation_limit"]:
+            raise ValueError("capability_selection_run_budget_changed")
+        for row in calls:
+            if (row.get("reservation_id") != state["run_id"] + ":dispatch:" + str(row["number"])
+                    or row.get("run_id") != state["run_id"] or not row.get("reserved_at_utc")
+                    or not isinstance(row.get("request_identity"), dict)
+                    or row.get("lineage") != (f"{row['candidate']}-r1" if row.get("candidate") else None)):
+                raise ValueError("capability_selection_reservation_identity_changed")
+    from _mvg_capability_generation import verify_dispatch_receipts
+    verify_dispatch_receipts(run_dir, calls)
     for label in pm.MVG_CANDIDATE_LABELS:
         counter_path = run_dir / "candidates" / label / "lineage-execution.json"
         if counter_path.is_file():
@@ -147,12 +159,17 @@ def verified_prefix(root, run_dir, state):
             if (type(count) is not int or count > costs[label]
                     or counter.get("candidate") != label or counter.get("lineage") != f"{label}-r1"):
                 raise ValueError("capability_selection_lineage_budget_changed")
+            if "mvg.run_invocation_limit_source" in state and counter.get("reservation_ids") != [
+                    row["reservation_id"] for row in calls if row.get("candidate") == label][:count]:
+                raise ValueError("capability_selection_lineage_reservations_changed")
             if count < costs[label]:
                 atomic_json(counter_path, {"candidate": label, "lineage": f"{label}-r1",
-                    "model_invocation_count": costs[label], "recovered_reserved_invocations": costs[label] - count})
+                    "model_invocation_count": costs[label], "recovered_reserved_invocations": costs[label] - count,
+                    "reservation_ids": [row.get("reservation_id") for row in calls if row.get("candidate") == label]})
         elif costs[label]:
             atomic_json(counter_path, {"candidate": label, "lineage": f"{label}-r1",
-                "model_invocation_count": costs[label], "recovered_reserved_invocations": costs[label]})
+                "model_invocation_count": costs[label], "recovered_reserved_invocations": costs[label],
+                "reservation_ids": [row.get("reservation_id") for row in calls if row.get("candidate") == label]})
     selected = ledger.get("selected", [])
     if not isinstance(selected, list) or len(selected) > len(scopes):
         raise ValueError("capability_selection_prefix_length_invalid")
@@ -203,6 +220,9 @@ def verified_prefix(root, run_dir, state):
             count = local.get("total_invocations")
             if type(count) is not int or count > len(charged):
                 raise ValueError("capability_selection_worker_budget_changed")
+            if "mvg.run_invocation_limit_source" in state and [row.get("reservation_id") for row in local.get("calls", [])] != [
+                    row["reservation_id"] for row in charged[:count]]:
+                raise ValueError("capability_selection_worker_reservations_changed")
             if count < len(charged):
                 if local.get("status") == "admitted" or local.get("records"):
                     raise ValueError("capability_selection_admitted_worker_budget_changed")
@@ -216,7 +236,8 @@ def verified_prefix(root, run_dir, state):
                 for row in charged[count:]:
                     local.setdefault("calls", []).append({"number": len(local.get("calls", [])) + 1,
                         "phase": row["phase"], "capability_id": current["capability_id"],
-                        "context": pending.get("context", 1), "interrupted": True})
+                        "context": pending.get("context", 1), "interrupted": True,
+                        "reservation_id": row.get("reservation_id")})
                 atomic_json(local_path, local)
     if current is not None and current.get("input_sha256") is not None:
         aliases = current.get("aliases") or {}
@@ -331,27 +352,45 @@ def _generate_selected_capabilities(root, run_dir, state, *, backend, invoke_fac
             "selection_error": state.get("selection_block_reason"),
             "total_invocations": ledger["total_invocations"],
             "lineage_invocations": ledger["lineage_invocations"]})
+        execution["dispatch_receipts"] = [load_json(run_dir / "dispatch-receipts" /
+            f"dispatch-{row['number']}.json", row) for row in ledger.get("calls", [])]
         atomic_json(run_dir / "model-execution.json", execution)
 
-    def reserve(phase, label=None):
+    def reserve(phase, label=None, request_identity=None, publish=None):
         limit = state.get("mvg.run_invocation_limit", 192)
         if type(limit) is not int or limit <= 0:
             raise ValueError("mvg_run_invocation_limit_invalid")
         if ledger["total_invocations"] >= limit:
-            raise ValueError("mvg_run_invocation_budget_exhausted")
+            raise RunBudgetExhausted("run_blocked_budget_exhausted")
         if label is not None and ledger["lineage_invocations"][label] >= 64:
             from _mvg_capability_append import AppendBudgetExhausted
             raise AppendBudgetExhausted("capability_append_invocation_budget_exhausted")
         ledger["total_invocations"] += 1
         if label is not None:
             ledger["lineage_invocations"][label] += 1
-        ledger.setdefault("calls", []).append({"number": ledger["total_invocations"],
-            "phase": phase, "candidate": label, "capability_id": ledger["current"]["capability_id"]})
+        receipt = {"number": ledger["total_invocations"], "phase": phase, "candidate": label,
+            "capability_id": ledger["current"]["capability_id"], "run_id": state["run_id"],
+            "lineage": f"{label}-r1" if label else None,
+            "reservation_id": state["run_id"] + ":dispatch:" + str(ledger["total_invocations"]),
+            "reserved_at_utc": pm.now(), "status": "reserved"}
+        if request_identity is not None:
+            receipt["request_identity"] = deepcopy(request_identity)
+        ledger.setdefault("calls", []).append(receipt)
+        if publish is not None:
+            publish(receipt)
         persist()
+        if label is not None:
+            atomic_json(run_dir / "candidates" / label / "lineage-execution.json", {
+                "candidate": label, "lineage": f"{label}-r1",
+                "model_invocation_count": ledger["lineage_invocations"][label],
+                "reservation_ids": [row.get("reservation_id") for row in ledger["calls"] if row.get("candidate") == label]})
+        return deepcopy(receipt)
 
     try:
         scopes, accepted, prefix = verified_prefix(root, run_dir, state)
         if ledger.get("terminal") is True:
+            if state.get("selection_block_reason") == "run_blocked_budget_exhausted":
+                raise RunBudgetExhausted("run_blocked_budget_exhausted")
             current = ledger.get("current") or {}
             if state.get("selection_block_reason") == "selection_blocked_insufficient_admitted_candidates":
                 results = [{"label": label, "admitted": row.get("status") == "admitted", "summary": row}
@@ -398,7 +437,8 @@ def _generate_selected_capabilities(root, run_dir, state, *, backend, invoke_fac
                         result = generate_append(root, state, workspace,
                             invoke_factory=lambda target, label=label, budget_root=budget_root:
                                 invoke_factory(budget_root, target, label),
-                            before_call=lambda phase, label=label: reserve(phase, label), checkpoint=checkpoint,
+                            before_call=lambda phase, request_identity=None, label=label: reserve(
+                                phase, label, request_identity), checkpoint=checkpoint,
                             scope_index=index, accepted_seed=accepted, selected_records=prefix)
                         admission = {"candidate": label, "status": result["status"], "lineage": f"{label}-r1",
                             "workspace": workspace.relative_to(run_dir).as_posix(), "errors": result.get("errors", []),
@@ -414,6 +454,8 @@ def _generate_selected_capabilities(root, run_dir, state, *, backend, invoke_fac
                                 append_requirement_ids=set(scope["cumulative_requirement_ids"]))
                             state["candidate_attempts"][label].update(status="valid", validation=validation,
                                 proposal_sha256=admission["proposal_sha256"])
+                    except RunBudgetExhausted:
+                        raise
                     except (OSError, RuntimeError, ValueError, KeyError, TypeError) as exc:
                         admission = {"candidate": label, "status": "execution-failed", "lineage": f"{label}-r1",
                             "workspace": workspace.relative_to(run_dir).as_posix(),
@@ -520,14 +562,15 @@ def _generate_selected_capabilities(root, run_dir, state, *, backend, invoke_fac
                     if not (sandbox / "analysis-input").exists():
                         shutil.copytree(prepared, sandbox / "analysis-input")
                     preflight_runner_payload(workspace, number, prompt, schema, "selection.json")
-                    reserve("selection")
-                    recorded["status"] = "running"
-                    attempts.append(recorded)
-                    current["stage"] = "selection-executing"
-                    persist()
+                    def dispatch_selection(request_identity=None):
+                        def publish(reservation):
+                            recorded.update(status="running", reservation_id=reservation["reservation_id"])
+                            attempts.append(recorded)
+                            current["stage"] = "selection-executing"
+                        return reserve("selection", request_identity=request_identity, publish=publish)
                     output, execution = selector_factory(workspace)(prompt, number,
                         output_name="selection.json", output_schema_path=workspace / "output-schema.json",
-                        output_schema=schema)
+                        output_schema=schema, before_dispatch=dispatch_selection)
                     result = parse_model_json(output)
                     errors = pm.validate_mvg_selection(result, candidate_labels=set(pm.MVG_CANDIDATE_LABELS),
                         incumbent_present=False, alias_mapping=aliases, viable_labels=set(pm.MVG_CANDIDATE_LABELS))
@@ -549,12 +592,16 @@ def _generate_selected_capabilities(root, run_dir, state, *, backend, invoke_fac
                         receipt_path=receipt_path.relative_to(run_dir).as_posix(), receipt_sha256=file_sha(receipt_path))
                     _selected_step(root, run_dir, state, scopes, index, accepted, prefix, recorded)
                     selection = deepcopy(recorded)
+                except RunBudgetExhausted:
+                    raise
                 except (OSError, RuntimeError, ValueError, TimeoutError) as exc:
                     if recorded["status"] == "preparing":
                         raise
                     recorded.update(status="failed", error=str(exc))
                 persist()
             if selection is None:
+                if ledger["total_invocations"] >= state.get("mvg.run_invocation_limit", 192):
+                    raise RunBudgetExhausted("run_blocked_budget_exhausted")
                 ledger["terminal"] = True
                 raise ValueError("capability_selection_bounded_attempts_exhausted")
             proposal, record = _selected_step(root, run_dir, state, scopes, index, accepted, prefix, selection)
@@ -605,6 +652,12 @@ def _generate_selected_capabilities(root, run_dir, state, *, backend, invoke_fac
                 "selected": "winner-chain", "candidate_count": 3, "capability_count": len(scopes)}
     except selected_checkpoint.CheckpointCommitOutcomeUnknown:
         # Only sidecar evidence is safe when the authoritative replace outcome is unknown.
+        raise
+    except RunBudgetExhausted:
+        ledger["terminal"] = True
+        state.update(phase="run_blocked_budget_exhausted", selection_status="blocked",
+            selection_block_reason="run_blocked_budget_exhausted")
+        persist()
         raise
     except (OSError, ValueError, KeyError, TypeError, RuntimeError) as exc:
         current = ledger.get("current") or {}

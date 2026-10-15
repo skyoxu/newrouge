@@ -4136,7 +4136,12 @@ def _prepare_impl(
     manifest_path: Path | None,
     allow_unready: bool,
     evidence_refs: list[str] | None = None,
+    run_invocation_limit: int | None = None,
 ) -> dict[str, Any]:
+    budget = {"mvg.run_invocation_limit": 192 if run_invocation_limit is None else run_invocation_limit,
+              "mvg.run_invocation_limit_source": "default" if run_invocation_limit is None else "explicit"}
+    if type(budget["mvg.run_invocation_limit"]) is not int or budget["mvg.run_invocation_limit"] <= 0:
+        raise ValueError("mvg_run_invocation_limit_invalid")
     capabilities = load_json(capabilities_path, {})
     if capabilities.get("schema_version") != "newrouge.capabilities.v1":
         raise ValueError("explicit Capability input is missing or invalid")
@@ -4322,6 +4327,8 @@ def _prepare_impl(
         originals.append(manifest_path)
     for path in originals:
         authority[path.resolve().relative_to(root.resolve()).as_posix()] = normalized_file_sha(path) if path.is_file() else None
+    envelope.update(budget)
+    index.update(budget)
     index["analysis_identity_sha256"] = canonical_sha(index)
     atomic_json(bundle / "analysis-index.json", index)
 
@@ -4350,6 +4357,7 @@ def _prepare_impl(
         "task_scope": task_ids,
         "planning_scope": planning_scope,
         "applied": False,
+        **budget,
     }
     # The capture predates all copying. Fail closed on changes during prepare
     # before publishing a run that claims to be prepared.
@@ -4367,6 +4375,7 @@ def prepare(
     manifest_path: Path | None,
     allow_unready: bool,
     evidence_refs: list[str] | None = None,
+    run_invocation_limit: int | None = None,
 ) -> dict[str, Any]:
     """Prepare an MVG run and persist one diagnostic for every pre-run failure."""
     run_dir = _run_dir(root, run_id)
@@ -4383,6 +4392,7 @@ def prepare(
             manifest_path=manifest_path,
             allow_unready=allow_unready,
             evidence_refs=evidence_refs,
+            run_invocation_limit=run_invocation_limit,
         )
     except (OSError, ValueError, TypeError, KeyError, AttributeError, UnicodeError, RuntimeError) as exc:
         if not (run_dir / "run.json").is_file() and (
@@ -4748,10 +4758,9 @@ Frozen manifest scope:
                    candidate_label: str | None = None, lineage: str | None = None):
         def invoke(prompt_text: str, attempt: int, *, output_name: str | None = None,
                    output_schema_path: Path | None = None,
-                   output_schema: dict[str, Any] | None = None) -> tuple[Path, dict[str, Any]]:
+                   output_schema: dict[str, Any] | None = None,
+                   before_dispatch: Any = None) -> tuple[Path, dict[str, Any]]:
             ensure_generation_active()
-            invocation_number = (reserve_generation_invocation(candidate_root, candidate_label, lineage)
-                                 if candidate_label and lineage else None)
             relative_output = Path(output_name or f"proposal-attempt-{attempt}.json")
             prompt_stem = relative_output.with_suffix("").as_posix().replace("/", "-")
             # Equivalent to the former `llm_workspace = workspace / "llm-sandbox"`
@@ -4785,14 +4794,60 @@ Frozen manifest scope:
             if runner is not None:
                 prompt_path = llm_workspace / f"prompt-{attempt}-{prompt_stem}.txt"
                 prompt_path.write_text(prompt_text, encoding="utf-8", newline="\n")
-                receipt = run_isolated_model(
-                    runner, workspace=llm_workspace, prompt_path=prompt_path,
-                    output_path=output, timeout_sec=timeout_sec,
-                    output_schema=sandbox_schema_path,
-                )
+                _validate_input_freshness(root, run_dir, state)
+                if incremental and (llm_workspace / "analysis-input").is_dir():
+                    # Later selection receipt validation writes this same
+                    # diagnostic; freeze it before the model can see it.
+                    _validate_input_freshness(root, llm_workspace, state)
+                if incremental:
+                    from _mvg_capability_generation import preflight_dispatch
+                    preflight_dispatch(runner, workspace=llm_workspace, prompt_path=prompt_path,
+                        output_path=output, output_schema=sandbox_schema_path, timeout_sec=timeout_sec)
+                request_identity = None
+                if incremental:
+                    from _mvg_capability_generation import dispatch_request_identity
+                    request_identity = dispatch_request_identity(run_dir, runner, workspace=llm_workspace,
+                        prompt_path=prompt_path, output_path=output, output_schema=sandbox_schema_path, attempt=attempt)
+                reservation = (before_dispatch(request_identity) if incremental else before_dispatch()) if before_dispatch else None
+                if incremental and before_dispatch:
+                    reservation = deepcopy(state["capability_selection"]["calls"][-1])
+                invocation_number = (reserve_generation_invocation(candidate_root, candidate_label, lineage)
+                    if not incremental and candidate_label and lineage else reservation)
+                dispatch_path = (run_dir / "dispatch-receipts" / f"dispatch-{reservation['number']}.json"
+                    if incremental and isinstance(reservation, dict) else None)
+                dispatch_receipt = ({**reservation, "status": "reserved"}
+                    if dispatch_path is not None else None)
+                if dispatch_path is not None:
+                    atomic_json(dispatch_path, dispatch_receipt)
+                try:
+                    receipt = run_isolated_model(
+                        runner, workspace=llm_workspace, prompt_path=prompt_path,
+                        output_path=output, timeout_sec=timeout_sec,
+                        output_schema=sandbox_schema_path,
+                    )
+                    if dispatch_path is not None:
+                        parse_model_json(output)
+                        outcome = {"status": "completed", "completed_at_utc": now(),
+                            "error_type": None, "output_sha256": file_sha(output)}
+                        state["capability_selection"]["calls"][-1]["outcome"] = outcome
+                        atomic_json(run_path, state)
+                        dispatch_receipt.update(outcome)
+                        atomic_json(dispatch_path, dispatch_receipt)
+                except Exception as exc:
+                    if dispatch_path is not None:
+                        outcome = {"status": "failed", "completed_at_utc": now(),
+                            "error_type": classify_review_error(exc), "error_class": type(exc).__name__}
+                        state["capability_selection"]["calls"][-1]["outcome"] = outcome
+                        atomic_json(run_path, state)
+                        dispatch_receipt.update(outcome)
+                        atomic_json(dispatch_path, dispatch_receipt)
+                    raise
                 return output, {"attempt": attempt, "invocation": invocation_number, "backend": llm_backend,
                                 "backend_info": backend_info, "runner": runner.as_posix(),
                                 "returncode": 0, "receipt": receipt}
+            reservation = before_dispatch() if before_dispatch else None
+            invocation_number = (reserve_generation_invocation(candidate_root, candidate_label, lineage)
+                if not incremental and candidate_label and lineage else reservation)
             rc, stdout, cmd = run_llm_exec(
                 backend=llm_backend, root=llm_workspace, prompt=prompt_text,
                 output_last_message=output, timeout_sec=timeout_sec, codex_configs=[],
@@ -6986,6 +7041,7 @@ def main(argv: list[str] | None = None) -> int:
     p_prepare.add_argument("--evidence-ref", action="append", default=[],
         help="additional existing verification file to include in the immutable input")
     p_prepare.add_argument("--allow-unready-draft", action="store_true")
+    p_prepare.add_argument("--run-invocation-limit", type=int, default=None)
 
     p_generate = sub.add_parser("generate")
     p_generate.add_argument("--run-id", required=True)
@@ -7026,6 +7082,7 @@ def main(argv: list[str] | None = None) -> int:
                 manifest_path=repo_path(root, args.manifest),
                 allow_unready=bool(args.allow_unready_draft),
                 evidence_refs=args.evidence_ref,
+                run_invocation_limit=args.run_invocation_limit,
             )
         elif args.command == "generate":
             result = generate(
