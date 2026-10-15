@@ -120,7 +120,9 @@ Delta application preserves baseline flow order and appends new flows in operati
 
 候选准入、修复次数、退役、replacement lineage、逐项 base/proposal/proof/receipt hash 和选择结果持久化在 `logs/ci/mvg-planning/<run-id>/`，不修改任务、Requirement、Capability 或运行时状态。页面新点击创建新 job，只有显式 CLI/run-id 恢复允许复用该 run 中身份匹配的产物。历史整批候选与 incumbent D 仅按旧 run 已记录策略恢复。
 
-Story 2.2 的 checkpoint transaction ID 由 schema/run/Capability/order/base/proposal/selection receipt tuple 的 canonical JSON hash 派生。不可变 bundle 包含相同 tuple、完整 delta 和 accepted proposal，在 commit 前完成校验；bundle 的存在本身只代表 prepared。唯一可见 commit 是 `run.json` 的一次 atomic replace，同时提交 checkpoint 指针、selected 前缀、accepted hash 和 current 清理。临时写入失败不会暴露半个 checkpoint，stale base 拒绝推进。恢复验证指针引用的 bundle；完整同身份 replay、payload 冲突与前驱冲突由 Story 2.3 实施。
+Story 2.2 的 checkpoint transaction ID 由 schema/run/Capability/order/base/proposal/selection receipt tuple 的 canonical JSON hash 派生。不可变 bundle 包含相同 tuple、完整 delta 和 accepted proposal，在 commit 前完成校验；bundle 的存在本身只代表 prepared。唯一可见 commit 是 `run.json` 的一次 atomic replace，同时提交 checkpoint 指针、selected 前缀、accepted hash 和 current 清理。临时写入失败不会暴露半个 checkpoint，stale base 拒绝推进。Story 2.3 仅识别 selected 中已提交事务，完整验证 payload、receipt、累计前驱及后继后允许相同 canonical 内容 no-op；对象键序和空白不影响结果，布尔与数值类型差异、数组顺序变化均构成内容变化。较早事务不会回退最新 head，不重选、不重复添加 delta 或计费。第一项提交后尚未 dispatch 下一项时，恢复继续使用第一项记录的 accepted seed。
+
+相同事务的 payload 冲突、receipt 缺失或改变、前驱 hash 改变均在模型调用前 fail closed。共同前缀验证供 CLI 与 Knowledge 使用；证据写入 `logs/**` 对应 run 的 `checkpoint-conflicts/**`，包含 transaction ID、原因和期望/实际 hash。诊断 sidecar 不成为新 authority，冲突不修改 checkpoint、selected/head、accepted projection 或已发布 proposal。
 
 提交异常后若无法回读磁盘，工作流仅写入 `checkpoint-commit-outcome.json` 证据并停止，禁止旧内存状态覆盖 `run.json`。下次恢复在锁内读取磁盘、校验完整前缀并确定提交结果后才允许推进。下一项提交前重验前驱链；apply journal 原子绑定选定 checkpoint 和证据，恢复同样校验，不能绕过已提交链。
 

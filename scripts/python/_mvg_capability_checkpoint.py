@@ -10,10 +10,78 @@ from _planning_skill_common import atomic_json, canonical_sha, file_sha, load_js
 STRATEGY = "capability-selected-checkpoint.v1"
 SCHEMA = "newrouge.mvg-capability-checkpoint.v1"
 OUTCOME_SCHEMA = "newrouge.mvg-checkpoint-commit-outcome.v1"
+CONFLICT_SCHEMA = "newrouge.mvg-checkpoint-conflict.v1"
 
 
 class CheckpointCommitOutcomeUnknown(RuntimeError):
     """The disk pointer must be recovered before any further run state write."""
+
+
+def _diagnostic_sha(value):
+    try:
+        return canonical_sha(value)
+    except (TypeError, ValueError):
+        return canonical_sha({"invalid_type": type(value).__name__, "representation": repr(value)[:2000]})
+
+
+def record_conflict(run_dir, state, step, reason, *, expected=None, actual=None,
+                    hash_subject="canonical_payload", actual_transaction_id=None):
+    """Persist diagnostic evidence without changing checkpoint authority."""
+    step = step if isinstance(step, dict) else {}
+    pointer = step.get("checkpoint")
+    pointer = pointer if isinstance(pointer, dict) else {}
+    transaction_id = pointer.get("transaction_id")
+    if not isinstance(transaction_id, str):
+        transaction_id = _diagnostic_sha({"run_id": state.get("run_id"), "selection": step})
+    evidence = {"schema_version": CONFLICT_SCHEMA, "run_id": state.get("run_id"),
+        "transaction_id": transaction_id, "reason": str(reason),
+        "hash_subject": hash_subject,
+        "expected_sha256": _diagnostic_sha(expected), "actual_sha256": _diagnostic_sha(actual)}
+    if actual_transaction_id is not None:
+        evidence["actual_transaction_id"] = actual_transaction_id
+        if hash_subject == "transaction_identity":
+            evidence.update(expected_sha256=transaction_id, actual_sha256=actual_transaction_id)
+    elif hash_subject == "accepted_projection_hash":
+        evidence.update(expected_sha256=expected, actual_sha256=actual)
+    try:
+        if "receipt" in str(reason):
+            evidence.update(hash_subject="receipt_file_bytes",
+                artifact_path=step.get("receipt_path") if isinstance(step.get("receipt_path"), str) else None,
+                expected_sha256=step.get("receipt_sha256"), actual_sha256=None)
+            if isinstance(step.get("receipt_path"), str):
+                receipt = repo_path(run_dir, step["receipt_path"])
+                if receipt.is_relative_to(run_dir.resolve()) and receipt.is_file():
+                    evidence["actual_sha256"] = file_sha(receipt)
+        elif actual is None and pointer:
+            evidence.update(hash_subject="checkpoint_payload_canonical", actual_sha256=None,
+                expected_sha256=pointer.get("payload_sha256"))
+            if isinstance(pointer.get("path"), str):
+                artifact = repo_path(run_dir, pointer["path"])
+                if artifact.is_relative_to(run_dir.resolve()) and artifact.is_file():
+                    evidence["actual_sha256"] = canonical_sha(load_json(artifact, None))
+    except (OSError, ValueError, TypeError):
+        # Diagnostics must never replace the validation failure they describe.
+        pass
+    # Hash the identity again before using it as a filename, including malformed input.
+    path = run_dir / "checkpoint-conflicts" / canonical_sha(transaction_id)[7:] / (canonical_sha(evidence)[7:] + ".json")
+    try:
+        atomic_json(path, evidence)
+    except (OSError, ValueError, TypeError):
+        pass
+    return evidence
+
+
+def record_failure(run_dir, state, step, exc, **kwargs):
+    """One failure receives one evidence record across nested validators."""
+    if not getattr(exc, "checkpoint_conflict_recorded", False):
+        record_conflict(run_dir, state, step, str(exc), **kwargs)
+        exc.checkpoint_conflict_recorded = True
+
+
+def _conflict(run_dir, state, step, reason, *, expected=None, actual=None, hash_subject="canonical_payload"):
+    exc = ValueError(reason)
+    record_failure(run_dir, state, step, exc, expected=expected, actual=actual, hash_subject=hash_subject)
+    raise exc
 
 
 def _committed_projection(state):
@@ -59,6 +127,8 @@ def enabled(state):
 
 def checkpoint_payload(state, capability_id, index, seed, accepted, step, predecessor):
     """Use canonical proposal hashes and the exact persisted receipt file hash."""
+    if type(index) is not int or index < 0:
+        raise ValueError("checkpoint_identity_invalid")
     base_sha = canonical_sha(seed)
     if step["input_identity"]["base_sha256"] != base_sha:
         raise ValueError("checkpoint_stale_base")
@@ -79,6 +149,8 @@ def checkpoint_payload(state, capability_id, index, seed, accepted, step, predec
 
 
 def _receipt(run_dir, step):
+    if not isinstance(step.get("receipt_path"), str):
+        raise ValueError("checkpoint_receipt_changed")
     receipt = repo_path(run_dir, step["receipt_path"])
     if (not receipt.is_relative_to(run_dir.resolve()) or not receipt.is_file()
             or file_sha(receipt) != step["receipt_sha256"]):
@@ -106,31 +178,127 @@ def load_checkpoint(run_dir, pointer):
             or canonical_sha(payload.get("identity")) != transaction_id
             or canonical_sha(payload) != pointer.get("payload_sha256")):
         raise ValueError("checkpoint_payload_changed")
+    if (not {"identity", "accepted_seed", "accepted", "predecessor", "delta", "selection",
+             "proof_sha256", "source_proposal_sha256", "result_sha256"} <= payload.keys()
+            or not isinstance(payload["identity"], dict)
+            or not {"capability_id", "order_index", "base_sha256", "run_id", "proposal_sha256",
+                    "selection_receipt_sha256", "schema_version"} <= payload["identity"].keys()
+            or type(payload["identity"]["order_index"]) is not int
+            or payload["identity"]["order_index"] < 0):
+        raise ValueError("checkpoint_payload_incomplete")
     return payload
 
 
 def verify_checkpoint(run_dir, state, capability_id, index, seed, accepted, step, predecessor):
-    payload = load_checkpoint(run_dir, step.get("checkpoint"))
-    expected = checkpoint_payload(state, capability_id, index, seed, accepted, step, predecessor)
-    if payload != expected:
-        raise ValueError("checkpoint_selected_binding_changed")
-    _receipt(run_dir, step)
+    payload, expected = None, None
+    try:
+        payload = load_checkpoint(run_dir, step.get("checkpoint"))
+        expected = checkpoint_payload(state, capability_id, index, seed, accepted, step, predecessor)
+        if canonical_sha(payload) != canonical_sha(expected):
+            raise ValueError("checkpoint_selected_binding_changed")
+        _receipt(run_dir, step)
+    except (OSError, ValueError, KeyError, TypeError, AttributeError) as exc:
+        record_failure(run_dir, state, step, exc,
+            expected=expected or (step.get("checkpoint") if isinstance(step, dict) else step), actual=payload)
+        raise
     return payload["accepted"]
 
 
-def prepare_checkpoint(run_dir, state, capability_id, index, seed, accepted, step):
+def _committed_replay(run_dir, state, payload):
+    """Only selected members authorize replay; verify successors before reusing one."""
     ledger = state["capability_selection"]
+    selected = ledger["selected"]
+    matches = [step for step in selected if isinstance(step, dict)
+               and isinstance(step.get("checkpoint"), dict)
+               and step["checkpoint"].get("transaction_id") == payload["transaction_id"]]
+    if not matches:
+        index = payload["identity"]["order_index"]
+        if 0 <= index < len(selected):
+            original = selected[index]
+            exc = ValueError("checkpoint_identity_conflict:occupied_order_identity_changed")
+            record_failure(run_dir, state, original, exc, expected=original.get("checkpoint"),
+                actual=payload["identity"], hash_subject="transaction_identity",
+                actual_transaction_id=payload["transaction_id"])
+            raise exc
+        return None
+    step = matches[0]
+    if len(matches) != 1:
+        _conflict(run_dir, state, step, "checkpoint_identity_conflict:duplicate_selected_transaction",
+                  expected=1, actual=len(matches), hash_subject="selected_transaction_count")
+    production = (state.get("checkpoint_strategy") is not None
+        or state.get("generation_strategy") is not None
+        or (run_dir / "analysis-input/analysis-index.json").exists()
+        or tuple(part.casefold() for part in run_dir.resolve().parent.parts[-3:]) == ("logs", "ci", "mvg-planning"))
+    if production:
+        # Production runs have one fixed public location. Synthetic helper tests
+        # deliberately omit this protocol and exercise bundle validation only.
+        import plan_mvg as pm
+        from _mvg_capability_selection import verified_prefix
+        try:
+            if not enabled(state):
+                raise ValueError("checkpoint_protocol_changed")
+            root = run_dir.resolve().parents[len(pm.DEFAULT_RUN_ROOT.parts)]
+            if (root / pm.DEFAULT_RUN_ROOT / state["run_id"]).resolve() != run_dir.resolve():
+                raise ValueError("checkpoint_run_location_changed")
+            verified_prefix(root, run_dir, state)
+        except (OSError, ValueError, KeyError, TypeError, IndexError, AttributeError) as exc:
+            record_failure(run_dir, state, step, exc, expected=step.get("checkpoint"),
+                actual=state.get("capability_selection"), hash_subject="selected_prefix_projection")
+            raise
+    predecessor, accepted = None, None
+    for index, committed in enumerate(selected):
+        try:
+            stored = load_checkpoint(run_dir, committed.get("checkpoint"))
+        except (OSError, ValueError, KeyError, TypeError) as exc:
+            record_failure(run_dir, state, committed, exc, expected=committed.get("checkpoint"))
+            raise
+        seed = stored["accepted_seed"] if index == 0 else accepted
+        accepted = verify_checkpoint(run_dir, state, stored["identity"]["capability_id"], index,
+            seed, stored["accepted"], committed, predecessor)
+        predecessor = committed["checkpoint"]
+    if (canonical_sha(ledger.get("checkpoint_head")) != canonical_sha(predecessor)
+            or ledger.get("accepted_sha256") != canonical_sha(accepted)):
+        _conflict(run_dir, state, step, "checkpoint_identity_conflict:accepted_projection_changed",
+            expected={"head": predecessor, "accepted": canonical_sha(accepted)},
+            actual={"head": ledger.get("checkpoint_head"), "accepted": ledger.get("accepted_sha256")},
+            hash_subject="accepted_projection")
+    original = load_checkpoint(run_dir, step["checkpoint"])
+    if canonical_sha(original) != canonical_sha(payload):
+        _conflict(run_dir, state, step, "checkpoint_identity_conflict:payload_changed",
+                  expected=original, actual=payload)
+    return deepcopy(step["checkpoint"])
+
+
+def prepare_checkpoint(run_dir, state, capability_id, index, seed, accepted, step):
+    if type(index) is not int or index < 0:
+        raise ValueError("checkpoint_identity_invalid")
+    ledger = state["capability_selection"]
+    selected = ledger["selected"]
+    # Reconstruct the historical predecessor, never the latest head, for replay.
+    predecessor = selected[index - 1].get("checkpoint") if 0 < index <= len(selected) else None
+    try:
+        payload = checkpoint_payload(state, capability_id, index, seed, accepted, step,
+            predecessor if index < len(selected) else ledger.get("checkpoint_head"))
+    except (ValueError, KeyError, TypeError) as exc:
+        if type(index) is int and 0 <= index < len(selected):
+            record_failure(run_dir, state, selected[index], exc, expected=selected[index],
+                actual={"accepted_seed": seed, "accepted": accepted, "selection": step})
+        raise
+    replay = _committed_replay(run_dir, state, payload)
+    if replay is not None:
+        return replay
     if ledger["accepted_sha256"] != canonical_sha(seed) or len(ledger["selected"]) != index:
         raise ValueError("checkpoint_stale_base")
     _receipt(run_dir, step)
-    payload = checkpoint_payload(state, capability_id, index, seed, accepted, step, ledger.get("checkpoint_head"))
     transaction_id = payload["transaction_id"]
     relative = f"capability-checkpoints/{transaction_id[7:]}/payload.json"
     path = run_dir / relative
     path.parent.mkdir(parents=True, exist_ok=True)
     if path.is_file():
-        if load_json(path, None) != payload:
-            raise ValueError("checkpoint_prepared_payload_changed")
+        existing = load_json(path, None)
+        if canonical_sha(existing) != canonical_sha(payload):
+            _conflict(run_dir, state, {**step, "checkpoint": {"transaction_id": transaction_id}},
+                "checkpoint_prepared_payload_changed", expected=existing, actual=payload)
     else:
         atomic_json(path, payload)
     pointer = {"transaction_id": transaction_id, "path": relative, "payload_sha256": canonical_sha(payload)}
@@ -140,14 +308,29 @@ def prepare_checkpoint(run_dir, state, capability_id, index, seed, accepted, ste
 
 def commit_checkpoint(run_dir, state, pointer, step, accepted, *, writer=atomic_json):
     """Publish a complete bundle and its selected projection in one atomic replace."""
-    payload = load_checkpoint(run_dir, pointer)
+    try:
+        payload = load_checkpoint(run_dir, pointer)
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        record_failure(run_dir, state, {**step, "checkpoint": pointer}, exc, expected=pointer)
+        raise
     ledger = state["capability_selection"]
     disk = load_json(run_dir / "run.json", {})
     previous = disk.get("capability_selection", {})
     identity = payload["identity"]
+    if disk.get("run_id") == state["run_id"] and isinstance(previous, dict):
+        replay = _committed_replay(run_dir, disk, payload)
+        if replay is not None:
+            verify_checkpoint(run_dir, disk, identity["capability_id"], identity["order_index"],
+                payload["accepted_seed"], accepted, {**step, "checkpoint": pointer}, payload["predecessor"])
+            ledger.clear()
+            ledger.update(deepcopy(previous))
+            state.clear()
+            state.update(disk)
+            state["capability_selection"] = ledger
+            return "no-op"
     if (disk.get("run_id") != state["run_id"]
-            or previous.get("selected") != ledger["selected"]
-            or previous.get("checkpoint_head") != payload["predecessor"]
+            or canonical_sha(previous.get("selected")) != canonical_sha(ledger["selected"])
+            or canonical_sha(previous.get("checkpoint_head")) != canonical_sha(payload["predecessor"])
             or previous.get("accepted_sha256") != identity["base_sha256"]
             or ledger["accepted_sha256"] != identity["base_sha256"]
             or len(ledger["selected"]) != identity["order_index"]):
@@ -196,6 +379,7 @@ def commit_checkpoint(run_dir, state, pointer, step, accepted, *, writer=atomic_
     ledger.clear()
     ledger.update(committed)
     state["capability_selection"] = ledger
+    return "committed"
 
 
 @contextmanager

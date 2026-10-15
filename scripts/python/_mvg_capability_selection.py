@@ -160,17 +160,32 @@ def verified_prefix(root, run_dir, state):
     predecessor = None
     for index, step in enumerate(selected):
         base = accepted
-        accepted, record = _selected_step(root, run_dir, state, scopes, index, accepted, records, step)
-        if selected_checkpoint.enabled(state):
-            accepted = selected_checkpoint.verify_checkpoint(run_dir, state, scopes[index]["capability_id"],
-                index, base, accepted, step, predecessor)
-            predecessor = step["checkpoint"]
+        try:
+            accepted, record = _selected_step(root, run_dir, state, scopes, index, accepted, records, step)
+            if selected_checkpoint.enabled(state):
+                accepted = selected_checkpoint.verify_checkpoint(run_dir, state, scopes[index]["capability_id"],
+                    index, base, accepted, step, predecessor)
+                predecessor = step["checkpoint"]
+        except (OSError, ValueError, KeyError, TypeError) as exc:
+            if selected_checkpoint.enabled(state):
+                selected_checkpoint.record_failure(run_dir, state, step, exc,
+                    expected={"checkpoint": step.get("checkpoint"), "base_sha256": canonical_sha(base)},
+                    actual={"selection": step, "predecessor": predecessor}, hash_subject="selected_step_binding")
+            raise
         records.append(record)
     if selected_checkpoint.enabled(state) and ("checkpoint_head" not in ledger
-            or ledger["checkpoint_head"] != predecessor):
-        raise ValueError("checkpoint_head_changed")
+            or canonical_sha(ledger["checkpoint_head"]) != canonical_sha(predecessor)):
+        exc = ValueError("checkpoint_head_changed")
+        selected_checkpoint.record_failure(run_dir, state, selected[-1] if selected else {}, exc,
+            expected=predecessor, actual=ledger.get("checkpoint_head"), hash_subject="checkpoint_head")
+        raise exc
     if ledger.get("accepted_sha256") != canonical_sha(accepted):
-        raise ValueError("capability_selection_accepted_base_changed")
+        exc = ValueError("capability_selection_accepted_base_changed")
+        if selected_checkpoint.enabled(state):
+            selected_checkpoint.record_failure(run_dir, state, selected[-1] if selected else {}, exc,
+                expected=canonical_sha(accepted),
+                actual=ledger.get("accepted_sha256"), hash_subject="accepted_projection_hash")
+        raise exc
     current = ledger.get("current")
     if current is not None and (len(selected) >= len(scopes)
             or current.get("order_index") != len(selected)
