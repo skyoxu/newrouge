@@ -4059,7 +4059,8 @@ def now() -> str:
 
 
 def _run_dir(root: Path, run_id: str) -> Path:
-    return root / DEFAULT_RUN_ROOT / run_id
+    from _mvg_planning_boundary import safe_run_dir
+    return safe_run_dir(root, run_id)
 
 
 def _load_run(root: Path, run_id: str) -> tuple[Path, dict[str, Any]]:
@@ -4067,6 +4068,11 @@ def _load_run(root: Path, run_id: str) -> tuple[Path, dict[str, Any]]:
     payload = load_json(path, {})
     if payload.get("schema_version") != RUN_SCHEMA:
         raise ValueError(f"missing or invalid MVG planning run: {run_id}")
+    from _mvg_planning_boundary import planning_targets, reject
+    if payload.get("run_id") != run_id:
+        reject(root, "run_identity_changed", run_id=run_id)
+    if payload.get("manifest_path") is not None:
+        planning_targets(root, run_id, payload["manifest_path"])
     return path, payload
 
 
@@ -4285,6 +4291,7 @@ def _prepare_impl(
             accepted_requirement_ids=[row["requirement_id"] for row in prior.get("coverage_table", [])])
     index = {
         "schema_version": "newrouge.mvg-planning-input.v1",
+        "planning_completion_protocol": "newrouge.mvg-planning-completion.v1",
         "generation_strategy": "capability-local-selection.v1",
         "requirement_routes_protocol": "newrouge.requirement-routes.v1",
         "requirement_accounting_protocol": "newrouge.requirement-accounting.v1",
@@ -4339,6 +4346,7 @@ def _prepare_impl(
         "requirement_routes_protocol": index["requirement_routes_protocol"],
         "requirement_accounting_protocol": index["requirement_accounting_protocol"],
         "checkpoint_schema_version": index["checkpoint_schema_version"],
+        "planning_completion_protocol": index["planning_completion_protocol"],
         "run_id": run_id,
         "phase": "prepared",
         "created_at_utc": now(),
@@ -4379,6 +4387,13 @@ def prepare(
 ) -> dict[str, Any]:
     """Prepare an MVG run and persist one diagnostic for every pre-run failure."""
     run_dir = _run_dir(root, run_id)
+    if manifest_path is not None:
+        from _mvg_planning_boundary import planning_targets, reject
+        try:
+            reference = manifest_path.relative_to(root.resolve()).as_posix() if manifest_path.is_absolute() else manifest_path.as_posix()
+        except ValueError:
+            reject(root, "manifest_outside_repository", run_id=run_id, target=str(manifest_path))
+        manifest_path, _ = planning_targets(root, run_id, reference)
     diagnostic = run_dir / "input-freshness.json"
     try:
         if not (run_dir / "run.json").is_file():
@@ -6544,14 +6559,19 @@ def validate(root: Path, *, run_id: str) -> dict[str, Any]:
     _require_unblocked_selection(state)
     run_dir = run_path.parent
     _validate_input_freshness(root, run_dir, state)
+    chain_errors = []
+    global_receipt = None
     if state.get("generation_strategy") == "capability-local-selection.v1":
         from _mvg_capability_selection import verify_published_chain
-        verify_published_chain(root, run_dir, state)
+        try:
+            verify_published_chain(root, run_dir, state)
+        except (OSError, ValueError, KeyError, TypeError) as exc:
+            chain_errors.append("selected_chain_invalid:" + str(exc))
     proposal = load_json(run_dir / "proposal.json", {})
     result = validate_proposal(root, state, proposal)
     from _mvg_planning_review import semantic_review_errors, review_execution_errors
     scope = state.get("planning_scope") if isinstance(state.get("planning_scope"), dict) else None
-    review_errors = semantic_review_errors(state, proposal, load_json(run_dir / "semantic-review.json", {}),
+    review_errors = chain_errors + semantic_review_errors(state, proposal, load_json(run_dir / "semantic-review.json", {}),
         load_json(run_dir / "analysis-input/semantic-requirements.v1.json", {}),
         set(scope.get("requirement_ids", [])) if scope else None)
     review_errors.extend(review_execution_errors(state, proposal,
@@ -6568,6 +6588,7 @@ def validate(root: Path, *, run_id: str) -> dict[str, Any]:
     if review_errors:
         result["formal_applicable"] = False
         result["formal_blockers"].extend(review_errors)
+    expected_manifest = proposal.get("manifest_candidate", {})
     if result["status"] == "passed":
         baseline = run_dir / "analysis-input/existing-manifest.json"
         if baseline.is_file():
@@ -6576,7 +6597,7 @@ def validate(root: Path, *, run_id: str) -> dict[str, Any]:
             atomic_json(run_dir / "delta.json", delta)
             from update_mvg_baseline import apply_delta
             try:
-                apply_delta(existing, delta, root=root, validate_final=True)
+                expected_manifest = apply_delta(existing, delta, root=root, validate_final=True)
                 result["delta_status"] = "passed"
             except ValueError as exc:
                 result["delta_status"] = "blocked"
@@ -6584,15 +6605,18 @@ def validate(root: Path, *, run_id: str) -> dict[str, Any]:
                 result["status"] = "blocked"
         else:
             result["delta_status"] = "not_applicable_initial_manifest"
+    from _mvg_planning_completion import FIELD, build_report
+    result[FIELD] = build_report(root, run_dir, state, proposal, result, global_receipt, expected_manifest)
+    result["planning_complete"] = result[FIELD]["planning_complete"]
     atomic_json(run_dir / "validation.json", result)
-    state["phase"] = "validated" if result["status"] == "passed" else "validation-blocked"
+    state["phase"] = "validated" if result["planning_complete"] is True else "validation-blocked"
     atomic_json(run_path, state)
     return result
 
 
 def _validate_input_freshness(root: Path, run_dir: Path, state: dict[str, Any]) -> None:
     prepared_index = load_json(run_dir / "analysis-input/analysis-index.json", {})
-    for key in ("checkpoint_strategy", "checkpoint_schema_version"):
+    for key in ("checkpoint_strategy", "checkpoint_schema_version", "planning_completion_protocol"):
         if prepared_index.get(key) != state.get(key):
             atomic_json(run_dir / "input-freshness.json", {"status": "blocked", "run_id": state.get("run_id"),
                 "analysis_identity_sha256": state.get("analysis_identity_sha256"), "drift": ["run:" + key]})
@@ -6653,6 +6677,8 @@ def _apply_checkpoint_projection(state: dict[str, Any]) -> dict[str, Any]:
         "run_id", "analysis_identity_sha256", "generation_strategy", "checkpoint_strategy",
         "checkpoint_schema_version", "capability_selection", "selected_admission_review",
         "selection_status", "selected_candidate")}
+    if "planning_completion_protocol" in state:
+        projection.update({key: deepcopy(state.get(key)) for key in ("planning_completion_protocol", "manifest_path")})
     projection.update({key: deepcopy(state[key]) for key in (
         "global_audit", "global_conflict_report", "reopen_history", "reopen_contexts") if key in state})
     return projection
@@ -6845,6 +6871,15 @@ def _validate_apply_accounting(root: Path, run_dir: Path, state: dict[str, Any],
             [], ['handoff_bindings'] if row['path'] == expected_trace else []) for row in entries):
         raise ValueError('MVG journal accounting mutable target binding invalid')
     trace, manifest = targets[expected_trace], targets[expected_manifest]
+    from _mvg_planning_completion import FIELD, PROTOCOL_FIELD as COMPLETION_PROTOCOL_FIELD, PROTOCOL as COMPLETION_PROTOCOL, bound_report
+    report = trace.get(FIELD)
+    required_report = index.get(COMPLETION_PROTOCOL_FIELD) == COMPLETION_PROTOCOL or report is not None or FIELD in result
+    if required_report:
+        validation = load_json(run_dir / 'validation.json', {})
+        if (report is None or result.get(FIELD) != report or validation.get(FIELD) != report
+                or bound_report(trace, manifest, expected_manifest).get('planning_complete') is not True
+                or report.get('binding', {}).get('audit_ref') != state.get('global_audit')):
+            raise ValueError('MVG journal final completion binding invalid')
     errors = boundary_errors(trace, required, root=root, prepared=prepared, check_originals=False)
     projected = (project_routes(proposal) if 'requirement_route_memberships' in trace
                  or index.get('requirement_routes_protocol') is not None else deepcopy(proposal))
@@ -6883,6 +6918,8 @@ def apply(root: Path, *, run_id: str, confirm: bool) -> dict[str, Any]:
     journal_path = run_dir / "apply-journal.json"
     if journal_path.is_file():
         journal = load_json(journal_path, {})
+        from _mvg_planning_boundary import validate_journal_targets
+        validate_journal_targets(root, run_id, state.get("manifest_path"), journal)
         try:
             _validate_apply_checkpoint_binding(root, run_dir, state, journal)
             _validate_apply_accounting(root, run_dir, state, journal)
@@ -6890,6 +6927,12 @@ def apply(root: Path, *, run_id: str, confirm: bool) -> dict[str, Any]:
             raise ValueError('MVG journal accounting malformed:' + type(exc).__name__) from exc
         result = dict(resume_journal(root, journal_path, atomic_json))
         result.pop("_mvg_checkpoint_binding", None)
+        from _mvg_planning_completion import FIELD, unavailable
+        if FIELD not in result and "planning_complete" in result:
+            # Preserve historical journal bytes while refusing a new completion
+            # authorization from its cached pre-protocol boolean.
+            result[FIELD] = unavailable()
+            result["planning_complete"] = None
         state.update(phase="applied", applied=True, applied_manifest_sha256=result["manifest_sha256"],
             post_apply_task_readiness=result["post_apply_task_readiness"],
             involved_task_ids=result["handoff_review_required_tasks"],
@@ -6912,12 +6955,16 @@ def apply(root: Path, *, run_id: str, confirm: bool) -> dict[str, Any]:
             "MVG proposal is structurally valid but not formally applicable: "
             + (blockers or "unknown_formal_blocker")
         )
+    from _mvg_planning_completion import FIELD, bound_report
+    if validation.get("planning_complete") is not True:
+        raise ValueError("MVG final planning completion is blocked")
     if file_sha(root / str(state["capabilities_path"])) != state.get("capabilities_sha256"):
         raise ValueError("selected Capability input changed after MVG planning prepare")
 
-    manifest_path = root / str(state["manifest_path"]) if state.get("manifest_path") else None
-    if manifest_path is None:
+    if not state.get("manifest_path"):
         raise ValueError("MVG apply requires an explicit --manifest destination from prepare")
+    from _mvg_planning_boundary import planning_targets
+    manifest_path, trace_path = planning_targets(root, run_id, state["manifest_path"])
     candidate = proposal["manifest_candidate"]
     if manifest_path.is_file():
         from update_mvg_baseline import apply_delta
@@ -6940,7 +6987,9 @@ def apply(root: Path, *, run_id: str, confirm: bool) -> dict[str, Any]:
     trace["applied_manifest_sha256"] = text_sha(json.dumps(updated, ensure_ascii=False, indent=2) + "\n")
     trace["capabilities_sha256"] = state["capabilities_sha256"]
     trace["applied_at_utc"] = now()
-    trace_path = root / FORMAL_TRACE_ROOT / f"{run_id}.json"
+    trace[FIELD] = deepcopy(validation[FIELD])
+    if bound_report(trace, updated, state["manifest_path"]).get("planning_complete") is not True:
+        raise ValueError("MVG final planning completion does not match applied projection")
     trace["handoff_bindings"] = {}
     # Persist the execution blocker before introducing new manifest obligations.
 
@@ -6965,7 +7014,8 @@ def apply(root: Path, *, run_id: str, confirm: bool) -> dict[str, Any]:
         "manifest_path": state["manifest_path"],
         "manifest_sha256": trace["applied_manifest_sha256"],
         "trace_path": trace_path.resolve().relative_to(root.resolve()).as_posix(),
-        "planning_complete": True,
+        "planning_complete": validation[FIELD]["planning_complete"],
+        FIELD: deepcopy(validation[FIELD]),
         "runtime_verified": False,
         "chapter6_ready": False,
         "handoff_review_required_tasks": involved,
@@ -6976,6 +7026,8 @@ def apply(root: Path, *, run_id: str, confirm: bool) -> dict[str, Any]:
     binding = _freeze_apply_checkpoint_binding(root, run_dir, state)
     if binding is not None:
         result["_mvg_checkpoint_binding"] = binding
+    from _mvg_planning_boundary import planning_targets
+    planning_targets(root, run_id, state["manifest_path"])
     create_journal(root, journal_path, {trace_path: trace, manifest_path: updated}, authority, result,
         mutable_json_keys={trace_path: ["handoff_bindings"]})
     return apply(root, run_id=run_id, confirm=True)
@@ -6990,6 +7042,10 @@ def rebind_handoff(
     out_path: Path | None,
 ) -> dict[str, Any]:
     run_path, state = _load_run(root, run_id)
+    from _mvg_planning_boundary import handoff_target, planning_targets
+    if out_path is not None:
+        out_path = handoff_target(root, run_id, out_path)
+    _, trace_path = planning_targets(root, run_id, state.get("manifest_path"))
     if state.get("applied") is not True:
         raise ValueError("MVG handoff rebind requires an applied planning run")
     manifest_ref = str(state.get("manifest_path") or "").strip()
@@ -7047,7 +7103,6 @@ def rebind_handoff(
             raise ValueError("rebuilt milestone handoff is invalid: " + validation_reason)
         binding.update(kind="milestone", path=out_path.relative_to(root).as_posix(), sha256=normalized_file_sha(out_path),
             change_plan_path=change_plan_path.relative_to(root).as_posix())
-    trace_path = root / FORMAL_TRACE_ROOT / f"{run_id}.json"
     trace = load_json(trace_path, {})
     if trace.get("applied_manifest_sha256") != expected_manifest_sha:
         raise ValueError("MVG durable applied trace is missing or stale")
@@ -7120,6 +7175,15 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     root = Path(args.repo_root).resolve()
     try:
+        # Preserve lexical CLI spelling until output validation; repo_path resolves
+        # links and would otherwise conceal an absolute path or directory alias.
+        from _mvg_planning_boundary import run_directory_path, safe_reference, planning_targets, handoff_target
+        run_directory_path(root, args.run_id)
+        if args.command == "prepare":
+            planning_targets(root, args.run_id, args.manifest)
+        if args.command == "rebind-handoff" and args.out:
+            safe_reference(root, args.out)
+            handoff_target(root, args.run_id, root / args.out)
         if args.command == "prepare":
             result = prepare(
                 root,

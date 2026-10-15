@@ -2412,8 +2412,13 @@ class MvgPlanningContractTests(unittest.TestCase):
             trace = root / "docs/testing/mvg/planning/run-1.json"
             trace.parent.mkdir(parents=True)
             trace.write_text(json.dumps({"applied_manifest_sha256": run_state["applied_manifest_sha256"]}), encoding="utf-8")
-            out = root / "logs/handoff.json"
+            out = run_dir / "handoffs/task-1.json"
             handoff = {"schema_version": "newrouge.milestone-task-handoff.v1", "task_id": "1"}
+
+            with self.assertRaisesRegex(ValueError, "handoff_outside_run_evidence"):
+                rebind_handoff(root, run_id="run-1", task_id="1", change_plan_path=change_plan,
+                    out_path=root / "logs/handoff.json")
+            self.assertFalse((root / "logs/handoff.json").exists())
 
             with patch("chapter5_semantic_reconciliation.load_task_readiness", return_value=(True, {"readiness": "READY"}, "ready")), \
                  patch("milestone_incremental_handoff.build_task_handoff", return_value=handoff), \

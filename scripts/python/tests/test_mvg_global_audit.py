@@ -17,7 +17,7 @@ import plan_mvg
 import dev_cli
 from dev_cli_builders import build_plan_mvg_cmd
 from _planning_skill_common import atomic_json, canonical_sha, file_sha, load_json
-import test_mvg_capability_append as append_fixture
+from scripts.python.tests import test_mvg_capability_append as append_fixture
 
 
 class GlobalAuditTests(unittest.TestCase):

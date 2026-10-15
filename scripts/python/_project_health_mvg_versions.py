@@ -23,6 +23,9 @@ def attach_planning_routes(manifest: dict, proposal: dict, source: dict, *, requ
     errors, valid = trace_evidence_validation(proposal, read_source=read_source)
     manifest['requirement_accounting'] = accounting_summary(proposal, valid_evidence_keys=valid)
     manifest['requirement_accounting']['evidence_errors'] = errors
+    from _mvg_planning_completion import FIELD as COMPLETION_FIELD, bound_report, unavailable
+    manifest[COMPLETION_FIELD] = (unavailable('Current Requirement evidence is missing or has changed.') if errors
+        else bound_report(proposal, applied_manifest, manifest.get('path')))
     return True
 
 
@@ -126,6 +129,8 @@ def build_overview(snapshot, details: list[dict], topology: dict, graph: dict) -
                           'mvg_id': manifest.get('mvg_id'), 'coverage': manifest.get('coverage', {}),
                           'flows': flows, 'tests': manifest.get('tests', []),
                           FIELD: [], 'requirement_routes_source': None}
+        from _mvg_planning_completion import FIELD as COMPLETION_FIELD, unavailable
+        item[COMPLETION_FIELD] = unavailable()
         traces = []
         for trace_path in sorted(p for p in paths if p.startswith('docs/testing/mvg/planning/') and p.endswith('.json')):
             try:

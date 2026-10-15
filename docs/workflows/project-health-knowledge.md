@@ -186,6 +186,8 @@ GDD 配置真正参与补充检索，但不会悄悄改变 KCP consumer policy�
 
 ## 查询与正式交接的边界
 
+MVG Knowledge 的本地 selected proposal 与正式 trace 视图仅在绑定实际 manifest/path/hash 后附加同一 `planning_completion` 报告，检查报告自身内容 hash、proposal 投影、checkpoint/audit 身份及 manifest 内容。报告分开展示通过项、冲突、planned 义务、Requirement 记账、证据缺口与 runtime `not_verified`；不会使用 apply-summary 的缓存布尔值宣布完成。历史无报告 trace 继续展示描述性记账，完成状态为 `unavailable`，不自动补判成功。`with_runtime_evidence` 仍独立匹配正式 `mode=run`、revision、manifest 和通过回执，规划报告不参与或提升该判定。
+
 前置查询复用知识 builder/locator、Impact target resolver 与分析规则，从同一选定内容集构造探索视图，不创建正式 immutable index。页面结果采用单独 preview schema，`handoff_eligible=false`。不会自动 accept/freeze、publish、restore 或调用 codex exec。
 
 轻量 C# 解析器无法识别部分方法参数。探索模式跳过这些方法并输出路径/行号/原因，仍保留其他证据；正式 analyzer 继续严格失败，而且探索实例不能生成正式报告。页面的 published pointer matches 只比较提交号，不等于对 publication envelope 的完整验证。

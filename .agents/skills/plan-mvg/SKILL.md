@@ -77,7 +77,7 @@ Repair one stable hard issue at a time, at most three attempts per issue. Reject
 6. Apply only after independent review and validation. Source, task master/views, Acceptance, referenced contracts/tests/ADRs, Chapter 5 evidence and original manifest identities must still match prepare:
    `py -3 scripts/python/plan_mvg.py apply --run-id <id> --confirm`
 7. Resolve final obligation bindings before Chapter 6. Keep current milestone change plans under `docs/planning/milestones/`. For each actual milestone owner, rebuild the existing Chapter 5→6 handoff against current readiness and the applied MVG manifest:
-   `py -3 scripts/python/plan_mvg.py rebind-handoff --run-id <id> --task-id <task> --change-plan <reviewed-plan.json> --out <handoff.json>`
+   `py -3 scripts/python/plan_mvg.py rebind-handoff --run-id <id> --task-id <task> --change-plan <reviewed-plan.json> --out logs/ci/mvg-planning/<id>/handoffs/<task>.json`
    For an ordinary task, verify applicability and bind its current Chapter 5 readiness without creating a milestone handoff:
    `py -3 scripts/python/plan_mvg.py rebind-handoff --run-id <id> --task-id <task>`
    This ordinary route fails closed if an applicable milestone plan exists.
@@ -87,6 +87,10 @@ For an existing manifest, the Skill computes a reviewed delta and passes it thro
 ## Evidence and handoff
 
 The durable run is under `logs/ci/mvg-planning/<run-id>/`. The applied trace sidecar is under `docs/testing/mvg/planning/<run-id>.json`; it is planning provenance, not another runtime-test state authority.
+
+Story 4.3 is deployed: `validate` derives a hash-bound `planning_completion` report from the entire verified admission/selection/merge chain, its current final machine audit and Requirement accounting. Apply/recovery and manifest-bound Knowledge expose that same report, including passed items, conflicts, obligations, evidence gaps and `runtime_acceptance.status=not_verified`. Only these complete valid bindings authorize `planning_complete=true`; stale audit/proof, `source_gap` and unresolved reopened conflicts block. Planned tests/entrypoints remain obligations and do not increase satisfaction or prove runtime success. Historical traces without a report keep descriptive accounting and completion `unavailable`; never promote an old apply-summary boolean.
+
+The frozen manifest destination is a direct `docs/testing/mvg/<name>.json`; its trace is fixed by the safe single-component run ID. Prepare, CLI, apply, pending journal recovery, explicit reopen and rebind all share the output boundary: reject traversal, absolute CLI paths, Windows devices/drives, symlinks/junctions, aliases and protected authority/runtime targets before writing. Check every journal target before any writer; the transaction's own after-image remains valid recovery input. Completed historical journals retain original content/hash checks. Rejections use independently checked `logs/ci/mvg-planning-rejections/`; if logs is unsafe, refuse without writing a diagnostic outside it. Explicit milestone handoffs stay under the current run's `handoffs/<name>.json`. Ordinary readiness rebind remains available without a handoff output.
 
 The applied trace records per-task obligation bindings and is consumed by both `chapter6-route` and the single-task lane. Omitting `--milestone-handoff` cannot bypass pending obligations. A milestone handoff itself binds the baseline manifest hash; later manifest/readiness/plan changes invalidate the binding. Ordinary bindings use current Chapter 5 readiness and create no synthetic milestone handoff. Planning and rebind keep `runtime_verified=false`; runtime evidence belongs to the MVG runner/Chapter 6 acceptance path.
 
