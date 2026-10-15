@@ -459,7 +459,8 @@ def candidate_admission_errors(root: Path, state: dict[str, Any],
                            "path": "analysis-input/semantic-requirements.v1.json"})
             errors = []
         else:
-            errors = semantic_review_errors(state, proposal, semantic_review, semantics, allowed)
+            errors = semantic_review_errors(state, proposal, semantic_review, semantics, allowed,
+                root=root, prepared=_run_dir(root, str(state.get('run_id'))) / 'analysis-input')
         specific_blockers = [error for error in errors
                              if str(error).startswith("semantic_review_blocked:")]
         if specific_blockers:
@@ -507,6 +508,9 @@ def run_admission_semantic_gate(root: Path, state: dict[str, Any], proposal: dic
     if (not isinstance(semantics, dict) or not isinstance(semantics.get("requirements"), list)
             or not semantics["requirements"]):
         raise ValueError("prepared semantic requirements snapshot is missing or invalid")
+    hard_issues = candidate_admission_errors(root, state, proposal)
+    if hard_issues:
+        raise ValueError('MVG candidate accounting admission blocked:' + str(hard_issues))
     scope = state.get("planning_scope") if isinstance(state.get("planning_scope"), dict) else None
     allowed = set(scope.get("requirement_ids", [])) if scope else None
     required_requirements = {
@@ -5910,8 +5914,8 @@ def validate_proposal(root: Path, state: dict[str, Any], proposal: dict[str, Any
     manifest = proposal.get("manifest_candidate")
     if not isinstance(manifest, dict):
         return {"status": "blocked", "errors": errors + ["manifest_candidate_missing"]}
-    from _mvg_requirement_accounting import manifest_key_errors
-    shape_errors = manifest_key_errors(proposal)
+    from _mvg_requirement_accounting import manifest_key_errors, key_errors
+    shape_errors = manifest_key_errors(proposal) + key_errors(proposal)
     if shape_errors:
         return {'status': 'blocked', 'errors': errors + shape_errors, 'formal_applicable': False, 'formal_blockers': []}
 
@@ -6177,7 +6181,8 @@ def review(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict[s
             execution = load_json(execution_path, {})
             errors = semantic_review_errors(state, proposal, proof,
                 load_json(run_dir / "analysis-input/semantic-requirements.v1.json", {}),
-                set(state.get("planning_scope", {}).get("requirement_ids", [])) if isinstance(state.get("planning_scope"), dict) else None)
+                set(state.get("planning_scope", {}).get("requirement_ids", [])) if isinstance(state.get("planning_scope"), dict) else None,
+                root=root, prepared=run_dir / 'analysis-input')
             errors.extend(review_execution_errors(state, proposal, execution, proof))
             if errors:
                 state["phase"] = "review-blocked"
@@ -6383,7 +6388,7 @@ Use one actual verdict value, not the pipe-separated enumeration above. Do not r
     scope = state.get("planning_scope") if isinstance(state.get("planning_scope"), dict) else None
     errors = semantic_review_errors(state, proposal, result,
         load_json(run_dir / "analysis-input/semantic-requirements.v1.json", {}),
-        set(scope.get("requirement_ids", [])) if scope else None)
+        set(scope.get("requirement_ids", [])) if scope else None, root=root, prepared=run_dir / 'analysis-input')
     # A semantic block is terminal for this candidate. Candidate replacement
     # belongs to pre-selection admission; the final review must never silently
     # switch the selected winner after comparative scoring.
@@ -6662,6 +6667,123 @@ def _validate_apply_checkpoint_binding(root: Path, run_dir: Path, state: dict[st
             raise ValueError("MVG checkpoint journal evidence changed: " + relative)
 
 
+def _validate_apply_accounting(root: Path, run_dir: Path, state: dict[str, Any], journal: dict[str, Any]) -> None:
+    """Validate frozen accounting and bind both transaction payloads before writes.
+
+    The generic journal subsequently checks every original authority except its
+    owned targets, which may already contain this transaction's after-image.
+    Never rewrite a historical proposal, proof, checkpoint or completed journal.
+    """
+    from _mvg_requirement_accounting import boundary_errors, freeze_accounting_sources, PROTOCOL_FIELD, PROTOCOL
+    from _mvg_requirement_routes import authority_ids
+    from _mvg_planning_review import semantic_review_errors, review_execution_errors
+    prepared = run_dir / 'analysis-input'
+    index = load_json(prepared / 'analysis-index.json', {})
+    if (journal.get('schema_version') != 'newrouge.planning-apply-journal.v1'
+            or journal.get('status') not in {'pending', 'complete'}):
+        raise ValueError('MVG journal accounting transaction invalid')
+    if (not isinstance(index, dict) or not isinstance(index.get('authority_inputs'), dict)
+            or journal.get('authority_inputs') != index['authority_inputs']):
+        raise ValueError('MVG journal accounting authority binding invalid')
+    if 'input_envelope' in index or 'input_envelope_sha256' in state:
+        from _mvg_input_envelope import validate_envelope
+        validate_envelope(root, prepared, state, check_originals=False)
+    else:
+        original = {key: value for key, value in index.items()
+                    if key not in {'analysis_identity_sha256', 'repository_identity'}}
+        if canonical_sha(original) != state.get('analysis_identity_sha256'):
+            raise ValueError('MVG journal prepared analysis identity changed')
+        for relative, expected in index.get('files', {}).items():
+            path = repo_path(prepared, relative)
+            if not path.is_file() or file_sha(path) != expected:
+                raise ValueError('MVG journal prepared evidence changed:' + relative)
+    proposal = load_json(run_dir / 'proposal.json', {})
+    semantics = load_json(prepared / 'semantic-requirements.v1.json', {})
+    capabilities = load_json(prepared / 'capabilities.v1.json', {})
+    if (not isinstance(proposal, dict) or not isinstance(semantics, dict)
+            or not isinstance(semantics.get('requirements'), list)
+            or not isinstance(capabilities, dict) or not isinstance(capabilities.get('capabilities'), list)
+            or any(not isinstance(row, dict) for row in semantics['requirements'])
+            or any(not isinstance(row, dict) or not isinstance(row.get('requirement_ids'), list)
+                   for row in capabilities['capabilities'])):
+        raise ValueError('MVG journal accounting frozen object invalid')
+    required = authority_ids(semantics, capabilities)
+    scope = state.get('planning_scope')
+    if isinstance(scope, dict):
+        required &= set(scope.get('requirement_ids', []))
+    errors = boundary_errors(proposal, required, root=root, prepared=prepared, check_originals=False)
+    from _mvg_requirement_accounting import verification_rows
+    if proposal.get('planning_status') != 'ready_for_validation':
+        errors.append('planning_status_not_ready')
+    if not isinstance(proposal.get('gaps'), list) or proposal['gaps']:
+        errors.append('unresolved_planning_gaps')
+    errors += ['requirement_source_gap:' + str(row.get('requirement_id'))
+               for row in verification_rows(proposal) if isinstance(row, dict) and row.get('disposition') == 'source_gap']
+    if (proposal.get('schema_version') != PROPOSAL_SCHEMA
+            or proposal.get('analysis_identity_sha256') != state.get('analysis_identity_sha256')):
+        errors.append('journal_proposal_identity_invalid')
+    review = load_json(run_dir / 'semantic-review.json', {})
+    errors += semantic_review_errors(state, proposal, review, semantics, required,
+        root=root, prepared=prepared, check_originals=False)
+    errors += review_execution_errors(state, proposal,
+        load_json(run_dir / 'semantic-review-execution.json', {}), review)
+    if errors:
+        raise ValueError('MVG journal accounting invalid:' + ';'.join(errors))
+    result = journal.get('result')
+    entries = journal.get('entries')
+    expected_trace = (FORMAL_TRACE_ROOT / (str(state['run_id']) + '.json')).as_posix()
+    expected_manifest = state.get('manifest_path')
+    if (not isinstance(result, dict) or not isinstance(entries, list)
+            or len(entries) != 2 or any(not isinstance(row, dict) or not isinstance(row.get('path'), str)
+                                      or not isinstance(row.get('payload'), dict) for row in entries)
+            or {row['path'] for row in entries} != {expected_trace, expected_manifest}
+            or result.get('trace_path') != expected_trace or result.get('manifest_path') != expected_manifest):
+        raise ValueError('MVG journal accounting target binding invalid')
+    if (result.get('status') != 'applied' or not isinstance(result.get('manifest_sha256'), str)
+            or not isinstance(result.get('post_apply_task_readiness'), list)
+            or any(not isinstance(row, dict) for row in result['post_apply_task_readiness'])
+            or not isinstance(result.get('handoff_review_required_tasks'), list)
+            or any(not isinstance(task, str) for task in result['handoff_review_required_tasks'])
+            or ('planning_complete' in result and result['planning_complete'] is not True)
+            or ('runtime_verified' in result and result['runtime_verified'] is not False)
+            or ('chapter6_ready' in result and result['chapter6_ready'] is not False)):
+        raise ValueError('MVG journal accounting result invalid')
+    if index.get(PROTOCOL_FIELD) == PROTOCOL and any(result.get(field) is not expected
+            for field, expected in (('planning_complete', True), ('runtime_verified', False), ('chapter6_ready', False))):
+        raise ValueError('MVG journal accounting result protocol fields missing')
+    targets = {row['path']: row['payload'] for row in entries}
+    if any(row.get('mutable_json_keys_after_complete', []) not in (
+            [], ['handoff_bindings'] if row['path'] == expected_trace else []) for row in entries):
+        raise ValueError('MVG journal accounting mutable target binding invalid')
+    trace, manifest = targets[expected_trace], targets[expected_manifest]
+    errors = boundary_errors(trace, required, root=root, prepared=prepared, check_originals=False)
+    projected = (project_routes(proposal) if 'requirement_route_memberships' in trace
+                 or index.get('requirement_routes_protocol') is not None else deepcopy(proposal))
+    if any(trace.get(key) != value or key not in trace for key, value in projected.items()):
+        errors.append('journal_trace_proposal_binding_invalid')
+    baseline = load_json(prepared / 'existing-manifest.json', None)
+    if baseline is not None:
+        from update_mvg_baseline import apply_delta
+        delta = build_delta(baseline, proposal)
+        if load_json(run_dir / 'delta.json', None) != delta:
+            errors.append('journal_delta_proposal_binding_invalid')
+        expected = apply_delta(baseline, delta, root=root, validate_final=True)
+    else:
+        expected = proposal.get('manifest_candidate')
+    digest = text_sha(json.dumps(manifest, ensure_ascii=False, indent=2) + '\n')
+    if (manifest != expected or trace.get('applied_manifest_candidate') != manifest
+            or trace.get('applied_manifest_path') != expected_manifest
+            or trace.get('applied_manifest_sha256') != digest or result.get('manifest_sha256') != digest):
+        errors.append('journal_manifest_proposal_binding_invalid')
+    if index.get(PROTOCOL_FIELD) == PROTOCOL:
+        if trace.get(PROTOCOL_FIELD) != PROTOCOL:
+            errors.append('journal_accounting_protocol_changed')
+        if trace.get('requirement_accounting_sources') != freeze_accounting_sources(proposal, prepared)['requirement_accounting_sources']:
+            errors.append('journal_accounting_sources_binding_invalid')
+    if errors:
+        raise ValueError('MVG journal accounting invalid:' + ';'.join(errors))
+
+
 def apply(root: Path, *, run_id: str, confirm: bool) -> dict[str, Any]:
     if not confirm:
         raise ValueError("MVG planning apply requires --confirm")
@@ -6671,7 +6793,12 @@ def apply(root: Path, *, run_id: str, confirm: bool) -> dict[str, Any]:
     from _planning_apply_journal import create_journal, resume_journal
     journal_path = run_dir / "apply-journal.json"
     if journal_path.is_file():
-        _validate_apply_checkpoint_binding(root, run_dir, state, load_json(journal_path, {}))
+        journal = load_json(journal_path, {})
+        try:
+            _validate_apply_checkpoint_binding(root, run_dir, state, journal)
+            _validate_apply_accounting(root, run_dir, state, journal)
+        except (TypeError, KeyError, AttributeError, UnicodeError) as exc:
+            raise ValueError('MVG journal accounting malformed:' + type(exc).__name__) from exc
         result = dict(resume_journal(root, journal_path, atomic_json))
         result.pop("_mvg_checkpoint_binding", None)
         state.update(phase="applied", applied=True, applied_manifest_sha256=result["manifest_sha256"],

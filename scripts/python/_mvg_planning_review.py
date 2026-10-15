@@ -3,12 +3,11 @@ from pathlib import Path
 from typing import Any
 
 from _planning_skill_common import canonical_sha, file_sha, load_json, normalized_file_sha, repo_path
-from _mvg_requirement_routes import route_errors
-from _mvg_requirement_accounting import (accounting_errors, prepared_evidence_validation,
-    manifest_key_errors, normalized_source, source_path)
+from _mvg_requirement_accounting import (prepared_evidence_validation,
+    boundary_errors, manifest_key_errors, normalized_source, source_path)
 
 
-def prepared_evidence_errors(root: Path, proposal: dict[str, Any], prepared: Path) -> list[str]:
+def prepared_evidence_errors(root: Path, proposal: dict[str, Any], prepared: Path, *, check_originals=True) -> list[str]:
     """Every claimed existing verification dependency must be readable and bound."""
     index = load_json(prepared / "analysis-index.json", {})
     files = index.get("files") or {}
@@ -60,21 +59,22 @@ def prepared_evidence_errors(root: Path, proposal: dict[str, Any], prepared: Pat
             errors.append(f"verification_dependency_not_prepared:{rel}")
         else:
             try:
-                if (not path.is_file() or expected not in {
+                if ((check_originals and not path.is_file()) or expected not in {
                         file_sha(prepared / matched[0]), normalized_file_sha(prepared / matched[0])}
                         or any(file_sha(prepared / key) != files[key]
-                               or normalized_source((prepared / key).read_bytes()) != normalized_source(path.read_bytes())
+                               or (check_originals and normalized_source((prepared / key).read_bytes()) != normalized_source(path.read_bytes()))
                                for key in matched)):
                     errors.append(f"verification_dependency_drift:{rel}")
             except (ValueError, OSError, UnicodeError):
                 errors.append(f"verification_dependency_source_unreadable:{rel}")
-    errors += prepared_evidence_validation(root, proposal, prepared)[0]
+    errors += prepared_evidence_validation(root, proposal, prepared, check_originals=check_originals)[0]
     return errors
 
 
 def coverage_errors(root: Path, proposal: dict[str, Any], semantics: dict[str, Any],
                     capabilities: dict[str, Any], task_rows: list[dict[str, Any]],
-                    allowed_requirement_ids: set[str] | None = None) -> list[str]:
+                    allowed_requirement_ids: set[str] | None = None, *, check_accounting=True,
+                    prepared=None, check_originals=True) -> list[str]:
     requirements = {str(r["requirement_id"]): r for r in semantics.get("requirements", [])
         if isinstance(r, dict) and r.get("status", "active") == "active" and r.get("delivery_relevant", True)}
     if allowed_requirement_ids is not None:
@@ -93,7 +93,9 @@ def coverage_errors(root: Path, proposal: dict[str, Any], semantics: dict[str, A
     flow_rows = [f for f in proposal["manifest_candidate"].get("flows", []) if isinstance(f, dict)]
     flows = {str(f["id"]): f for f in flow_rows}
     rows = proposal.get("coverage_table")
-    errors = route_errors(proposal, requirements) + accounting_errors(proposal, requirements)
+    # Append coverage can project away future baseline flows while retaining
+    # their immutable test inventory. The full boundary checks those links.
+    errors = boundary_errors(proposal, requirements, check_test_links=False) if check_accounting else []
     if any('invalid' in error or 'not_array' in error for error in errors):
         return errors
     if not isinstance(rows, list) or not rows:
@@ -140,14 +142,22 @@ def coverage_errors(root: Path, proposal: dict[str, Any], semantics: dict[str, A
             if sink not in {str(s.get("id")) for s in requirements[rid].get("non_task_sinks", []) if isinstance(s, dict)}:
                 errors.append(f"coverage_non_task_sink_invalid:{rid}")
             path = str(row.get("verification_ref") or "").split("#", 1)[0]
-            if not path or not repo_path(root, path).is_file():
+            existing = (any((prepared / family / path).is_file() for family in ('sources', 'references'))
+                        if prepared is not None else bool(path) and repo_path(root, path).is_file())
+            if not path or not existing:
                 errors.append(f"coverage_verification_ref_missing:{rid}")
             if row.get("authority_ref") or row.get("authority_review"):
                 errors.append(f"coverage_other_verification_authority_forbidden:{rid}")
         elif disposition == "deferred":
             from update_mvg_baseline import _reviewed_authority
             try:
-                _reviewed_authority(row, root)
+                if prepared is None:
+                    _reviewed_authority(row, root)
+                else:
+                    path = str(row.get('authority_ref') or '').split('#', 1)[0]
+                    family = next((family for family in ('sources', 'references')
+                                   if path and (prepared / family / path).is_file()), 'references')
+                    _reviewed_authority(row, prepared / family)
             except ValueError as exc:
                 errors.append(f"coverage_deferral_unreviewed:{rid}:{exc}")
             if row.get("verification_ref") or row.get("flow_id"):
@@ -185,11 +195,13 @@ def coverage_errors(root: Path, proposal: dict[str, Any], semantics: dict[str, A
 
 def semantic_review_errors(state: dict[str, Any], proposal: dict[str, Any], review: dict[str, Any],
                            semantics: dict[str, Any],
-                           allowed_requirement_ids: set[str] | None = None) -> list[str]:
+                           allowed_requirement_ids: set[str] | None = None, *, root=None, prepared=None,
+                           check_originals=True) -> list[str]:
     errors = []
     if review.get("schema_version") == "newrouge.mvg-capability-admission.v1":
         from _mvg_capability_generation import append_proof_errors
-        return append_proof_errors(state, proposal, review, semantics, allowed_requirement_ids)
+        return append_proof_errors(state, proposal, review, semantics, allowed_requirement_ids,
+            root=root, prepared=prepared, check_originals=check_originals)
     if review.get("schema_version") != "newrouge.mvg-semantic-review.v1":
         return ["independent_semantic_review_missing"]
     if review.get("analysis_identity_sha256") != state["analysis_identity_sha256"]:

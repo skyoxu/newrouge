@@ -813,12 +813,13 @@ class CapabilityAppendTests(unittest.TestCase):
                 manifest_path=manifest_path, task_ids=list(map(str, fixture.TASK_IDS)), allow_unready=False, evidence_refs=refs)
             if coordinator_case == "legacy-prefix":
                 index = plan_mvg.load_json(run / "analysis-input/analysis-index.json")
-                for key in ("checkpoint_strategy", "checkpoint_schema_version", "analysis_identity_sha256"):
+                for key in ("checkpoint_strategy", "checkpoint_schema_version", "analysis_identity_sha256",
+                            'requirement_accounting_protocol'):
                     index.pop(key, None)
                 index["analysis_identity_sha256"] = canonical_sha(index)
                 atomic_json(run / "analysis-input/analysis-index.json", index)
                 state = plan_mvg.load_json(run / "run.json")
-                for key in ("checkpoint_strategy", "checkpoint_schema_version"):
+                for key in ("checkpoint_strategy", "checkpoint_schema_version", 'requirement_accounting_protocol'):
                     state.pop(key, None)
                 state["analysis_identity_sha256"] = index["analysis_identity_sha256"]
                 atomic_json(run / "run.json", state)

@@ -519,7 +519,8 @@ def generate_append(root, state, candidate_root, *, invoke_factory, before_call,
         if prefix:
             prefix_proof = admission_proof(state, original_seed, all_scopes[:scope_index], prefix, seed)
             errors = append_proof_errors(state, seed, prefix_proof, semantics,
-                                         set(all_scopes[scope_index - 1]["cumulative_requirement_ids"]))
+                                         set(all_scopes[scope_index - 1]["cumulative_requirement_ids"]),
+                                         root=root, prepared=prepared)
             if errors:
                 raise ValueError("capability_append_selected_prefix_invalid:" + ";".join(errors))
         elif seed != original_seed:
@@ -768,7 +769,7 @@ def generate_append(root, state, candidate_root, *, invoke_factory, before_call,
             proof = admission_proof(state, original_seed, all_scopes[:scope_index + 1],
                                     prefix + result["records"], result["accepted"])
             errors = append_proof_errors(state, result["accepted"], proof, semantics,
-                                         set(scopes[-1]["cumulative_requirement_ids"]))
+                                         set(scopes[-1]["cumulative_requirement_ids"]), root=root, prepared=prepared)
             if errors:
                 raise ValueError("capability_append_combined_proof_invalid:" + ";".join(errors))
             result["proof"] = proof
@@ -790,9 +791,12 @@ def admission_proof(state, seed, scopes, records, proposal):
             "final_machine_status": "passed"}
 
 
-def append_proof_errors(state, proposal, proof, semantics, allowed=None):
+def append_proof_errors(state, proposal, proof, semantics, allowed=None, *, root=None, prepared=None,
+                        check_originals=True):
     """Revalidate the complete hash-bound chain without a final model call."""
     from _mvg_planning_review import semantic_review_errors, review_execution_errors
+    if not isinstance(proof, dict):
+        return ['capability_admission_identity_invalid']
     required = {row["requirement_id"] for row in semantics.get("requirements", [])
                 if row.get("status", "active") == "active" and row.get("delivery_relevant", True)}
     if allowed is not None:
@@ -804,15 +808,30 @@ def append_proof_errors(state, proposal, proof, semantics, allowed=None):
         return ["capability_admission_identity_invalid"]
     scopes = proof.get("scopes", [])
     records = proof.get("records", [])
-    seed_requirements = {row["requirement_id"] for row in (proof.get("seed") or {}).get("coverage_table", [])}
+    accepted = proof.get("seed")
+    if not isinstance(accepted, dict):
+        return ["capability_admission_seed_missing"]
+    if (not isinstance(scopes, list) or not isinstance(records, list)
+            or any(not isinstance(scope, dict) or not isinstance(scope.get('capability_id'), str)
+                   or any(not isinstance(scope.get(field), list)
+                          or any(not isinstance(rid, str) for rid in scope[field])
+                          for field in ('requirement_ids', 'cumulative_requirement_ids')) for scope in scopes)
+            or any(not isinstance(record, dict) or not isinstance(record.get('delta'), dict) for record in records)):
+        return ['capability_admission_chain_shape_invalid']
+    from _mvg_requirement_accounting import boundary_errors
+    seed_rows = accepted.get('coverage_table', [])
+    if not isinstance(seed_rows, list) or any(not isinstance(row, dict)
+            or not isinstance(row.get('requirement_id'), str) for row in seed_rows):
+        return ['capability_admission_seed_accounting_invalid']
+    seed_requirements = {row['requirement_id'] for row in seed_rows}
     if (not scopes or len(scopes) != len(records)
             or len({scope["capability_id"] for scope in scopes}) != len(scopes)
             or ({rid for scope in scopes for rid in scope["requirement_ids"]} | seed_requirements) != required):
         return ["capability_admission_scope_incomplete"]
-    accepted = proof.get("seed")
-    if not isinstance(accepted, dict):
-        return ["capability_admission_seed_missing"]
-    errors = []
+    errors = boundary_errors(accepted, seed_requirements, root=root, prepared=prepared,
+                             check_originals=check_originals, complete=False, enforce_protocol=False)
+    if errors:
+        return ['capability_admission_prefix:seed:' + error for error in errors]
     seen = {row["requirement_id"] for row in accepted.get("coverage_table", [])} & required
     for scope, record in zip(scopes, records):
         from _mvg_capability_append import merge_append
@@ -824,14 +843,35 @@ def append_proof_errors(state, proposal, proof, semantics, allowed=None):
         if record.get("record_sha256") != canonical_sha({key: value for key, value in record.items()
                                                        if key != "record_sha256"}):
             errors.append("capability_admission_record_identity_invalid")
-        revised = merge_append(accepted, record["delta"], scope)
+        try:
+            revised = merge_append(accepted, record["delta"], scope)
+        except (ValueError, TypeError, KeyError) as exc:
+            return errors + ['capability_admission_delta_invalid:' + scope['capability_id'] + ':' + str(exc)]
         if record.get("proposal_sha256") != canonical_sha(revised) or preservation_errors(accepted, revised):
             return errors + ["capability_admission_chain_mutated"]
+        prefix_errors = boundary_errors(revised, seen, root=root, prepared=prepared,
+                                         check_originals=check_originals)
+        if prefix_errors:
+            return errors + ['capability_admission_prefix:' + scope['capability_id'] + ':' + error
+                             for error in prefix_errors]
+        prefix_errors += ['requirement_source_gap:' + row['requirement_id'] for row in verification_rows(revised)
+                         if isinstance(row, dict) and row.get('disposition') == 'source_gap']
+        if prefix_errors:
+            return errors + ['capability_admission_prefix:' + scope['capability_id'] + ':' + error
+                             for error in prefix_errors]
         projection, requirements = review_projection(scope, accepted, revised)
-        bound = record.get("proof") or {}
+        bound = record.get("proof")
+        if (not isinstance(bound, dict) or not isinstance(bound.get('required_requirement_ids'), list)
+                or any(not isinstance(rid, str) for rid in bound['required_requirement_ids'])
+                or not isinstance(bound.get('review'), dict) or not isinstance(record.get('execution'), dict)):
+            return errors + ['capability_admission_record_shape_invalid:' + scope['capability_id']]
         if bound.get("projection") != projection or set(bound.get("required_requirement_ids", [])) != requirements:
             return errors + ["capability_admission_projection_changed"]
         if "evidence_transport" in bound:
+            if (not isinstance(bound['evidence_transport'], dict)
+                    or not isinstance(bound['evidence_transport'].get('context'), dict)
+                    or not isinstance(bound['evidence_transport']['context'].get('input_identity'), dict)):
+                return errors + ['capability_admission_transport_shape_invalid:' + scope['capability_id']]
             identity = bound["evidence_transport"].get("context", {}).get("input_identity", {})
             if (identity.get("run_id") != state.get("run_id")
                     or identity.get("analysis_identity_sha256") != state.get("analysis_identity_sha256")
@@ -841,8 +881,14 @@ def append_proof_errors(state, proposal, proof, semantics, allowed=None):
             errors.extend(transport_proof_errors(bound["evidence_transport"], scope=scope,
                                                 base=accepted, proposal=projection))
         review = bound.get("review") or {}
-        errors.extend(semantic_review_errors(state, projection, review, semantics, requirements))
-        errors.extend(review_execution_errors(state, projection, record.get("execution") or {}, review))
+        if any(key in record['execution'] and not isinstance(record['execution'][key], dict)
+               for key in ('receipt', 'runner_info')):
+            return errors + ['capability_admission_record_invalid:' + scope['capability_id'] + ':execution_shape']
+        try:
+            errors.extend(semantic_review_errors(state, projection, review, semantics, requirements))
+            errors.extend(review_execution_errors(state, projection, record.get("execution") or {}, review))
+        except (AttributeError, TypeError, KeyError, ValueError) as exc:
+            return errors + ['capability_admission_record_invalid:' + scope['capability_id'] + ':' + type(exc).__name__]
         accepted = revised
     if accepted != proposal:
         errors.append("capability_admission_final_proposal_changed")

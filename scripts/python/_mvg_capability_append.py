@@ -175,6 +175,9 @@ def run_capability_append(workspace: Path, *, scopes: list[dict[str, Any]], seed
             raise ValueError("Capability append accepted proposal changed")
         if record.get("record_sha256") != canonical_sha({key: value for key, value in record.items() if key != "record_sha256"}):
             raise ValueError("Capability append accepted review changed")
+        issues = machine(scopes[index], accepted, rebuilt)
+        if issues:
+            raise ValueError("Capability append accepted accounting invalid:" + str(issues))
         accepted = rebuilt
     if accepted != ledger["accepted"] or ledger["completed"] != ledger["order"][:len(ledger["records"])]:
         raise ValueError("Capability append checkpoint changed")

@@ -112,11 +112,15 @@ def manifest_key_errors(proposal):
         if not isinstance(rows, list):
             errors.append('requirement_accounting_' + family + '_not_array')
             continue
+        seen = set()
         for index, row in enumerate(rows):
             address = f'{family}[{index}]'
             if not isinstance(row, dict) or not isinstance(row.get('id'), str):
                 errors.append('requirement_accounting_object_key_invalid:' + address)
                 continue
+            if row['id'] in seen:
+                errors.append('requirement_accounting_object_key_duplicate:' + address + ':' + row['id'])
+            seen.add(row['id'])
             for field in ('requirement_ids', 'test_ids') if family == 'flows' else ():
                 if field in row and not string_list(row[field]):
                     errors.append('requirement_accounting_object_scope_invalid:' + address + ':' + field)
@@ -217,7 +221,7 @@ def key_errors(proposal):
     return errors
 
 
-def accounting_errors(proposal, requirement_ids, *, complete=True):
+def accounting_errors(proposal, requirement_ids, *, complete=True, check_test_links=True):
     errors = key_errors(proposal) + manifest_key_errors(proposal)
     if any('key_invalid:' in error or 'row_invalid:' in error or 'evidence_ids_invalid:' in error
            or error.endswith('_not_array') for error in errors):
@@ -234,6 +238,12 @@ def accounting_errors(proposal, requirement_ids, *, complete=True):
              and isinstance(row.get('requirement_id'), str) and isinstance(row.get('flow_id'), str)} if isinstance(routes, list) else set()
     flows = {row.get('id'): row for row in proposal.get('manifest_candidate', {}).get('flows', []) if isinstance(row, dict)}
     tests = {row.get('id'): row for row in proposal.get('manifest_candidate', {}).get('tests', proposal.get('tests', [])) if isinstance(row, dict)}
+    errors.extend('requirement_accounting_flow_test_missing:' + fid + ':' + tid
+                  for fid, flow in flows.items() for tid in flow.get('test_ids', []) if tid not in tests)
+    errors.extend('requirement_accounting_test_flow_mismatch:' + tid + ':' + str(test.get('flow_id'))
+                  for tid, test in tests.items() if test.get('flow_id') is not None
+                  and check_test_links and (not isinstance(test['flow_id'], str) or test['flow_id'] not in flows
+                       or tid not in flows[test['flow_id']].get('test_ids', [])))
     coverage = {row['requirement_id']: row for row in proposal.get('coverage_table', [])
                 if isinstance(row, dict) and isinstance(row.get('requirement_id'), str)}
     evidence_keys = {(row.get('requirement_id'), row.get('evidence_id')) for row in evidence if isinstance(row, dict)
@@ -354,7 +364,7 @@ def source_record_errors(row, text, manifest, *, read_source=None, expected_mani
     return [] if valid else ['requirement_evidence_record_invalid:' + address]
 
 
-def prepared_evidence_validation(root, proposal, prepared):
+def prepared_evidence_validation(root, proposal, prepared, *, check_originals=True):
     from _planning_skill_common import file_sha, load_json, normalized_file_sha, repo_path
     index = load_json(prepared / 'analysis-index.json', {})
     errors, valid = [], set()
@@ -364,11 +374,12 @@ def prepared_evidence_validation(root, proposal, prepared):
         copies = [prepared / prefix / ref for prefix in ('sources', 'references')
                   if f'{prefix}/{ref}' in index.get('files', {})]
         expected = index.get('authority_inputs', {}).get(ref)
-        if not expected or not path.is_file() or not copies or any(not copy.is_file() for copy in copies):
+        if not expected or not copies or any(not copy.is_file() for copy in copies):
             raise ValueError('not_prepared:' + ref)
         if (any(file_sha(copy) != index['files'][copy.relative_to(prepared).as_posix()] for copy in copies)
                 or expected not in {file_sha(copies[0]), normalized_file_sha(copies[0])}
-                or any(normalized_source(copy.read_bytes()) != normalized_source(path.read_bytes()) for copy in copies)):
+                or (check_originals and (not path.is_file() or any(
+                    normalized_source(copy.read_bytes()) != normalized_source(path.read_bytes()) for copy in copies)))):
             raise ValueError('source_drift:' + ref)
         return copies[0].read_bytes()
     rows = evidence_rows(proposal)
@@ -389,6 +400,48 @@ def prepared_evidence_validation(root, proposal, prepared):
         if not record_errors:
             valid.add((row.get('requirement_id'), row.get('evidence_id')))
     return errors, valid
+
+
+def boundary_errors(proposal, requirement_ids, *, root=None, prepared=None, check_originals=True,
+                    complete=True, enforce_protocol=True, check_test_links=True):
+    """Use the same deterministic accounting boundary for admission and replay.
+
+    Callers verify original artifact hashes before invoking this read-only view.
+    Journal recovery checks frozen copies here; its transaction authority gate
+    checks live inputs while allowing that transaction's own partial writes.
+    """
+    from _mvg_requirement_routes import route_errors, protocol_errors as route_protocol_errors
+    from _planning_skill_common import load_json
+    if not isinstance(proposal, dict):
+        return ['requirement_accounting_proposal_invalid']
+    errors = manifest_key_errors(proposal) + key_errors(proposal)
+    if errors:
+        return sorted(set(errors))
+    if prepared is not None and enforce_protocol:
+        index = load_json(prepared / 'analysis-index.json', {})
+        errors += route_protocol_errors(index, proposal) + protocol_errors(index, proposal)
+    errors += route_errors(proposal, requirement_ids, complete=complete)
+    errors += accounting_errors(proposal, requirement_ids, complete=complete, check_test_links=check_test_links)
+    if check_test_links:
+        manifest = proposal.get('manifest_candidate', {})
+        tests = {row['id'] for row in manifest.get('tests', proposal.get('tests', []))}
+        assigned = {tid for flow in manifest.get('flows', []) for tid in flow.get('test_ids', [])}
+        errors += ['requirement_accounting_test_flow_missing:' + tid for tid in sorted(tests - assigned)]
+    if not errors and prepared is not None:
+        from _mvg_planning_review import coverage_errors, prepared_evidence_errors
+        semantics = load_json(prepared / 'semantic-requirements.v1.json', {})
+        capabilities = load_json(prepared / 'capabilities.v1.json', {})
+        task_rows = [row for name in ('tasks_back.json', 'tasks_gameplay.json')
+                     for row in load_json(prepared / 'task-views' / name, [])]
+        if complete or proposal.get('coverage_table'):
+            coverage_proposal = deepcopy(proposal)
+            coverage_proposal['manifest_candidate']['flows'] = [flow for flow in proposal['manifest_candidate'].get('flows', [])
+                if set(flow.get('requirement_ids', [])).intersection(requirement_ids)]
+            errors += coverage_errors(root, coverage_proposal, semantics, capabilities, task_rows,
+                set(requirement_ids), check_accounting=False, prepared=prepared,
+                check_originals=check_originals)
+        errors += prepared_evidence_errors(root, proposal, prepared, check_originals=check_originals)
+    return sorted(set(errors))
 
 
 def freeze_accounting_sources(proposal, prepared):

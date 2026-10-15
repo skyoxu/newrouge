@@ -16,6 +16,89 @@ from _planning_skill_common import atomic_json, canonical_sha, file_sha, load_js
 
 
 class CheckpointReplayTests(unittest.TestCase):
+    def test_public_legacy_prefix_recovery_uses_verified_prefix_without_accounting_upgrade(self):
+        original = selection.verified_prefix
+        observed = []
+        def verify(root, run, state):
+            paths = list(run.glob('candidates/*/scope-*/proposal.json'))
+            before = {path: file_sha(path) for path in paths}
+            result = original(root, run, state)
+            if result[2]:
+                from _mvg_requirement_accounting import project_accounting, accounting_summary
+                from _mvg_requirement_routes import project_routes
+                self.assertNotIn('requirement_verification', result[1])
+                self.assertNotIn('requirement_evidence', result[1])
+                self.assertEqual(accounting_summary(result[1]),
+                    accounting_summary(project_accounting(project_routes(result[1]))))
+                observed.append(True)
+            self.assertEqual(before, {path: file_sha(path) for path in paths})
+            return result
+        with patch.object(selection, 'verified_prefix', side_effect=verify):
+            fixture.CapabilityAppendTests().exercise_public_generation(coordinator_case='legacy-prefix')
+        self.assertTrue(observed)
+
+    def test_public_append_checkpoint_recovery_rejects_bad_prefix_with_valid_final_object(self):
+        import _mvg_capability_generation as generation
+        from _mvg_capability_append import merge_append
+        from _mvg_requirement_accounting import boundary_errors
+        original = generation.generate_append
+        observed = []
+        def generate(root, state, candidate, **kwargs):
+            result = original(root, state, candidate, **kwargs)
+            if not observed and kwargs.get('scope_index') is None and result.get('status') == 'admitted':
+                path = candidate / 'capability-append/append-ledger.json'
+                original_bytes = path.read_bytes()
+                ledger = load_json(path)
+                first, second = ledger['records']
+                route = first['delta']['requirement_route_memberships'].pop()
+                second['delta']['requirement_route_memberships'].append(route)
+                accepted = deepcopy(ledger['seed']) if 'seed' in ledger else deepcopy(result['proof']['seed'])
+                for record in ledger['records']:
+                    record['base_sha256'] = canonical_sha(accepted)
+                    accepted = merge_append(accepted, record['delta'], record['scope'])
+                    record['proposal_sha256'] = canonical_sha(accepted)
+                    record.pop('record_sha256'); record['record_sha256'] = canonical_sha(record)
+                ledger['accepted'] = accepted
+                self.assertEqual([], boundary_errors(accepted, {'FR-a', 'FR-b'}))
+                atomic_json(path, ledger)
+                frozen = {item: file_sha(item) for item in [path, candidate / 'proposal.json',
+                          root / state['manifest_path'], root / plan_mvg.DEFAULT_RUN_ROOT / state['run_id'] / 'run.json']}
+                with patch.object(plan_mvg, 'run_isolated_model', side_effect=AssertionError('Unexpected model')) as model:
+                    with self.assertRaisesRegex(ValueError, 'accepted accounting invalid.*requirement_route_pair_missing'):
+                        original(root, state, candidate, **kwargs)
+                    model.assert_not_called()
+                self.assertEqual(frozen, {item: file_sha(item) for item in frozen})
+                path.write_bytes(original_bytes)
+                observed.append(True)
+            return result
+        with patch.object(generation, 'generate_append', side_effect=generate):
+            fixture.CapabilityAppendTests().exercise_public_generation(coordinator_case='mixed')
+        self.assertEqual([True], observed)
+
+    def test_legacy_committed_replay_preserves_hashes_authority_evidence_and_completion_counts(self):
+        from test_mvg_requirement_routes import fixture as legacy_fixture
+        from _mvg_requirement_routes import project_routes
+        from _mvg_requirement_accounting import project_accounting, accounting_summary
+        with tempfile.TemporaryDirectory() as directory:
+            run = Path(directory)
+            state, seed, accepted, step = fixture.CapabilityAppendTests().checkpoint_fixture(run)
+            legacy = legacy_fixture(); legacy.pop('requirement_route_memberships')
+            legacy['coverage_table'][0]['original_owner'] = {'task_id': 7}
+            legacy['coverage_table'][0]['original_evidence'] = {'source_ref': 'docs/proof.md#original'}
+            accepted.update(legacy); step['proposal_sha256'] = canonical_sha(accepted)
+            pointer = checkpoint.prepare_checkpoint(run, state, 'CAP-a', 0, seed, accepted, step)
+            checkpoint.commit_checkpoint(run, state, pointer, step, accepted)
+            before = {path: file_sha(path) for path in (run / pointer['path'], run / 'run.json')}
+            payload = checkpoint.load_checkpoint(run, pointer)
+            counts = accounting_summary(payload['accepted'])
+            self.assertEqual('no-op', checkpoint.commit_checkpoint(run, state, pointer, step, accepted))
+            projected = project_accounting(project_routes(checkpoint.load_checkpoint(run, pointer)['accepted']))
+            self.assertEqual(counts, accounting_summary(projected))
+            self.assertEqual(payload['accepted']['coverage_table'], projected['coverage_table'])
+            self.assertEqual(1, len(projected['requirement_route_memberships']))
+            self.assertEqual('flow-a', projected['requirement_route_memberships'][0]['flow_id'])
+            self.assertEqual(before, {path: file_sha(path) for path in before})
+
     def committed_fixture(self, run):
         # This minimal fixture has no production protocol/frozen source tree;
         # full shared-prefix validation is covered by the public fixture below.

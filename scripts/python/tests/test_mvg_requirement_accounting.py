@@ -409,6 +409,134 @@ class RequirementAccountingTests(unittest.TestCase):
         CapabilityAppendTests().exercise_public_generation(multi_route=True, coordinator_case='apply-replay',
                                                           accounting_evidence=True)
 
+    def test_public_review_rejects_accounting_matrix_without_model_calls(self):
+        from test_mvg_planning_contract import MvgPlanningContractTests
+        from _mvg_requirement_routes import project_routes
+        temp = tempfile.TemporaryDirectory(); self.addCleanup(temp.cleanup)
+        root, run, state, value = MvgPlanningContractTests().admission_fixture(temp.name)
+        base = project_accounting(project_routes(value))
+        base.pop('requirement_routes_projection', None)
+        rid = 'R1'
+        self.assertEqual([], plan_mvg.candidate_admission_errors(root, state, base))
+        expected = {'missing-authority': 'requirement_verification_missing:R1',
+            'duplicate-authority': 'requirement_verification_duplicate:R1',
+            'duplicate-route': 'requirement_route_pair_duplicate:R1:flow-a',
+            'unknown-evidence': 'requirement_evidence_unknown_requirement:',
+            'unprepared-evidence': 'requirement_evidence_not_prepared:',
+            'bad-flow-test': 'unknown or empty test coverage', 'orphan-test': 'not assigned to a flow',
+            'null-coverage': 'requirement_accounting_coverage_not_array',
+            'bad-manifest-key': 'requirement_accounting_object_key_invalid:',
+            'bad-owner-task': 'coverage_flow_membership_invalid:R1',
+            'bad-owner-capability': 'coverage_flow_membership_invalid:R1',
+            'bad-owner-flow': 'coverage_flow_membership_invalid:R1'}
+        for mutation in expected:
+            with self.subTest(mutation=mutation):
+                value = deepcopy(base)
+                if mutation == 'missing-authority':
+                    value[VERIFICATION] = []
+                elif mutation == 'duplicate-authority':
+                    value[VERIFICATION].append(deepcopy(value[VERIFICATION][0]))
+                elif mutation == 'duplicate-route':
+                    value['requirement_route_memberships'].append(deepcopy(value['requirement_route_memberships'][0]))
+                elif mutation in ('unknown-evidence', 'unprepared-evidence'):
+                    value[VERIFICATION][0]['evidence_ids'] = ['proof']
+                    value[EVIDENCE] = [{**proposal()[EVIDENCE][0], 'evidence_id': 'proof',
+                        'requirement_id': 'unknown' if mutation == 'unknown-evidence' else rid,
+                        'flow_ids': ['flow-a']}]
+                elif mutation == 'bad-flow-test':
+                    value['manifest_candidate']['flows'][0]['test_ids'] = ['unknown-test']
+                elif mutation == 'orphan-test':
+                    from _mvg_requirement_accounting import boundary_errors
+                    value['manifest_candidate']['tests'].append({**value['manifest_candidate']['tests'][0], 'id': 'orphan-test'})
+                    self.assertIn('requirement_accounting_test_flow_missing:orphan-test',
+                                  boundary_errors(value, {rid}))
+                elif mutation == 'null-coverage':
+                    value['coverage_table'] = None
+                elif mutation.startswith('bad-owner'):
+                    field = {'bad-owner-task': 'task_id', 'bad-owner-capability': 'capability_ref', 'bad-owner-flow': 'flow_id'}[mutation]
+                    for row in (value['coverage_table'][0], value[VERIFICATION][0]):
+                        row[field] = 999 if field == 'task_id' else 'unknown'
+                else:
+                    value['manifest_candidate']['flows'][0]['id'] = []
+                atomic_json(run / 'proposal.json', value)
+                with patch.object(plan_mvg, 'run_isolated_model') as model, \
+                     patch.object(plan_mvg, 'inspect_isolated_runner') as inspect:
+                    errors = plan_mvg.candidate_admission_errors(root, state, value)
+                    self.assertIn(expected[mutation], ';'.join(row['code'] for row in errors))
+                    with self.assertRaises(ValueError):
+                        plan_mvg.review(root, run_id='contract', runner=Path('unused'), timeout_sec=1)
+                    with self.assertRaisesRegex(ValueError, 'accounting admission blocked'):
+                        plan_mvg.run_admission_semantic_gate(root, state, value, run / 'unused',
+                            runner=None, timeout_sec=1, invoke=model)
+                    model.assert_not_called(); inspect.assert_not_called()
+
+    def test_proof_rejects_invalid_prefix_even_when_final_accounting_is_valid(self):
+        from _mvg_capability_generation import admission_proof, append_proof_errors
+        from _mvg_planning_review import semantic_review_errors
+        state = {'analysis_identity_sha256': 'fixture'}
+        seed = {'manifest_candidate': {'flows': [], 'tests': []}, 'coverage_table': [],
+                'tests': [], 'entrypoints': [], 'notes': [], VERIFICATION: [], EVIDENCE: [],
+                'requirement_route_memberships': []}
+        scopes = [{'capability_id': cid, 'requirement_ids': ['RQ-1'],
+                   'new_requirement_ids': ['RQ-1'] if cid == 'CAP-A' else [],
+                   'cumulative_requirement_ids': ['RQ-1']} for cid in ('CAP-A', 'CAP-B')]
+        owner = deepcopy(fixture()['coverage_table'][0])
+        deltas = [{'flows': fixture()['manifest_candidate']['flows'], 'coverage_table': [owner],
+                   VERIFICATION: [{**owner, 'evidence_ids': []}], EVIDENCE: [],
+                   'requirement_route_memberships': fixture()['requirement_route_memberships'][:1]},
+                  {'requirement_route_memberships': fixture()['requirement_route_memberships'][1:]}]
+        records, accepted = [], deepcopy(seed)
+        for scope, delta in zip(scopes, deltas):
+            revised = merge_append(accepted, delta, scope)
+            record = {'scope': scope, 'base_sha256': canonical_sha(accepted),
+                      'proposal_sha256': canonical_sha(revised), 'delta': delta, 'proof': {}, 'execution': {}}
+            record['record_sha256'] = canonical_sha(record); records.append(record); accepted = revised
+        self.assertEqual([], accounting_errors(accepted, {'RQ-1'}))
+        from _mvg_requirement_routes import route_errors
+        self.assertEqual([], route_errors(accepted, {'RQ-1'}))
+        proof = admission_proof(state, seed, scopes, records, accepted)
+        before = canonical_sha(proof)
+        errors = semantic_review_errors(state, accepted, proof, {'requirements': [{'requirement_id': 'RQ-1'}]})
+        self.assertIn('capability_admission_prefix:CAP-A:requirement_route_pair_missing:RQ-1:flow-b', errors)
+        self.assertEqual(before, canonical_sha(proof))
+        for malformed in ({'scopes': [None]}, {'records': [None]}, {'seed': {'coverage_table': None}}):
+            value = {**proof, **malformed}
+            self.assertTrue(append_proof_errors(state, accepted, value, {'requirements': [{'requirement_id': 'RQ-1'}]}))
+        delta = {**deltas[0], 'requirement_route_memberships': fixture()['requirement_route_memberships']}
+        final = merge_append(seed, delta, scopes[0])
+        for malformed in ([1], 'invalid', {'required_requirement_ids': [{}], 'review': {}}):
+            record = {**records[0], 'delta': delta, 'proposal_sha256': canonical_sha(final), 'proof': malformed}
+            record.pop('record_sha256'); record['record_sha256'] = canonical_sha(record)
+            value = admission_proof(state, seed, scopes[:1], [record], final)
+            self.assertIn('capability_admission_record_shape_invalid:CAP-A',
+                append_proof_errors(state, final, value, {'requirements': [{'requirement_id': 'RQ-1'}]}))
+        from _mvg_capability_generation import review_projection
+        projection, required = review_projection(scopes[0], seed, final)
+        review = {'schema_version': 'newrouge.mvg-semantic-review.v1',
+                  'analysis_identity_sha256': 'fixture', 'proposal_sha256': canonical_sha(projection),
+                  'verdict': 'approved', 'findings': [],
+                  'requirement_reviews': [{'requirement_id': 'RQ-1', 'verdict': 'covered', 'rationale': 'Accepted'}],
+                  'flow_reviews': [{'flow_id': fid, 'verdict': 'sound', 'rationale': 'Accepted'}
+                                   for fid in ('flow-a', 'flow-b')]}
+        bound = {'projection': projection, 'required_requirement_ids': sorted(required), 'review': review}
+        for execution in ({'receipt': ['invalid']}, {'runner_info': ['invalid']}, {'receipt': 'invalid'},
+                          {'receipt': []}, {'runner_info': None}):
+            record = {**records[0], 'delta': delta, 'proposal_sha256': canonical_sha(final),
+                      'proof': bound, 'execution': execution}
+            record.pop('record_sha256'); record['record_sha256'] = canonical_sha(record)
+            value = admission_proof(state, seed, scopes[:1], [record], final)
+            errors = append_proof_errors(state, final, value, {'requirements': [{'requirement_id': 'RQ-1'}]})
+            self.assertTrue(any(error.startswith('capability_admission_record_invalid:CAP-A:') for error in errors), errors)
+
+    def test_coverage_projection_retains_future_flow_tests_with_explicit_owner(self):
+        from _mvg_requirement_accounting import boundary_errors
+        value = project_accounting(fixture())
+        value['manifest_candidate']['flows'] = value['manifest_candidate']['flows'][:1]
+        value['requirement_route_memberships'] = value['requirement_route_memberships'][:1]
+        value['manifest_candidate']['tests'] = [{'id': 'future', 'flow_id': 'flow-b'}]
+        self.assertEqual([], boundary_errors(value, {'RQ-1'}, check_test_links=False))
+        self.assertIn('requirement_accounting_test_flow_mismatch:future:flow-b', boundary_errors(value, {'RQ-1'}))
+
 
 if __name__ == '__main__':
     unittest.main()

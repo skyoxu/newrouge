@@ -48,6 +48,34 @@ from _planning_skill_common import atomic_json
 
 class MvgPlanningContractTests(unittest.TestCase):
 
+    def admission_fixture(self, folder):
+        """Build a valid public proposal with a sealed legacy prepared bundle."""
+        root = self._root(folder)
+        run = root / 'logs/ci/mvg-planning/contract'
+        prepared = run / 'analysis-input'
+        semantic = {'requirements': [{'requirement_id': 'R1'}]}
+        capabilities = {'schema_version': 'newrouge.capabilities.v1',
+                        'capabilities': [{'capability_id': 'CAP-A', 'requirement_ids': ['R1']}]}
+        for name, value in (('semantic-requirements.v1.json', semantic), ('capabilities.v1.json', capabilities)):
+            atomic_json(prepared / name, value)
+        index = plan_mvg.load_json(prepared / 'analysis-index.json')
+        for name in ('semantic-requirements.v1.json', 'capabilities.v1.json'):
+            index['files'][name] = plan_mvg.file_sha(prepared / name)
+        identity = plan_mvg.canonical_sha(index)
+        index['analysis_identity_sha256'] = identity
+        atomic_json(prepared / 'analysis-index.json', index)
+        state = {'schema_version': plan_mvg.RUN_SCHEMA, 'run_id': 'contract',
+                 'analysis_identity_sha256': identity,
+                 'capabilities_path': 'docs/planning/semantic-topology/capabilities.v1.json'}
+        value = {'schema_version': plan_mvg.PROPOSAL_SCHEMA, 'analysis_identity_sha256': identity,
+                 'planning_status': 'ready_for_validation', 'gaps': [],
+                 'manifest_candidate': self.manifest(), **self.accounting()}
+        value['manifest_candidate']['flows'][0]['requirement_ids'] = ['R1']
+        value['coverage_table'][0].update(requirement_id='R1', disposition='flow', verification_ref=None)
+        atomic_json(run / 'run.json', state)
+        self.assertEqual([], plan_mvg.candidate_admission_errors(root, state, value))
+        return root, run, state, value
+
     def test_selection_blocks_explicitly_when_three_admitted_candidates_are_unavailable(self):
         with tempfile.TemporaryDirectory() as temp:
             run_dir = Path(temp) / "run"
@@ -867,26 +895,7 @@ class MvgPlanningContractTests(unittest.TestCase):
 
     def test_admission_gate_uses_bounded_projection_and_publication_with_fake_runner(self):
         with tempfile.TemporaryDirectory() as temp:
-            root = Path(temp)
-            run_id = "admission-fake"
-            run_dir = root / "logs" / "ci" / "mvg-planning" / run_id
-            analysis = run_dir / "analysis-input"
-            analysis.mkdir(parents=True)
-            atomic_json(analysis / "analysis-index.json", {
-                "schema_version": "newrouge.mvg-analysis-index.v1",
-                "analysis_identity_sha256": "sha256:analysis",
-                "files": {}, "authority_inputs": {},
-            })
-            atomic_json(analysis / "semantic-requirements.v1.json", {
-                "requirements": [{"requirement_id": "R1", "status": "active",
-                                   "delivery_relevant": True}],
-            })
-            atomic_json(analysis / "capabilities.v1.json", {
-                "schema_version": "newrouge.capabilities.v1", "capabilities": []})
-            state = {"run_id": run_id, "analysis_identity_sha256": "sha256:analysis"}
-            proposal = {"schema_version": "newrouge.mvg-planning-proposal.v1",
-                        "analysis_identity_sha256": "sha256:analysis",
-                        "manifest_candidate": {"flows": [{"id": "flow-a"}]}}
+            root, run_dir, state, proposal = self.admission_fixture(temp)
             calls = []
 
             def fake_invoke(prompt, attempt, *, output_name=None, output_schema_path=None,
@@ -895,10 +904,10 @@ class MvgPlanningContractTests(unittest.TestCase):
                 target = root / "fake-runner" / f"attempt-{attempt}.json"
                 atomic_json(target, {
                     "schema_version": "newrouge.mvg-semantic-review.v1",
-                    "analysis_identity_sha256": "sha256:analysis",
+                    "analysis_identity_sha256": state['analysis_identity_sha256'],
                     "proposal_sha256": plan_mvg.canonical_sha(proposal),
                     "verdict": "approved", "findings": [],
-                    "requirement_reviews": [{"requirement_id": "R1", "verdict": "covered",
+                    "requirement_reviews": [{**proposal['coverage_table'][0], "requirement_id": "R1", "verdict": "covered",
                                               "rationale": "Flow covers the requirement."}],
                     "flow_reviews": [{"flow_id": "flow-a", "verdict": "sound",
                                       "rationale": "Boundary is observable."}],
@@ -950,26 +959,14 @@ class MvgPlanningContractTests(unittest.TestCase):
     def _exercise_accounting_echo_retry(self, *, verdict="approved", always_invalid=False,
                                        before_invoke=None):
         with tempfile.TemporaryDirectory() as temp:
-            root = Path(temp)
-            run_id = "admission-echo"
-            run_dir = root / "logs/ci/mvg-planning" / run_id
-            analysis = run_dir / "analysis-input"
-            atomic_json(analysis / "analysis-index.json", {
-                "files": {}, "authority_inputs": {}, "analysis_identity_sha256": "sha256:analysis"})
-            atomic_json(analysis / "semantic-requirements.v1.json", {
-                "requirements": [{"requirement_id": "R1", "delivery_relevant": True}]})
-            atomic_json(analysis / "capabilities.v1.json", {"capabilities": []})
-            state = {"run_id": run_id, "analysis_identity_sha256": "sha256:analysis"}
-            proposal = {"manifest_candidate": {"flows": [{"id": "flow-a"}]},
-                        "coverage_table": [{"requirement_id": "R1", "disposition": "flow",
-                                            "flow_id": "flow-a", "verification_ref": None}]}
+            root, run_dir, state, proposal = self.admission_fixture(temp)
             calls = []
 
             def invoke(prompt, attempt, **kwargs):
                 calls.append(attempt)
                 review = {
                     "schema_version": "newrouge.mvg-semantic-review.v1",
-                    "analysis_identity_sha256": "sha256:analysis",
+                    "analysis_identity_sha256": state['analysis_identity_sha256'],
                     "proposal_sha256": plan_mvg.canonical_sha(proposal),
                     "verdict": verdict, "findings": [] if verdict == "approved" else ["Missing executable boundary."],
                     "requirement_reviews": [{"requirement_id": "R1", "verdict": "covered" if verdict == "approved" else "blocked",
