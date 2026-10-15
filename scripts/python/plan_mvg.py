@@ -4161,6 +4161,8 @@ def _prepare_impl(
     index = {
         "schema_version": "newrouge.mvg-planning-input.v1",
         "generation_strategy": "capability-local-selection.v1",
+        "checkpoint_strategy": "capability-selected-checkpoint.v1",
+        "checkpoint_schema_version": "newrouge.mvg-capability-checkpoint.v1",
         "capabilities_sha256": file_sha(capabilities_path),
         "files": files,
         "task_scope": task_ids,
@@ -4204,6 +4206,8 @@ def _prepare_impl(
     state = {
         "schema_version": RUN_SCHEMA,
         "generation_strategy": "capability-local-selection.v1",
+        "checkpoint_strategy": index["checkpoint_strategy"],
+        "checkpoint_schema_version": index["checkpoint_schema_version"],
         "run_id": run_id,
         "phase": "prepared",
         "created_at_utc": now(),
@@ -4451,6 +4455,24 @@ coverage_table must account for EVERY active delivery-relevant Requirement. Star
 
 
 def generate(root: Path, *, run_id: str, timeout_sec: int, llm_backend: str, segmented: bool = True) -> dict[str, Any]:
+    """Serialize fresh incremental generation before any run state mutation."""
+    run_path, state = _load_run(root, run_id)
+    if state.get("generation_strategy") == "capability-local-selection.v1":
+        from _mvg_capability_checkpoint import coordinator_lock, recover_commit_outcome
+        from _mvg_capability_selection import verified_prefix
+        with coordinator_lock(run_path.parent):
+            # An uncertain replacement must be resolved from disk before any
+            # generation status write can overwrite the committed projection.
+            run_path, state = _load_run(root, run_id)
+            recover_commit_outcome(run_path.parent, state,
+                verify=lambda: verified_prefix(root, run_path.parent, state))
+            return _generate(root, run_id=run_id, timeout_sec=timeout_sec,
+                llm_backend=llm_backend, segmented=segmented)
+    return _generate(root, run_id=run_id, timeout_sec=timeout_sec,
+        llm_backend=llm_backend, segmented=segmented)
+
+
+def _generate(root: Path, *, run_id: str, timeout_sec: int, llm_backend: str, segmented: bool = True) -> dict[str, Any]:
     """Generate three isolated MVG proposals, then have an isolated reviewer select one."""
     # Legacy correction runs still use apply_restricted_patch; new candidates
     # are complete independent proposals and never patch another candidate.
@@ -6362,7 +6384,13 @@ def validate(root: Path, *, run_id: str) -> dict[str, Any]:
 
 
 def _validate_input_freshness(root: Path, run_dir: Path, state: dict[str, Any]) -> None:
-    prepared_strategy = load_json(run_dir / "analysis-input/analysis-index.json", {}).get("generation_strategy")
+    prepared_index = load_json(run_dir / "analysis-input/analysis-index.json", {})
+    for key in ("checkpoint_strategy", "checkpoint_schema_version"):
+        if prepared_index.get(key) != state.get(key):
+            atomic_json(run_dir / "input-freshness.json", {"status": "blocked", "run_id": state.get("run_id"),
+                "analysis_identity_sha256": state.get("analysis_identity_sha256"), "drift": ["run:" + key]})
+            raise ValueError("MVG checkpoint protocol changed after prepare: " + key)
+    prepared_strategy = prepared_index.get("generation_strategy")
     if prepared_strategy is not None and prepared_strategy != state.get("generation_strategy"):
         atomic_json(run_dir / "input-freshness.json", {"status": "blocked", "run_id": state.get("run_id"),
             "analysis_identity_sha256": state.get("analysis_identity_sha256"),
@@ -6413,6 +6441,89 @@ def _require_unblocked_selection(state: dict[str, Any]) -> None:
         raise ValueError(str(state.get("selection_block_reason") or "MVG selection is blocked"))
 
 
+def _apply_checkpoint_projection(state: dict[str, Any]) -> dict[str, Any]:
+    return {key: deepcopy(state.get(key)) for key in (
+        "run_id", "analysis_identity_sha256", "generation_strategy", "checkpoint_strategy",
+        "checkpoint_schema_version", "capability_selection", "selected_admission_review",
+        "selection_status", "selected_candidate")}
+
+
+def _freeze_apply_checkpoint_binding(root: Path, run_dir: Path, state: dict[str, Any]) -> dict[str, Any] | None:
+    """Freeze selected authority in the same atomic write as the apply journal."""
+    import hashlib
+    from _mvg_capability_checkpoint import enabled
+    if not enabled(state):
+        return None
+    from _mvg_capability_selection import verify_published_chain
+    verify_published_chain(root, run_dir, state)
+    evidence = {}
+
+    def bind(path: Path, expected: str | None = None, *, canonical: bool = False) -> None:
+        resolved = path.resolve()
+        if not resolved.is_relative_to(run_dir.resolve()) or not resolved.is_file():
+            raise ValueError("MVG checkpoint journal evidence missing: " + str(path))
+        raw = resolved.read_bytes()
+        raw_sha = "sha256:" + hashlib.sha256(raw).hexdigest()
+        actual = canonical_sha(json.loads(raw.decode("utf-8"))) if canonical else raw_sha
+        if expected is not None and actual != expected:
+            raise ValueError("MVG checkpoint journal evidence changed: " + str(path))
+        evidence[resolved.relative_to(root.resolve()).as_posix()] = raw_sha
+
+    selected = state["selected_admission_review"]
+    bind(run_dir / "proposal.json", selected["proposal_sha256"], canonical=True)
+    bind(repo_path(root, selected["path"]), selected["proof_sha256"])
+    bind(repo_path(root, selected["execution_path"]), selected["execution_sha256"])
+    for step in state["capability_selection"]["selected"]:
+        pointer = step["checkpoint"]
+        bind(repo_path(run_dir, pointer["path"]), pointer["payload_sha256"], canonical=True)
+        for name in ("selection", "receipt"):
+            bind(repo_path(run_dir, step[name + "_path"]), step[name + "_sha256"])
+        comparison = repo_path(run_dir, step["selection_path"]).parent
+        bind(comparison / "accepted-seed.json", step["input_identity"]["base_sha256"], canonical=True)
+        for alias, label in step["aliases"].items():
+            admission = step["admissions"][label]
+            proposal = repo_path(run_dir, admission["proposal_path"])
+            bind(comparison / (alias + ".json"), canonical_sha(load_json(proposal)), canonical=True)
+        for label, admission in step["admissions"].items():
+            for name in ("proposal", "proof", "execution"):
+                bind(repo_path(run_dir, admission[name + "_path"]), admission[name + "_sha256"])
+            bind(repo_path(run_dir, admission["workspace"]) / "capability-append/append-ledger.json")
+            bind(run_dir / "candidates" / label / "lineage-execution.json")
+    for prepared in run_dir.rglob("analysis-input"):
+        if prepared.is_dir():
+            for path in prepared.rglob("*"):
+                if path.is_file():
+                    bind(path)
+    for name in ("semantic-review.json", "semantic-review-execution.json", "validation.json", "delta.json"):
+        path = run_dir / name
+        if path.is_file():
+            bind(path)
+    projection = _apply_checkpoint_projection(state)
+    return {"schema_version": "newrouge.mvg-apply-checkpoint-binding.v1", "projection": projection,
+        "projection_sha256": canonical_sha(projection), "evidence": evidence}
+
+
+def _validate_apply_checkpoint_binding(root: Path, run_dir: Path, state: dict[str, Any], journal: dict[str, Any]) -> None:
+    """Check frozen run evidence without rejecting the journal's own output writes."""
+    binding = journal.get("result", {}).get("_mvg_checkpoint_binding")
+    index = load_json(run_dir / "analysis-input/analysis-index.json", {})
+    required = (state.get("checkpoint_strategy") is not None or index.get("checkpoint_strategy") is not None)
+    if binding is None:
+        if required:
+            raise ValueError("MVG checkpoint journal binding missing")
+        return
+    if (not isinstance(binding, dict)
+            or binding.get("schema_version") != "newrouge.mvg-apply-checkpoint-binding.v1"
+            or binding.get("projection_sha256") != canonical_sha(binding.get("projection"))
+            or binding.get("projection") != _apply_checkpoint_projection(state)
+            or not isinstance(binding.get("evidence"), dict) or not binding["evidence"]):
+        raise ValueError("MVG checkpoint journal binding changed")
+    for relative, expected in binding["evidence"].items():
+        path = repo_path(root, relative)
+        if (not path.is_relative_to(run_dir.resolve()) or not path.is_file() or file_sha(path) != expected):
+            raise ValueError("MVG checkpoint journal evidence changed: " + relative)
+
+
 def apply(root: Path, *, run_id: str, confirm: bool) -> dict[str, Any]:
     if not confirm:
         raise ValueError("MVG planning apply requires --confirm")
@@ -6422,7 +6533,9 @@ def apply(root: Path, *, run_id: str, confirm: bool) -> dict[str, Any]:
     from _planning_apply_journal import create_journal, resume_journal
     journal_path = run_dir / "apply-journal.json"
     if journal_path.is_file():
-        result = resume_journal(root, journal_path, atomic_json)
+        _validate_apply_checkpoint_binding(root, run_dir, state, load_json(journal_path, {}))
+        result = dict(resume_journal(root, journal_path, atomic_json))
+        result.pop("_mvg_checkpoint_binding", None)
         state.update(phase="applied", applied=True, applied_manifest_sha256=result["manifest_sha256"],
             post_apply_task_readiness=result["post_apply_task_readiness"],
             involved_task_ids=result["handoff_review_required_tasks"],
@@ -6500,6 +6613,9 @@ def apply(root: Path, *, run_id: str, confirm: bool) -> dict[str, Any]:
         "post_apply_task_readiness": readiness,
     }
     authority = load_json(run_dir / "analysis-input/analysis-index.json", {})["authority_inputs"]
+    binding = _freeze_apply_checkpoint_binding(root, run_dir, state)
+    if binding is not None:
+        result["_mvg_checkpoint_binding"] = binding
     create_journal(root, journal_path, {trace_path: trace, manifest_path: updated}, authority, result,
         mutable_json_keys={trace_path: ["handoff_bindings"]})
     return apply(root, run_id=run_id, confirm=True)

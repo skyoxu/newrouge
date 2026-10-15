@@ -118,7 +118,11 @@ Delta application preserves baseline flow order and appends new flows in operati
 
 当前默认按冻结 Capability 顺序逐项处理。每项三个候选从同一已接受累计 seed 独立生成、机器校验及语义准入；选择器只接收这三个增量，行统一为 `viable`，落选只能由比较排名决定。累计基线只读，不成为第四候选或 fallback。选定结果成为下一项共同 seed；不足三个则记录 `selection_blocked_insufficient_admitted_candidates`，保留前缀与当前项证据，不推进下一项。最终混合 winner chain 由本地 `review`/`validate` 重验，不追加整批语义硬审查。
 
-候选准入、修复次数、退役、replacement lineage、逐项 base/proposal/proof/receipt hash 和选择结果持久化在 `logs/ci/mvg-planning/<run-id>/`，不修改任务、Requirement、Capability 或运行时状态。页面新点击创建新 job，只有显式 CLI/run-id 恢复允许复用该 run 中身份匹配的产物。历史整批候选与 incumbent D 仅按旧 run 已记录策略恢复。Story 2.1 的前缀记录不代表 Story 2.2/2.3 的确定性事务、原子 checkpoint 和幂等 replay 已完成。
+候选准入、修复次数、退役、replacement lineage、逐项 base/proposal/proof/receipt hash 和选择结果持久化在 `logs/ci/mvg-planning/<run-id>/`，不修改任务、Requirement、Capability 或运行时状态。页面新点击创建新 job，只有显式 CLI/run-id 恢复允许复用该 run 中身份匹配的产物。历史整批候选与 incumbent D 仅按旧 run 已记录策略恢复。
+
+Story 2.2 的 checkpoint transaction ID 由 schema/run/Capability/order/base/proposal/selection receipt tuple 的 canonical JSON hash 派生。不可变 bundle 包含相同 tuple、完整 delta 和 accepted proposal，在 commit 前完成校验；bundle 的存在本身只代表 prepared。唯一可见 commit 是 `run.json` 的一次 atomic replace，同时提交 checkpoint 指针、selected 前缀、accepted hash 和 current 清理。临时写入失败不会暴露半个 checkpoint，stale base 拒绝推进。恢复验证指针引用的 bundle；完整同身份 replay、payload 冲突与前驱冲突由 Story 2.3 实施。
+
+提交异常后若无法回读磁盘，工作流仅写入 `checkpoint-commit-outcome.json` 证据并停止，禁止旧内存状态覆盖 `run.json`。下次恢复在锁内读取磁盘、校验完整前缀并确定提交结果后才允许推进。下一项提交前重验前驱链；apply journal 原子绑定选定 checkpoint 和证据，恢复同样校验，不能绕过已提交链。
 
 MVG generation separates deterministic completeness from LLM semantics. `plan_mvg prepare` writes immutable `coverage-skeleton.json` for every active delivery Requirement and an intentionally empty `entrypoint-skeleton.json`; Task IDs are evidence owners, not one-runtime-entrypoint placeholders. 当前 append 路径按当前 Capability 新增 Requirement 生成覆盖，保留唯一权威处置与此前有效映射，不能宣称尚未准入的未来项已覆盖。以下独立 routing table 和 bounded segment 规则属于历史整批策略恢复。Shared Capability context never grants multiple flows coverage ownership; the current `coverage_table` remains one authoritative row per Requirement until the route/verification migration is implemented. A non-runtime Requirement without a legitimate prepared sink or reviewed deferral remains a blocking source gap, not a fabricated runtime obligation.
 

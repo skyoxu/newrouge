@@ -8,6 +8,7 @@ from pathlib import Path
 
 from _planning_skill_common import atomic_json, canonical_sha, file_sha, load_json, parse_model_json, repo_path
 from _mvg_capability_generation import capability_scopes, seed_proposal, generate_append, admission_proof
+import _mvg_capability_checkpoint as selected_checkpoint
 
 STRATEGY = "capability-local-selection.v1"
 
@@ -156,9 +157,18 @@ def verified_prefix(root, run_dir, state):
     if not isinstance(selected, list) or len(selected) > len(scopes):
         raise ValueError("capability_selection_prefix_length_invalid")
     accepted, records = deepcopy(seed), []
+    predecessor = None
     for index, step in enumerate(selected):
+        base = accepted
         accepted, record = _selected_step(root, run_dir, state, scopes, index, accepted, records, step)
+        if selected_checkpoint.enabled(state):
+            accepted = selected_checkpoint.verify_checkpoint(run_dir, state, scopes[index]["capability_id"],
+                index, base, accepted, step, predecessor)
+            predecessor = step["checkpoint"]
         records.append(record)
+    if selected_checkpoint.enabled(state) and ("checkpoint_head" not in ledger
+            or ledger["checkpoint_head"] != predecessor):
+        raise ValueError("checkpoint_head_changed")
     if ledger.get("accepted_sha256") != canonical_sha(accepted):
         raise ValueError("capability_selection_accepted_base_changed")
     current = ledger.get("current")
@@ -271,6 +281,14 @@ def verify_published_chain(root, run_dir, state):
 
 
 def generate_selected_capabilities(root, run_dir, state, *, backend, invoke_factory, selector_factory):
+    disk = load_json(run_dir / "run.json", None)
+    if isinstance(disk, dict) and disk != state:
+        raise ValueError("capability_coordinator_state_changed")
+    return _generate_selected_capabilities(root, run_dir, state, backend=backend,
+        invoke_factory=invoke_factory, selector_factory=selector_factory)
+
+
+def _generate_selected_capabilities(root, run_dir, state, *, backend, invoke_factory, selector_factory):
     import plan_mvg as pm
     scopes = frozen_scopes(state, run_dir / "analysis-input")
     seed = seed_proposal(state, run_dir / "analysis-input")
@@ -279,6 +297,8 @@ def generate_selected_capabilities(root, run_dir, state, *, backend, invoke_fact
         "order": [scope["capability_id"] for scope in scopes], "selected": [],
         "accepted_sha256": canonical_sha(seed), "current": None, "total_invocations": 0,
         "lineage_invocations": {label: 0 for label in pm.MVG_CANDIDATE_LABELS}})
+    if selected_checkpoint.enabled(state) and not ledger["selected"]:
+        ledger.setdefault("checkpoint_head", None)
 
     def persist():
         atomic_json(run_dir / "run.json", state)
@@ -522,10 +542,26 @@ def generate_selected_capabilities(root, run_dir, state, *, backend, invoke_fact
             if selection is None:
                 ledger["terminal"] = True
                 raise ValueError("capability_selection_bounded_attempts_exhausted")
-            accepted, record = _selected_step(root, run_dir, state, scopes, index, accepted, prefix, selection)
+            proposal, record = _selected_step(root, run_dir, state, scopes, index, accepted, prefix, selection)
+            if selected_checkpoint.enabled(state):
+                current["stage"] = "checkpoint-preparing"
+                current["checkpoint_preparation"] = {"status": "pending"}
+                persist()
+                pointer = selected_checkpoint.prepare_checkpoint(run_dir, state,
+                    scope["capability_id"], index, accepted, proposal, selection)
+                current["checkpoint_preparation"].update(status="prepared", pointer=pointer)
+                persist()
+                # Recheck frozen input and all receipts after staging, before visibility.
+                _selected_step(root, run_dir, state, scopes, index, accepted, prefix, selection)
+                checked_scopes, checked_accepted, checked_prefix = verified_prefix(root, run_dir, state)
+                if checked_scopes != scopes or checked_accepted != accepted or checked_prefix != prefix:
+                    raise ValueError("checkpoint_accepted_predecessor_changed")
+                selected_checkpoint.commit_checkpoint(run_dir, state, pointer, selection, proposal, writer=atomic_json)
+            else:
+                ledger["selected"].append(selection)
+                ledger.update(accepted_sha256=canonical_sha(proposal), current=None)
+            accepted = proposal
             prefix.append(record)
-            ledger["selected"].append(selection)
-            ledger.update(accepted_sha256=canonical_sha(accepted), current=None)
             persist()
         proof = admission_proof(state, seed, scopes, prefix, accepted)
         errors = pm.candidate_admission_errors(root, state, accepted, proof)
@@ -552,8 +588,15 @@ def generate_selected_capabilities(root, run_dir, state, *, backend, invoke_fact
         persist()
         return {"run_id": state["run_id"], "proposal_sha256": file_sha(run_dir / "proposal.json"),
                 "selected": "winner-chain", "candidate_count": 3, "capability_count": len(scopes)}
+    except selected_checkpoint.CheckpointCommitOutcomeUnknown:
+        # Only sidecar evidence is safe when the authoritative replace outcome is unknown.
+        raise
     except (OSError, ValueError, KeyError, TypeError, RuntimeError) as exc:
         current = ledger.get("current") or {}
+        if current.get("stage") == "checkpoint-preparing":
+            current.setdefault("checkpoint_preparation", {}).update(status="failed", reason=str(exc)[:2000])
+            if isinstance(exc, ValueError):
+                ledger["terminal"] = True
         if current.get("stage") == "selection-preparing":
             current["preparation_error"] = {"code": "selection_preparation_failed",
                 "error_type": pm.classify_review_error(exc), "detail": str(exc)[:2000]}

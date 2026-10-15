@@ -80,6 +80,42 @@ class InputEnvelopeTests(unittest.TestCase):
         finally:
             source.write_bytes(copied.read_bytes())
 
+    def test_checkpoint_protocol_is_frozen_before_any_model_dispatch(self):
+        from copy import deepcopy
+        state = self.prepare()
+        self.assertEqual('capability-selected-checkpoint.v1', state['checkpoint_strategy'])
+        self.assertEqual('newrouge.mvg-capability-checkpoint.v1', state['checkpoint_schema_version'])
+        for key in ('checkpoint_strategy', 'checkpoint_schema_version'):
+            for value in (None, 'unknown-protocol'):
+                with self.subTest(key=key, value=value):
+                    changed = deepcopy(state)
+                    if value is None:
+                        changed.pop(key)
+                    else:
+                        changed[key] = value
+                    atomic_json(self.run / 'run.json', changed)
+                    with patch.object(mvg, 'run_isolated_model') as dispatch:
+                        with self.assertRaisesRegex(ValueError, 'checkpoint protocol changed'):
+                            mvg.generate(self.root, run_id='envelope', timeout_sec=1, llm_backend='codex-cli')
+                        dispatch.assert_not_called()
+                    from _mvg_input_envelope import validate_envelope
+                    with self.assertRaisesRegex(ValueError, 'run:' + key):
+                        validate_envelope(self.root, self.run / 'analysis-input', changed)
+        atomic_json(self.run / 'run.json', state)
+        mvg._validate_input_freshness(self.root, self.run, state)
+
+    def test_busy_incremental_generator_cannot_write_run_or_dispatch(self):
+        from _mvg_capability_checkpoint import coordinator_lock
+        self.prepare()
+        before = (self.run / 'run.json').read_bytes()
+        with coordinator_lock(self.run), patch.object(mvg, 'run_isolated_model') as dispatch, \
+             patch.object(mvg, 'atomic_json') as writer:
+            with self.assertRaisesRegex(ValueError, 'capability_coordinator_busy'):
+                mvg.generate(self.root, run_id='envelope', timeout_sec=1, llm_backend='codex-cli')
+            dispatch.assert_not_called()
+            writer.assert_not_called()
+        self.assertEqual(before, (self.run / 'run.json').read_bytes())
+
     def test_existing_predecessor_content_and_planned_reference_classification(self):
         dest = self.root / "docs/testing/mvg/envelope.json"
         baseline = {"flows": [{"id": "relay", "task_ids": [7, 42], "source_paths": [GDD_PATH.as_posix()],

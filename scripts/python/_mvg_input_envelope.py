@@ -207,6 +207,9 @@ def validate_envelope(root, prepared, state, *, check_originals=True):
         canonical_index.pop("repository_identity", None)
         if canonical_sha(canonical_index) != identity or identity != state.get("analysis_identity_sha256"):
             drift.append("analysis-input/analysis-index.json:analysis_identity")
+        for key in ("checkpoint_strategy", "checkpoint_schema_version"):
+            if index.get(key) != state.get(key):
+                drift.append("run:" + key)
         envelope = index.get("input_envelope")
         if not isinstance(envelope, dict) or envelope.get("schema_version") != ENVELOPE_SCHEMA:
             drift.append("analysis-input/analysis-index.json:input_envelope_missing")

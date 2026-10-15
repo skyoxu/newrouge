@@ -2439,7 +2439,7 @@ class MvgPlanningContractTests(unittest.TestCase):
         import inspect
         import plan_mvg
 
-        source = inspect.getsource(plan_mvg.generate)
+        source = inspect.getsource(plan_mvg._generate)
         self.assertIn("task_ids and every handoff", source)
         self.assertIn("JSON integers", source)
         self.assertIn("coverage is mandatory", source)

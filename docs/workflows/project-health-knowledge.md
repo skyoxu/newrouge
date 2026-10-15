@@ -37,7 +37,7 @@ Capability 和 MVG 的 Generate 按钮每次点击都创建新的 job、独立 c
 
 ### Chapter 3 / Chapter 5 Workspace refresh
 
-MVG 以当前本地规划运行选定的 Capability 文件为唯一 Capability SSoT。新 run 使用 `capability-local-selection.v1`，按冻结顺序逐项处理：当前项的三个独立候选使用相同累计 seed，分别通过机器、累计 delta 和独立语义准入后，只比较这三个增量。胜者成为下一项共同 seed，累计基线不能作为第四候选或 fallback。不足三个时保留已选前缀和失败证据，不推进下一项；最终 review/validate 本地重验整条已选链。硬问题最多修复三次，干净重启不消费失败上下文；lineage 64 次及 run 预算跨项持续计数。GDD、任务视图、契约和测试仅提供辅助证据，不能新建或重分配 Capability 归属。原子 checkpoint 和幂等 replay 仍由后续 Story 2.2/2.3 实施。
+MVG 以当前本地规划运行选定的 Capability 文件为唯一 Capability SSoT。新 run 使用 `capability-local-selection.v1`，按冻结顺序逐项处理：当前项的三个独立候选使用相同累计 seed，分别通过机器、累计 delta 和独立语义准入后，只比较这三个增量。胜者成为下一项共同 seed，累计基线不能作为第四候选或 fallback。不足三个时保留已选前缀和失败证据，不推进下一项；最终 review/validate 本地重验整条已选链。硬问题最多修复三次，干净重启不消费失败上下文；lineage 64 次及 run 预算跨项持续计数。GDD、任务视图、契约和测试仅提供辅助证据，不能新建或重分配 Capability 归属。Story 2.2 为选定项准备带确定性 tuple 的不可变 checkpoint bundle，通过 `run.json` 一次原子替换提交指针和 selected/accepted 状态；bundle 单独存在不能推进基线。完整幂等 replay 与身份冲突恢复仍归 Story 2.3。
 
 Each candidate independently processes its Capability increments with exclusive new Requirement accounting; shared Capability context does not grant duplicate flow ownership. CLI schema and local gates enforce complete cumulative coverage and preserve prior mappings. Missing non-runtime verification authority remains a blocking source gap. The accepted flow projection precedes coverage, entrypoint and test generation for each increment. Repairs are hash-bound, scoped and atomically accepted only when they reduce the current issue without introducing new deterministic errors. Rejected proposals cannot become retry seeds or caches. Internal corrections share the three-attempt issue limit and hard 64-call lineage budget; retired slots start independent replacements immediately.
 

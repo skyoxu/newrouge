@@ -16,6 +16,70 @@ from _planning_skill_common import atomic_json, file_sha, canonical_sha, RUNNER_
 
 
 class CapabilityAppendTests(unittest.TestCase):
+    def checkpoint_fixture(self, run):
+        seed, accepted = {"notes": []}, {"notes": ["chosen"]}
+        receipt = run / "receipt.json"
+        atomic_json(receipt, {"verified": True})
+        step = {"selected_candidate": "candidate-1", "receipt_path": "receipt.json",
+                "receipt_sha256": file_sha(receipt), "proposal_sha256": canonical_sha(accepted),
+                "input_identity": {"base_sha256": canonical_sha(seed)},
+                "record": {"delta": {"notes": ["chosen"]}},
+                "admissions": {"candidate-1": {"proof_sha256": "sha256:proof",
+                                               "proposal_sha256": "sha256:source"}}}
+        state = {"run_id": "checkpoint-fixture", "capability_selection": {
+            "selected": [], "accepted_sha256": canonical_sha(seed), "checkpoint_head": None,
+            "current": {"selection_attempts": [step]}}}
+        atomic_json(run / "run.json", state)
+        return state, seed, accepted, step
+
+    def test_checkpoint_bundle_write_failure_preserves_prior_pointer(self):
+        import importlib.util
+        self.assertIsNotNone(importlib.util.find_spec("_mvg_capability_checkpoint"))
+        import _mvg_capability_checkpoint as checkpoint
+        with tempfile.TemporaryDirectory() as folder:
+            run = Path(folder)
+            state, seed, accepted, step = self.checkpoint_fixture(run)
+            prior = deepcopy(state)
+            with patch.object(checkpoint, "atomic_json", side_effect=OSError("fixture write failure")):
+                with self.assertRaisesRegex(OSError, "fixture write failure"):
+                    checkpoint.prepare_checkpoint(run, state, "CAP-a", 0, seed, accepted, step)
+            self.assertEqual(prior, plan_mvg.load_json(run / "run.json"))
+
+    def test_checkpoint_stale_base_and_receipt_drift_never_publish(self):
+        import importlib.util
+        self.assertIsNotNone(importlib.util.find_spec("_mvg_capability_checkpoint"))
+        import _mvg_capability_checkpoint as checkpoint
+        for mutation in ("base", "receipt"):
+            with self.subTest(mutation=mutation), tempfile.TemporaryDirectory() as folder:
+                run = Path(folder)
+                state, seed, accepted, step = self.checkpoint_fixture(run)
+                pointer = checkpoint.prepare_checkpoint(run, state, "CAP-a", 0, seed, accepted, step)
+                if mutation == "base":
+                    changed = deepcopy(state)
+                    changed["capability_selection"]["accepted_sha256"] = "sha256:stale"
+                    atomic_json(run / "run.json", changed)
+                else:
+                    atomic_json(run / "receipt.json", {"verified": False})
+                prior = plan_mvg.load_json(run / "run.json")
+                with self.assertRaisesRegex(ValueError, "checkpoint_(stale_base|receipt_changed)"):
+                    checkpoint.commit_checkpoint(run, state, pointer, step, accepted)
+                self.assertEqual(prior, plan_mvg.load_json(run / "run.json"))
+
+    def test_checkpoint_pointer_write_failure_does_not_mutate_memory(self):
+        import importlib.util
+        self.assertIsNotNone(importlib.util.find_spec("_mvg_capability_checkpoint"))
+        import _mvg_capability_checkpoint as checkpoint
+        with tempfile.TemporaryDirectory() as folder:
+            run = Path(folder)
+            state, seed, accepted, step = self.checkpoint_fixture(run)
+            pointer = checkpoint.prepare_checkpoint(run, state, "CAP-a", 0, seed, accepted, step)
+            prior = deepcopy(state)
+            with self.assertRaisesRegex(OSError, "fixture pointer failure"):
+                checkpoint.commit_checkpoint(run, state, pointer, step, accepted,
+                    writer=lambda *_: (_ for _ in ()).throw(OSError("fixture pointer failure")))
+            self.assertEqual(prior, state)
+            self.assertEqual(prior, plan_mvg.load_json(run / "run.json"))
+
     def test_coordinator_replaces_corrupt_execution_receipt_with_authoritative_block(self):
         self.exercise_corrupt_execution_receipt(corrupt_json=True)
 
@@ -443,6 +507,42 @@ class CapabilityAppendTests(unittest.TestCase):
     def test_public_selection_uses_mixed_winners_and_one_shared_next_seed(self):
         self.exercise_public_generation(coordinator_case="mixed")
 
+    def test_public_selected_checkpoint_contains_identity_and_atomic_bundle(self):
+        self.exercise_public_generation(coordinator_case="checkpoint")
+
+    def test_public_checkpoint_pointer_failure_keeps_committed_prefix_and_recovers(self):
+        self.exercise_public_generation(coordinator_case="checkpoint-interruption")
+
+    def test_public_checkpoint_replace_then_error_keeps_new_committed_prefix(self):
+        self.exercise_public_generation(coordinator_case="checkpoint-after-error")
+
+    def test_public_checkpoint_process_exit_before_commit_keeps_old_prefix(self):
+        self.exercise_public_generation(coordinator_case="checkpoint-before-exit")
+
+    def test_public_checkpoint_process_exit_after_commit_keeps_new_prefix(self):
+        self.exercise_public_generation(coordinator_case="checkpoint-after-exit")
+
+    def test_public_checkpoint_bundle_tampering_blocks_every_consumer(self):
+        self.exercise_public_generation(coordinator_case="checkpoint-tamper")
+
+    def test_public_checkpoint_unknown_commit_outcome_never_rolls_back(self):
+        self.exercise_public_generation(coordinator_case="checkpoint-reread-unknown")
+
+    def test_public_checkpoint_rechecks_predecessor_after_staging(self):
+        self.exercise_public_generation(coordinator_case="checkpoint-predecessor-drift")
+
+    def test_public_checkpoint_rechecks_predecessor_proof_after_staging(self):
+        self.exercise_public_generation(coordinator_case="checkpoint-predecessor-proof-drift")
+
+    def test_public_checkpoint_stale_base_keeps_blocked_evidence(self):
+        self.exercise_public_generation(coordinator_case="checkpoint-public-stale")
+
+    def test_public_checkpoint_receipt_drift_keeps_blocked_evidence(self):
+        self.exercise_public_generation(coordinator_case="checkpoint-public-receipt")
+
+    def test_public_legacy_selected_prefix_recovers_without_checkpoint_protocol(self):
+        self.exercise_public_generation(coordinator_case="legacy-prefix")
+
     def test_public_incomplete_current_candidates_preserve_selected_prefix(self):
         self.exercise_public_generation(coordinator_case="incomplete")
 
@@ -701,6 +801,17 @@ class CapabilityAppendTests(unittest.TestCase):
             fixture._write_readiness(root, snapshot, real_semantics, by_block, by_task)
             state = plan_mvg.prepare(root, run_id="fixture", capabilities_path=capabilities_path,
                 manifest_path=manifest_path, task_ids=list(map(str, fixture.TASK_IDS)), allow_unready=False, evidence_refs=refs)
+            if coordinator_case == "legacy-prefix":
+                index = plan_mvg.load_json(run / "analysis-input/analysis-index.json")
+                for key in ("checkpoint_strategy", "checkpoint_schema_version", "analysis_identity_sha256"):
+                    index.pop(key, None)
+                index["analysis_identity_sha256"] = canonical_sha(index)
+                atomic_json(run / "analysis-input/analysis-index.json", index)
+                state = plan_mvg.load_json(run / "run.json")
+                for key in ("checkpoint_strategy", "checkpoint_schema_version"):
+                    state.pop(key, None)
+                state["analysis_identity_sha256"] = index["analysis_identity_sha256"]
+                atomic_json(run / "run.json", state)
             import shutil
             shutil.copytree(run / "analysis-input", prepared)
             description = {"schema_version": RUNNER_SCHEMA, "filesystem_scope": "workspace_only",
@@ -1010,6 +1121,121 @@ class CapabilityAppendTests(unittest.TestCase):
                     self.assertEqual(8, interrupted["capability_selection"]["total_invocations"])
                     self.assertEqual(2, plan_mvg.load_json(run / "candidates/candidate-1/lineage-execution.json")["model_invocation_count"])
                     self.assertEqual(0, plan_mvg.load_json(run / "candidates/candidate-1/scope-2/capability-append/append-ledger.json")["total_invocations"])
+                if coordinator_case == "checkpoint-reread-unknown":
+                    import _mvg_capability_selection as coordinator
+                    import _mvg_capability_checkpoint as checkpoint
+                    writer, reader = coordinator.atomic_json, checkpoint.load_json
+                    replaced, recovery_reads, later_run_writes = [], [], []
+                    def uncertain_commit(path, payload):
+                        ledger = payload.get("capability_selection", {})
+                        if path == run / "run.json" and replaced:
+                            later_run_writes.append(deepcopy(payload))
+                        writer(path, payload)
+                        if (path == run / "run.json" and len(ledger.get("selected", [])) == 2
+                                and ledger.get("current") is None and not replaced):
+                            replaced.append(True)
+                            raise OSError("fixture_post_replace_error")
+                    def uncertain_reader(path, default=None):
+                        if path == run / "run.json" and replaced and not recovery_reads:
+                            recovery_reads.append(True)
+                            raise OSError("fixture_post_replace_reread_error")
+                        return reader(path, default)
+                    failure = None
+                    with patch.object(coordinator, "atomic_json", side_effect=uncertain_commit), \
+                         patch.object(checkpoint, "load_json", side_effect=uncertain_reader):
+                        try:
+                            plan_mvg.generate(root, run_id="fixture", timeout_sec=1, llm_backend="codex-cli")
+                        except (OSError, RuntimeError) as exc:
+                            failure = exc
+                    interrupted = plan_mvg.load_json(run / "run.json")
+                    self.assertEqual(2, len(interrupted["capability_selection"]["selected"]),
+                                     "Unknown commit outcome must never roll back the on-disk commit")
+                    self.assertEqual([], later_run_writes)
+                    self.assertIsNotNone(failure)
+                    self.assertIn("checkpoint_commit_outcome_unknown", str(failure))
+                    sidecar = plan_mvg.load_json(run / "checkpoint-commit-outcome.json")
+                    self.assertEqual("unknown", sidecar["status"])
+                    self.assertEqual(14, len(seen))
+                if coordinator_case in {"checkpoint-predecessor-drift", "checkpoint-predecessor-proof-drift", "checkpoint-public-stale",
+                                         "checkpoint-public-receipt"}:
+                    import _mvg_capability_checkpoint as checkpoint
+                    preparer = checkpoint.prepare_checkpoint
+                    def drift_after_staging(run_dir, current_state, capability_id, index, seed, accepted, step):
+                        if index == 1 and coordinator_case == "checkpoint-public-stale":
+                            stale = deepcopy(step)
+                            stale["input_identity"]["base_sha256"] = "sha256:stale"
+                            return preparer(run_dir, current_state, capability_id, index, seed, accepted, stale)
+                        pointer = preparer(run_dir, current_state, capability_id, index, seed, accepted, step)
+                        if index == 1:
+                            if coordinator_case in {"checkpoint-predecessor-drift", "checkpoint-predecessor-proof-drift"}:
+                                old_ledger = current_state["capability_selection"]
+                                if coordinator_case == "checkpoint-predecessor-proof-drift":
+                                    old_step = old_ledger["selected"][0]
+                                    path = run / old_step["admissions"][old_step["selected_candidate"]]["proof_path"]
+                                else:
+                                    path = run / old_ledger["checkpoint_head"]["path"]
+                                changed = plan_mvg.load_json(path)
+                                changed["fixture_predecessor_drift"] = True
+                                atomic_json(path, changed)
+                            else:
+                                atomic_json(run / step["receipt_path"], {"fixture_receipt_drift": True})
+                        return pointer
+                    with patch.object(checkpoint, "prepare_checkpoint", side_effect=drift_after_staging):
+                        failure = None
+                        try:
+                            plan_mvg.generate(root, run_id="fixture", timeout_sec=1, llm_backend="codex-cli")
+                        except ValueError as exc:
+                            failure = exc
+                    blocked = plan_mvg.load_json(run / "run.json")
+                    ledger = blocked["capability_selection"]
+                    self.assertEqual(1, len(ledger["selected"]), "Drift must not advance the committed prefix")
+                    self.assertIsNotNone(failure)
+                    self.assertEqual("blocked", blocked["selection_status"])
+                    self.assertTrue(blocked["selection_block_reason"])
+                    self.assertEqual("failed", ledger["current"]["checkpoint_preparation"]["status"])
+                    expected_reason = ("checkpoint_stale_base" if coordinator_case == "checkpoint-public-stale"
+                        else "checkpoint_payload_changed" if coordinator_case == "checkpoint-predecessor-drift"
+                        else "capability_selection_artifact_identity_changed")
+                    self.assertIn(expected_reason, blocked["selection_block_reason"])
+                    self.assertEqual(blocked["selection_block_reason"],
+                                     ledger["current"]["checkpoint_preparation"]["reason"])
+                    self.assertEqual(ledger["selected"][0]["proposal_sha256"], ledger["accepted_sha256"])
+                    self.assertEqual(ledger["selected"][0]["checkpoint"], ledger["checkpoint_head"])
+                    self.assertEqual(14, len(seen))
+                    return
+                if coordinator_case in {"checkpoint-interruption", "checkpoint-after-error",
+                                         "checkpoint-before-exit", "checkpoint-after-exit"}:
+                    import _mvg_capability_selection as coordinator
+                    writer = coordinator.atomic_json
+                    failed = []
+                    def interrupt_commit(path, payload):
+                        ledger = payload.get("capability_selection", {})
+                        if (path == run / "run.json" and len(ledger.get("selected", [])) == 2
+                                and ledger.get("current") is None and not failed):
+                            failed.append(True)
+                            if coordinator_case.startswith("checkpoint-after"):
+                                writer(path, payload)
+                            if coordinator_case.endswith("exit"):
+                                raise SystemExit("fixture_checkpoint_pointer_failure")
+                            raise OSError("fixture_checkpoint_pointer_failure")
+                        writer(path, payload)
+                    with patch.object(coordinator, "atomic_json", side_effect=interrupt_commit), \
+                         self.assertRaisesRegex(SystemExit if coordinator_case.endswith("exit") else OSError,
+                                                "fixture_checkpoint_pointer_failure"):
+                        plan_mvg.generate(root, run_id="fixture", timeout_sec=1, llm_backend="codex-cli")
+                    interrupted = plan_mvg.load_json(run / "run.json")
+                    ledger = interrupted["capability_selection"]
+                    after = coordinator_case.startswith("checkpoint-after")
+                    self.assertEqual(2 if after else 1, len(ledger["selected"]))
+                    self.assertEqual(ledger["selected"][-1]["checkpoint"], ledger["checkpoint_head"])
+                    if not after:
+                        self.assertEqual(ledger["current"]["base_sha256"], ledger["accepted_sha256"])
+                        self.assertEqual("prepared" if coordinator_case.endswith("exit") else "failed",
+                                         ledger["current"]["checkpoint_preparation"]["status"])
+                    else:
+                        self.assertIsNone(ledger["current"])
+                    self.assertEqual(2, len(list((run / "capability-checkpoints").glob("*/payload.json"))))
+                    self.assertEqual(14, len(seen))
                 result = plan_mvg.generate(root, run_id="fixture", timeout_sec=1, llm_backend="codex-cli")
                 self.assertEqual(3, result["candidate_count"])
                 calls_before_review = len(seen)
@@ -1022,6 +1248,74 @@ class CapabilityAppendTests(unittest.TestCase):
                 self.assertEqual(result["selected"], reused["selected"])
                 self.assertEqual(calls_before_review, len(seen), "Resume must verify hash-bound artifacts locally")
                 persisted = plan_mvg.load_json(run / "run.json")
+                if coordinator_case == "checkpoint-reread-unknown":
+                    recovered_outcome = plan_mvg.load_json(run / "checkpoint-commit-outcome.json")
+                    self.assertEqual("resolved", recovered_outcome["status"])
+                    self.assertEqual("committed", recovered_outcome["outcome"])
+                    self.assertEqual(14, len(seen), "Outcome recovery must verify locally before any state write")
+                if coordinator_case in {"checkpoint-interruption", "checkpoint-after-error",
+                                         "checkpoint-before-exit", "checkpoint-after-exit"}:
+                    self.assertEqual(14, len(seen), "Prepared checkpoint recovery must not dispatch a model")
+                if coordinator_case == "checkpoint-tamper":
+                    from _project_health_planning import _mvg_valid_candidates
+                    pointer = persisted["capability_selection"]["selected"][0]["checkpoint"]
+                    path = run / pointer["path"]
+                    original_payload = plan_mvg.load_json(path)
+                    for mutation in ("schema", "tuple", "accepted", "delta", "pointer-missing", "head"):
+                        changed_state = deepcopy(persisted)
+                        changed = deepcopy(original_payload)
+                        if mutation == "schema":
+                            changed["schema_version"] = "unknown"
+                        elif mutation == "tuple":
+                            changed["identity"]["capability_id"] = "CAP-other"
+                        elif mutation == "accepted":
+                            changed["accepted"]["notes"].append("tampered")
+                            changed_state["capability_selection"]["selected"][0]["checkpoint"]["payload_sha256"] = canonical_sha(changed)
+                        elif mutation == "delta":
+                            changed["delta"]["notes"].append("tampered")
+                            changed_state["capability_selection"]["selected"][0]["checkpoint"]["payload_sha256"] = canonical_sha(changed)
+                        elif mutation == "pointer-missing":
+                            changed_state["capability_selection"]["selected"][0].pop("checkpoint")
+                        else:
+                            changed_state["capability_selection"]["checkpoint_head"] = pointer
+                        atomic_json(path, changed)
+                        atomic_json(run / "run.json", changed_state)
+                        self.assertEqual([], _mvg_valid_candidates(run, changed_state), mutation)
+                        with self.assertRaises(ValueError, msg=mutation):
+                            plan_mvg.generate(root, run_id="fixture", timeout_sec=1, llm_backend="codex-cli")
+                        for operation in (lambda: plan_mvg.review(root, run_id="fixture", runner=Path("unused"), timeout_sec=1),
+                                          lambda: plan_mvg.validate(root, run_id="fixture"),
+                                          lambda: plan_mvg.apply(root, run_id="fixture", confirm=True)):
+                            atomic_json(run / "run.json", changed_state)
+                            with self.assertRaises(ValueError, msg=mutation):
+                                operation()
+                        self.assertEqual(calls_before_review, len(seen))
+                        atomic_json(path, original_payload)
+                    atomic_json(run / "run.json", persisted)
+                if coordinator_case == "checkpoint":
+                    ledger = persisted["capability_selection"]
+                    self.assertIn("checkpoint_head", ledger)
+                    predecessor = None
+                    for index, step in enumerate(ledger["selected"]):
+                        pointer = step["checkpoint"]
+                        payload = plan_mvg.load_json(run / pointer["path"])
+                        expected_identity = {"schema_version": "newrouge.mvg-capability-checkpoint.v1",
+                            "run_id": "fixture", "capability_id": ("CAP-a", "CAP-b")[index],
+                            "order_index": index, "base_sha256": canonical_sha(payload["accepted_seed"]),
+                            "proposal_sha256": step["proposal_sha256"],
+                            "selection_receipt_sha256": file_sha(run / step["receipt_path"])}
+                        self.assertEqual(expected_identity, payload["identity"])
+                        self.assertEqual(canonical_sha(expected_identity), pointer["transaction_id"])
+                        self.assertEqual(pointer["transaction_id"], canonical_sha(payload["identity"]))
+                        self.assertEqual(pointer["payload_sha256"], canonical_sha(payload))
+                        self.assertEqual(step["receipt_sha256"], payload["identity"]["selection_receipt_sha256"])
+                        self.assertEqual(index, payload["identity"]["order_index"])
+                        self.assertEqual(predecessor, payload["predecessor"])
+                        self.assertEqual(step["record"]["delta"], payload["delta"])
+                        self.assertEqual(step["proposal_sha256"], canonical_sha(payload["accepted"]))
+                        self.assertEqual(step["input_identity"]["base_sha256"], canonical_sha(payload["accepted_seed"]))
+                        predecessor = pointer
+                    self.assertEqual(predecessor, ledger["checkpoint_head"])
                 if coordinator_case == "reserved-interruption":
                     self.assertEqual(15, persisted["capability_selection"]["total_invocations"])
                     self.assertEqual(5, persisted["capability_selection"]["lineage_invocations"]["candidate-1"])
@@ -1091,11 +1385,16 @@ class CapabilityAppendTests(unittest.TestCase):
                     self.assertEqual(calls_before_review, len(seen))
                     atomic_json(execution_path, original_execution)
                     atomic_json(run / "run.json", original)
-                if coordinator_case == "receipt-recovery":
+                if coordinator_case in {"receipt-recovery", "legacy-prefix"}:
                     interrupted = deepcopy(persisted)
                     selection_ledger = interrupted["capability_selection"]
                     step = selection_ledger["selected"].pop()
                     step["status"] = "running"
+                    if coordinator_case == "receipt-recovery" and selection_ledger.get("selected"):
+                        selection_ledger["checkpoint_head"] = selection_ledger["selected"][-1].get("checkpoint")
+                    if coordinator_case == "legacy-prefix":
+                        self.assertNotIn("checkpoint_head", selection_ledger)
+                        self.assertTrue(all("checkpoint" not in row for row in selection_ledger["selected"]))
                     selection_ledger.update(accepted_sha256=step["input_identity"]["base_sha256"], current={
                         "capability_id": "CAP-b", "order_index": 1,
                         "base_sha256": step["input_identity"]["base_sha256"], "admissions": step["admissions"],
@@ -1107,6 +1406,11 @@ class CapabilityAppendTests(unittest.TestCase):
                     self.assertEqual("winner-chain", resumed["selected"])
                     self.assertEqual(calls_before_review, len(seen))
                     self.assertEqual(2, len(plan_mvg.load_json(run / "run.json")["capability_selection"]["selected"]))
+                    if coordinator_case == "legacy-prefix":
+                        recovered = plan_mvg.load_json(run / "run.json")
+                        self.assertNotIn("checkpoint_strategy", recovered)
+                        self.assertNotIn("checkpoint_head", recovered["capability_selection"])
+                        self.assertFalse((run / "capability-checkpoints").exists())
                 if coordinator_case == "apply-replay":
                     applied = plan_mvg.apply(root, run_id="fixture", confirm=True)
                     replayed = plan_mvg.apply(root, run_id="fixture", confirm=True)

@@ -42,7 +42,7 @@ Repair one stable hard issue at a time, at most three attempts per issue. Reject
 
 每项准入不足三个时写入 `selection_blocked_insufficient_admitted_candidates`，保留此前已选前缀与当前候选证据，不推进下一项。排名仅比较三个已准入增量，落选只能因为排名。完成全部项后执行完整机器与累计 delta 校验，不追加整批语义硬审查。最终 `review`、`validate` 本地重验混合 winner chain 的每项独立准入 proof/receipt。页面新点击始终创建新 run；旧 run 只按其已记录策略恢复。
 
-逐项迁移的范围说明：Story 2.1 提供选择和前缀证据；确定性 checkpoint 事务、原子提交及幂等 replay 属于后续 Story 2.2/2.3，在完成对应实现和验证前不能宣称具备这些保证。历史整批策略及 incumbent D 仅用于显式旧 run 恢复，不用于新 run。
+逐项迁移的范围说明：Story 2.1 提供选择和前缀证据；Story 2.2 为 selected 增量准备不可变 checkpoint bundle，事务身份绑定 schema/run/Capability/order/base/proposal/selection receipt 的 canonical tuple。bundle 存在只代表 prepared；只有 `run.json` 一次原子提交 checkpoint 指针、selected 前缀和 accepted hash 后才可作为下一项 seed，写失败或 stale base 不推进。完整幂等 replay 与身份冲突仍属于 Story 2.3。历史整批策略及 incumbent D 仅用于显式旧 run 恢复，不用于新 run。
 
 ### Stage entrypoints (segmented generation details describe legacy recovery)
 
