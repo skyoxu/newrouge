@@ -1150,6 +1150,9 @@ class MVGReviewPreparationError(ValueError):
 def _review_reference_paths(proposal: dict[str, Any]) -> set[str]:
     """Collect repository-relative evidence paths explicitly claimed by a proposal."""
     refs: set[str] = set()
+    from _mvg_requirement_accounting import evidence_rows
+    refs.update(row['source_ref'].split('#', 1)[0] for row in evidence_rows(proposal)
+                if isinstance(row, dict) and isinstance(row.get('source_ref'), str))
     manifest = proposal.get("manifest_candidate") or {}
     if not isinstance(manifest, dict):
         return refs
@@ -2764,6 +2767,22 @@ def build_flow_scopes(semantics: dict[str, Any], capabilities: dict[str, Any],
 
 def merge_planning_segments(base: dict[str, Any], segments: list[dict[str, Any]], *, repair=False) -> dict[str, Any]:
     """Merge bounded model sections without allowing replacement or deletion."""
+    from _mvg_requirement_accounting import key_errors, manifest_key_errors
+    shape_errors = key_errors(base) + manifest_key_errors(base)
+    for segment in segments:
+        if not isinstance(segment, dict):
+            raise ValueError('planning_segment_invalid')
+        shape_errors += key_errors(segment)
+        for field in ('flows', 'tests', 'coverage_table', 'entrypoints'):
+            if field in segment and (not isinstance(segment[field], list)
+                    or any(not isinstance(row, dict) for row in segment[field])):
+                shape_errors.append('planning_segment_' + field + '_invalid')
+        for family, key in (('flows', 'id'), ('tests', 'id')):
+            if isinstance(segment.get(family), list) and any(
+                    not isinstance(row.get(key), str) for row in segment[family] if isinstance(row, dict)):
+                shape_errors.append('planning_segment_' + family + '_key_invalid')
+    if shape_errors:
+        raise ValueError(';'.join(shape_errors))
     result = json.loads(json.dumps(base))
     manifest = result.setdefault("manifest_candidate", {})
     if "tests" not in result and isinstance(manifest.get("tests"), list):
@@ -2774,7 +2793,44 @@ def merge_planning_segments(base: dict[str, Any], segments: list[dict[str, Any]]
     flows = manifest.setdefault("flows", [])
     flow_map = {str(row.get("id")): row for row in flows if isinstance(row, dict)}
     input_pairs = set()
+    input_accounting_keys = set()
     for segment in segments:
+        from _mvg_requirement_accounting import VERIFICATION, EVIDENCE, verification_rows, evidence_rows, key_errors
+        if VERIFICATION in segment or EVIDENCE in segment:
+            errors = key_errors(segment)
+            if errors:
+                raise ValueError(';'.join(errors))
+            prior_authority_ids = {row['requirement_id'] for row in verification_rows(result)}
+            result.setdefault(VERIFICATION, verification_rows(result))
+            for field, project, keys in ((VERIFICATION, verification_rows, ('requirement_id',)),
+                                         (EVIDENCE, evidence_rows, ('requirement_id', 'evidence_id'))):
+                if field not in segment:
+                    continue
+                target = result.setdefault(field, project(result))
+                existing = {tuple(row.get(key) for key in keys): row for row in target}
+                for row in segment[field]:
+                    key = tuple(row.get(key) for key in keys)
+                    input_key = (field, *key)
+                    if input_key in input_accounting_keys:
+                        raise ValueError(field + '_duplicate:' + ':'.join(key) + ':segments')
+                    input_accounting_keys.add(input_key)
+                    if key in existing and existing[key] != row:
+                        if not repair:
+                            raise ValueError(field + '_conflict:' + ':'.join(key))
+                        existing[key].clear()
+                        existing[key].update(deepcopy(row))
+                    elif key not in existing:
+                        target.append(deepcopy(row))
+                        existing[key] = target[-1]
+            # Evidence is append-only. Link new immutable evidence to its existing
+            # authority row without rewriting disposition, owner or authorization.
+            if EVIDENCE in segment:
+                for row in segment[EVIDENCE]:
+                    authority_row = next((item for item in result.get(VERIFICATION, [])
+                        if item.get('requirement_id') == row['requirement_id']), None)
+                    if (authority_row is not None and row['requirement_id'] in prior_authority_ids
+                            and row['evidence_id'] not in authority_row.get('evidence_ids', [])):
+                        authority_row.setdefault('evidence_ids', []).append(row['evidence_id'])
         if ROUTE_FIELD in segment:
             errors = pair_errors(segment[ROUTE_FIELD])
             if errors:
@@ -4104,7 +4160,17 @@ def _prepare_impl(
                 key = {'deferred': 'authority_ref', 'other_verification': 'verification_ref'}.get(row.get('disposition'))
                 if key and row.get(key):
                     historical_refs.append(str(row[key]))
+            from _mvg_requirement_accounting import evidence_rows
+            historical_refs.extend(row['source_ref'] for row in evidence_rows(previous)
+                                   if isinstance(row, dict) and row.get('source_ref'))
             evidence_refs = [*(evidence_refs or []), prior_trace.relative_to(root).as_posix(), *historical_refs]
+    from _mvg_requirement_accounting import runtime_paths, source_path
+    runtime_companions = []
+    for ref in evidence_refs or []:
+        canonical = source_path(ref)
+        if canonical.startswith('logs/ci/mvg-acceptance/') and canonical.endswith('/summary.json'):
+            runtime_companions.extend(runtime_paths(ref, load_json(repo_path(root, canonical), {})))
+    evidence_refs = [*(evidence_refs or []), *runtime_companions]
     envelope = freeze_envelope(root, run_id=run_id, capabilities_path=capabilities_path,
         readiness=readiness, manifest_path=manifest_path, evidence_refs=evidence_refs)
 
@@ -4205,12 +4271,14 @@ def _prepare_impl(
         from _mvg_capability_generation import capability_scopes
         prior = load_json(bundle / "existing-planning-trace.json", {})
         envelope["requirement_routes_protocol"] = "newrouge.requirement-routes.v1"
+        envelope["requirement_accounting_protocol"] = "newrouge.requirement-accounting.v1"
         envelope["scopes"] = capability_scopes(capabilities, load_json(root / SEMANTICS, {}), planning_scope,
             accepted_requirement_ids=[row["requirement_id"] for row in prior.get("coverage_table", [])])
     index = {
         "schema_version": "newrouge.mvg-planning-input.v1",
         "generation_strategy": "capability-local-selection.v1",
         "requirement_routes_protocol": "newrouge.requirement-routes.v1",
+        "requirement_accounting_protocol": "newrouge.requirement-accounting.v1",
         "checkpoint_strategy": "capability-selected-checkpoint.v1",
         "checkpoint_schema_version": "newrouge.mvg-capability-checkpoint.v1",
         "capabilities_sha256": file_sha(capabilities_path),
@@ -4258,6 +4326,7 @@ def _prepare_impl(
         "generation_strategy": "capability-local-selection.v1",
         "checkpoint_strategy": index["checkpoint_strategy"],
         "requirement_routes_protocol": index["requirement_routes_protocol"],
+        "requirement_accounting_protocol": index["requirement_accounting_protocol"],
         "checkpoint_schema_version": index["checkpoint_schema_version"],
         "run_id": run_id,
         "phase": "prepared",
@@ -5841,6 +5910,10 @@ def validate_proposal(root: Path, state: dict[str, Any], proposal: dict[str, Any
     manifest = proposal.get("manifest_candidate")
     if not isinstance(manifest, dict):
         return {"status": "blocked", "errors": errors + ["manifest_candidate_missing"]}
+    from _mvg_requirement_accounting import manifest_key_errors
+    shape_errors = manifest_key_errors(proposal)
+    if shape_errors:
+        return {'status': 'blocked', 'errors': errors + shape_errors, 'formal_applicable': False, 'formal_blockers': []}
 
     manifest_errors = validate_manifest(root, manifest, executable=False)
     if append_requirement_ids is not None and not manifest.get("flows"):
@@ -5851,6 +5924,8 @@ def validate_proposal(root: Path, state: dict[str, Any], proposal: dict[str, Any
     errors.extend(manifest_errors)
     prepared = _run_dir(root, str(state.get("run_id"))) / "analysis-input"
     errors.extend(protocol_errors(load_json(prepared / 'analysis-index.json', {}), proposal))
+    from _mvg_requirement_accounting import protocol_errors as accounting_protocol_errors
+    errors.extend(accounting_protocol_errors(load_json(prepared / 'analysis-index.json', {}), proposal))
     # Validate against the byte-bound prepared snapshot. The selected local
     # Capability is the planning SSoT; live auxiliary files cannot drift into
     # a candidate after prepare.
@@ -6049,6 +6124,12 @@ def validate_proposal(root: Path, state: dict[str, Any], proposal: dict[str, Any
             errors.append(f"invalid_entrypoint_status:{status}")
     status = "passed" if not errors else "blocked"
     formal_blockers: list[str] = []
+    from _mvg_requirement_accounting import verification_rows
+    verification = verification_rows(proposal)
+    if isinstance(verification, list):
+        formal_blockers.extend('requirement_source_gap:' + row['requirement_id']
+                               for row in verification if isinstance(row, dict)
+                               and isinstance(row.get('requirement_id'), str) and row.get('disposition') == 'source_gap')
     if planning_status != "ready_for_validation":
         formal_blockers.append("planning_status_not_ready")
     if gaps:
@@ -6633,6 +6714,11 @@ def apply(root: Path, *, run_id: str, confirm: bool) -> dict[str, Any]:
         updated = candidate
 
     trace = project_routes(proposal)
+    from _mvg_requirement_accounting import PROTOCOL_FIELD, PROTOCOL
+    if state.get(PROTOCOL_FIELD) == PROTOCOL:
+        trace[PROTOCOL_FIELD] = PROTOCOL
+        from _mvg_requirement_accounting import freeze_accounting_sources
+        trace.update(freeze_accounting_sources(proposal, run_dir / 'analysis-input'))
     trace["applied_manifest_candidate"] = deepcopy(updated)
     trace["applied_manifest_path"] = manifest_path.resolve().relative_to(root.resolve()).as_posix()
     trace["applied_manifest_sha256"] = text_sha(json.dumps(updated, ensure_ascii=False, indent=2) + "\n")

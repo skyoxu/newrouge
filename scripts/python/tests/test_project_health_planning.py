@@ -487,6 +487,10 @@ class ProjectHealthPlanningTests(unittest.TestCase):
                             'path': 'Game.Core/Tasks/Relay42.cs', 'symbol': 'Run', 'inputs': 'Request',
                             'state': 'Ready', 'assertions': 'Delivery or retry visible',
                             'implementation_acceptance': 'Implement both outcomes'}], change_reviews=[], gaps=[], notes=[])
+                    if 'requirement_verification' in transport_schema['properties']:
+                        payload['requirement_verification'] = [{**row, 'evidence_ids': []}
+                                                               for row in payload['coverage_table']]
+                        payload['requirement_evidence'] = []
                 else:
                     proposal = context['proposal']
                     payload = {'schema_version': schema_version,

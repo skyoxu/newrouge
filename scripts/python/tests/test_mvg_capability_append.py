@@ -739,7 +739,8 @@ class CapabilityAppendTests(unittest.TestCase):
 
     def exercise_public_generation(self, planned_verification=False, fault=None, failed_generations=1,
                                    drift_after_first_dispatch=False, drift_after_final_dispatch=False,
-                                   public_candidate_drift=False, coordinator_case=None, multi_route=False, legacy_next=False):
+                                   public_candidate_drift=False, coordinator_case=None, multi_route=False, legacy_next=False,
+                                   accounting_evidence=False):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             import planning_acceptance_fixture as fixture
@@ -797,6 +798,13 @@ class CapabilityAppendTests(unittest.TestCase):
                 dest.parent.mkdir(parents=True, exist_ok=True)
                 dest.write_text("public class RuntimeTests {}" + (
                     "\n// Full auxiliary source line\n" * 2000 if fault == "evidence_transport" else ""), encoding="utf-8")
+            if accounting_evidence:
+                evidence_ref = 'docs/testing/accounting-proof.json'
+                evidence_records = [{'evidence_id': rid + '-' + fid, 'requirement_ids': [rid], 'status': 'passed',
+                    'covered_behavior': 'Observed ' + fid, 'flow_ids': [fid], 'test_ids': []}
+                    for rid, fid in (('FR-a', 'flow-a'), ('FR-a', 'flow-b'), ('FR-b', 'flow-b'))]
+                atomic_json(root / evidence_ref, {'records': evidence_records})
+                refs.append(evidence_ref)
             snapshot = plan_mvg.load_json(root / chapter5.DEFAULT_EXTRACTION_SNAPSHOT)
             by_block = {block: row["requirement_id"] for row in reqs for block in row["source_block_ids"]}
             by_task = {str(row["taskmaster_id"]): row["semantic_refs"] for row in views}
@@ -938,6 +946,21 @@ class CapabilityAppendTests(unittest.TestCase):
                                 "owner_task": task_id, "requirement_ids": [reqs[index]["requirement_id"]],
                                 "handoff_indexes": [0], "inputs": "Invalid request", "assertions": "Recovery preserves state",
                                 "implementation_acceptance": "Exercise actual consumer recovery"}]
+                        if 'requirement_verification' in props:
+                            value['requirement_verification'] = [{**deepcopy(row), 'evidence_ids': []}
+                                                                 for row in value['coverage_table']]
+                            value['requirement_evidence'] = []
+                            if accounting_evidence and value['coverage_table']:
+                                pairs = [(reqs[index]['requirement_id'], flows[index]['id'])]
+                                if cid == 'CAP-b':
+                                    pairs.append(('FR-a', 'flow-b'))
+                                value['requirement_evidence'] = [{'requirement_id': rid, 'evidence_id': rid + '-' + fid,
+                                    'kind': 'verification_record', 'source_ref': evidence_ref + '#' + rid + '-' + fid,
+                                    'covered_behavior': 'Observed ' + fid, 'flow_ids': [fid], 'test_ids': []}
+                                    for rid, fid in pairs]
+                                for row in value['requirement_verification']:
+                                    row['evidence_ids'] = [item['evidence_id'] for item in value['requirement_evidence']
+                                                           if item['requirement_id'] == row['requirement_id']]
                     else:
                         coverage = props["requirement_reviews"]["items"]["anyOf"]
                         rows = []
@@ -1486,6 +1509,10 @@ class CapabilityAppendTests(unittest.TestCase):
                                     finally:
                                         atomic_json(target, original_payload)
                         self.assertEqual(routes, result["overview"]["manifests"][0]["requirement_route_memberships"])
+                        if accounting_evidence:
+                            accounting = result['overview']['manifests'][0]['requirement_accounting']
+                            self.assertEqual(2, accounting['satisfied_count'])
+                            self.assertEqual(3, accounting['evidence_count'])
                         from _mvg_capability_generation import seed_proposal
                         if legacy_next:
                             # Historical traces know only the original coverage owners.
@@ -1496,6 +1523,8 @@ class CapabilityAppendTests(unittest.TestCase):
                             allow_unready=False, evidence_refs=refs)
                         next_prepared = root / plan_mvg.DEFAULT_RUN_ROOT / "next-run/analysis-input"
                         next_seed = seed_proposal(next_state, next_prepared)
+                        self.assertEqual(proposal['requirement_verification'], next_seed['requirement_verification'])
+                        self.assertEqual(proposal['requirement_evidence'], next_seed['requirement_evidence'])
                         if not legacy_next:
                             self.assertEqual(routes, next_seed['requirement_route_memberships'])
                         else:

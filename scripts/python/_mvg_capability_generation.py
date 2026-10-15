@@ -10,6 +10,8 @@ from typing import Any
 from _planning_skill_common import atomic_json, canonical_sha, file_sha, load_json, parse_model_json, validate_output_schema
 from _mvg_capability_append import PROOF_SCHEMA, run_capability_append, preservation_errors
 from _mvg_requirement_routes import FIELD, PROJECTION, membership_schema, memberships, prepared_trace, project_routes
+from _mvg_requirement_accounting import (VERIFICATION, EVIDENCE, PROTOCOL_FIELD, PROTOCOL,
+    project_accounting, schemas as accounting_schemas, verification_rows, evidence_rows)
 from _mvg_evidence_transport import (audit_errors, audit_execution_errors, audit_prompt, audit_schema,
     compact_schema, plan_errors, plan_transport, transport_proof_errors, wire_json)
 
@@ -57,6 +59,10 @@ def review_projection(scope, base, proposal):
         new_routes = {(row['requirement_id'], row['flow_id']): row for row in memberships(proposal)}
         ids.update(pair[1] for pair in set(old_routes) | set(new_routes)
                    if old_routes.get(pair) != new_routes.get(pair))
+    for row in evidence_rows(proposal):
+        if row not in evidence_rows(base):
+            ids.update(row.get('flow_ids', []))
+            ids.update(flow['id'] for flow in flows if row.get('requirement_id') in flow.get('requirement_ids', []))
     entries = proposal.get("entrypoints", [])
     for row in entries:
         if row not in base.get("entrypoints", []):
@@ -75,12 +81,17 @@ def review_projection(scope, base, proposal):
     affected = [deepcopy(row) for row in flows if row["id"] in ids]
     requirements = set(scope["requirement_ids"]) | {
         rid for row in affected for rid in row.get("requirement_ids", [])}
+    requirements |= {row['requirement_id'] for row in evidence_rows(proposal)
+                     if isinstance(row, dict) and row not in evidence_rows(base)}
     # Future baseline membership is visible as context, but coverage cannot be
     # claimed before that Capability has passed its own gate.
     requirements &= set(scope["cumulative_requirement_ids"])
     result = deepcopy(proposal)
     result["manifest_candidate"]["flows"] = affected
     result["coverage_table"] = [row for row in result["coverage_table"] if row["requirement_id"] in requirements]
+    for field in (VERIFICATION, EVIDENCE):
+        if field in result:
+            result[field] = [row for row in result[field] if row['requirement_id'] in requirements]
     if FIELD in result:
         result[FIELD] = [row for row in result[FIELD]
                          if row["requirement_id"] in requirements and row["flow_id"] in ids]
@@ -114,6 +125,17 @@ def seed_proposal(state, prepared):
         if PROJECTION in trace:
             result[PROJECTION] = trace[PROJECTION]
         result["entrypoints"] = deepcopy(trace.get("entrypoints", []))
+    if load_json(prepared / 'analysis-index.json', {}).get(PROTOCOL_FIELD) == PROTOCOL:
+        def read_legacy(ref):
+            for family in ('sources', 'references'):
+                path = prepared / family / ref
+                if path.is_file():
+                    return path.read_text(encoding='utf-8-sig')
+            return None
+        projected = project_accounting(trace if trace else result, read_text=read_legacy)
+        result[VERIFICATION] = projected[VERIFICATION]
+        result[EVIDENCE] = projected[EVIDENCE]
+        result[PROTOCOL_FIELD] = PROTOCOL
     return result
 
 
@@ -184,13 +206,12 @@ def append_output_schema(state, scope, base, prepared, *, evidence_paths=None):
                 {"type": "string", "enum": scope["new_requirement_ids"]} if scope["new_requirement_ids"]
                 else {"type": "string", "const": ""})
             properties[field].update(minItems=len(scope["new_requirement_ids"]), maxItems=len(scope["new_requirement_ids"]))
-            # Append coverage is exclusively a flow disposition. File
-            # references are evidence for other dispositions and are rejected
-            # here and again by the local membership gate.
-            item = properties[field]["items"]
-            item["properties"]["verification_ref"] = {"type": "null"}
-            item["properties"]["authority_ref"] = {"type": "null"}
-            item["properties"]["authority_review"] = {"type": "null"}
+            if load_json(prepared / 'analysis-index.json', {}).get(PROTOCOL_FIELD) == PROTOCOL:
+                properties[field]['items']['properties']['disposition']['enum'] = [
+                    'flow', 'other_verification', 'deferred', 'source_gap']
+            else:
+                for key in ('verification_ref', 'authority_ref', 'authority_review'):
+                    properties[field]['items']['properties'][key] = {'type': 'null'}
         if section == "entrypoints":
             # Existing verification must be proven from prepared files by the
             # deterministic gate; generation emits only explicit obligations.
@@ -202,6 +223,12 @@ def append_output_schema(state, scope, base, prepared, *, evidence_paths=None):
             "type": "object", "properties": {}, "required": [], "additionalProperties": False}, "maxItems": 0}
     properties["gaps"] = {"type": "array", "items": {"type": "string", "minLength": 1}}
     properties["notes"] = {"type": "array", "items": {"type": "string", "minLength": 1}}
+    if load_json(prepared / 'analysis-index.json', {}).get(PROTOCOL_FIELD) == PROTOCOL:
+        properties.update(accounting_schemas(properties['coverage_table']['items'],
+            scope['cumulative_requirement_ids'], flows, tests))
+        properties[VERIFICATION]['items']['properties']['requirement_id'] = deepcopy(
+            properties['coverage_table']['items']['properties']['requirement_id'])
+        properties[VERIFICATION].update(minItems=len(scope['new_requirement_ids']), maxItems=len(scope['new_requirement_ids']))
     schema = {"type": "object", "properties": properties, "required": list(properties), "additionalProperties": False}
     # Regex and cross-field constraints are rechecked by append machine
     # validation and local prepared-evidence gates. Codex CLI rejects these
@@ -215,7 +242,8 @@ def complete_scope_context(prepared, scope, base, proposal=None):
     from _mvg_input_envelope import input_identity, _reference_path
     semantics = load_json(prepared / "semantic-requirements.v1.json", {})
     rids = set(scope["requirement_ids"])
-    affected, _ = review_projection(scope, base, proposal or base)
+    affected, required = review_projection(scope, base, proposal or base)
+    rids |= required
     rids |= {rid for flow in affected["manifest_candidate"]["flows"] for rid in flow.get("requirement_ids", [])}
     requirements = [row for row in semantics["requirements"] if row["requirement_id"] in rids]
     owners = {tid for flow in affected["manifest_candidate"]["flows"] for tid in flow.get("task_ids", [])}
@@ -235,6 +263,8 @@ def complete_scope_context(prepared, scope, base, proposal=None):
     if block_ids - {row.get("block_id") for row in blocks}:
         raise ValueError("capability_append_source_blocks_missing")
     dependencies = pm._review_reference_paths(affected)
+    dependencies |= {row['source_ref'].split('#', 1)[0] for row in evidence_rows(affected)
+                     if isinstance(row, dict) and isinstance(row.get('source_ref'), str)}
     for family in ("coverage_table", "change_reviews", "retirement_reviews"):
         for row in affected.get(family, []):
             for field in ("authority_ref", "verification_ref"):
@@ -409,6 +439,14 @@ def repair_scope_errors(old, new, issue, scope=None):
     errors = []
     if not target_requirements and not target_flows and not target_tests:
         errors.append("repair_target_unresolved")
+    for field, project in ((VERIFICATION, verification_rows), (EVIDENCE, evidence_rows)):
+        old_rows, new_rows = project(old), project(new)
+        for row in old_rows:
+            if row.get('requirement_id') not in target_requirements and row not in new_rows:
+                errors.append('repair_unrelated_' + field + '_changed:' + str(row.get('requirement_id')))
+        for row in new_rows:
+            if row.get('requirement_id') not in target_requirements and row not in old_rows:
+                errors.append('repair_unrelated_' + field + '_added:' + str(row.get('requirement_id')))
     for row in old.get("coverage_table", []):
         if row["requirement_id"] not in target_requirements and row not in new.get("coverage_table", []):
             errors.append("repair_unrelated_coverage_changed:" + row["requirement_id"])
@@ -589,8 +627,16 @@ def generate_append(root, state, candidate_root, *, invoke_factory, before_call,
             "in this scope. Other Requirements are context, not additional coverage. Return requirement_route_memberships "
             "for every new (requirement_id, flow_id) pair in the cumulative Requirement scope, each with its own "
             "nonempty observable_role. A Requirement may participate in several flows; preserve accepted pair roles "
-            "and its unique coverage owner. Do not repeat accepted coverage rows. Existing-manifest "
-            "flows/tests remain cumulative; an explicit change_reviews authority is required for semantic "
+            "and its unique coverage owner. Do not repeat accepted coverage rows. "
+            "For accounting-protocol runs also return requirement_verification for exactly the new Requirement IDs, "
+            "copying coverage owner/disposition/authority fields with evidence_ids. Return requirement_evidence "
+            "with unique (requirement_id,evidence_id), kind, source_ref, covered_behavior, flow_ids and test_ids. "
+            "Evidence may support accepted Requirements without replacing their verification rows. "
+            "implementation_reference never satisfies verification; verification_record needs an explicit frozen "
+            "passed record with matching behavior and scope; runtime_acceptance needs a formal bound MVG receipt. "
+            "Use empty evidence_ids when proof is absent; never self-report satisfied or runtime_verified. "
+            "flow, other_verification, deferred and source_gap are distinct dispositions; retain reviewed authority. "
+            "Existing-manifest flows/tests remain cumulative; an explicit change_reviews authority is required for semantic "
             "membership additions to frozen flows. Do not modify another Capability's accepted mapping. "
             "Report true missing upstream semantics in gaps, never invent evidence. Repairs change only "
             "the current issue and necessary dependencies, preserve other valid increment rows. No tools.\n")

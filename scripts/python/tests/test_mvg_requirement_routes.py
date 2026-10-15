@@ -308,7 +308,7 @@ class RequirementRouteTests(unittest.TestCase):
         run = case.run
         index_path = run / 'analysis-input/analysis-index.json'
         index = load_json(index_path)
-        for key in ('requirement_routes_protocol', 'checkpoint_strategy', 'checkpoint_schema_version'):
+        for key in ('requirement_routes_protocol', 'requirement_accounting_protocol', 'checkpoint_strategy', 'checkpoint_schema_version'):
             index.pop(key, None); state.pop(key, None)
         state.pop('generation_strategy', None)
         atomic_json(index_path, index); atomic_json(run / 'run.json', state)

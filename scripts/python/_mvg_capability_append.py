@@ -7,6 +7,8 @@ from typing import Any
 
 from _planning_skill_common import atomic_json, canonical_sha, load_json
 from _mvg_requirement_routes import FIELD, memberships, pair_errors
+from _mvg_requirement_accounting import (VERIFICATION, EVIDENCE, verification_rows, evidence_rows,
+    key_errors, string_list, manifest_key_errors)
 
 PROOF_SCHEMA = "newrouge.mvg-capability-admission.v1"
 
@@ -22,6 +24,20 @@ def issue_key(issue: dict[str, Any]) -> str:
 def preservation_errors(base: dict[str, Any], revised: dict[str, Any]) -> list[dict[str, str]]:
     """Protect accepted coverage, tests and boundaries; allow shared-flow extension."""
     errors = []
+    base_shape, revised_shape = key_errors(base) + manifest_key_errors(base), key_errors(revised) + manifest_key_errors(revised)
+    if base_shape or revised_shape:
+        return [{'code': code, 'path': 'requirement_accounting'} for code in base_shape + revised_shape]
+    for family, prior, current in ((VERIFICATION, verification_rows(base), verification_rows(revised)),
+                                   (EVIDENCE, evidence_rows(base), evidence_rows(revised))):
+        for row in prior if isinstance(prior, list) else []:
+            retained = isinstance(current, list) and row in current
+            if family == VERIFICATION and isinstance(current, list):
+                retained = string_list(row.get('evidence_ids', [])) and any(isinstance(new, dict)
+                    and string_list(new.get('evidence_ids', []))
+                    and all(new.get(key) == value for key, value in row.items() if key != 'evidence_ids')
+                    and set(row.get('evidence_ids', [])) <= set(new.get('evidence_ids', [])) for new in current)
+            if not retained:
+                errors.append({'code': 'append_accepted_' + family + '_changed', 'path': family})
     current_routes = memberships(revised)
     if not isinstance(current_routes, list):
         current_routes = []
@@ -66,6 +82,26 @@ def preservation_errors(base: dict[str, Any], revised: dict[str, Any]) -> list[d
 
 def merge_append(base: dict[str, Any], delta: dict[str, Any], scope: dict[str, Any] | None = None) -> dict[str, Any]:
     from plan_mvg import bind_planned_verification, merge_planning_segments
+    errors = key_errors(base) + key_errors(delta) + manifest_key_errors(base)
+    for key in ('flows', 'tests', 'entrypoints'):
+        if key in delta and (not isinstance(delta[key], list) or any(not isinstance(row, dict) for row in delta[key])):
+            errors.append('append_' + key + '_invalid')
+    if errors:
+        raise ValueError(';'.join(errors))
+    if VERIFICATION in delta or EVIDENCE in delta:
+        errors = key_errors(delta)
+        if errors:
+            raise ValueError(';'.join(errors))
+        existing = {row.get('requirement_id') for row in verification_rows(base) if isinstance(row, dict)}
+        for row in delta.get(VERIFICATION, []):
+            rid = row.get('requirement_id') if isinstance(row, dict) else None
+            if rid in existing or (scope and rid not in scope['new_requirement_ids']):
+                errors.append('append_requirement_verification_outside_new_scope:' + str(rid))
+        prior_evidence = {(row['requirement_id'], row['evidence_id']) for row in evidence_rows(base)}
+        errors.extend('append_requirement_evidence_already_accepted:' + row['requirement_id'] + ':' + row['evidence_id']
+                      for row in delta.get(EVIDENCE, []) if (row['requirement_id'], row['evidence_id']) in prior_evidence)
+        if errors:
+            raise ValueError(';'.join(errors))
     if FIELD in delta:
         errors = pair_errors(delta[FIELD])
         existing = {row.get("requirement_id") for row in base.get("coverage_table", []) if isinstance(row, dict)}
@@ -184,6 +220,11 @@ def run_capability_append(workspace: Path, *, scopes: list[dict[str, Any]], seed
                         proposal = merge_append(ledger["accepted"], delta, scope)
                     issues = preservation_errors(ledger["accepted"], proposal)
                     issues += machine(scope, ledger["accepted"], proposal)
+                    if any(str(row.get('code', '')).startswith('requirement_source_gap:') for row in issues):
+                        ledger.update(status='blocked', errors=deepcopy(issues))
+                        current.update(proposal=proposal, delta=delta, issues=issues)
+                        persist()
+                        return ledger
                     rejection = []
                     if issue and current["proposal"] is not None and not review_only:
                         old_issues = preservation_errors(ledger["accepted"], current["proposal"])

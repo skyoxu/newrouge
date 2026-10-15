@@ -6,15 +6,23 @@ from pathlib import Path
 
 from _mvg_manifest import manifest_sha256
 from _mvg_requirement_routes import FIELD, memberships, trace_errors, authority_ids
+from _mvg_requirement_accounting import (VERIFICATION, EVIDENCE, verification_rows,
+    evidence_rows, accounting_summary, trace_evidence_validation)
 
 
-def attach_planning_routes(manifest: dict, proposal: dict, source: dict, *, requirement_ids, applied_manifest) -> bool:
+def attach_planning_routes(manifest: dict, proposal: dict, source: dict, *, requirement_ids, applied_manifest,
+                           read_source=None) -> bool:
     """Attach descriptive routes only after the caller binds this exact manifest."""
     if trace_errors(proposal, applied_manifest, requirement_ids):
         return False
     manifest[FIELD] = memberships(proposal)
     manifest['coverage_table'] = proposal.get('coverage_table', [])
     manifest['requirement_routes_source'] = source
+    manifest[VERIFICATION] = verification_rows(proposal)
+    manifest[EVIDENCE] = evidence_rows(proposal)
+    errors, valid = trace_evidence_validation(proposal, read_source=read_source)
+    manifest['requirement_accounting'] = accounting_summary(proposal, valid_evidence_keys=valid)
+    manifest['requirement_accounting']['evidence_errors'] = errors
     return True
 
 
@@ -134,7 +142,8 @@ def build_overview(snapshot, details: list[dict], topology: dict, graph: dict) -
             if attach_planning_routes(item, trace, {'kind': 'formal_planning_trace',
                     'path': trace_path, 'sha256': snapshot.digest(trace_path)},
                     requirement_ids=authority_ids({'requirements': topology.get('nodes', {}).get('requirements', [])})
-                    if trustworthy else set(), applied_manifest=manifest):
+                    if trustworthy else set(), applied_manifest=manifest,
+                    read_source=lambda ref: snapshot.read_bytes(ref) if ref in paths else None):
                 break
         manifests.append(item)
     return {'schema_version': 'newrouge.knowledge-mvg-overview.v1', 'revision': snapshot.commit,

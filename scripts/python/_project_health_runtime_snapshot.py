@@ -28,6 +28,11 @@ def _is_workspace_ignored(path: str) -> bool:
     return False
 
 
+def snapshot_digest(hashes: dict) -> str:
+    """Keep receipt consumers on the producer's exact inventory identity."""
+    return hashlib.sha256(json.dumps(hashes, sort_keys=True).encode()).hexdigest()
+
+
 def prepare_snapshot(root: Path, destination: Path, revision: str, mode: str, deadline: float) -> dict:
     destination.mkdir(parents=True, exist_ok=False)
 
@@ -77,7 +82,7 @@ def prepare_snapshot(root: Path, destination: Path, revision: str, mode: str, de
             hashes[name] = hashlib.sha256(data).hexdigest()
     else:
         raise ValueError('Unknown runtime mode')
-    digest = hashlib.sha256(json.dumps(hashes, sort_keys=True).encode()).hexdigest()
+    digest = snapshot_digest(hashes)
     manifest = {'mode': mode, 'source_revision': revision if mode == 'main' else 'workspace:' + digest,
                 'files': hashes, 'snapshot_digest': digest}
     write_json(destination.parent / 'input-manifest.json', manifest)

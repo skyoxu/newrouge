@@ -129,7 +129,11 @@ def freeze_envelope(root, *, run_id, capabilities_path, readiness, manifest_path
                          force_file=True,
                          planned=is_test and not owner_done)
     for ref in evidence_refs or []:
+        from _mvg_requirement_accounting import source_path, normalized_source
+        from _planning_skill_common import text_sha
+        canonical = source_path(ref)
         bind(ref, "explicit_evidence", required=True)
+        inventory[canonical]['source_content_sha256'] = text_sha(normalized_source(repo_path(root, canonical).read_bytes()))
 
     formal = readiness["formal_ready"] is True
     bind(DEFAULT_EXTRACTION_SNAPSHOT, "chapter5_extraction", required=formal)
@@ -203,13 +207,15 @@ def validate_envelope(root, prepared, state, *, check_originals=True):
             raise ValueError("analysis-index is not an object")
         from _mvg_requirement_routes import protocol_errors
         drift.extend(protocol_errors(index))
+        from _mvg_requirement_accounting import protocol_errors as accounting_protocol_errors
+        drift.extend(accounting_protocol_errors(index))
         identity = index.get("analysis_identity_sha256")
         canonical_index = dict(index)
         canonical_index.pop("analysis_identity_sha256", None)
         canonical_index.pop("repository_identity", None)
         if canonical_sha(canonical_index) != identity or identity != state.get("analysis_identity_sha256"):
             drift.append("analysis-input/analysis-index.json:analysis_identity")
-        for key in ("checkpoint_strategy", "checkpoint_schema_version", "requirement_routes_protocol"):
+        for key in ("checkpoint_strategy", "checkpoint_schema_version", "requirement_routes_protocol", "requirement_accounting_protocol"):
             if index.get(key) != state.get(key):
                 drift.append("run:" + key)
         envelope = index.get("input_envelope")
@@ -262,7 +268,12 @@ def validate_envelope(root, prepared, state, *, check_originals=True):
                 path = repo_path(root, row["path"])
                 actual = file_sha(path) if path.is_file() else None
                 normalized = normalized_file_sha(path) if path.is_file() else None
-                if actual != row.get("sha256") and normalized != row.get("normalized_sha256"):
+                content_matches = False
+                if row.get('source_content_sha256') and path.is_file():
+                    from _mvg_requirement_accounting import normalized_source
+                    from _planning_skill_common import text_sha
+                    content_matches = text_sha(normalized_source(path.read_bytes())) == row['source_content_sha256']
+                if actual != row.get("sha256") and normalized != row.get("normalized_sha256") and not content_matches:
                     drift.append(row["path"])
             if row.get("sha256") is not None:
                 prepared_path = row.get("prepared_path")

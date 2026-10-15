@@ -80,6 +80,12 @@ def trace_errors(trace, manifest, requirement_ids):
             seen.add(rid)
     projected = {**trace, 'manifest_candidate': manifest}
     errors += route_errors(projected, requirement_ids)
+    from _mvg_requirement_accounting import (accounting_errors, protocol_errors as accounting_protocol_errors,
+        VERIFICATION, EVIDENCE, PROTOCOL_FIELD, PROTOCOL as ACCOUNTING_PROTOCOL)
+    if any(key in trace for key in (VERIFICATION, EVIDENCE, 'requirement_accounting_sources')) and trace.get(PROTOCOL_FIELD) != ACCOUNTING_PROTOCOL:
+        errors.append('planning_trace_accounting_protocol_missing_or_invalid')
+    errors += accounting_protocol_errors(trace, trace)
+    errors += accounting_errors(projected, requirement_ids, complete=False)
     return errors
 
 
@@ -141,7 +147,7 @@ def memberships(proposal: dict[str, Any]):
     if FIELD in proposal:
         return deepcopy(proposal[FIELD])
     result = []
-    for row in proposal.get("coverage_table", []):
+    for row in (proposal.get("coverage_table") or []):
         if isinstance(row, dict) and row.get("flow_id") and row.get("disposition", "flow") == "flow":
             rationale = row.get('rationale')
             result.append({"requirement_id": row.get("requirement_id"), "flow_id": row["flow_id"],
@@ -186,6 +192,14 @@ def route_errors(proposal: dict[str, Any], requirement_ids, *, complete=True) ->
     errors = pair_errors(rows)
     if not isinstance(rows, list):
         return errors
+    manifest = proposal.get('manifest_candidate', {})
+    if not isinstance(manifest, dict) or not isinstance(manifest.get('flows', []), list):
+        return errors + ['requirement_route_flows_invalid']
+    for index, flow in enumerate(manifest.get('flows', [])):
+        if (not isinstance(flow, dict) or not isinstance(flow.get('id'), str)
+                or not isinstance(flow.get('requirement_ids', []), list)
+                or any(not isinstance(rid, str) for rid in flow.get('requirement_ids', []))):
+            return errors + [f'requirement_route_flow_invalid:flows[{index}]']
     flows = {str(row.get("id")): row for row in proposal.get("manifest_candidate", {}).get("flows", [])
              if isinstance(row, dict)}
     known = set(requirement_ids)

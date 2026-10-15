@@ -4,6 +4,8 @@ from typing import Any
 
 from _planning_skill_common import canonical_sha, file_sha, load_json, normalized_file_sha, repo_path
 from _mvg_requirement_routes import route_errors
+from _mvg_requirement_accounting import (accounting_errors, prepared_evidence_validation,
+    manifest_key_errors, normalized_source, source_path)
 
 
 def prepared_evidence_errors(root: Path, proposal: dict[str, Any], prepared: Path) -> list[str]:
@@ -45,6 +47,7 @@ def prepared_evidence_errors(root: Path, proposal: dict[str, Any], prepared: Pat
     errors = []
     for ref in sorted(dependencies):
         try:
+            source_path(ref)
             path = repo_path(root, ref)
             rel = path.relative_to(root.resolve()).as_posix()
         except ValueError:
@@ -55,10 +58,17 @@ def prepared_evidence_errors(root: Path, proposal: dict[str, Any], prepared: Pat
         expected = authority.get(rel)
         if not expected or not matched:
             errors.append(f"verification_dependency_not_prepared:{rel}")
-        elif (not path.is_file() or (normalized_file_sha(path) != expected
-              and file_sha(path) != expected)
-              or any(file_sha(prepared / key) != files[key] for key in matched)):
-            errors.append(f"verification_dependency_drift:{rel}")
+        else:
+            try:
+                if (not path.is_file() or expected not in {
+                        file_sha(prepared / matched[0]), normalized_file_sha(prepared / matched[0])}
+                        or any(file_sha(prepared / key) != files[key]
+                               or normalized_source((prepared / key).read_bytes()) != normalized_source(path.read_bytes())
+                               for key in matched)):
+                    errors.append(f"verification_dependency_drift:{rel}")
+            except (ValueError, OSError, UnicodeError):
+                errors.append(f"verification_dependency_source_unreadable:{rel}")
+    errors += prepared_evidence_validation(root, proposal, prepared)[0]
     return errors
 
 
@@ -77,10 +87,15 @@ def coverage_errors(root: Path, proposal: dict[str, Any], semantics: dict[str, A
         if row.get("taskmaster_id") is not None:
             task_members.setdefault(int(row["taskmaster_id"]), set()).update(map(str,
                 row.get("semantic_refs", row.get("requirement_ids", []))))
+    shape_errors = manifest_key_errors(proposal)
+    if shape_errors:
+        return shape_errors
     flow_rows = [f for f in proposal["manifest_candidate"].get("flows", []) if isinstance(f, dict)]
     flows = {str(f["id"]): f for f in flow_rows}
     rows = proposal.get("coverage_table")
-    errors = route_errors(proposal, requirements)
+    errors = route_errors(proposal, requirements) + accounting_errors(proposal, requirements)
+    if any('invalid' in error or 'not_array' in error for error in errors):
+        return errors
     if not isinstance(rows, list) or not rows:
         return errors + ["coverage_table_missing_or_empty"]
     accounted = set()
@@ -137,6 +152,9 @@ def coverage_errors(root: Path, proposal: dict[str, Any], semantics: dict[str, A
                 errors.append(f"coverage_deferral_unreviewed:{rid}:{exc}")
             if row.get("verification_ref") or row.get("flow_id"):
                 errors.append(f"coverage_deferred_route_invalid:{rid}")
+        elif disposition == "source_gap":
+            if any(row.get(key) for key in ('flow_id', 'verification_ref', 'authority_ref', 'authority_review')):
+                errors.append(f"coverage_source_gap_fields_invalid:{rid}")
         else:
             errors.append(f"coverage_disposition_invalid:{rid}")
         accounted.add(rid)

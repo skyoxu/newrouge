@@ -393,12 +393,13 @@ def build_result(checkout: Path, job: dict) -> dict:
                         and {key: value for key, value in trace.items() if key in proposal} == proposal
                         and trace.get('applied_manifest_candidate', trace.get('manifest_candidate'))
                             == load_json(repo_path(checkout, manifest['path']), {})):
-                    attach_planning_routes(manifest, proposal, {'kind': 'local_selected_proposal',
+                    attach_planning_routes(manifest, trace, {'kind': 'local_selected_proposal',
                         'path': proposal_path.relative_to(checkout).as_posix(), 'sha256': file_sha(proposal_path)},
                         requirement_ids=authority_ids(
                             load_json(run_dir / 'analysis-input/semantic-requirements.v1.json', {}),
                             load_json(run_dir / 'analysis-input/capabilities.v1.json', {})),
-                        applied_manifest=load_json(repo_path(checkout, manifest['path']), {}))
+                        applied_manifest=load_json(repo_path(checkout, manifest['path']), {}),
+                        read_source=lambda ref: repo_path(checkout, ref).read_bytes())
     return {'topology': topology, 'overview': overview}
 
 
