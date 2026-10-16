@@ -18,8 +18,8 @@ from urllib.parse import parse_qs, urlsplit
 from project_health_knowledge import CONFIG, safe_file, write_json, validate_config, load_config, read_json, base_dir
 from _semantic_topology import load_workspace_topology
 from _project_health_mvg_versions import with_runtime_evidence
-from _project_health_planning import generated_view, planning_source, public_job, read_job, selected_result
-from _project_health_planning_http import start_planning
+from _project_health_planning import generated_view, planning_source, public_job, read_job, selected_result, mvg_progress
+from _project_health_planning_http import start_planning, clear_mvg
 
 
 def image_bytes(root, path, revision):
@@ -193,6 +193,8 @@ def handler_factory(root: Path):
                     # revision alongside graph data so refreshed pages can load
                     # previews without using a stale or empty token.
                     self.send({'revision': state.get('revision'), 'file_manifest': state.get('file_manifest', []), **graph})
+                elif parsed.path == '/api/knowledge/mvg-progress':
+                    self.send(mvg_progress(root))
                 elif parsed.path == '/api/knowledge/mvg-overview':
                     snapshot = base_dir(root) / 'latest.json'
                     state = read_json(snapshot) if snapshot.exists() else {}
@@ -310,6 +312,8 @@ def handler_factory(root: Path):
                     self.cli('scan')
                 elif path == '/api/knowledge/planning':
                     start_planning(self, root, request, operation, operation_guard, operation_state)
+                elif path == '/api/knowledge/mvg-clear':
+                    clear_mvg(self, root, request, operation)
                 elif path == '/api/knowledge/mvg-run':
                     godot_bin = os.environ.get('GODOT_BIN')
                     if not godot_bin:

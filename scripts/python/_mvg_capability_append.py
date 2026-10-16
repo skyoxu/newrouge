@@ -261,6 +261,11 @@ def run_capability_append(workspace: Path, *, scopes: list[dict[str, Any]], seed
                     raise
                 except (OSError, RuntimeError, ValueError) as exc:
                     from plan_mvg import classify_review_error
+                    if "mvg_stage_cost_budget_insufficient" in str(exc):
+                        ledger.update(status="blocked", errors=[{
+                            "code": "append_stage_cost_budget_insufficient", "path": "stage-costs", "detail": str(exc)}])
+                        persist()
+                        return ledger
                     if (any(code in str(exc) for code in ("runner_input_too_large", "runner_context_budget_exceeded"))
                             or before_invocations == ledger["total_invocations"]):
                         ledger.update(status="blocked", errors=[{"code": "append_input_preparation_failed", "detail": str(exc)}])

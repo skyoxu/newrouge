@@ -466,7 +466,8 @@ class ProjectHealthPlanningTests(unittest.TestCase):
             transport_schema = load_json(kwargs.get('output_schema'), {}) if kwargs.get('output_schema') else {}
             schema_version = transport_schema.get('properties', {}).get('schema_version', {}).get('const')
             if schema_version in {'newrouge.mvg-capability-append.v1', 'newrouge.mvg-semantic-review.v1'} and 'segments' in str(workspace):
-                context = json.loads(prompt.split('\n', 1)[1])
+                from _mvg_evidence_transport import restore_lossless_context
+                context = restore_lossless_context(json.loads(prompt.splitlines()[-1]))
                 if schema_version == 'newrouge.mvg-capability-append.v1':
                     scope = context['scope']
                     fid = 'routing-' + scope['capability_id'].lower()
@@ -750,6 +751,7 @@ class ProjectHealthPlanningTests(unittest.TestCase):
             output = io.StringIO()
             with contextlib.redirect_stdout(output), patch.object(module, 'inspect_isolated_runner', return_value=RUNNER), \
                  patch('_mvg_capability_generation.preflight_dispatch'), \
+                 patch('_mvg_capability_worker.run_candidate', side_effect=lambda *a, **kw: kw['inline']()), \
                  patch.object(module, 'run_isolated_model', side_effect=model):
                 code = module.main(['--repo-root', str(checkout), *args])
             text = output.getvalue(); log.write_text(text, encoding='utf-8')
@@ -883,6 +885,22 @@ class ProjectHealthPlanningTests(unittest.TestCase):
                 manifest_path.rmdir()
             manifest_path.write_bytes(original)
         self.assertTrue(planning._planning_input_fresh(self.root, stored))
+
+        # Both durable pointers refer to this actually completed planner job.
+        # Neither the latest path nor its missing-latest fallback may revive it
+        # after the persistent epoch advances.
+        from _mvg_capability_recovery import clear, registry
+        latest = self.root / planning.JOB_ROOT / 'mvg-latest.json'
+        attempt = self.root / planning.JOB_ROOT / 'mvg-attempt.json'
+        self.assertEqual(job['job_id'], load_json(latest)['job_id'])
+        self.assertEqual(job['job_id'], load_json(attempt)['job_id'])
+        self.assertIsNotNone(planning.generated_view(self.root, 'mvg'))
+        clear(self.root)
+        self.assertEqual(stored['mvg_epoch'] + 1, registry(self.root)['epoch'])
+        self.assertIsNone(planning.generated_view(self.root, 'mvg'))
+        latest.unlink()
+        self.assertIsNone(planning.generated_view(self.root, 'mvg'))
+        self.assertEqual(job['job_id'], load_json(attempt)['job_id'])
 
     def test_resume_reuses_generated_candidates_and_original_attempt(self):
         invoke, invocations = self._production_consumers()

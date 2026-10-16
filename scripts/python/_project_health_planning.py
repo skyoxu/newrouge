@@ -185,6 +185,8 @@ def selected_result(root: Path, action: str) -> dict | None:
     if not pointer.get('job_id'):
         return None
     job = read_job(root, pointer['job_id'])
+    if action == 'mvg' and not _mvg_epoch_current(root, job):
+        return None
     if (job.get('action') != action or job['status'] != 'completed'
             or not _planning_input_fresh(root, job)):
         return None
@@ -246,7 +248,9 @@ def create_job(root: Path, action: str, manifest: str | None = None, *, fresh: b
             prior.get('checkout_job_id') == current_capability_id and
             prior.get('capabilities_sha256') == current_capability_hash
         )
-        if prior.get('manifest') == manifest and same_capability and _planning_input_fresh(root, prior):
+        if (prior.get('manifest') == manifest and same_capability
+                and (action != 'mvg' or _mvg_epoch_current(root, prior))
+                and _planning_input_fresh(root, prior)):
             # Resume interrupted planner stages, but never keep retrying a
             # prepare failure that happened before the planner created its
             # durable run state (for example, Git could not create the worktree).
@@ -296,6 +300,8 @@ def create_job(root: Path, action: str, manifest: str | None = None, *, fresh: b
            'status': 'queued', 'created_at': datetime.now(timezone.utc).isoformat(),
            'message': f'Queued {action} generation from local workspace {revision[:12]}'}
     if action == 'mvg':
+        from _mvg_capability_recovery import registry
+        job['mvg_epoch'] = registry(root)['epoch']
         capability = current_capability
         if capability:
             job['checkout_job_id'] = capability['job_id']
@@ -319,6 +325,10 @@ def invoke(checkout: Path, script: str, arguments: list[str], log: Path) -> dict
         'PYTHONUNBUFFERED': '1',
         'PYTHONIOENCODING': 'utf-8',
     }
+    recovery_binding = load_json(checkout / 'logs/ci/mvg-recovery-store.json', {})
+    if script == 'plan_mvg.py' and recovery_binding:
+        child_env.update(SC_MVG_RECOVERY_ROOT=recovery_binding['store'],
+                         SC_MVG_RECOVERY_EPOCH=str(recovery_binding['epoch']))
     with log.open('w', encoding='utf-8', newline='\n') as output:
         result = subprocess.run(command, cwd=checkout, stdout=output, stderr=subprocess.STDOUT,
                                 text=True, encoding='utf-8', env=child_env)
@@ -687,6 +697,12 @@ def run_job(root: Path, job: dict) -> dict:
             parent = read_job(root, job['checkout_job_id'])
             derived_source = execution_root(root, parent)
         prepare_checkout(root, checkout, job['revision'], derived_source=derived_source)
+        if action == 'mvg':
+            from _mvg_capability_recovery import store_root
+            if not _mvg_epoch_current(root, job):
+                raise ValueError('MVG generation was cleared; start a new job')
+            atomic_json(checkout / 'logs/ci/mvg-recovery-store.json', {
+                'store': str(store_root(root)), 'epoch': job.get('mvg_epoch', 0)})
         validate_checkout(root, checkout, job['revision'])
         if action == 'mvg' and job.get('capabilities_sha256'):
             prepared_index = (checkout / 'logs/ci/mvg-planning' / run_id / 'analysis-input' /
@@ -698,6 +714,8 @@ def run_job(root: Path, job: dict) -> dict:
         script = 'plan_capabilities.py' if action == 'capability' else 'plan_mvg.py'
         stages = ['prepare', 'generate', 'review', 'align', 'apply'] if action == 'capability' else ['prepare', 'generate', 'review', 'validate', 'apply']
         for stage in stages[stages.index(job['stage']):]:
+            if action == 'mvg' and not _mvg_epoch_current(root, job):
+                raise ValueError('MVG generation was cleared; start a new job')
             invoked_stage = None
             validate_checkout(root, checkout, job['revision'])
             job['stage'] = stage
@@ -772,6 +790,8 @@ def run_job(root: Path, job: dict) -> dict:
                    + ('capabilities' if action == 'capability' else 'flows') +
                    f' · local workspace {job["revision"][:12]} · local planning result')
         atomic_json(directory / 'job.json', job)
+        if action == 'mvg' and not _mvg_epoch_current(root, job):
+            raise ValueError('MVG generation was cleared before publication')
         atomic_json(root / JOB_ROOT / f'{action}-latest.json', {'job_id': job['job_id']})
     except Exception as exc:
         error = compact_error(str(exc))
@@ -808,6 +828,35 @@ def generated_view(root: Path, action: str) -> dict | None:
             raise ValueError('Generated planning output changed; retained main data is preserved')
     result = load_json(job_path(root, job['job_id']).parent / 'result.json')
     return result['topology' if action == 'capability' else 'overview']
+
+
+def _mvg_epoch_current(root: Path, job: dict) -> bool:
+    from _mvg_capability_recovery import registry
+    return job.get('mvg_epoch', 0) == registry(root)['epoch']
+
+
+def mvg_progress(root: Path) -> dict:
+    """Current-epoch committed state survives failed jobs and server restart."""
+    from _mvg_capability_recovery import registry, progress
+    epoch = registry(root)['epoch']
+    empty = {'epoch': epoch, 'completed': 0, 'total': 0, 'items': [],
+             'status': 'partial_planning', 'runtime_verified': False}
+    pointer = load_json(root / JOB_ROOT / 'mvg-attempt.json', {})
+    if not pointer.get('job_id'):
+        return empty
+    job = read_job(root, pointer['job_id'])
+    if job.get('action') != 'mvg' or not _mvg_epoch_current(root, job):
+        return empty
+    checkout = execution_root(root, job)
+    run_dir = checkout / 'logs/ci/mvg-planning' / job['job_id']
+    state = load_json(run_dir / 'run.json', {})
+    if not state.get('capability_selection') or not state.get('recovery'):
+        return {**empty, 'job_status': job['status'], 'current': None}
+    try:
+        return {**progress(checkout, run_dir, state), 'job_status': job['status'],
+                'manifest': job.get('manifest'), 'planning_result': True}
+    except (OSError, ValueError, RuntimeError, KeyError, TypeError) as exc:
+        return {**empty, 'job_status': job['status'], 'reason': compact_error(str(exc))}
 
 
 def planning_source(root: Path, job_id: str, path: str) -> dict:

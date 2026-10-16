@@ -12,6 +12,67 @@
   };
   let overview;
   let runInProgress = false;
+  let progressEpoch = -1;
+  let progressRequest = 0;
+  let progressLoading = null;
+  async function loadProgress() {
+    if (progressLoading) return progressLoading;
+    const request = ++progressRequest;
+    progressLoading = renderProgress(request);
+    try { await progressLoading; }
+    finally { progressLoading = null; }
+  }
+  async function renderProgress(request) {
+    const response = await fetch('/api/knowledge/mvg-progress', {cache: 'no-store'});
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload.reason || 'Unable to load completed Capabilities');
+    if (request !== progressRequest || payload.epoch < progressEpoch) return;
+    progressEpoch = payload.epoch;
+    get('mvg-progress-status').textContent = `${payload.completed}/${payload.total} completed Capabilities · ${payload.status} · current: ${payload.current || 'none'} · runtime not verified${payload.reason ? ' · ' + payload.reason : ''}`;
+    const display = get('mvg-progress-items'); display.replaceChildren();
+    for (const row of payload.items || []) item('p', `${row.capability_id} · ${row.provenance}`, display);
+    if (payload.proposal) {
+      const manifest = payload.proposal.manifest_candidate || {};
+      for (const flow of manifest.flows || []) {
+        const row = document.createElement('details');
+        item('summary', flow.id, row);
+        item('p', flow.outcome, row);
+        item('p', 'Tasks: ' + (flow.task_ids || []).join(', '), row);
+        for (const handoff of flow.handoffs || []) item('p', `${handoff.producer_task} → ${handoff.consumer_task} · owner ${handoff.owner_task} · ${handoff.behavior} · ${handoff.contract_ref}`, row);
+        display.append(row);
+      }
+      const complete = document.createElement('details');
+      item('summary', 'Complete committed planning scope', complete);
+      item('pre', JSON.stringify(payload.proposal, null, 2), complete);
+      display.append(complete);
+    }
+  }
+  window.refreshMvgProgress = loadProgress;
+  const progressTimer = window.setInterval(() => loadProgress().catch(error => {
+    get('mvg-progress-status').textContent = error.message;
+  }), 2000);
+  window.addEventListener('pagehide', () => window.clearInterval(progressTimer), {once: true});
+  get('mvg-clear').addEventListener('click', async () => {
+    if (runInProgress) return;
+    const button = get('mvg-clear'); button.disabled = true;
+    try {
+      const sessionResponse = await fetch('/api/knowledge/session', {cache: 'no-store'});
+      if (!sessionResponse.ok) throw new Error('Unable to start a verified session');
+      const session = await sessionResponse.json();
+      const response = await fetch('/api/knowledge/mvg-clear', {
+        method: 'POST', headers: {'Content-Type': 'application/json', 'X-Project-Health-Token': session.token},
+        body: JSON.stringify({})});
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.reason || 'Unable to clear generated MVG');
+      progressEpoch = payload.epoch;
+      ++progressRequest;
+      get('mvg-progress-items').replaceChildren();
+      get('mvg-progress-status').textContent = '0 completed Capabilities · generated MVG cleared · runtime not verified';
+      await load();
+      await loadProgress();
+    } catch (error) { get('mvg-progress-status').textContent = error.message; }
+    finally { button.disabled = false; }
+  });
   const selectedManifest = () => overview?.manifests.find(row => row.path === get('mvg-manifest-select').value);
   function updateRunButton() {
     const manifest = selectedManifest();
@@ -156,4 +217,5 @@
     }
   });
   load().catch(error => { get('mvg-status').textContent = error.message; });
+  loadProgress().catch(error => { get('mvg-progress-status').textContent = error.message; });
 })();

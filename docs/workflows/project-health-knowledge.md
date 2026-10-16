@@ -1,5 +1,9 @@
 # Project Health: Knowledge + Impact
 
+MVG 逐项规划进度由 `GET /api/knowledge/mvg-progress` 从当前 epoch 的 `run.json` 已提交前缀重建，显示 completed/total、当前项、`new`/`reused` 与完整累计内容。GET 不恢复活跃候选预算，也不把未提交 worker 文件作为成果；轮询单飞，生成时只锁写控件，已完成详情保持可读。后续失败和服务重启仍展示已提交项，`partial_planning` 不表示 runtime verified。
+
+页面清理调用认证的 `POST /api/knowledge/mvg-clear`（空 JSON），与现有生成/验收操作互斥。持久 epoch 使旧 attempt/result 指针、晚到响应和发布失效；页面立即清零。审计、正式回归 manifest、Capability 和任务保留。下一次 Generate 建立新 run，恢复规则及跨工作区共享索引见 ADR-0039 和 `mvg-integration-acceptance.md`。
+
 ## Design → Delivery Topology
 
 The existing loopback service exposes a read-only `/knowledge/topology` view and `/api/knowledge/topology?mode=main|workspace`.

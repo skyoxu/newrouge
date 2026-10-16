@@ -314,9 +314,10 @@ def validate_envelope(root, prepared, state, *, check_originals=True):
     except (OSError, ValueError, TypeError, KeyError, AttributeError, UnicodeError) as exc:
         drift.append("input-envelope-invalid:" + str(exc))
     drift = sorted(set(drift))
-    atomic_json(prepared.parent / "input-freshness.json", {
-        "status": "blocked" if drift else "current", "run_id": state.get("run_id"),
-        "analysis_identity_sha256": identity, "drift": drift})
+    if check_originals:
+        atomic_json(prepared.parent / "input-freshness.json", {
+            "status": "blocked" if drift else "current", "run_id": state.get("run_id"),
+            "analysis_identity_sha256": identity, "drift": drift})
     if drift:
         raise ValueError("MVG input drift: " + ",".join(drift))
     return envelope

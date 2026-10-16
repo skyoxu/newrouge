@@ -482,9 +482,13 @@ def evidence_scope_errors(prepared, scope, base, proposal, context):
     return []
 
 
+_PREFLIGHT_REQUEST_CACHE = {}
+
+
 def preflight_runner_payload(attempt_root, attempt, prompt, schema, output_name):
     """Measure the isolated runner's fully wrapped, schema-bearing request."""
-    from _capability_input_integrity import check_workspace_request, configured_input_limit
+    from _capability_input_integrity import check_workspace_request, configured_input_limit, REPORT_NAME
+    from _mvg_evidence_transport import text_sha
     from openai_isolated_model_runner import workspace_payload
     relative_output = Path(output_name)
     prompt_stem = relative_output.with_suffix("").as_posix().replace("/", "-")
@@ -496,8 +500,27 @@ def preflight_runner_payload(attempt_root, attempt, prompt, schema, output_name)
     atomic_json(schema_path, schema)
     output_path = sandbox / relative_output.name
     payload = workspace_payload(sandbox, prompt_path=prompt_path, output_path=output_path, max_bytes=INPUT_LIMIT)
-    return check_workspace_request(sandbox, payload, max_bytes=INPUT_LIMIT,
-        max_input_tokens=configured_input_limit())
+    limit = configured_input_limit()
+    key = (text_sha(payload), INPUT_LIMIT, limit)
+    cached = _PREFLIGHT_REQUEST_CACHE.get(key)
+    if cached is not None:
+        if isinstance(cached, str):
+            atomic_json(sandbox / REPORT_NAME, {"status": "blocked", "reason": cached,
+                "complete_request_bytes": len(payload.encode("utf-8")), "model_invoked": False,
+                "truncation_allowed": False})
+            raise ValueError(cached)
+        atomic_json(sandbox / REPORT_NAME, {"status": "ready", "complete": True, **cached})
+        return deepcopy(cached)
+    if len(_PREFLIGHT_REQUEST_CACHE) >= 256:
+        _PREFLIGHT_REQUEST_CACHE.clear()
+    try:
+        report = check_workspace_request(sandbox, payload, max_bytes=INPUT_LIMIT, max_input_tokens=limit)
+    except ValueError as exc:
+        if any(code in str(exc) for code in ("runner_input_too_large", "runner_context_budget_exceeded")):
+            _PREFLIGHT_REQUEST_CACHE[key] = str(exc)
+        raise
+    _PREFLIGHT_REQUEST_CACHE[key] = deepcopy(report)
+    return report
 
 
 def preflight_dispatch(runner, *, workspace, prompt_path, output_path, output_schema, timeout_sec):
@@ -546,7 +569,11 @@ def preflight_dispatch(runner, *, workspace, prompt_path, output_path, output_sc
         if not str(os.environ.get("COPILOT_GITHUB_TOKEN") or os.environ.get("GITHUB_TOKEN") or "").strip():
             raise ValueError("GITHUB_TOKEN/COPILOT_GITHUB_TOKEN is unavailable")
     else:
-        raise ValueError("MVG runner preflight is unsupported")
+        from _planning_skill_common import inspect_isolated_runner
+        configured = os.environ.get("SC_KNOWLEDGE_PLANNING_RUNNER")
+        if not configured or Path(configured).resolve() != runner.resolve():
+            raise ValueError("MVG runner preflight is unsupported")
+        inspect_isolated_runner(runner)
     check_workspace_request(workspace, payload, max_bytes=DEFAULT_MAX_BYTES,
                             max_input_tokens=configured_input_limit())
 
@@ -796,8 +823,53 @@ def repair_scope_errors(old, new, issue, scope=None):
     return errors
 
 
+def stage_cost_preflight(path, *, phase, evidence_calls, remaining, future, selector_calls=0,
+                         unknown_future_scope_estimate=None):
+    """Reject a known impossible stage; unknown future model output is never predicted."""
+    stage = evidence_calls + 1
+    required = {"run": stage + future["run"] + selector_calls,
+                "lineage": (0 if phase == "selection" else stage) + future["lineage"]}
+    blocked = [key for key in required if required[key] > remaining[key]]
+    report = {"schema_version": "newrouge.mvg-stage-cost.v1", "phase": phase,
+        "measured_evidence_calls": evidence_calls, "synthesis_calls": 0 if phase == "selection" else 1,
+        "current_selector_calls": 1 if phase == "selection" else 0,
+        "measured_stage_calls": stage, "necessary_future_base_calls": future,
+        "selector_calls": selector_calls, "minimum_required_calls": required,
+        "remaining_calls": remaining, "dynamic_review_and_repair_calls": "unknown",
+        "stage_dispatch_status": "not_dispatched", "status": "blocked" if blocked else "ready",
+        "blocking_budgets": blocked}
+    if unknown_future_scope_estimate is not None:
+        report["unknown_future_scope_estimate"] = unknown_future_scope_estimate
+    atomic_json(path, report)
+    if blocked:
+        raise ValueError("mvg_stage_cost_budget_insufficient:" + ";".join(
+            key + "=" + str(required[key]) + ">" + str(remaining[key]) for key in blocked))
+    return report
+
+
+def restore_inspection_cost(candidate_root, context_number, expected):
+    """Recover only measured cost from this candidate's exact verified inspection."""
+    path = (candidate_root / "capability-append/evidence-contexts" / str(context_number) / "inspect" /
+            canonical_sha(expected).split(":")[-1] / "transport.json")
+    transport = load_json(path, None)
+    if transport is None:
+        return 0
+    if transport.get("context") != expected or transport.get("plan", {}).get("phase") != "inspect":
+        raise ValueError("mvg_evidence_transport_invalid:inspection_cost_context_changed")
+    plan = transport["plan"]
+    errors = plan_errors(expected, plan)
+    if len(transport.get("audits", [])) != len(plan["batches"]):
+        errors.append("evidence_transport_audits_incomplete")
+    for batch, record in zip(plan["batches"], transport.get("audits", [])):
+        errors += audit_errors(plan, batch, record["audit"])
+        errors += audit_execution_errors(batch, record["audit"], record["execution"])
+    if errors:
+        raise ValueError("mvg_evidence_transport_invalid:" + ";".join(errors))
+    return len(plan["batches"])
+
+
 def generate_append(root, state, candidate_root, *, invoke_factory, before_call, checkpoint,
-                    scope_index=None, accepted_seed=None, selected_records=None):
+                    scope_index=None, accepted_seed=None, selected_records=None, cost_budget=None):
     import plan_mvg as pm
     from _mvg_planning_review import semantic_review_errors, review_execution_errors
     prepared = candidate_root / "analysis-input"
@@ -838,6 +910,23 @@ def generate_append(root, state, candidate_root, *, invoke_factory, before_call,
     def next_attempt():
         return int(load_json(candidate_root / "capability-append/append-ledger.json", {}).get("total_invocations", 0)) + 1
 
+    known_inspect_batches = {}
+
+    def check_cost(phase, count, payload):
+        scope_id = payload["scope"]["capability_id"]
+        if phase == "inspect":
+            known_inspect_batches[scope_id] = max(known_inspect_batches.get(scope_id, 0), count)
+        if cost_budget is not None:
+            budget = cost_budget(phase, known_evidence_calls=known_inspect_batches.get(scope_id, 0))
+        else:
+            scope_position = next(index for index, row in enumerate(scopes) if row["capability_id"] == scope_id)
+            future = 2 * (len(scopes) - scope_position - 1) + (1 if phase == "inspect" else 0)
+            budget = {"remaining": {"run": state.get("mvg.run_invocation_limit", 192),
+                "lineage": pm.MVG_CANDIDATE_INVOCATION_LIMIT - next_attempt() + 1},
+                "future": {"run": future, "lineage": future}, "selector_calls": 0}
+        return stage_cost_preflight(candidate_root / "capability-append/stage-costs" /
+            (str(next_attempt()) + "-" + phase + ".json"), phase=phase, evidence_calls=count, **budget)
+
     def preflight(prompt, schema, output_name):
         validate_envelope(root, prepared, state)
         number = next_attempt()
@@ -850,9 +939,11 @@ def generate_append(root, state, candidate_root, *, invoke_factory, before_call,
         if selection is not None:
             atomic_json(candidate_root / "capability-append/evidence-selections" / phase /
                         (canonical_sha(selection).split(":")[-1] + ".json"), selection)
-        prompt = instruction + wire_json(model_context(payload))
+        from _mvg_evidence_transport import ENCODING_INSTRUCTION, lossless_context
+        prompt = instruction + ENCODING_INSTRUCTION + wire_json(lossless_context(model_context(payload)))
         try:
             preflight(prompt, schema, output_name)
+            check_cost(phase, 0, payload)
             return prompt, None
         except ValueError as exc:
             if not any(code in str(exc) for code in ("runner_input_too_large", "runner_context_budget_exceeded")):
@@ -878,6 +969,7 @@ def generate_append(root, state, candidate_root, *, invoke_factory, before_call,
             # exact reassembly has passed the local conservation gate.
             transport = {"context": inspect_context, "plan": plan, "audits": []}
             atomic_json(cache / "plan.json", plan)
+            check_cost(phase, len(plan["batches"]), payload)
             for batch in plan["batches"]:
                 text = audit_prompt(plan, batch["parts"])
                 output_schema = audit_schema(plan, batch["parts"])
@@ -911,6 +1003,9 @@ def generate_append(root, state, candidate_root, *, invoke_factory, before_call,
             errors += audit_execution_errors(batch, record["audit"], record["execution"])
         if errors:
             raise ValueError("mvg_evidence_transport_invalid:" + ";".join(errors))
+        if phase == "inspect":
+            known_inspect_batches[payload["scope"]["capability_id"]] = len(plan["batches"])
+        check_cost(phase, 0, payload)
         reduced = synthesis_context(payload, transport)
         prompt = (instruction +
             "Auxiliary evidence was sent in full to isolated inspectors; every file/part has an exact "
@@ -919,7 +1014,8 @@ def generate_append(root, state, candidate_root, *, invoke_factory, before_call,
             "Inspector facts are derived evidence, not new requirements or runtime proof. Citation line "
             "addresses remain bound to immutable source parts and are rechecked locally; do not reproduce "
             "or invent quote text. Complete source text, full task records, path inventory and exact citation "
-            "lines remain in the hash-bound transport proof.\n" + wire_json(reduced))
+            "lines remain in the hash-bound transport proof.\n" + ENCODING_INSTRUCTION +
+            wire_json(lossless_context(reduced)))
         preflight(prompt, schema, output_name)
         return prompt, transport
 
@@ -1014,6 +1110,12 @@ def generate_append(root, state, candidate_root, *, invoke_factory, before_call,
         if directive:
             payload["reopen_context"] = directive
         payload.update(proposal=projection, accepted_proposal=base)
+        if scope["capability_id"] not in known_inspect_batches:
+            inspection = complete_scope_context(prepared, scope, base)
+            inspection.update(accepted_proposal=base, planning_scope=state.get("planning_scope"))
+            if directive:
+                inspection["reopen_context"] = directive
+            known_inspect_batches[scope["capability_id"]] = restore_inspection_cost(candidate_root, context, inspection)
         instruction = (
             "Independently check this Capability increment and every affected cross-Capability handoff. "
             "The selected Capability is the primary input. Check Requirement meaning, producer/consumer "
@@ -1194,6 +1296,17 @@ def append_proof_errors(state, proposal, proof, semantics, allowed=None, *, root
         if prefix_errors:
             return errors + ['capability_admission_prefix:' + scope['capability_id'] + ':' + error
                              for error in prefix_errors]
+        if record.get("kind") == "adoption":
+            if root is None or prepared is None:
+                return errors + ["capability_adoption_verification_context_missing"]
+            try:
+                from _mvg_capability_recovery import verify_adoption_record
+                verify_adoption_record(root, state, prepared, scope, accepted, revised, record,
+                    check_originals=check_originals)
+            except (OSError, ValueError, RuntimeError, KeyError, TypeError) as exc:
+                return errors + ["capability_adoption_invalid:" + str(exc)]
+            accepted = revised
+            continue
         prefix_errors += ['requirement_source_gap:' + row['requirement_id'] for row in verification_rows(revised)
                          if isinstance(row, dict) and row.get('disposition') == 'source_gap']
         if prefix_errors:
@@ -1251,7 +1364,8 @@ def append_proof_errors(state, proposal, proof, semantics, allowed=None, *, root
 def append_execution_errors(state, proposal, execution, proof):
     lineages = execution.get("lineage_invocations")
     if lineages is not None:
-        if (not isinstance(lineages, dict) or not lineages
+        if (not isinstance(lineages, dict) or (not lineages and not all(
+                    row.get("kind") == "adoption" for row in proof.get("records", [])))
                 or any(type(count) is not int or not 0 < count <= 64 for count in lineages.values())
                 or execution.get("total_invocations") != sum(lineages.values())):
             return ["capability_admission_lineage_execution_invalid"]

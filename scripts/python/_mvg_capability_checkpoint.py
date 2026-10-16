@@ -140,7 +140,8 @@ def checkpoint_payload(state, capability_id, index, seed, accepted, step, predec
         "proposal_sha256": proposal_sha, "selection_receipt_sha256": step["receipt_sha256"]}
     selection = deepcopy(step)
     selection.pop("checkpoint", None)
-    admission = step["admissions"][step["selected_candidate"]]
+    admission = (step["admissions"][step["selected_candidate"]] if step.get("kind") != "adoption"
+        else {"proof_sha256": step["adoption"]["sha256"], "proposal_sha256": step["proposal_sha256"]})
     return {"schema_version": SCHEMA, "transaction_id": canonical_sha(identity), "identity": identity,
         "predecessor": deepcopy(predecessor), "accepted_seed": deepcopy(seed),
         "delta": deepcopy(step["record"]["delta"]), "accepted": deepcopy(accepted),

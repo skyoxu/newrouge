@@ -1,6 +1,6 @@
 # Capability Baseline
 
-本表是 SPEC 的冻结输入清单，不是新的 Capability 产物。文件变更、顺序变更或 hash 变化必须创建新的规划基线。
+本表是原 SPEC 的历史冻结输入清单，保留用于追溯和回归 fixture，不是新的 Capability 产物或固定数量要求。每轮使用显式选定的当前文件和顺序；catalog 或 Git hash 变化不自动使未变的单项 Capability 失去恢复资格。
 
 - **Source:** `docs/planning/semantic-topology/capabilities.v1.json`
 - **Source revision:** `source-set:68d145756705834e7b664fcc`

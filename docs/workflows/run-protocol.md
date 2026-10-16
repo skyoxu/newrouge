@@ -1,5 +1,7 @@
 # Harness Run Protocol
 
+MVG Capability-local generation follows ADR-0039: each candidate is an OS child process, while durable dispatch reservations and the atomic selected pointer belong to its parent. Only completed checkpoint chains are recoverable across executions; unfinished model artifacts remain audit with their charges. The project recovery registry persists a clear epoch, shared across temporary planning workspaces. CLI generation and authenticated clear acquire the same nonblocking activity lock; an old epoch cannot publish or register completion. Progress reads committed prefixes without repairing live counters. See `docs/workflows/mvg-integration-acceptance.md` for adoption validation and service endpoints.
+
 ## Purpose
 
 This document defines the local file-protocol harness used by `scripts/sc/run_review_pipeline.py` and the repo-scoped `py -3 scripts/python/dev_cli.py run-local-hard-checks` wrapper.

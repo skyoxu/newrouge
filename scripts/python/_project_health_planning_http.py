@@ -39,3 +39,23 @@ def start_planning(handler, root, request, operation, guard, state):
         operation.release()
         raise
     handler.send(public_job(job), 202)
+
+
+def clear_mvg(handler, root, request, operation):
+    if request:
+        raise ValueError('Unexpected MVG clear request fields')
+    if not operation.acquire(blocking=False):
+        handler.send({'reason': 'Another operation is running'}, 409)
+        return
+    try:
+        from _mvg_capability_recovery import clear
+        try:
+            result = clear(root)
+        except ValueError as exc:
+            if str(exc) != 'capability_coordinator_busy':
+                raise
+            handler.send({'reason': 'Another operation is running'}, 409)
+            return
+        handler.send(result)
+    finally:
+        operation.release()

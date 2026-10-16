@@ -14,9 +14,18 @@ window.installKnowledgeOperationLock = function ({root = document.querySelector(
   card.append(title, detail); overlay.append(card); document.body.append(overlay);
   const update = state => {
     const active = Boolean(state?.active);
-    root.inert = active;
-    overlay.hidden = !active;
-    overlay.style.display = active ? 'grid' : 'none';
+    const hasProgress = Boolean(document.getElementById('mvg-committed-progress'));
+    root.inert = active && !hasProgress;
+    if (hasProgress) {
+      for (const control of root.querySelectorAll('button, select, input, textarea')) {
+        if (control.closest('[data-knowledge-readonly]')) continue;
+        // Inert blocks interaction independently of the owner's disabled
+        // state; asynchronous completion can safely update business rules.
+        control.inert = active;
+      }
+    }
+    overlay.hidden = !active || hasProgress;
+    overlay.style.display = active && !hasProgress ? 'grid' : 'none';
     if (active) {
       const action = state.action || 'Another operation';
       detail.textContent = `${action} is running. This page is locked until it finishes.`;
@@ -58,6 +67,7 @@ window.knowledgePlanning = async function ({action, manifest, button, status, re
       const poll = await fetch('/api/knowledge/planning?job_id=' + encodeURIComponent(result.job_id), {cache: 'no-store'});
       result = await poll.json();
       if (!poll.ok) throw new Error(result.reason || 'Unable to read planning result');
+      if (action === 'mvg' && window.refreshMvgProgress) await window.refreshMvgProgress();
     }
     if (result.status === 'recoverable') {
       // Candidate and review artifacts are durable.  Keep the result visible

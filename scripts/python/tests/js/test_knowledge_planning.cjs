@@ -9,7 +9,7 @@ const source = name => fs.readFileSync(path.join(root, 'scripts/python', name), 
 class Element {
   constructor(tag = 'div') {
     this.tag = tag; this.children = []; this.dataset = {}; this.listeners = {};
-    this.disabled = false; this._value = ''; this.textContent = ''; this.attributes = {};
+    this.disabled = false; this._value = ''; this.textContent = ''; this.attributes = {}; this.style = {};
     this.classList = {add() {}};
   }
   get value() { return this._value || (this.tag === 'select' ? this.children[0]?.value || '' : ''); }
@@ -20,6 +20,7 @@ class Element {
   setAttribute(name, value) { this.attributes[name] = value; }
   getAttribute(name) { return this.attributes[name]; }
   insertAdjacentHTML() {}
+  closest() { return null; }
   showModal() { this.open = true; }
   scrollIntoView() {}
 }
@@ -30,7 +31,8 @@ function harness(fetch) {
     querySelector() { return null; },
     getElementById(id) { return controls[id] ||= new Element(id.includes('select') ? 'select' : 'div'); },
     createElement: tag => new Element(tag), createTextNode: text => ({textContent: text}),
-  }, window: {location: {search: '', pathname: '/knowledge/topology'}},
+  }, window: {location: {search: '', pathname: '/knowledge/topology'},
+    setInterval(callback) { this.interval = callback; return 1; }, clearInterval() {}, addEventListener() {}},
   history: {replaceState(_state, _title, url) { context.window.location.search = url.slice(url.indexOf('?')); }},
   URLSearchParams, fetch, setTimeout: callback => callback()};
   vm.createContext(context);
@@ -134,6 +136,55 @@ async function mvgButton() {
   assert.equal(controls['mvg-generate'].disabled, false); assert.equal(controls['mvg-manifest-select'].disabled, false);
 }
 
-(async () => { await compactResults(); await topologyButton(); await mvgButton();
+async function slowCommittedProgressAndClear() {
+  let finishProgress; let progressCalls = 0;
+  const {context, controls} = harness(async (url, options) => {
+    if (url.endsWith('/mvg-progress')) {
+      progressCalls++;
+      return new Promise(resolve => { finishProgress = resolve; });
+    }
+    if (url.endsWith('/session')) return response({token: 'verified'});
+    if (options?.method === 'POST') return response({epoch: 1, completed: 0});
+    return response({revision: completed.revision, versions: [], manifests: []});
+  });
+  vm.runInContext(source('project_health_mvg_versions.js'), context);
+  await settle();
+  context.window.interval(); context.window.interval();
+  assert.equal(progressCalls, 1, 'Slow verification must stay single-flight');
+  finishProgress(response({epoch: 0, completed: 1, total: 2, status: 'partial_planning',
+    items: [{capability_id: 'CAP-a', provenance: 'new'}]}));
+  await settle();
+  assert.ok(controls['mvg-progress-status'].textContent.startsWith('1/2'));
+  assert.equal(controls['mvg-progress-items'].children.length, 1);
+  context.window.interval();
+  await settle();
+  const clear = controls['mvg-clear'].listeners.click();
+  await settle();
+  finishProgress(response({epoch: 0, completed: 1, total: 2, status: 'partial_planning',
+    items: [{capability_id: 'CAP-old', provenance: 'new'}]}));
+  await clear; await settle();
+  assert.ok(controls['mvg-progress-status'].textContent.startsWith('0 completed'));
+  assert.equal(controls['mvg-progress-items'].children.length, 0);
+}
+
+async function operationLockPreservesBusinessState() {
+  let active = true;
+  const {context} = harness(async () => response({active, action: 'planning-mvg'}));
+  const generate = new Element('button'), run = new Element('button'), select = new Element('select');
+  generate.disabled = true; run.disabled = true; select.disabled = true;
+  const root = {querySelectorAll: () => [generate, run, select]};
+  context.document.body = new Element('body');
+  context.window.installKnowledgeOperationLock({root});
+  await settle();
+  assert.equal(generate.inert, true); assert.equal(root.inert, false);
+  // The handler finishes before the next operation poll observes inactivity.
+  generate.disabled = false; select.disabled = false;
+  active = false; await context.window.interval();
+  assert.equal(generate.inert, false); assert.equal(select.inert, false);
+  assert.equal(generate.disabled, false); assert.equal(select.disabled, false);
+  assert.equal(run.disabled, true, 'The planning-result runtime prohibition must survive unlock');
+}
+
+(async () => { await compactResults(); await topologyButton(); await mvgButton(); await slowCommittedProgressAndClear(); await operationLockPreservesBusinessState();
   console.log('Planning frontend: authenticated polling, compact failures, both refreshed views and source provenance passed.');
 })().catch(error => { console.error(error); process.exitCode = 1; });

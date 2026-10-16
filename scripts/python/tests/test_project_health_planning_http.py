@@ -84,6 +84,8 @@ class ProjectHealthPlanningHttpTests(unittest.TestCase):
                 self.assertEqual(result['job_id'], operation['planning_job_id'])
                 self.assertEqual(409, self.request('/api/knowledge/planning', {'action': 'mvg'})[0])
                 self.assertEqual(409, self.request('/api/knowledge/scan', {})[0])
+                self.assertEqual(409, self.request('/api/knowledge/mvg-clear', {})[0])
+                self.assertEqual(200, self.request('/api/knowledge/mvg-progress')[0])
                 self.assertEqual(200, self.request('/api/knowledge/planning?job_id=' + result['job_id'])[0])
                 release.set(); self.assertTrue(finished.wait(2))
                 code, result = self.request('/api/knowledge/planning?job_id=' + result['job_id'])
@@ -105,6 +107,28 @@ class ProjectHealthPlanningHttpTests(unittest.TestCase):
         self.assertNotEqual(job['job_id'], payload['job_id'])
         view.assert_not_called()
         worker.assert_called_once()
+
+    def test_clear_is_authenticated_persistent_and_does_not_remove_audit_or_baseline(self):
+        from _mvg_capability_recovery import registry, bind_epoch, assert_epoch
+        state = {'run_id': 'old'}
+        bind_epoch(self.root, state)
+        audit = self.root / 'logs/ci/mvg-planning/old/audit.json'
+        atomic_json(audit, {'charges': 9})
+        baseline = self.root / 'docs/testing/mvg/formal.json'
+        atomic_json(baseline, {'formal': True})
+        self.assertEqual(403, self.request('/api/knowledge/mvg-clear', {}, False)[0])
+        self.assertEqual(422, self.request('/api/knowledge/mvg-clear', {'run_id': 'old'})[0])
+        self.assertEqual(0, registry(self.root)['epoch'])
+        code, result = self.request('/api/knowledge/mvg-clear', {})
+        self.assertEqual(200, code)
+        self.assertEqual(1, result['epoch'])
+        self.assertEqual(0, result['completed'])
+        self.assertEqual(1, registry(self.root)['epoch'])
+        self.assertEqual(0, self.request('/api/knowledge/mvg-progress')[1]['completed'])
+        self.assertTrue(audit.is_file())
+        self.assertTrue(baseline.is_file())
+        with self.assertRaisesRegex(ValueError, 'epoch_invalidated'):
+            assert_epoch(self.root, state)
 
     def test_each_click_is_fresh_even_with_identical_inputs(self):
         finished = threading.Event()

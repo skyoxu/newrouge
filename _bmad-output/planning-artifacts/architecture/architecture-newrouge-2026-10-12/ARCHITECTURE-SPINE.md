@@ -7,7 +7,7 @@ paradigm: deterministic staged pipeline with explicit state machine and append-o
 scope: MVG Capability-increment planning, admission, selection, cumulative merge, recovery, and global audit
 status: final
 created: 2026-10-12
-updated: 2026-10-12
+updated: 2026-10-16
 binds:
   - CAP-1
   - CAP-2
@@ -15,6 +15,9 @@ binds:
   - CAP-4
   - CAP-5
   - CAP-6
+  - CAP-7
+  - CAP-8
+  - CAP-9
 sources:
   - ../../prds/prd-newrouge-2026-10-11/prd.md
   - ../../../specs/spec-mvg-capability-increment-planning-and-admission-optimization/SPEC.md
@@ -28,7 +31,7 @@ companions: []
 
 # Architecture Spine — NewRouge MVG Planning
 
-> **Target architecture, migration pending.** This spine follows the finalized MVG PRD/SPEC. Current `workflow.md` and `plan-mvg` Skill still define whole-candidate selection with optional incumbent D; current code has candidate-local append ledgers, not shared selected Capability checkpoints. Until those owning sources and implementation migrate, they describe current behavior; do not treat target-only rules below as deployed.
+> **Incremental target, 2026-10-16.** Existing code implements Capability-local selection, atomic selected checkpoints, Requirement accounting and durable budgets. This update adds lifecycle subprocesses, completed-only cross-run recovery, progressive Knowledge projection and clear. These additions are target behavior until their implementation and targeted tests pass.
 
 ## Design Paradigm
 
@@ -40,7 +43,7 @@ The workflow is a deterministic staged pipeline governed by an explicit state ma
 
 - **Binds:** CAP-1, CAP-2, CAP-5, CAP-6; `plan_mvg.py`
 - **Prevents:** Independently implemented stages inventing incompatible transitions, retries, or terminal states.
-- **Rule:** A single run coordinator owns run, Capability checkpoint, candidate lineage, budget, recovery, and terminal state. Stage workers return typed results and receipts; they cannot write the selected cumulative baseline or advance the selected Capability sequence themselves. Current `run_capability_append` persists a candidate-local accepted chain and iterates its scopes; that behavior remains implementation reality until the target coordinator/checkpoint migration replaces it.
+- **Rule:** A single run coordinator owns run, Capability checkpoint, dispatch reservations, recovery publication and terminal state. Workers own only their private candidate state and return typed results/receipts; they cannot advance the shared selected sequence. The coordinator independently validates the complete returned candidate and proof before selection.
 
 ### AD-2 — Capability authority and readiness are immutable inputs [ADOPTED]
 
@@ -52,7 +55,7 @@ The workflow is a deterministic staged pipeline governed by an explicit state ma
 
 - **Binds:** CAP-1, CAP-5; generation, repair, and replacement workers.
 - **Prevents:** Failed model context or unadmitted artifacts contaminating another candidate or a clean restart.
-- **Rule:** Each candidate has an independent lineage and workspace. Prompts, findings, proposals, receipts, and workspaces cross a boundary only through an explicitly accepted, hash-bound artifact; a clean restart reads immutable prepared inputs and accepted predecessors only.
+- **Rule:** Each candidate lifecycle executes in its own OS subprocess and workspace. Generation/repair and independent semantic admission use distinct fresh model invocations. Only complete admitted proposals, identities, proof/receipt references and usage records return to the parent; failure/context history stays audit-only. The parent services file-backed reservation requests before worker model dispatch and rejects unbound outputs. Candidate jobs may execute sequentially; process isolation does not require parallel paid calls. A new Capability receives structured accepted state and relevant boundaries, never earlier model conversation.
 
 ### AD-4 — Deterministic gates precede semantic admission [ADOPTED]
 
@@ -77,7 +80,7 @@ The workflow is a deterministic staged pipeline governed by an explicit state ma
 
 - **Binds:** CAP-5; repair, replacement, and run accounting.
 - **Prevents:** Infinite retries, silent budget expansion, and classifying execution exhaustion as semantic rejection.
-- **Rule:** A stable hard issue receives at most three repairs. A candidate lineage retires at 64 durable invocation attempts. Each run binds positive `mvg.run_invocation_limit` (default 192) across all candidates and Capabilities. Reserve and persist one budget unit immediately before dispatching a model invocation; preparation failures before dispatch consume none, while timeout, malformed output, and transport failure after dispatch remain charged. Recovery reuses a persisted completed receipt or allocates and charges a new attempt; an absent response is never a free retry. Exhaustion produces `run_blocked_budget_exhausted` and preserves recovery evidence.
+- **Rule:** A stable hard issue receives at most three repairs. The existing 64-call stop-loss belongs to each stable run-level candidate slot/chain across replacements and Capabilities, not an OS process or replacement lineage ID. Each run binds positive `mvg.run_invocation_limit` (default 192); later budget changes require explicit policy and measurement. Coordinator reserves one unit immediately before dispatch; pre-dispatch failures consume none and dispatched failures remain charged. Worker restart never resets counts. Cross-run completed-result adoption consumes no model calls; unfinished work starts fresh and historical charges remain auditable. Exhaustion is an execution state, never a semantic finding.
 
 ### AD-8 — Selection admits only complete candidate sets [TARGET]
 
@@ -96,6 +99,30 @@ The workflow is a deterministic staged pipeline governed by an explicit state ma
 - **Binds:** CAP-6 and all workflow stages.
 - **Prevents:** Planning artifacts mutating game runtime state, Taskmaster status, GDD authority, or claiming runtime verification.
 - **Rule:** The MVG workflow owns planning evidence and manifest projections only. GDD/Requirements, Taskmaster triplets, Contracts, tests, and runtime acceptance retain their owning authority. `runtime_verified` can be produced only by formal MVG runtime acceptance.
+
+### AD-11 — Relevant complete inputs and clean selection [ADOPTED]
+
+- **Binds:** CAP-1, CAP-4, CAP-5; worker preparation and ranking.
+- **Prevents:** Process separation retaining the same duplicated/unrelated model input or leaking candidate failures into selection.
+- **Rule:** Coordinator retains full frozen inputs for global machine checks. Candidate models consume complete current authority and directly affected cumulative flows/handoffs/shared-Requirement constraints with hash-bound source inventory. Unrelated raw files and all predecessor conversation are excluded. Existing lossless transport remains mandatory for oversized relevant sources; no clipping. Ranking uses fresh model context and clean machine-verified A/B/C outputs plus relevant comparison context, not candidate workspaces or failure logs. Ranking cannot introduce another semantic veto.
+
+### AD-12 — Completed-only, individual-content recovery [ADOPTED]
+
+- **Binds:** CAP-2, CAP-7; checkpoint, registry and new-run imports.
+- **Prevents:** Git commits causing wholesale regeneration, restoring unfinished contexts, or copying an incompatible cumulative snapshot.
+- **Rule:** Match by canonical full individual Capability JSON object hash; normalize object key order/JSON encoding layout, preserve array order and value/type changes. Git/catalog metadata are provenance only. Changed hash always regenerates; no similarity matching. Registry eligibility requires an atomically committed checkpoint, current clear epoch and no reopen/invalidation revocation. AD-9 invalidation atomically revokes affected entries and descendants in the same epoch; all lookup paths check revocation, including restart. Same-hash adoption verifies original proof/receipt integrity, prepared dependency compatibility and deterministic delta replay on the current base; on incompatibility regenerate current Capability. Preserve original proof identity and record a new adoption receipt binding source transaction, Capability hash, current base/result and verification. Never rewrite a historical proof or copy its whole cumulative snapshot over a new base. No candidates, repairs, inspections or ranking intermediates are restored on a new execution; atomic-commit uncertainty is still resolved from run.json.
+
+### AD-13 — Committed-prefix projection is immediately visible [ADOPTED]
+
+- **Binds:** CAP-6, CAP-8; Knowledge overview and progress.
+- **Prevents:** Hiding successful increments until whole-run apply or claiming partial results are globally complete.
+- **Rule:** After each commit/adoption, expose a hash-bound projection of the accepted prefix with completed/total, current item and new/reused provenance. Poll/read reconstructs it from committed coordinator state, never worker files. Progress remains visibly readable while mutation controls are locked; the existing full-page operation overlay must not obscure the increment display. Failure/restart preserves the prefix. Partial planning cannot authorize apply, runtime execution or planning_complete without final global machine audit.
+
+### AD-14 — Clear is a persistent, locked invalidation [ADOPTED]
+
+- **Binds:** CAP-7, CAP-8, CAP-9; API, UI and recovery registry.
+- **Prevents:** Old latest/attempt pointers or late worker publication reviving cleared generated results.
+- **Rule:** Under the existing authenticated operation lock, clear atomically advances a persistent project-local MVG epoch. Every recovery lookup and publication checks that epoch. In-progress generation/acceptance blocks clear. Remove current generated-display/recovery eligibility while retaining audit and Git-owned regression/runtime/Capability/task authorities. Page shows zero generated completions immediately; old logs and fallback pointers cannot become eligible without a new generation in the current epoch. No recursive audit deletion is required.
 
 ### Dependency direction
 
@@ -126,7 +153,7 @@ The arrows are dependency direction. `I` never writes back into planning selecti
 | Lineage | `generating`, `repairing`, `admitted`, `retired`, `blocked` | `generating -> repairing` on a hard issue; `repairing -> generating` for a new charged attempt; after three failed repairs `repairing -> retired`; a clean lineage starts separately from immutable roots. |
 | Capability checkpoint | `pending`, `selected`, `merged`, `reopen_pending`, `invalidated` | `pending -> selected` only with three admitted candidates; `selected -> merged` atomically; global hard conflict may move an ancestor to `reopen_pending` and every later descendant to `invalidated`. |
 
-State changes are coordinator-owned and append an event before exposing the new state. Resume derives state from the latest valid event plus hash-bound receipts and rejects impossible transitions; it does not infer success from file presence alone.
+State changes are coordinator-owned. Only the atomically committed run.json pointer plus its verified checkpoint chain authorizes completed state. Events are append-only audit/notification hints, never a substitute commit point; an event emitted before a failed pointer commit cannot authorize recovery or display. A committed pointer without its later event remains recoverable after deterministic verification.
 
 ## Consistency Conventions
 
@@ -136,6 +163,8 @@ State changes are coordinator-owned and append an event before exposing the new 
 | State mutation | Workers are append-only; coordinator-only atomic checkpoint writes; stale baseline hashes fail closed. |
 | Error classes | Distinguish preparation/transport/runner errors, deterministic machine issues, semantic hard issues, budget exhaustion, and global conflicts. |
 | Recovery | Reuse only exact hash-bound accepted artifacts allowed by the state machine; new page runs and clean restarts do not reuse failed context. |
+| Content key | Individual full Capability canonical hash; Git/catalog hashes never substitute, and no similarity fallback. |
+| Publication | Local epoch plus committed checkpoint/adoption receipt; partial display grants no whole-run or runtime approval. |
 | Requirement accounting | Route membership and authoritative verification use separate projections and stable keys defined in `requirement-accounting.md`. |
 | Evidence | Full source text, ranges, citations, receipts, and reassembly proofs remain available under `logs/**`; summaries cannot replace source evidence. |
 | Naming | Preserve existing entrypoints and artifact names; new stage/state names must use the stable enums in the implementation contract. |
@@ -174,12 +203,12 @@ The tree is a seed, not a second ownership registry. Existing code owns detailed
 | CAP-4 transport and admission gates | generation/preflight/review validators and isolated runner | AD-2, AD-4 |
 | CAP-5 repair, restart, and budgets | append ledger, repair router, run accounting | AD-3, AD-7 |
 | CAP-6 global audit and runtime boundary | final validation, acceptance manifest, runtime acceptance harness | AD-9, AD-10 |
+| CAP-7 completed-only recovery | coordinator checkpoint and local recovery registry | AD-5, AD-12, AD-14 |
+| CAP-8 progressive display | Knowledge MVG overview and polling UI | AD-10, AD-13 |
+| CAP-9 clear | authenticated Knowledge operation and local epoch | AD-12, AD-14 |
 
 ## Deferred
 
-- The exact Chapter 5 readiness snapshot schema, path, and hash fields; settle during implementation design before its input contract is frozen, without weakening AD-2.
-- The concrete shared-evidence disposition and route-scope fields; settle during implementation design before the proposal schema is frozen, preserving AD-6 keys and counting rules.
-- The controlled CLI/UI operation for an explicit early-Capability reopen; settle before implementing reopen operations, preserving AD-9 evidence and impact records.
-- The detailed migration format from the current whole-candidate append lifecycle to per-Capability selection checkpoints; migration must preserve accepted baseline and recovery identities.
-- The current `workflow.md` §5.4 and `.agents/skills/plan-mvg/SKILL.md` selection contract must be updated in the same migration that implements AD-5 through AD-9; until then, their whole-candidate + optional incumbent-D behavior is current.
-- The exact Knowledge UI progress projection; UI is a consumer of receipts, not an authority or state owner.
+- Candidate parallel scheduling is deferred; subprocess isolation and durable coordinator reservation apply even with sequential execution.
+- A budget-policy increase is deferred until the relevant-input/subprocess design has measured stage costs; this update does not silently raise limits.
+- Runtime/game behavior and deployment topology remain owned by existing workflows. Reuse is local to this project, not a distributed cache or service.

@@ -167,11 +167,13 @@ def record_generation(state, index):
     selected = ledger.get("selected", [])
     if index < len(selected):
         step = selected[index]
+        if step.get("kind") == "adoption":
+            return step.get("generation", 1)
         return step["admissions"][step["selected_candidate"]].get("generation", 1)
     return ledger.get("generation", 1)
 
 
-def verify_reopen_history(root, run_dir, state):
+def verify_reopen_history(root, run_dir, state, *, check_originals=True):
     """Bind generations, immutable authority and the nonrefundable call prefix."""
     ledger = state["capability_selection"]
     histories = state.get("reopen_history", [])
@@ -196,9 +198,11 @@ def verify_reopen_history(root, run_dir, state):
                 or ledger.get("calls", [])[:len(calls)] != calls):
             raise ValueError("reopen_historical_binding_changed")
         from _mvg_capability_selection import verified_prefix, verify_published_chain
-        verified = verified_prefix(root, run_dir, prior, verify_history=False, recover_counters=False)
+        verified = verified_prefix(root, run_dir, prior, verify_history=False, recover_counters=False,
+                                    check_originals=False)
         if len(verified[2]) == len(verified[0]):
-            verify_published_chain(root, run_dir, prior, verified=verified, proposal=archive["proposal"])
+            verify_published_chain(root, run_dir, prior, verified=verified, proposal=archive["proposal"],
+                                   check_originals=False)
         historical_audit = verified_audit(root, run_dir, prior, prefix=verified)
         if archive.get("audit") != prior.get("global_audit") or historical_audit.get("hard_conflicts") != plan["conflicts"]:
             raise ValueError("reopen_historical_audit_changed")
@@ -403,24 +407,30 @@ def plan_reopen(root, run_dir, state, *, audit_path, audit_sha256):
     return {"path": path.relative_to(run_dir).as_posix(), "sha256": file_sha(path), **plan}
 
 
-def execute_reopen(root, run_dir, state, *, plan_path, plan_sha256, writer=atomic_json):
-    """Call under the coordinator lock; run.json is the only authority switch."""
+def _verify_reopen_plan(root, run_dir, state, plan, *, historical=False):
     from _mvg_capability_selection import verified_prefix, verify_published_chain
-    disk = load_json(run_dir / "run.json", None)
-    if disk != state:
-        raise ValueError("reopen_coordinator_state_changed")
-    plan = load_json(_artifact(run_dir, plan_path, plan_sha256), {})
     if (not enabled(state) or (run_dir / "apply-journal.json").exists() or state.get("applied")
             or plan.get("schema_version") != PLAN_SCHEMA or plan.get("run_id") != state["run_id"]
             or plan.get("binding") != chain_identity(run_dir, state)):
         raise ValueError("reopen_stale_binding_or_apply_journal")
-    receipt = verified_audit(root, run_dir, state, plan.get("audit", {}).get("path"), plan.get("audit", {}).get("sha256"))
-    scopes, proposal, records = verified_prefix(root, run_dir, state)
+    prefix = verified_prefix(root, run_dir, state, check_originals=not historical)
+    receipt = verified_audit(root, run_dir, state, plan.get("audit", {}).get("path"),
+        plan.get("audit", {}).get("sha256"), prefix=prefix)
+    scopes, proposal, records = prefix
     if len(records) == len(scopes):
-        verify_published_chain(root, run_dir, state)
-    expected = plan_reopen(root, run_dir, state, audit_path=plan["audit"]["path"], audit_sha256=plan["audit"]["sha256"])
-    if plan != {key: value for key, value in expected.items() if key not in {"path", "sha256"}}:
+        verify_published_chain(root, run_dir, state, verified=prefix, check_originals=not historical)
+    if (not receipt.get("hard_conflicts") or receipt.get("evidence_gaps")
+            or plan.get("conflicts") != receipt["hard_conflicts"]
+            or any(plan.get(key) != value for key, value in closure(state, proposal, receipt["hard_conflicts"]).items())
+            or plan.get("conflict_resolution_boundaries") != resolution_boundaries(state, proposal, receipt["hard_conflicts"])
+            or plan.get("next_generation") != state["capability_selection"].get("generation", 1) + 1
+            or plan.get("replacement_policy") != "three_independently_admitted_candidates_then_comparison_and_atomic_checkpoint"
+            or plan.get("refund_invocations") is not False):
         raise ValueError("reopen_plan_closure_changed")
+    return proposal
+
+
+def _reopen_projection(run_dir, state, plan, plan_path, plan_sha256, proposal):
     start = plan["earliest_order_index"]
     pending = deepcopy(state)
     ledger = pending["capability_selection"]
@@ -457,39 +467,116 @@ def execute_reopen(root, run_dir, state, *, plan_path, plan_sha256, writer=atomi
                 "selection_block_reason", "selection_input_candidates", "admitted_candidates"):
         pending.pop(key, None)
     pending.update(phase="reopened", selection_status="pending", candidate_attempts={}, candidate_admissions={})
-    # Use the identical full verifier before the sole commit, including the retained prefix.
-    verified_prefix(root, run_dir, pending)
+    revoked = [row["transaction_id"] for row in plan["invalidated_checkpoints"]]
+    revoked += [row["adoption"]["source_transaction_id"] for row in state["capability_selection"]["selected"][start:]
+                if row.get("kind") == "adoption"]
+    return pending, sorted(set(revoked))
+
+
+def _transaction_path(run_dir, plan_path, plan_sha256):
+    return run_dir / "reopen-transactions" / (canonical_sha({"path": plan_path, "sha256": plan_sha256})[7:] + ".json")
+
+
+def _transaction_result(transaction):
+    pending = transaction["pending_state"]
+    ledger = pending["capability_selection"]
+    return {"status": "reopened", "run_id": pending["run_id"], "generation": ledger["generation"],
+        "history": pending["reopen_history"][-1], "replacement_order": transaction["replacement_order"],
+        "replacement_selections": [], "total_invocations": ledger["total_invocations"]}
+
+
+def _commit_marker(path, transaction):
+    return {"schema_version": "newrouge.mvg-reopen-commit.v1", "transaction_sha256": file_sha(path),
+        "pending_state_sha256": canonical_sha(transaction["pending_state"])}
+
+
+def assert_no_pending_reopen(run_dir):
+    for path in (run_dir / "reopen-transactions").glob("*.json"):
+        if path.name.endswith(".committed.json"):
+            continue
+        transaction = load_json(path, {})
+        if load_json(path.with_suffix(".committed.json"), None) != _commit_marker(path, transaction):
+            raise ValueError("pending_reopen_same_plan_recovery_required")
+
+
+def execute_reopen(root, run_dir, state, *, plan_path, plan_sha256, writer=atomic_json):
+    """Only an explicit same-plan retry may finish a write-ahead revocation."""
+    from _mvg_capability_selection import verified_prefix
+    from _mvg_capability_recovery import assert_epoch, revoke
+    path = _transaction_path(run_dir, plan_path, plan_sha256)
+    transaction = load_json(path, None)
+    plan = load_json(_artifact(run_dir, plan_path, plan_sha256), {})
+    if transaction is None:
+        assert_no_pending_reopen(run_dir)
+        if load_json(run_dir / "run.json", None) != state:
+            raise ValueError("reopen_coordinator_state_changed")
+        proposal = _verify_reopen_plan(root, run_dir, state, plan)
+        pending, revoked = _reopen_projection(run_dir, state, plan, plan_path, plan_sha256, proposal)
+        verified_prefix(root, run_dir, pending)
+        transaction = {"schema_version": "newrouge.mvg-reopen-transaction.v1",
+            "plan": {"path": plan_path, "sha256": plan_sha256}, "prior_state": deepcopy(state),
+            "pending_state": pending, "revoked": revoked, "replacement_order": plan["replacement_order"]}
+        _immutable(path, transaction)
+    else:
+        prior, pending = transaction["prior_state"], transaction["pending_state"]
+        if (transaction.get("schema_version") != "newrouge.mvg-reopen-transaction.v1"
+                or transaction.get("plan") != {"path": plan_path, "sha256": plan_sha256}
+                or load_json(run_dir / "run.json", None) not in (prior, pending)
+                or state not in (prior, pending)):
+            raise ValueError("reopen_transaction_binding_changed")
+        proposal = _verify_reopen_plan(root, run_dir, prior, plan, historical=True)
+        expected, revoked = _reopen_projection(run_dir, prior, plan, plan_path, plan_sha256, proposal)
+        if (pending != expected or transaction.get("revoked") != revoked
+                or transaction.get("replacement_order") != plan["replacement_order"]):
+            raise ValueError("reopen_transaction_projection_changed")
+        # Current authority and retained selections still require the live epoch.
+        if prior.get("recovery"):
+            assert_epoch(root, prior)
+        verified_prefix(root, run_dir, pending)
+    prior, pending = transaction["prior_state"], transaction["pending_state"]
+    if prior.get("recovery"):
+        assert_epoch(root, prior)
+    revoke(root, prior, transaction["revoked"])
     try:
-        writer(run_dir / "run.json", pending)
+        if load_json(run_dir / "run.json", None) == prior:
+            writer(run_dir / "run.json", pending)
     except BaseException:
         # A failure after replace has committed. A failure before replace has not.
         # Never try to undo or overwrite either observable atomic outcome.
         observed = load_json(run_dir / "run.json", None)
-        if observed not in (state, pending):
+        if observed not in (prior, pending):
             raise RuntimeError("reopen_commit_outcome_unknown")
-        verified_prefix(root, run_dir, observed)
         raise
     verified_prefix(root, run_dir, load_json(run_dir / "run.json", {}))
+    _immutable(path.with_suffix(".committed.json"), _commit_marker(path, transaction))
     state.clear()
     state.update(pending)
-    return {"status": "reopened", "run_id": state["run_id"], "generation": ledger["generation"],
-        "history": pending["reopen_history"][-1], "replacement_order": plan["replacement_order"],
-        "replacement_selections": [], "total_invocations": ledger["total_invocations"]}
+    return _transaction_result(transaction)
 
 
 def operate(root, *, run_id, operation, **kwargs):
     import plan_mvg as pm
     from _mvg_capability_selection import verified_prefix
-    run_path, _ = pm._load_run(root, run_id)
+    from _mvg_capability_recovery import operation_lock, assert_epoch
+    run_path = pm._run_dir(root, run_id) / "run.json"
+    raw = load_json(run_path, {})
+    if raw.get("schema_version") != pm.RUN_SCHEMA or raw.get("run_id") != run_id:
+        raise ValueError("reopen_run_identity_invalid")
     run_dir = run_path.parent
-    with coordinator_lock(run_dir):
-        _, state = pm._load_run(root, run_id)
+    with operation_lock(root, raw), coordinator_lock(run_dir):
         try:
+            raw = load_json(run_path, {})
+            if raw.get("recovery"):
+                assert_epoch(root, raw)
+            if operation == "reopen" and _transaction_path(run_dir, kwargs["plan_path"], kwargs["plan_sha256"]).is_file():
+                return execute_reopen(root, run_dir, raw, **kwargs)
+            _, state = pm._load_run(root, run_id)
             recover_commit_outcome(run_dir, state, verify=lambda: verified_prefix(root, run_dir, state))
             return {"audit": audit, "reopen-plan": plan_reopen, "reopen": execute_reopen}[operation](
                 root, run_dir, state, **kwargs)
         except (OSError, ValueError, RuntimeError, KeyError, TypeError, UnicodeError) as exc:
-            evidence = {"operation": operation, "run_id": run_id, "reason": str(exc), "arguments": kwargs}
+            evidence = {"operation": operation, "run_id": run_id, "reason": str(exc),
+                "arguments": {key: value for key, value in kwargs.items() if key != "writer"}}
             _immutable(run_dir / "global-audit-diagnostics" / (canonical_sha(evidence)[7:] + ".json"), evidence)
             if isinstance(exc, (KeyError, TypeError)):
                 raise ValueError("global_audit_malformed_artifact:" + type(exc).__name__) from exc

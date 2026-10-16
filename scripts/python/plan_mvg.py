@@ -409,9 +409,11 @@ def build_selection_input_identity(analysis_identity_sha256: str,
 def candidate_admission_errors(root: Path, state: dict[str, Any],
                                proposal: dict[str, Any],
                                semantic_review: dict[str, Any] | None = None, *,
-                               append_requirement_ids: set[str] | None = None) -> list[dict[str, str]]:
+                               append_requirement_ids: set[str] | None = None,
+                               check_originals: bool = True) -> list[dict[str, str]]:
     """Return ordered hard issues that prevent a proposal entering selection."""
-    validation = validate_proposal(root, state, proposal, append_requirement_ids=append_requirement_ids)
+    validation = validate_proposal(root, state, proposal, append_requirement_ids=append_requirement_ids,
+                                   check_originals=check_originals)
     issues: list[dict[str, str]] = [
         {"code": str(error), "path": "proposal"} for error in validation.get("errors", [])
     ]
@@ -460,7 +462,8 @@ def candidate_admission_errors(root: Path, state: dict[str, Any],
             errors = []
         else:
             errors = semantic_review_errors(state, proposal, semantic_review, semantics, allowed,
-                root=root, prepared=_run_dir(root, str(state.get('run_id'))) / 'analysis-input')
+                root=root, prepared=_run_dir(root, str(state.get('run_id'))) / 'analysis-input',
+                check_originals=check_originals)
         specific_blockers = [error for error in errors
                              if str(error).startswith("semantic_review_blocked:")]
         if specific_blockers:
@@ -4071,6 +4074,11 @@ def _load_run(root: Path, run_id: str) -> tuple[Path, dict[str, Any]]:
     from _mvg_planning_boundary import planning_targets, reject
     if payload.get("run_id") != run_id:
         reject(root, "run_identity_changed", run_id=run_id)
+    from _mvg_global_audit import assert_no_pending_reopen
+    assert_no_pending_reopen(path.parent)
+    if payload.get("recovery"):
+        from _mvg_capability_recovery import assert_active_chain
+        assert_active_chain(root, payload, path.parent)
     if payload.get("manifest_path") is not None:
         planning_targets(root, run_id, payload["manifest_path"])
     return path, payload
@@ -4370,6 +4378,8 @@ def _prepare_impl(
     # The capture predates all copying. Fail closed on changes during prepare
     # before publishing a run that claims to be prepared.
     _validate_input_freshness(root, run_dir, state)
+    from _mvg_capability_recovery import bind_epoch
+    bind_epoch(root, state)
     atomic_json(run_dir / "run.json", state)
     return state
 
@@ -4609,7 +4619,8 @@ def generate(root: Path, *, run_id: str, timeout_sec: int, llm_backend: str, seg
     if state.get("generation_strategy") == "capability-local-selection.v1":
         from _mvg_capability_checkpoint import coordinator_lock, recover_commit_outcome
         from _mvg_capability_selection import verified_prefix
-        with coordinator_lock(run_path.parent):
+        from _mvg_capability_recovery import operation_lock
+        with operation_lock(root, state), coordinator_lock(run_path.parent):
             # An uncertain replacement must be resolved from disk before any
             # generation status write can overwrite the committed projection.
             run_path, state = _load_run(root, run_id)
@@ -4695,7 +4706,8 @@ def _generate(root: Path, *, run_id: str, timeout_sec: int, llm_backend: str, se
         "openai-api": "openai_isolated_model_runner.py",
         "copilot-cli": "copilot_isolated_model_runner.py",
     }
-    runner = Path(__file__).resolve().with_name(runner_names[llm_backend])
+    configured_runner = os.environ.get("SC_KNOWLEDGE_PLANNING_RUNNER")
+    runner = Path(configured_runner).resolve() if configured_runner else Path(__file__).resolve().with_name(runner_names[llm_backend])
     backend_info = inspect_isolated_runner(runner)
 
     known_task_ids = sorted(_task_ids(root))
@@ -4786,8 +4798,10 @@ Frozen manifest scope:
             # Copying the complete bundle defeats the section's input boundary.
             if relative_output.parts[0] != "segments":
                 if incremental and relative_output.name == "selection.json":
-                    for name in ("A.json", "B.json", "C.json", "accepted-seed.json"):
-                        shutil.copyfile(candidate_root / name, llm_workspace / name)
+                    for alias in ("A", "B", "C"):
+                        shutil.copyfile(candidate_root / f"comparison-{alias}.json", llm_workspace / f"{alias}.json")
+                    shutil.copyfile(candidate_root / "comparison-seed.json", llm_workspace / "accepted-seed.json")
+                    shutil.copyfile(candidate_root / "comparison-context.json", llm_workspace / "comparison-context.json")
                 admission_proposal = candidate_root / "admission-review" / "proposal.json"
                 if not admission_proposal.is_file():
                     admission_proposal = candidate_root / "proposal.json"
@@ -4796,7 +4810,7 @@ Frozen manifest scope:
                 admission_input = candidate_root / "admission-review" / "analysis-input"
                 if not admission_input.is_dir():
                     admission_input = candidate_root / "analysis-input"
-                if admission_input.is_dir():
+                if admission_input.is_dir() and not (incremental and relative_output.name == "selection.json"):
                     shutil.copytree(admission_input, llm_workspace / "analysis-input", dirs_exist_ok=True)
             output = llm_workspace / relative_output.name
             if output_schema_path is not None and output_schema is not None:
@@ -4889,7 +4903,9 @@ Frozen manifest scope:
             invoke_factory=lambda budget_root, workspace, label: invoke_for(
                 budget_root, workspace, candidate_label=label,
                 lineage=f"{label}-r{state['capability_selection'].get('generation', 1)}"),
-            selector_factory=lambda workspace: invoke_for(workspace, workspace))
+            selector_factory=lambda workspace: invoke_for(workspace, workspace),
+            worker_config={"runner": str(runner), "backend": llm_backend,
+                "backend_info": backend_info, "timeout_sec": timeout_sec})
 
     def generate_candidate(label: str) -> dict[str, Any]:
         prior_admission = state.get("candidate_admissions", {}).get(label) or {}
@@ -5969,7 +5985,7 @@ Frozen manifest scope:
             "attempt_count": state["model_execution"]["attempt_count"]}
 
 def validate_proposal(root: Path, state: dict[str, Any], proposal: dict[str, Any], *,
-                      append_requirement_ids: set[str] | None = None) -> dict[str, Any]:
+                      append_requirement_ids: set[str] | None = None, check_originals: bool = True) -> dict[str, Any]:
     errors: list[str] = []
     if proposal.get("schema_version") != PROPOSAL_SCHEMA:
         errors.append("invalid_proposal_schema")
@@ -6074,7 +6090,7 @@ def validate_proposal(root: Path, state: dict[str, Any], proposal: dict[str, Any
             if append_flow_requirements(flow).intersection(append_requirement_ids)]
     errors.extend(coverage_errors(root, coverage_proposal, semantics, capabilities, prepared_task_views,
                                   scoped_requirement_ids))
-    errors.extend(prepared_evidence_errors(root, proposal, prepared))
+    errors.extend(prepared_evidence_errors(root, proposal, prepared, check_originals=check_originals))
     for flow in manifest.get("flows", []):
         if not isinstance(flow, dict):
             continue
@@ -6573,7 +6589,7 @@ def validate(root: Path, *, run_id: str) -> dict[str, Any]:
     scope = state.get("planning_scope") if isinstance(state.get("planning_scope"), dict) else None
     review_errors = chain_errors + semantic_review_errors(state, proposal, load_json(run_dir / "semantic-review.json", {}),
         load_json(run_dir / "analysis-input/semantic-requirements.v1.json", {}),
-        set(scope.get("requirement_ids", [])) if scope else None)
+        set(scope.get("requirement_ids", [])) if scope else None, root=root, prepared=run_dir / "analysis-input")
     review_errors.extend(review_execution_errors(state, proposal,
         load_json(run_dir / "semantic-review-execution.json", {}),
         load_json(run_dir / "semantic-review.json", {})))
@@ -6614,7 +6630,7 @@ def validate(root: Path, *, run_id: str) -> dict[str, Any]:
     return result
 
 
-def _validate_input_freshness(root: Path, run_dir: Path, state: dict[str, Any]) -> None:
+def _validate_input_freshness(root: Path, run_dir: Path, state: dict[str, Any], *, check_originals=True) -> None:
     prepared_index = load_json(run_dir / "analysis-input/analysis-index.json", {})
     for key in ("checkpoint_strategy", "checkpoint_schema_version", "planning_completion_protocol"):
         if prepared_index.get(key) != state.get(key):
@@ -6635,7 +6651,7 @@ def _validate_input_freshness(root: Path, run_dir: Path, state: dict[str, Any]) 
     )
     if not isinstance(index.get("input_envelope"), dict) and requires_envelope:
         from _mvg_input_envelope import validate_envelope
-        validate_envelope(root, run_dir / "analysis-input", state)
+        validate_envelope(root, run_dir / "analysis-input", state, check_originals=check_originals)
         return
     if not isinstance(index.get("input_envelope"), dict) and not requires_envelope:
         identity = index.get("analysis_identity_sha256")
@@ -6648,7 +6664,7 @@ def _validate_input_freshness(root: Path, run_dir: Path, state: dict[str, Any]) 
         if not isinstance(authority, dict) or not authority:
             raise ValueError("MVG original authority identity is incomplete; prepare again")
         drift = []
-        for rel, expected in authority.items():
+        for rel, expected in authority.items() if check_originals else []:
             path = repo_path(root, rel)
             actual = normalized_file_sha(path) if path.is_file() else None
             if actual != expected and (file_sha(path) if path.is_file() else None) != expected:
@@ -6657,13 +6673,14 @@ def _validate_input_freshness(root: Path, run_dir: Path, state: dict[str, Any]) 
             path = repo_path(run_dir / "analysis-input", rel)
             if not path.is_file() or file_sha(path) != expected:
                 drift.append("analysis-input/" + rel)
-        atomic_json(run_dir / "input-freshness.json", {
-            "status": "blocked" if drift else "current", "drift": sorted(set(drift))})
+        if check_originals:
+            atomic_json(run_dir / "input-freshness.json", {
+                "status": "blocked" if drift else "current", "drift": sorted(set(drift))})
         if drift:
             raise ValueError("MVG input drift: " + ",".join(sorted(set(drift))))
         return
     from _mvg_input_envelope import validate_envelope
-    validate_envelope(root, run_dir / "analysis-input", state)
+    validate_envelope(root, run_dir / "analysis-input", state, check_originals=check_originals)
 
 
 def _require_unblocked_selection(state: dict[str, Any]) -> None:
@@ -6718,9 +6735,12 @@ def _freeze_apply_checkpoint_binding(root: Path, run_dir: Path, state: dict[str,
         for step in saved["capability_selection"]["selected"]:
             pointer = step["checkpoint"]
             bind(repo_path(run_dir, pointer["path"]), pointer["payload_sha256"], canonical=True)
+            if step.get("kind") == "adoption":
+                bind(repo_path(run_dir, step["receipt_path"]), step["receipt_sha256"])
+                continue  # Original source chain is independently reverified by adoption replay.
             for name in ("selection", "receipt"):
                 bind(repo_path(run_dir, step[name + "_path"]), step[name + "_sha256"])
-            comparison = repo_path(run_dir, step["selection_path"]).parent
+            comparison = repo_path(run_dir, step["receipt_path"]).parent
             bind(comparison / "accepted-seed.json", step["input_identity"]["base_sha256"], canonical=True)
             for alias, label in step["aliases"].items():
                 admission = step["admissions"][label]
@@ -6911,6 +6931,13 @@ def _validate_apply_accounting(root: Path, run_dir: Path, state: dict[str, Any],
 def apply(root: Path, *, run_id: str, confirm: bool) -> dict[str, Any]:
     if not confirm:
         raise ValueError("MVG planning apply requires --confirm")
+    _, state = _load_run(root, run_id)
+    from _mvg_capability_recovery import operation_lock
+    with operation_lock(root, state):
+        return _apply_impl(root, run_id=run_id)
+
+
+def _apply_impl(root: Path, *, run_id: str) -> dict[str, Any]:
     run_path, state = _load_run(root, run_id)
     _require_unblocked_selection(state)
     run_dir = run_path.parent
@@ -7030,7 +7057,7 @@ def apply(root: Path, *, run_id: str, confirm: bool) -> dict[str, Any]:
     planning_targets(root, run_id, state["manifest_path"])
     create_journal(root, journal_path, {trace_path: trace, manifest_path: updated}, authority, result,
         mutable_json_keys={trace_path: ["handoff_bindings"]})
-    return apply(root, run_id=run_id, confirm=True)
+    return _apply_impl(root, run_id=run_id)
 
 
 def rebind_handoff(

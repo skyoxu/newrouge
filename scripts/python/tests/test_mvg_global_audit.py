@@ -169,7 +169,9 @@ class GlobalAuditTests(unittest.TestCase):
                 transmitted = []
                 def checked_runner(*args, **kwargs):
                     prompt = kwargs["prompt_path"].read_text(encoding="utf-8")
-                    payload = json.loads(prompt.split("\n", 1)[1])
+                    from _mvg_evidence_transport import restore_lossless_context
+                    payload = (json.loads(prompt.split("\n", 1)[1]) if kwargs["output_path"].name == "selection.json"
+                               else restore_lossless_context(json.loads(prompt.splitlines()[-1])))
                     if "reopen_context" in payload:
                         current = load_json(run / "run.json")
                         expected = global_audit.reopen_context(current, payload["scope"])
@@ -186,7 +188,9 @@ class GlobalAuditTests(unittest.TestCase):
                         injected.append(True)
                     return receipt
                 def stop_repair(*args, **kwargs):
-                    payload = json.loads(args[2].split("\n", 1)[1])
+                    from _mvg_evidence_transport import restore_lossless_context
+                    payload = (json.loads(args[2].split("\n", 1)[1]) if args[4] == "selection.json"
+                               else restore_lossless_context(json.loads(args[2].splitlines()[-1])))
                     if payload.get("hard_issue") and injected:
                         raise SystemExit("fixture_stop_after_blocked_resolution")
                     return real_preflight(*args, **kwargs)
@@ -296,8 +300,9 @@ class GlobalAuditTests(unittest.TestCase):
                 self.assertEqual(3, state["capability_selection"]["generation"])
                 self.assertEqual(1, len(state["capability_selection"]["selected"]))
                 selection.verified_prefix(root, run, state)
-                with self.assertRaisesRegex(ValueError, "stale_binding"):
-                    global_audit.operate(root, run_id="fixture", operation="reopen", plan_path=plan["path"], plan_sha256=plan["sha256"])
+                recovered = global_audit.operate(root, run_id="fixture", operation="reopen",
+                    plan_path=plan["path"], plan_sha256=plan["sha256"])
+                self.assertEqual(3, recovered["generation"])
                 plan_mvg.generate(root, run_id="fixture", timeout_sec=1, llm_backend="codex-cli")
                 state = load_json(run / "run.json")
                 self.assertEqual(39, state["capability_selection"]["total_invocations"])

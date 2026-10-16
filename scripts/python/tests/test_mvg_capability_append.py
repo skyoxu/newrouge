@@ -325,6 +325,97 @@ class CapabilityAppendTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "runner_input_too_large"):
             generation.bounded_request("x" * 850001, {"type": "object"})
 
+    def test_stage_cost_preflight_counts_evidence_synthesis_future_and_selector(self):
+        self.assertTrue(hasattr(generation, "stage_cost_preflight"), "Stage completion preflight is missing")
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "cost.json"
+            with self.assertRaisesRegex(ValueError, "mvg_stage_cost_budget_insufficient"):
+                generation.stage_cost_preflight(path, phase="inspect", evidence_calls=12,
+                    remaining={"run": 15, "lineage": 14},
+                    future={"run": 4, "lineage": 1}, selector_calls=1)
+            report = json.loads(path.read_text(encoding="utf-8"))
+            self.assertEqual(13, report["measured_stage_calls"])
+            self.assertEqual({"run": 18, "lineage": 14}, report["minimum_required_calls"])
+            self.assertEqual("blocked", report["status"])
+            self.assertEqual("not_dispatched", report["stage_dispatch_status"])
+            self.assertEqual("unknown", report["dynamic_review_and_repair_calls"])
+
+    def test_local_preflight_cache_keys_the_exact_final_wrapper_and_capacity(self):
+        import _capability_input_integrity as integrity
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            with patch.object(integrity, "measure_request", wraps=integrity.measure_request) as measure:
+                first = generation.preflight_runner_payload(root / "a", 1, "unique cache fixture", {}, "result.json")
+                again = generation.preflight_runner_payload(root / "b", 1, "unique cache fixture", {}, "result.json")
+                self.assertEqual(first, again)
+                self.assertEqual(1, measure.call_count)
+                generation.preflight_runner_payload(root / "c", 1, "unique cache fixture", {"type": "object"}, "result.json")
+                self.assertEqual(2, measure.call_count)
+                with patch.dict(os.environ, {"SC_CAPABILITY_MAX_INPUT_TOKENS": "5"}):
+                    with self.assertRaisesRegex(ValueError, "runner_context_budget_exceeded"):
+                        generation.preflight_runner_payload(root / "d", 1, "unique cache fixture", {}, "result.json")
+                self.assertEqual(3, measure.call_count)
+
+    def test_selector_stage_cost_uses_run_budget_without_charging_lineage(self):
+        with tempfile.TemporaryDirectory() as directory:
+            report = generation.stage_cost_preflight(Path(directory) / "cost.json", phase="selection",
+                evidence_calls=0, remaining={"run": 1, "lineage": 0},
+                future={"run": 0, "lineage": 0})
+            self.assertEqual({"run": 1, "lineage": 0}, report["minimum_required_calls"])
+            self.assertEqual(0, report["synthesis_calls"])
+
+    def test_recovered_inspection_cost_is_bound_to_candidate_context_and_sources(self):
+        self.assertTrue(hasattr(generation, "restore_inspection_cost"), "Inspection cost recovery is missing")
+        from test_mvg_evidence_transport import EvidenceTransportTests
+        fixture = EvidenceTransportTests()
+        module = fixture.transport()
+        context = fixture.context()
+        context["accepted_proposal"] = {"seed": "immutable predecessor"}
+        plan = fixture.plan(context)
+        audits = []
+        for batch in plan["batches"]:
+            audit = fixture.audit(plan, batch)
+            receipt = {"model": "fixture", "model_tools": [], "output_sha256": "sha256:output",
+                       "input_integrity": batch["input_report"]}
+            audits.append({"audit": audit, "execution": {"backend_info": {
+                "schema_version": RUNNER_SCHEMA, "filesystem_scope": "workspace_only",
+                "fresh_session_per_invocation": True, "can_read_outside_workspace": False,
+                "model": "fixture", "model_tools": []}, "receipt": receipt,
+                "audit_sha256": canonical_sha(audit), "output_sha256": "sha256:output"}})
+        transport = {"context": context, "plan": plan, "audits": audits}
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            path = root / "capability-append/evidence-contexts/1/inspect" / canonical_sha(context).split(":")[-1] / "transport.json"
+            atomic_json(path, transport)
+            self.assertEqual(len(plan["batches"]), generation.restore_inspection_cost(root, 1, context))
+            self.assertEqual(0, generation.restore_inspection_cost(root, 2, context))
+            self.assertEqual(0, generation.restore_inspection_cost(root / "other-candidate", 1, context))
+            changed = deepcopy(context)
+            changed["evidence"][0]["text"] += "CHANGED"
+            self.assertEqual(0, generation.restore_inspection_cost(root, 1, changed))
+            changed = deepcopy(context)
+            changed["accepted_proposal"]["seed"] = "different predecessor"
+            self.assertEqual(0, generation.restore_inspection_cost(root, 1, changed))
+            transport["audits"].clear()
+            atomic_json(path, transport)
+            with self.assertRaisesRegex(ValueError, "mvg_evidence_transport_invalid"):
+                generation.restore_inspection_cost(root, 1, context)
+
+    def test_selector_preflight_reports_future_scopes_without_reserving_unknown_bases(self):
+        import _mvg_capability_selection as selection
+        self.assertTrue(hasattr(selection, "selector_cost_preflight"), "Selector lineage preflight is missing")
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "cost.json"
+            selection.selector_cost_preflight(path, remaining_run=100,
+                lineage_invocations={"candidate-1": 63, "candidate-2": 2, "candidate-3": 2}, future_scopes=1)
+            report = plan_mvg.load_json(path)
+            self.assertEqual(0, report["minimum_required_calls"]["lineage"])
+            self.assertEqual(2, report["unknown_future_scope_estimate"]["lineage"])
+            self.assertEqual(1, report["remaining_calls"]["lineage"])
+            final = selection.selector_cost_preflight(path, remaining_run=1,
+                lineage_invocations={"candidate-1": 64, "candidate-2": 64, "candidate-3": 64}, future_scopes=0)
+            self.assertEqual("ready", final["status"])
+
     def test_token_preflight_blocks_append_without_spending_invocations(self):
         with tempfile.TemporaryDirectory() as directory, patch.dict(os.environ, {"SC_CAPABILITY_MAX_INPUT_TOKENS": "100"}):
             def propose(scope, base, prior, issue, context, call):
@@ -571,6 +662,21 @@ class CapabilityAppendTests(unittest.TestCase):
 
     def test_public_run_budget_boundary_preserves_prefix_and_stays_terminal(self):
         self.exercise_public_generation(coordinator_case="run-budget")
+
+    def test_production_stage_cost_budget_blocks_before_any_dispatch_or_repair(self):
+        self.exercise_public_generation(fault="stage_cost")
+
+    def test_production_transport_cost_budget_blocks_before_evidence_dispatch(self):
+        with patch.dict(os.environ, {"SC_CAPABILITY_MAX_INPUT_TOKENS": "24000"}):
+            self.exercise_public_generation(fault="stage_cost_transport")
+
+    def test_semantic_retry_restores_only_verified_inspection_cost_without_recharging_batches(self):
+        with patch.dict(os.environ, {"SC_CAPABILITY_MAX_INPUT_TOKENS": "24000"}):
+            self.exercise_public_generation(fault="inspection_cost_recovery")
+
+    def test_dynamic_review_transport_budget_blocks_before_first_review_dispatch(self):
+        with patch.dict(os.environ, {"SC_CAPABILITY_MAX_INPUT_TOKENS": "24000"}):
+            self.exercise_public_generation(fault="stage_cost_dynamic_review")
 
     def test_public_reserved_worker_call_interruption_keeps_charge_on_recovery(self):
         self.exercise_public_generation(coordinator_case="reserved-interruption")
@@ -910,8 +1016,9 @@ class CapabilityAppendTests(unittest.TestCase):
                 self.assertEqual(envelope["chapter5"], generation.restore_chapter5_projection(
                     reduced["chapter5"], context["evidence"]))
                 for source in context["evidence"]:
-                    restored = "".join(part["text"] for batch in plan["batches"] for part in batch["parts"]
-                                       if part["path"] == source["path"])
+                    parts = sorted((part for batch in plan["batches"] for part in batch["parts"]
+                                    if part["path"] == source["path"]), key=lambda part: part["start"])
+                    restored = "".join(part["text"] for part in parts)
                     self.assertEqual(source["text"], restored)
                     if "/readiness/" in source["path"]:
                         for sentinel in ("SOURCE HEAD", "SOURCE MIDDLE", "SOURCE TAIL"):
@@ -1116,7 +1223,9 @@ class CapabilityAppendTests(unittest.TestCase):
                 dest = root / ref
                 dest.parent.mkdir(parents=True, exist_ok=True)
                 dest.write_text("public class RuntimeTests {}" + (
-                    "\n// Full auxiliary source line\n" * 2000 if fault == "evidence_transport" else ""), encoding="utf-8")
+                    "\n// Full auxiliary source line\n" * 2000 if fault in {
+                        "evidence_transport", "stage_cost_transport", "inspection_cost_recovery",
+                        "stage_cost_dynamic_review"} else ""), encoding="utf-8")
             if accounting_evidence:
                 evidence_ref = 'docs/testing/accounting-proof.json'
                 evidence_records = [{'evidence_id': rid + '-' + fid, 'requirement_ids': [rid], 'status': 'passed',
@@ -1130,9 +1239,9 @@ class CapabilityAppendTests(unittest.TestCase):
             fixture._write_readiness(root, snapshot, real_semantics, by_block, by_task)
             state = plan_mvg.prepare(root, run_id="fixture", capabilities_path=capabilities_path,
                 manifest_path=manifest_path, task_ids=list(map(str, fixture.TASK_IDS)), allow_unready=False, evidence_refs=refs,
-                run_invocation_limit=(9 if coordinator_case == "selector-last-budget" else
+                run_invocation_limit=(14 if coordinator_case == "selector-last-budget" else
                     8 if coordinator_case == "run-budget" else
-                    1 if str(coordinator_case).startswith("dispatch-") else None))
+                    14 if str(coordinator_case).startswith("dispatch-") else None))
             if coordinator_case == "legacy-prefix":
                 index = plan_mvg.load_json(run / "analysis-input/analysis-index.json")
                 for key in ("checkpoint_strategy", "checkpoint_schema_version", "analysis_identity_sha256",
@@ -1188,7 +1297,8 @@ class CapabilityAppendTests(unittest.TestCase):
                     value = {key: prop["const"] for key, prop in props.items() if "const" in prop}
                     seen.append((number, value["schema_version"], prompt))
                     if value["schema_version"] == "newrouge.mvg-evidence-audit.v1":
-                        payload = json.loads(prompt.split("\n", 1)[1].split("\nSOURCE PART ", 1)[0])
+                        from _mvg_evidence_transport import restore_lossless_context
+                        payload = restore_lossless_context(json.loads(prompt.splitlines()[-1]))
                         reports = {}
                         for part in payload["parts"]:
                             reports[part["part_id"]] = {"part_id": part["part_id"], "verdict": "relevant",
@@ -1318,6 +1428,51 @@ class CapabilityAppendTests(unittest.TestCase):
                     return output, {"backend_info": description, "receipt": receipt}
                 return invoke
 
+            if fault == "stage_cost_dynamic_review":
+                def budget(phase, **kwargs):
+                    return {"remaining": {"run": 1000 if phase == "inspect" else 0,
+                        "lineage": 64 if phase == "inspect" else 0},
+                        "future": {"run": 0, "lineage": 0}, "selector_calls": 0}
+                result = generation.generate_append(root, state, candidate, invoke_factory=invoke_factory,
+                    before_call=lambda phase: None, checkpoint=lambda ledger: None, cost_budget=budget)
+                self.assertEqual("blocked", result["status"])
+                self.assertGreater(result["total_invocations"], 1)
+                self.assertEqual(len(seen), result["total_invocations"])
+                self.assertEqual("append_stage_cost_budget_insufficient", result["errors"][0]["code"])
+                self.assertEqual([], result.get("issue_events", []))
+                self.assertEqual([], result.get("execution_errors", []))
+                self.assertEqual(1, sum(schema == generation.APPEND_SCHEMA for _, schema, prompt in seen))
+                self.assertFalse(any(schema == "newrouge.mvg-semantic-review.v1" for _, schema, prompt in seen))
+                from _mvg_evidence_transport import restore_lossless_context
+                for _, schema, prompt in seen:
+                    if schema == "newrouge.mvg-evidence-audit.v1":
+                        self.assertEqual("inspect", restore_lossless_context(json.loads(prompt.splitlines()[-1]))["phase"])
+                costs = list((candidate / "capability-append/stage-costs").glob("*-review.json"))
+                self.assertEqual(1, len(costs))
+                report = plan_mvg.load_json(costs[0])
+                self.assertEqual("blocked", report["status"])
+                self.assertGreater(report["measured_evidence_calls"], 0)
+                return
+            if fault in {"stage_cost", "stage_cost_transport"}:
+                with patch.object(generation, "plan_transport", wraps=generation.plan_transport) as plans:
+                    result = generation.generate_append(root, state, candidate, invoke_factory=invoke_factory,
+                        before_call=lambda phase: self.fail("Budget preflight must precede reservation"),
+                        checkpoint=lambda ledger: None,
+                        cost_budget=lambda phase, **kwargs: {"remaining": {"run": 0, "lineage": 0},
+                            "future": {"run": 1, "lineage": 1}, "selector_calls": 1})
+                self.assertEqual("blocked", result["status"])
+                self.assertEqual(0, result["total_invocations"])
+                self.assertEqual([], seen)
+                self.assertEqual("append_stage_cost_budget_insufficient", result["errors"][0]["code"])
+                self.assertEqual([], result.get("execution_errors", []))
+                self.assertEqual([], result.get("issue_events", []))
+                costs = list((candidate / "capability-append/stage-costs").glob("*.json"))
+                self.assertEqual(1, len(costs))
+                self.assertEqual("blocked", plan_mvg.load_json(costs[0])["status"])
+                if fault == "stage_cost_transport":
+                    self.assertTrue(plans.called)
+                    self.assertGreater(plan_mvg.load_json(costs[0])["measured_evidence_calls"], 0)
+                return
             if drift_after_first_dispatch:
                 result = generation.generate_append(root, state, candidate, invoke_factory=invoke_factory,
                                                    before_call=lambda phase: None, checkpoint=lambda ledger: None)
@@ -1340,6 +1495,34 @@ class CapabilityAppendTests(unittest.TestCase):
                                                  before_call=lambda phase: None, checkpoint=lambda ledger: None)
             self.assertEqual("admitted", result["status"], {"errors": result.get("errors"),
                 "issues": result.get("issue_events", [])[:2], "execution": result.get("execution_errors", [])[:2]})
+            if fault == "inspection_cost_recovery":
+                first = result["records"][0]
+                scope, base = first["scope"], result["proof"]["seed"]
+                proposal = append.merge_append(base, first["delta"], scope)
+                inspection_path = next((candidate / "capability-append/evidence-contexts" /
+                    str(first["context"]) / "inspect").glob("*/transport.json"))
+                expected = len(plan_mvg.load_json(inspection_path)["plan"]["batches"])
+                self.assertGreater(expected, 0)
+                calls_before = len(seen)
+                captured = []
+                def budget(phase, *, known_evidence_calls):
+                    captured.append((phase, known_evidence_calls))
+                    return {"remaining": {"run": 0, "lineage": 0},
+                        "future": {"run": known_evidence_calls, "lineage": 0}, "selector_calls": 0}
+                def retry_engine(*args, **kwargs):
+                    kwargs["semantic"](scope, base, proposal, lambda *args: self.fail("No redispatch"), first["context"])
+                with patch.object(generation, "run_capability_append", side_effect=retry_engine), \
+                     self.assertRaisesRegex(ValueError, "mvg_stage_cost_budget_insufficient"):
+                    generation.generate_append(root, state, candidate, invoke_factory=invoke_factory,
+                        before_call=lambda *args: self.fail("No reservation"), checkpoint=lambda ledger: None,
+                        cost_budget=budget)
+                self.assertEqual([("review", expected)], captured)
+                self.assertEqual(calls_before, len(seen))
+                report = plan_mvg.load_json(candidate / "capability-append/stage-costs" /
+                    (str(result["total_invocations"] + 1) + "-review.json"))
+                self.assertEqual(0, report["measured_evidence_calls"])
+                self.assertEqual(expected, report["necessary_future_base_calls"]["run"])
+                return
             if not fault:
                 self.assertEqual(4, len(seen))
             if planned_verification:
@@ -1384,7 +1567,8 @@ class CapabilityAppendTests(unittest.TestCase):
                 self.assertEqual(failed_generations, len(result.get("issue_events", [])))
                 if failed_generations == 4:
                     self.assertEqual(3, result["restarts"][0]["repair_attempts"])
-                    restarted = json.loads(generations[4].split("\n", 1)[1])
+                    from _mvg_evidence_transport import restore_lossless_context
+                    restarted = restore_lossless_context(json.loads(generations[4].splitlines()[-1]))
                     self.assertIsNone(restarted["repair_proposal"])
                     self.assertIsNone(restarted["hard_issue"])
                 if fault == "predecessor_entrypoint":
@@ -1431,6 +1615,7 @@ class CapabilityAppendTests(unittest.TestCase):
                     raise ValueError("fixture_final_runner_preflight_failed")
             with patch.object(plan_mvg, "inspect_isolated_runner", return_value=description), \
                  patch.object(generation, "preflight_dispatch", side_effect=final_preflight) as final_check, \
+                 patch("_mvg_capability_worker.run_candidate", side_effect=lambda *args, **kwargs: kwargs["inline"]()), \
                  patch.object(plan_mvg, "run_isolated_model", side_effect=runner):
                 if coordinator_case in {"runner-preparation", "final-preflight"}:
                     writer = plan_mvg.atomic_json
@@ -1450,7 +1635,7 @@ class CapabilityAppendTests(unittest.TestCase):
                     return
                 if coordinator_case in {"selector-final-preflight", "selector-last-budget"}:
                     with self.assertRaisesRegex(ValueError, "fixture_final_runner_preflight_failed" if
-                            coordinator_case == "selector-final-preflight" else "run_blocked_budget_exhausted"):
+                            coordinator_case == "selector-final-preflight" else "mvg_stage_cost_budget_insufficient"):
                         plan_mvg.generate(root, run_id="fixture", timeout_sec=1, llm_backend="codex-cli")
                     failed = plan_mvg.load_json(run / "run.json")
                     self.assertTrue(any(call.kwargs["output_path"].name == "selection.json" for call in final_check.call_args_list))
@@ -1459,12 +1644,11 @@ class CapabilityAppendTests(unittest.TestCase):
                         self.assertEqual([], failed["capability_selection"]["current"]["selection_attempts"])
                         self.assertEqual(6, len(seen))
                     else:
-                        self.assertEqual(9, failed["capability_selection"]["total_invocations"])
-                        from _mvg_capability_append import RunBudgetExhausted
-                        with self.assertRaises(RunBudgetExhausted):
+                        self.assertEqual(7, failed["capability_selection"]["total_invocations"])
+                        with self.assertRaisesRegex(ValueError, "mvg_stage_cost_budget_insufficient"):
                             plan_mvg.generate(root, run_id="fixture", timeout_sec=1, llm_backend="codex-cli")
-                        self.assertEqual("run_blocked_budget_exhausted", plan_mvg.load_json(run / "run.json")["phase"])
-                        self.assertEqual(9, len(seen))
+                        self.assertEqual("selection-blocked", plan_mvg.load_json(run / "run.json")["phase"])
+                        self.assertEqual(7, len(seen))
                     return
                 if coordinator_case == "selector-reserved-interruption":
                     import _mvg_capability_selection as coordinator
@@ -1486,7 +1670,7 @@ class CapabilityAppendTests(unittest.TestCase):
                     self.assertEqual(14, len(seen))
                     return
                 if str(coordinator_case).startswith("dispatch-"):
-                    with self.assertRaisesRegex(ValueError, "run_blocked_budget_exhausted"):
+                    with self.assertRaisesRegex(ValueError, "mvg_stage_cost_budget_insufficient"):
                         plan_mvg.generate(root, run_id="fixture", timeout_sec=1, llm_backend="codex-cli")
                     failed = plan_mvg.load_json(run / "run.json")
                     self.assertEqual(1, failed["capability_selection"]["total_invocations"])
@@ -1496,7 +1680,7 @@ class CapabilityAppendTests(unittest.TestCase):
                     self.assertEqual(reservation["reservation_id"], outcome["reservation_id"])
                     self.assertEqual("failed", outcome["status"])
                     self.assertTrue(outcome["error_type"].startswith("runner_"))
-                    with self.assertRaisesRegex(ValueError, "run_blocked_budget_exhausted"):
+                    with self.assertRaisesRegex(ValueError, "mvg_stage_cost_budget_insufficient"):
                         plan_mvg.generate(root, run_id="fixture", timeout_sec=1, llm_backend="codex-cli")
                     self.assertEqual(1, len(seen))
                     return
@@ -1542,7 +1726,7 @@ class CapabilityAppendTests(unittest.TestCase):
                     return
                 if coordinator_case in {"selector-preparation", "run-budget"}:
                     if coordinator_case == "run-budget":
-                        failure_pattern = "run_blocked_budget_exhausted"
+                        failure_pattern = "mvg_stage_cost_budget_insufficient"
                         guard = patch.object(generation, "preflight_runner_payload", wraps=generation.preflight_runner_payload)
                     else:
                         real_preflight = generation.preflight_runner_payload
@@ -1562,8 +1746,11 @@ class CapabilityAppendTests(unittest.TestCase):
                         self.assertIn("runner_input_too_large", selection_ledger["current"]["preparation_error"]["detail"])
                         self.assertEqual(6, selection_ledger["total_invocations"])
                     else:
-                        self.assertEqual(8, selection_ledger["total_invocations"])
-                        self.assertEqual(1, len(selection_ledger["selected"]))
+                        self.assertEqual(0, selection_ledger["total_invocations"])
+                        self.assertEqual(0, len(selection_ledger["selected"]))
+                        self.assertEqual([], seen)
+                        self.assertTrue(all(row["errors"][0]["code"] == "append_stage_cost_budget_insufficient"
+                            for row in selection_ledger["current"]["admissions"].values()))
                     calls = len(seen)
                     with self.assertRaises(ValueError):
                         plan_mvg.generate(root, run_id="fixture", timeout_sec=1, llm_backend="codex-cli")
@@ -1793,7 +1980,8 @@ class CapabilityAppendTests(unittest.TestCase):
                 if coordinator_case == "mixed":
                     self.assertEqual(["candidate-1", "candidate-2"],
                         [step["selected_candidate"] for step in persisted["capability_selection"]["selected"]])
-                    payloads = [json.loads(prompt.split("\n", 1)[1]) for _, schema, prompt in seen
+                    from _mvg_evidence_transport import restore_lossless_context
+                    payloads = [restore_lossless_context(json.loads(prompt.splitlines()[-1])) for _, schema, prompt in seen
                                 if schema == generation.APPEND_SCHEMA]
                     seeds = [row["accepted_proposal"] for row in payloads if row["scope"]["capability_id"] == "CAP-b"]
                     self.assertEqual(3, len(seeds))

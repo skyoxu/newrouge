@@ -34,6 +34,8 @@
 - ADR-0034: Security Profile Baseline for Host-Safe Delivery — `docs/adr/ADR-0034-security-profile-host-safe.md`
 - ADR-0035: Repository Knowledge Control Plane — `docs/adr/ADR-0035-repository-knowledge-control-plane.md`
 - ADR-0038: Semantic Delivery Topology — `docs/adr/ADR-0038-semantic-delivery-topology.md`
+- ADR-0038: MVG Candidate Admission Before Selection — `docs/adr/ADR-0038-mvg-candidate-admission.md`
+- ADR-0039: MVG 完成项恢复与独立候选生命周期 — `docs/adr/ADR-0039-mvg-completed-capability-recovery.md`
 
 ---
 
