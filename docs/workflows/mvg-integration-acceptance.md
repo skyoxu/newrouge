@@ -2,6 +2,8 @@
 
 ## 已完成 Capability 恢复与进度
 
+模型证据范围使用 `newrouge.mvg-scoped-evidence.v2`。完整 frozen source、原始 SHA、Chapter 5 readiness 与全局机器门禁保留。仅作为当前项 readiness 上下文使用的 `newrouge.semantic-reconciliation.v1`，允许向模型发送确定性 JSON 投影：保留当前 Requirement/Task/source block/Capability 相关的完整 finding 与 typed topology boundary，并保留未知格式、无法归属及未解决的硬问题。只有明确无关的稳定 `source_semantic/equivalent/keep` finding 和无关已知类型边可省略；每项均记录原 JSON Pointer、内容哈希与理由。完整源、选中行、排除行及投影哈希一起绑定，准入时从 frozen source 独立重建。explicit evidence 或 proposal 直接引用的文件仍全文发送。内联与分批请求使用同一投影，行引用明确属于投影，不伪装成原文件行号。历史 scoped v1 proof 保留原全文与原提示词哈希，不补造投影。范围/容量测量不执行模型，也不证明 MVG 准入或运行验收完成。
+
 ADR-0039 规定当前 `capability-local-selection.v1` 的候选生命周期分别运行于独立 OS 子进程。父协调器通过持久 mailbox 预留每次调用费用，独立复验 proposal、proof 和执行 receipt 后才评选三个 admitted 增量。各稳定候选槽位跨 Capability、上下文和进程累计 64 次调用；run 默认 192 次，不因恢复或换进程重置。
 
 Windows 候选进程树由父协调器持有的 kill-on-close Job Object 管理；worker 通过启动管道等待绑定成功后才执行。父进程被强制终止时，已派发的 worker/模型子树也随之终止；绑定失败或启动管道关闭则禁止派发，不只依靠父进程的 `finally` 清理。

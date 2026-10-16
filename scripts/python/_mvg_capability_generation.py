@@ -252,10 +252,14 @@ def _chapter5_model_projection(chapter5, evidence):
     return projected
 
 
-def complete_scope_context(prepared, scope, base, proposal=None):
-    """Never truncate a selected Requirement, Acceptance or evidence file."""
+def complete_scope_context(prepared, scope, base, proposal=None, *, scope_schema=None):
+    """Keep complete frozen proof and conservative, reproducible model evidence."""
     import plan_mvg as pm
     from _mvg_input_envelope import input_identity, _reference_path, _acceptance_refs, _looks_like_path
+    from _mvg_reconciliation_projection import SCOPE_SCHEMA, LEGACY_SCOPE_SCHEMA, project_source
+    scope_schema = SCOPE_SCHEMA if scope_schema is None else scope_schema
+    if scope_schema not in {SCOPE_SCHEMA, LEGACY_SCOPE_SCHEMA}:
+        raise ValueError("mvg_evidence_scope_schema_invalid")
     semantics = load_json(prepared / "semantic-requirements.v1.json", {})
     rids = set(scope["requirement_ids"])
     affected, required = review_projection(scope, base, proposal or base)
@@ -359,6 +363,12 @@ def complete_scope_context(prepared, scope, base, proposal=None):
                 raise ValueError("mvg_model_required_evidence_hash_mismatch:" + ref)
             with path.open(encoding="utf-8", newline="") as source:
                 evidence.append({"path": ref, "sha256": file_sha(path), "text": source.read()})
+            # Explicit/claimed file references require the complete document.
+            # Narrow only reconciliation selected as readiness context alone.
+            if (scope_schema == SCOPE_SCHEMA and "selected_chapter5_reconciliation" in dependencies[ref]
+                    and dependencies[ref] == {"selected_chapter5_reconciliation"}):
+                evidence[-1] = project_source(evidence[-1], requirement_ids=rids,
+                    task_ids=tids, source_block_ids=block_ids, capability_ids=[scope["capability_id"]])
         else:
             if ref in necessary:
                 raise ValueError("mvg_model_required_evidence_missing:" + ref)
@@ -370,8 +380,12 @@ def complete_scope_context(prepared, scope, base, proposal=None):
         "sources": [{"path": ref, "selected": ref in dependencies,
             "reason": ",".join(sorted(dependencies[ref])) if ref in dependencies else "outside_model_dependency_scope"}
             for ref in sorted(set(inventory) | set(dependencies))]}
+    if scope_schema == SCOPE_SCHEMA:
+        evidence_hashes = {row["path"]: row.get("sha256") for row in evidence}
+        for row in selection["sources"]:
+            row["sha256"] = inventory.get(row["path"], {}).get("sha256") or evidence_hashes.get(row["path"])
     return {"input_identity": input_identity(prepared),
-            "evidence_scope_schema": "newrouge.mvg-scoped-evidence.v1",
+            "evidence_scope_schema": scope_schema,
             "chapter5": _chapter5_model_projection(chapter5, evidence), "evidence_selection": selection,
             "scope": scope, "requirements": requirements, "source_blocks": blocks,
             "task_views": views, "task_master": tasks, "evidence": evidence,
@@ -457,10 +471,12 @@ def evidence_scope_errors(prepared, scope, base, proposal, context):
         # New scoped contexts carry an explicit schema marker.  Missing
         # selection in such a context is deletion/tampering, never a legacy
         # format, and must fail closed.
-        if context.get("evidence_scope_schema") == "newrouge.mvg-scoped-evidence.v1":
+        from _mvg_reconciliation_projection import SCOPE_SCHEMA, LEGACY_SCOPE_SCHEMA
+        if context.get("evidence_scope_schema") in {SCOPE_SCHEMA, LEGACY_SCOPE_SCHEMA}:
             if "evidence_selection" not in context:
                 return ["evidence_transport_scope_selection_missing"]
-            expected = complete_scope_context(prepared, scope, base, proposal)
+            expected = complete_scope_context(prepared, scope, base, proposal,
+                scope_schema=context["evidence_scope_schema"])
         elif "evidence_selection" not in context:
             # Historical proofs predate scoped selection. Rebuild their exact
             # full-repository projection from frozen prepared inputs.

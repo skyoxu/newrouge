@@ -1420,7 +1420,10 @@ class CapabilityAppendTests(unittest.TestCase):
                         source = root / fixture.GDD_PATH
                         source.write_text(source.read_text(encoding="utf-8") + "\nFinal dispatch drift.\n",
                                           encoding="utf-8")
-                    receipt = {"model": "fixture", "model_tools": [], "output_sha256": file_sha(output)}
+                    # Match the real runner's execution-specific receipt even
+                    # when two clean workspaces return identical model JSON.
+                    receipt = {"model": "fixture", "model_tools": [], "output_sha256": file_sha(output),
+                               "workspace": workspace.as_posix()}
                     name = Path(output_name).with_suffix("").as_posix().replace("/", "-")
                     reports = list((workspace / "llm-sandbox" / f"attempt-{number}" / name).glob("runner-input-integrity.json"))
                     if reports:
@@ -1888,6 +1891,9 @@ class CapabilityAppendTests(unittest.TestCase):
                         self.assertIsNone(ledger["current"])
                     self.assertEqual(2, len(list((run / "capability-checkpoints").glob("*/payload.json"))))
                     self.assertEqual(14, len(seen))
+                    committed_before_restart = deepcopy(ledger["selected"])
+                    staged_before_restart = {path: file_sha(path)
+                        for path in (run / "capability-checkpoints").glob("*/payload.json")}
                 result = plan_mvg.generate(root, run_id="fixture", timeout_sec=1, llm_backend="codex-cli")
                 self.assertEqual(3, result["candidate_count"])
                 calls_before_review = len(seen)
@@ -1907,7 +1913,23 @@ class CapabilityAppendTests(unittest.TestCase):
                     self.assertEqual(14, len(seen), "Outcome recovery must verify locally before any state write")
                 if coordinator_case in {"checkpoint-interruption", "checkpoint-after-error",
                                          "checkpoint-before-exit", "checkpoint-after-exit"}:
-                    self.assertEqual(14, len(seen), "Prepared checkpoint recovery must not dispatch a model")
+                    # ADR-0039 restores committed Capabilities only. A staged
+                    # second Capability starts fresh; a committed one is reused.
+                    expected_calls = 14 if coordinator_case.startswith("checkpoint-after") else 21
+                    ledger = persisted["capability_selection"]
+                    self.assertEqual(expected_calls, len(seen))
+                    self.assertEqual(expected_calls, ledger["total_invocations"])
+                    self.assertEqual(committed_before_restart,
+                                     ledger["selected"][:len(committed_before_restart)])
+                    for path, digest in staged_before_restart.items():
+                        self.assertEqual(digest, file_sha(path), "Historical staged evidence must remain immutable")
+                    if expected_calls == 21:
+                        regenerated = ledger["selected"][1]
+                        self.assertIn("execution-2", regenerated["receipt_path"])
+                        self.assertTrue(all(row["execution"] == 2
+                            for row in regenerated["admissions"].values()))
+                        self.assertEqual(3, len(list((run / "capability-checkpoints").glob("*/payload.json"))))
+                    self.assertIsNone(ledger["current"])
                 if coordinator_case == "checkpoint-tamper":
                     from _project_health_planning import _mvg_valid_candidates
                     pointer = persisted["capability_selection"]["selected"][0]["checkpoint"]

@@ -33,6 +33,15 @@ def wire_json(value):
 def model_context(context):
     """Keep local discovery and exclusion accounting in the bound proof only."""
     result = deepcopy(context)
+    if "evidence" in result:
+        from _mvg_reconciliation_projection import transport_sources
+        result["evidence"] = transport_sources(context)
+        if any("model_projection" in source for source in result["evidence"]):
+            result["model_evidence_delivery"] = (
+                "model_projection explicitly marks related JSON records. Selected rows are complete; "
+                "citations use projection line space. Full original sources, excluded-row hashes and "
+                "scope reasons remain bound in the machine proof. This view never proves full-file "
+                "verification or runtime success.")
     if isinstance(result.get("scope"), dict) and isinstance(result["scope"].get("capability"), dict):
         result["capabilities"] = {"capabilities": [deepcopy(result["scope"]["capability"])]}
     result.pop("available_reference_paths", None)
@@ -124,8 +133,14 @@ def inventory(context):
             raise ValueError("mvg_evidence_duplicate_path:" + path)
         paths.add(path)
         if "text" in row:
-            rows.append({"path": path, "sha256": row["sha256"], "status": "complete",
-                         "characters": len(row["text"]), "content_sha256": text_sha(row["text"])})
+            from _mvg_reconciliation_projection import model_source
+            delivered = model_source(row)
+            entry = {"path": path, "sha256": row["sha256"], "status": "complete",
+                     "characters": len(delivered["text"]), "content_sha256": text_sha(delivered["text"])}
+            if "model_projection" in delivered:
+                entry.update(source_characters=len(row["text"]), source_content_sha256=text_sha(row["text"]),
+                             model_projection=delivered["model_projection"])
+            rows.append(entry)
         else:
             if row.get("status") != "not_prepared":
                 raise ValueError("mvg_evidence_invalid_absence:" + path)
@@ -134,15 +149,21 @@ def inventory(context):
 
 
 def part(source, start=0, end=None):
+    from _mvg_reconciliation_projection import model_source
+    source = model_source(source)
     end = len(source["text"]) if end is None else end
     body = {"path": source["path"], "source_sha256": source["sha256"],
             "start": start, "end": end, "text": source["text"][start:end]}
+    if "model_projection" in source:
+        body["model_projection"] = source["model_projection"]
     body["part_id"] = canonical_sha(body)
     return body
 
 
 def _colocated_source_parts(sources):
     """Group exact repeated raw blocks, retaining every source range and gap."""
+    from _mvg_reconciliation_projection import model_source
+    sources = [model_source(source) for source in sources]
     positions, counts = {}, Counter()
     for source in sources:
         if "text" not in source:
@@ -230,6 +251,13 @@ def audit_prompt(plan, parts):
         "No source text was clipped: every part is delivered in a checked batch. No tools. "
         "Return only the schema JSON. "
     )
+    if any("model_projection" in row for row in plan.get("inventory", [])):
+        instruction += (
+            "Sources with model_projection are explicit deterministic JSON views of related records. "
+            "Citations address projection lines, never original-file line numbers. Original file hashes "
+            "and per-row inclusion/exclusion audits remain bound in the machine proof. "
+            "Every selected row is complete. Do not infer omitted unrelated records or treat a "
+            "projection as full-file verification. ")
     if plan["phase"] == "review":
         instruction += (
             "Independently compare the supplied proposal with these sources. Flag only concrete hard "
@@ -389,7 +417,8 @@ def plan_errors(context, plan):
             errors.append("evidence_extra_or_duplicate_parts")
         return errors
     position = 0
-    for source in context["evidence"]:
+    from _mvg_reconciliation_projection import transport_sources
+    for source in transport_sources(context):
         if "text" not in source:
             continue
         chunks, offset = [], 0
