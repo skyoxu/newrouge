@@ -25,3 +25,8 @@ This file is updated by scripts/sc/run_review_pipeline.py.
 
 - `test_mvg_segment_scope.py` 七项既有测试的 fragment 路径与 prepared-reference enum 不一致，另有断言仍要求 pattern 而当前 schema 使用 enum。应对齐夹具和 schema 合约，保留路径与范围门禁；不要为了测试通过放宽准入。
 - 在 Story 3.1 修改前的 HEAD 直接内存加载 `plan_mvg.py` 复现相同错误；证据：`logs/ci/2026-10-15/story-3-1/head-segment-baseline.log`。本轮路线/Knowledge/契约定向回归另行验证，不把这七项标记为通过。
+
+## MVG recovery 夹具断言维护（2026-10-16，P2）
+
+- `test_public_recovery_rejects_prefix_scope_and_receipt_tampering_without_models` 把 `review`、`validate`、`apply` 都断言为抛出异常，但既有 `validate` 对 selected-chain 错误返回 `formal_applicable=false`、`formal_blockers` 与未完成报告。后续应分别检查各公共 API 的阻断合约，不应改变生产 API 或放宽校验来满足测试。
+- 证据：`logs/ci/2026-10-16/mvg-chapter5-lossless-transport/tamper-single.xml`；对照基线提交 `8383b7a2091e23680d7b071bbc0e631aa886ff64` 的 `plan_mvg.py::validate`，该捕获与返回行为在本轮修改前已存在。本轮不再重复此慢测试，不将其记作通过。

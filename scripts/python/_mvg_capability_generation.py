@@ -13,7 +13,7 @@ from _mvg_requirement_routes import FIELD, PROJECTION, membership_schema, member
 from _mvg_requirement_accounting import (VERIFICATION, EVIDENCE, PROTOCOL_FIELD, PROTOCOL,
     project_accounting, schemas as accounting_schemas, verification_rows, evidence_rows)
 from _mvg_evidence_transport import (audit_errors, audit_execution_errors, audit_prompt, audit_schema,
-    compact_schema, plan_errors, plan_transport, transport_proof_errors, wire_json)
+    compact_schema, model_context, plan_errors, plan_transport, restore_chapter5_projection, transport_proof_errors, wire_json)
 
 APPEND_SCHEMA = "newrouge.mvg-capability-append.v1"
 INPUT_LIMIT = 850_000
@@ -236,15 +236,165 @@ def append_output_schema(state, scope, base, prepared, *, evidence_paths=None):
     return _runner_schema_without_patterns(schema)
 
 
+def _chapter5_model_projection(chapter5, evidence):
+    """Replace only duplicate fingerprint payloads; keep frozen authority intact."""
+    projected = deepcopy(chapter5)
+    for task in projected.get("tasks", []):
+        fingerprint = task.get("input_fingerprint")
+        if not isinstance(fingerprint, dict) or "payload" not in fingerprint:
+            continue
+        source = task.get("readiness", {})
+        fingerprint.pop("payload")
+        fingerprint["payload_ref"] = {"path": source.get("path"), "sha256": source.get("sha256"),
+                                      "json_pointer": "/input_fingerprint/payload"}
+    if restore_chapter5_projection(projected, evidence) != chapter5:
+        raise ValueError("mvg_chapter5_payload_source_roundtrip_mismatch")
+    return projected
+
+
 def complete_scope_context(prepared, scope, base, proposal=None):
     """Never truncate a selected Requirement, Acceptance or evidence file."""
+    import plan_mvg as pm
+    from _mvg_input_envelope import input_identity, _reference_path, _acceptance_refs, _looks_like_path
+    semantics = load_json(prepared / "semantic-requirements.v1.json", {})
+    rids = set(scope["requirement_ids"])
+    affected, required = review_projection(scope, base, proposal or base)
+    rids |= required
+    rids |= {rid for flow in affected["manifest_candidate"]["flows"] for rid in flow.get("requirement_ids", [])}
+    requirements = [row for row in semantics["requirements"] if row["requirement_id"] in rids]
+    owners = {str(tid) for tid in pm._review_task_ids(affected)}
+    owners |= {str(row["owner_task"]) for row in affected.get("tests", []) if row.get("owner_task") is not None}
+    all_views = [{**row, "_source_view": name}
+             for name in ("tasks_back.json", "tasks_gameplay.json")
+             for row in load_json(prepared / "task-views" / name, [])]
+    tids = owners | {str(row["taskmaster_id"]) for row in all_views
+                    if set(row.get("semantic_refs", row.get("requirement_ids", []))) & rids}
+    views = [row for row in all_views if str(row.get("taskmaster_id")) in tids]
+    tasks = [row for row in load_json(prepared / "task-master.json", {}).get("master", {}).get("tasks", [])
+             if str(row["id"]) in tids]
+    block_ids = set(scope["capability"].get("source_block_ids", [])) | {
+        block for row in requirements for block in row.get("source_block_ids", [])}
+    ledger = load_json(prepared / "source-blocks.v1.json", {})
+    blocks = [row for row in ledger.get("blocks", []) if row.get("block_id") in block_ids]
+    if block_ids - {row.get("block_id") for row in blocks}:
+        raise ValueError("capability_append_source_blocks_missing")
+    envelope = load_json(prepared / "analysis-index.json", {}).get("input_envelope", {})
+    inventory = {row["path"]: row for row in envelope.get("inventory", [])}
+    dependencies, necessary = {}, set()
+    def bind(value, reason, *, required=True):
+        ref = _reference_path(value)
+        if not ref:
+            return
+        if ref.startswith("ADR-") and not _looks_like_path(ref):
+            matches = [path for path in inventory if Path(path).name.startswith(ref + "-")]
+            if len(matches) != 1:
+                raise ValueError("mvg_model_required_authority_unresolved:" + ref)
+            ref = matches[0]
+        if not _looks_like_path(ref) and inventory.get(ref, {}).get("classification") not in {"file", "planned", "context"}:
+            return
+        dependencies.setdefault(ref, set()).add(reason)
+        if required and inventory.get(ref, {}).get("classification") != "planned":
+            necessary.add(ref)
+    for ref in pm._review_reference_paths(affected):
+        bind(ref, "affected_proposal", required=not ref.startswith(("Game.Core.Tests/", "Tests.Godot/")))
+    for row in affected.get("tests", []):
+        bind(row.get("path"), "affected_test", required=row.get("state") != "planned")
+    for row in affected.get("entrypoints", []):
+        bind(row.get("path"), "affected_entrypoint", required=row.get("status") == "existing_verified")
+    for row in evidence_rows(affected):
+        if isinstance(row, dict):
+            bind(row.get("source_ref"), "requirement_evidence")
+    for family in ("coverage_table", "change_reviews", "retirement_reviews"):
+        for row in affected.get(family, []):
+            for field in ("authority_ref", "verification_ref"):
+                if row.get(field):
+                    bind(row[field], "affected_" + field)
+    statuses = {str(row["id"]): str(row.get("status", "")).lower() for row in tasks}
+    for row in views:
+        for field in ("overlay_refs", "contractRefs", "test_refs", "source_refs", "adr_refs"):
+            for ref in row.get(field, []):
+                bind(ref, "task_" + field, required=field != "test_refs" or statuses.get(str(row["taskmaster_id"])) == "done")
+        for acceptance in row.get("acceptance", []):
+            if "Refs:" in str(acceptance):
+                for ref in _acceptance_refs(acceptance):
+                    test = _reference_path(ref).startswith(("Game.Core.Tests/", "Tests.Godot/"))
+                    bind(ref, "task_acceptance", required=not test or statuses.get(str(row["taskmaster_id"])) == "done")
+    for block in blocks:
+        bind(block.get("source_path"), "requirement_source_block")
+    chapter5 = deepcopy(envelope["chapter5"])
+    if chapter5.get("formal_ready") is True and tids - {str(row["id"]) for row in tasks}:
+        raise ValueError("mvg_model_required_task_master_missing:" + ",".join(sorted(tids - {str(row["id"]) for row in tasks})))
+    chapter5["tasks"] = [row for row in chapter5.get("tasks", []) if str(row["task_id"]) in tids]
+    if chapter5.get("formal_ready") is True and tids - {str(row["task_id"]) for row in chapter5["tasks"]}:
+        raise ValueError("mvg_model_required_task_readiness_missing:" + ",".join(sorted(tids - {str(row["task_id"]) for row in chapter5["tasks"]})))
+    for task in chapter5["tasks"]:
+        for kind in ("readiness", "reconciliation"):
+            descriptor = task.get(kind, {})
+            bind(descriptor.get("path"), "selected_chapter5_" + kind, required=chapter5.get("formal_ready") is True)
+        ref = task.get("reconciliation", {}).get("path")
+        source = pm._prepared_reference(prepared, ref)
+        if source is None:
+            if chapter5.get("formal_ready") is True:
+                raise ValueError("mvg_model_required_evidence_missing:" + str(ref))
+            continue
+        if file_sha(source) != task["reconciliation"].get("sha256"):
+            raise ValueError("mvg_model_required_evidence_hash_mismatch:" + str(ref))
+        reconciliation = load_json(source, {})
+        source_scope = reconciliation.get("source_scope") or []
+        for source_row in source_scope if isinstance(source_scope, list) else [source_scope]:
+            bind(source_row.get("path"), "chapter5_source_scope")
+        for family in ("overlays", "contracts", "adrs"):
+            for authority in (reconciliation.get("authority_scope") or {}).get(family, []):
+                bind(authority.get("path") or authority.get("ref"), "chapter5_authority_" + family)
+    for row in envelope.get("inventory", []):
+        if "explicit_evidence" in row.get("roles", []):
+            bind(row["path"], "explicit_evidence")
+    evidence = []
+    for ref in sorted(dependencies):
+        path = pm._prepared_reference(prepared, ref)
+        # Source-document blocks above carry the design evidence. Other named
+        # references retain their complete text or explicitly show absence.
+        if path is not None and path.is_file():
+            if ref in inventory and inventory[ref].get("sha256") not in (None, file_sha(path)):
+                raise ValueError("mvg_model_required_evidence_hash_mismatch:" + ref)
+            with path.open(encoding="utf-8", newline="") as source:
+                evidence.append({"path": ref, "sha256": file_sha(path), "text": source.read()})
+        else:
+            if ref in necessary:
+                raise ValueError("mvg_model_required_evidence_missing:" + ref)
+            evidence.append({"path": ref, "status": "not_prepared"})
+    selection = {"global_task_ids": [str(row["task_id"]) for row in envelope["chapter5"].get("tasks", [])],
+        "model_task_ids": [str(row["task_id"]) for row in chapter5["tasks"]],
+        "global_inventory_sha256": canonical_sha(envelope.get("inventory", [])),
+        "global_inventory_count": len(inventory), "requirement_ids": sorted(rids),
+        "sources": [{"path": ref, "selected": ref in dependencies,
+            "reason": ",".join(sorted(dependencies[ref])) if ref in dependencies else "outside_model_dependency_scope"}
+            for ref in sorted(set(inventory) | set(dependencies))]}
+    return {"input_identity": input_identity(prepared),
+            "evidence_scope_schema": "newrouge.mvg-scoped-evidence.v1",
+            "chapter5": _chapter5_model_projection(chapter5, evidence), "evidence_selection": selection,
+            "scope": scope, "requirements": requirements, "source_blocks": blocks,
+            "task_views": views, "task_master": tasks, "evidence": evidence,
+            "capabilities": load_json(prepared / "capabilities.v1.json", {}),
+            "available_reference_paths": sorted({p.relative_to(prepared / family).as_posix()
+                for family in ("sources", "references") for p in (prepared / family).rglob("*") if p.is_file()})}
+
+
+def _legacy_complete_scope_context(prepared, scope, base, proposal=None):
+    """Rebuild the pre-scoped full-repository projection for historical proofs.
+
+    This deliberately mirrors the frozen baseline behavior, including task-id
+    comparisons and ``Path.read_text`` newline normalization.  It is only a
+    recovery reader; new requests always use :func:`complete_scope_context`.
+    """
     import plan_mvg as pm
     from _mvg_input_envelope import input_identity, _reference_path
     semantics = load_json(prepared / "semantic-requirements.v1.json", {})
     rids = set(scope["requirement_ids"])
     affected, required = review_projection(scope, base, proposal or base)
     rids |= required
-    rids |= {rid for flow in affected["manifest_candidate"]["flows"] for rid in flow.get("requirement_ids", [])}
+    rids |= {rid for flow in affected["manifest_candidate"]["flows"]
+             for rid in flow.get("requirement_ids", [])}
     requirements = [row for row in semantics["requirements"] if row["requirement_id"] in rids]
     owners = {tid for flow in affected["manifest_candidate"]["flows"] for tid in flow.get("task_ids", [])}
     owners |= {row.get("owner_task") for row in affected.get("entrypoints", []) + affected.get("tests", [])
@@ -255,7 +405,8 @@ def complete_scope_context(prepared, scope, base, proposal=None):
              if set(row.get("semantic_refs", row.get("requirement_ids", []))) & rids
              or row.get("taskmaster_id") in owners]
     tids = {row.get("taskmaster_id") for row in views} | owners
-    tasks = [row for row in load_json(prepared / "task-master.json", {}).get("master", {}).get("tasks", []) if row["id"] in tids]
+    tasks = [row for row in load_json(prepared / "task-master.json", {}).get("master", {}).get("tasks", [])
+             if row["id"] in tids]
     block_ids = set(scope["capability"].get("source_block_ids", [])) | {
         block for row in requirements for block in row.get("source_block_ids", [])}
     ledger = load_json(prepared / "source-blocks.v1.json", {})
@@ -263,40 +414,72 @@ def complete_scope_context(prepared, scope, base, proposal=None):
     if block_ids - {row.get("block_id") for row in blocks}:
         raise ValueError("capability_append_source_blocks_missing")
     dependencies = pm._review_reference_paths(affected)
-    dependencies |= {row['source_ref'].split('#', 1)[0] for row in evidence_rows(affected)
-                     if isinstance(row, dict) and isinstance(row.get('source_ref'), str)}
+    dependencies |= {row["source_ref"].split("#", 1)[0] for row in evidence_rows(affected)
+                     if isinstance(row, dict) and isinstance(row.get("source_ref"), str)}
     for family in ("coverage_table", "change_reviews", "retirement_reviews"):
         for row in affected.get(family, []):
             for field in ("authority_ref", "verification_ref"):
                 if row.get(field):
                     dependencies.add(str(row[field]).split("#", 1)[0])
     dependencies |= {_reference_path(ref) for row in views
-                     for field in ("overlay_refs", "contractRefs", "test_refs", "source_refs") for ref in row.get(field, [])}
+                     for field in ("overlay_refs", "contractRefs", "test_refs", "source_refs")
+                     for ref in row.get(field, [])}
     envelope = load_json(prepared / "analysis-index.json", {}).get("input_envelope", {})
-    dependencies |= {row["path"] for row in envelope.get("inventory", []) if row["required"]
-                     and row.get("prepared_path", "").startswith(("sources/", "references/"))}
+    dependencies |= {row["path"] for row in envelope.get("inventory", [])
+                     if row["required"] and row.get("prepared_path", "").startswith(("sources/", "references/"))}
     evidence = []
     for ref in sorted(dependencies):
         path = pm._prepared_reference(prepared, ref)
-        # Source-document blocks above carry the design evidence. Other named
-        # references retain their complete text or explicitly show absence.
         if path is not None and path.is_file():
-            evidence.append({"path": ref, "sha256": file_sha(path), "text": path.read_text(encoding="utf-8")})
+            evidence.append({"path": ref, "sha256": file_sha(path),
+                             "text": path.read_text(encoding="utf-8")})
         else:
             evidence.append({"path": ref, "status": "not_prepared"})
     return {"input_identity": input_identity(prepared),
-            "chapter5": deepcopy(envelope["chapter5"]),
-            "scope": scope, "requirements": requirements, "source_blocks": blocks,
-            "task_views": views, "task_master": tasks, "evidence": evidence,
+            "chapter5": deepcopy(envelope["chapter5"]), "scope": scope,
+            "requirements": requirements, "source_blocks": blocks, "task_views": views,
+            "task_master": tasks, "evidence": evidence,
             "capabilities": load_json(prepared / "capabilities.v1.json", {}),
             "available_reference_paths": sorted({p.relative_to(prepared / family).as_posix()
-                for family in ("sources", "references") for p in (prepared / family).rglob("*") if p.is_file()})}
+                for family in ("sources", "references")
+                for p in (prepared / family).rglob("*") if p.is_file()})}
 
 
 def bounded_request(prompt, schema):
     from _capability_input_integrity import configured_input_limit, measure_request
     return measure_request(prompt + "\n" + json.dumps(schema, ensure_ascii=False),
         max_bytes=INPUT_LIMIT, max_input_tokens=configured_input_limit())
+
+
+def evidence_scope_errors(prepared, scope, base, proposal, context):
+    """Recompute source selection from frozen authority before trusting admission."""
+    try:
+        # New scoped contexts carry an explicit schema marker.  Missing
+        # selection in such a context is deletion/tampering, never a legacy
+        # format, and must fail closed.
+        if context.get("evidence_scope_schema") == "newrouge.mvg-scoped-evidence.v1":
+            if "evidence_selection" not in context:
+                return ["evidence_transport_scope_selection_missing"]
+            expected = complete_scope_context(prepared, scope, base, proposal)
+        elif "evidence_selection" not in context:
+            # Historical proofs predate scoped selection. Rebuild their exact
+            # full-repository projection from frozen prepared inputs.
+            expected = _legacy_complete_scope_context(prepared, scope, base, proposal)
+        else:
+            return ["evidence_transport_scope_schema_invalid"]
+    except (OSError, ValueError, TypeError, KeyError, AttributeError) as exc:
+        return ["evidence_transport_scope_invalid:" + str(exc)]
+    fields = ("input_identity", "chapter5", "scope", "requirements", "source_blocks",
+              "task_views", "task_master", "evidence", "capabilities", "available_reference_paths")
+    if "evidence_selection" in expected:
+        fields = ("evidence_scope_schema", "evidence_selection") + fields
+    # Only runtime review bindings may accompany the reconstructed scope.
+    # Reject unknown/new fields in an alleged legacy context as well.
+    if set(context) - set(expected) - {"accepted_proposal", "proposal", "reopen_context"}:
+        return ["evidence_transport_scope_changed"]
+    if any(context.get(field) != expected[field] for field in fields):
+        return ["evidence_transport_scope_changed"]
+    return []
 
 
 def preflight_runner_payload(attempt_root, attempt, prompt, schema, output_name):
@@ -485,7 +668,7 @@ def synthesis_context(payload, transport):
         inspections.append(audit)
     reduced["evidence_inspections"] = inspections
     reduced["evidence_context_sha256"] = transport["plan"]["context_sha256"]
-    return reduced
+    return model_context(reduced)
 
 
 def machine_validation_issues(validation, scope, proposal):
@@ -663,7 +846,11 @@ def generate_append(root, state, candidate_root, *, invoke_factory, before_call,
 
     def input_prompt(payload, instruction, schema, output_name, phase, context, call):
         """Prefer complete inline input; route oversize auxiliary files losslessly."""
-        prompt = instruction + wire_json(payload)
+        selection = payload.get("evidence_selection")
+        if selection is not None:
+            atomic_json(candidate_root / "capability-append/evidence-selections" / phase /
+                        (canonical_sha(selection).split(":")[-1] + ".json"), selection)
+        prompt = instruction + wire_json(model_context(payload))
         try:
             preflight(prompt, schema, output_name)
             return prompt, None
@@ -1033,6 +1220,9 @@ def append_proof_errors(state, proposal, proof, semantics, allowed=None, *, root
                 errors.append("evidence_transport_run_identity_changed")
             errors.extend(transport_proof_errors(bound["evidence_transport"], scope=scope,
                                                 base=accepted, proposal=projection))
+            if prepared is not None:
+                errors.extend(evidence_scope_errors(prepared, scope, accepted, revised,
+                    bound["evidence_transport"]["context"]))
         review = bound.get("review") or {}
         directive = bound.get("reopen_context")
         from _mvg_global_audit import reopen_context, reopen_review_errors, record_generation

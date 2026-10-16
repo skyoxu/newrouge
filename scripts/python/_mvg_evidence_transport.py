@@ -16,8 +16,54 @@ def wire_json(value):
     return json.dumps(value, ensure_ascii=False, separators=(",", ":"))
 
 
+def model_context(context):
+    """Keep local discovery and exclusion accounting in the bound proof only."""
+    result = deepcopy(context)
+    result.pop("available_reference_paths", None)
+    selection = result.pop("evidence_selection", None)
+    if selection is not None:
+        result["evidence_selection_sha256"] = canonical_sha(selection)
+    return result
+
+
 def text_sha(text):
     return "sha256:" + hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def restore_chapter5_projection(chapter5, evidence):
+    """Resolve model-only JSON Pointers against complete hash-bound readiness text."""
+    restored = deepcopy(chapter5)
+    sources = {row["path"]: row for row in evidence}
+    for task in restored.get("tasks", []):
+        fingerprint = task.get("input_fingerprint")
+        if not isinstance(fingerprint, dict):
+            continue
+        reference = fingerprint.get("payload_ref")
+        if reference is None:
+            if "payload" not in fingerprint:
+                raise ValueError("mvg_chapter5_payload_source_reference_missing:" + str(task.get("task_id")))
+            continue
+        readiness = task.get("readiness", {})
+        expected = {"path": readiness.get("path"), "sha256": readiness.get("sha256"),
+                    "json_pointer": "/input_fingerprint/payload"}
+        if reference != expected or "payload" in fingerprint:
+            raise ValueError("mvg_chapter5_payload_source_reference_invalid:" + str(task.get("task_id")))
+        path = reference["path"]
+        source = sources.get(path, {})
+        if "text" not in source:
+            raise ValueError("mvg_chapter5_payload_source_missing:" + str(path))
+        if source.get("sha256") != reference["sha256"] or text_sha(source["text"]) != reference["sha256"]:
+            raise ValueError("mvg_chapter5_payload_source_hash_mismatch:" + str(path))
+        try:
+            original = json.loads(source["text"].removeprefix("\ufeff"))["input_fingerprint"]
+            payload = original["payload"]
+        except (ValueError, KeyError, TypeError) as exc:
+            raise ValueError("mvg_chapter5_payload_source_pointer_missing:" + str(path)) from exc
+        fingerprint.pop("payload_ref")
+        fingerprint["payload"] = payload
+        if fingerprint != original or fingerprint.get("sha256") != canonical_sha(payload):
+            raise ValueError("mvg_chapter5_payload_source_payload_mismatch:" + str(path))
+    return restored
 
 
 def compact_schema(schema, *, share_objects=False):
@@ -143,7 +189,7 @@ def audit_prompt(plan, parts):
     else:
         instruction += "Inspect evidence only; do not design flows or make approval decisions. "
     meta = [{key: value for key, value in p.items() if key != "text"} for p in parts]
-    prompt = instruction + "\n" + wire_json({"core": plan["core"], "inventory": plan["inventory"],
+    prompt = instruction + "\n" + wire_json({"core": model_context(plan["core"]), "inventory": plan["inventory"],
         "context_sha256": plan["context_sha256"], "phase": plan["phase"], "parts": meta})
     for item in parts:
         # Add address labels without dropping or normalizing any source character.
@@ -161,6 +207,10 @@ def plan_transport(context, *, phase, probe):
     plan = {"schema_version": TRANSPORT_SCHEMA, "context_sha256": canonical_sha(context),
             "phase": phase, "core": deepcopy({k: v for k, v in context.items() if k != "evidence"}),
             "inventory": inventory(context), "batches": []}
+    restore_chapter5_projection(context.get("chapter5", {}), context["evidence"])
+    # The core and inventory recur in every batch. Splitting auxiliary text
+    # cannot reduce them; reject this exact wrapped request before recursion.
+    probe(audit_prompt(plan, []), audit_schema(plan, []))
     remaining = [part(source) for source in context["evidence"] if "text" in source]
     def pack(parts):
         try:
@@ -191,6 +241,28 @@ def plan_transport(context, *, phase, probe):
                                 "parts": parts, "input_report": report})
     if remaining:
         pack(remaining)
+    # Binary splitting is conservative and can leave adjacent batches that
+    # fit together. Coalesce only after probing the exact final wrapped
+    # request; a capacity rejection simply keeps the boundary, while every
+    # other probe error remains fatal. The bounded left-to-right pass avoids
+    # an unbounded packing search and preserves source/part order.
+    batches = plan["batches"]
+    index = 0
+    while index + 1 < len(batches):
+        left, right = batches[index], batches[index + 1]
+        merged_parts = left["parts"] + right["parts"]
+        try:
+            merged_report = probe(audit_prompt(plan, merged_parts), audit_schema(plan, merged_parts))
+        except ValueError as exc:
+            if any(code in str(exc) for code in ("runner_input_too_large", "runner_context_budget_exceeded")):
+                index += 1
+                continue
+            raise
+        batches[index] = {"ordinal": left["ordinal"], "parts": merged_parts,
+                          "input_report": merged_report}
+        del batches[index + 1]
+        for ordinal, batch in enumerate(batches[index + 1:], index + 2):
+            batch["ordinal"] = ordinal
     errors = plan_errors(context, plan)
     if errors:
         raise ValueError("mvg_evidence_plan_invalid:" + ";".join(errors))
@@ -199,6 +271,10 @@ def plan_transport(context, *, phase, probe):
 
 def plan_errors(context, plan):
     errors = []
+    try:
+        restore_chapter5_projection(context.get("chapter5", {}), context["evidence"])
+    except ValueError as exc:
+        errors.append(str(exc))
     if (plan.get("schema_version") != TRANSPORT_SCHEMA or plan.get("phase") not in {"inspect", "review"}
             or plan.get("context_sha256") != canonical_sha(context)
             or plan.get("core") != {k: v for k, v in context.items() if k != "evidence"}

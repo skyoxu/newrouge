@@ -63,3 +63,7 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-3-1-requirement-route-memberships.md`
   summary: 对齐七项既有 segment anchor/schema 夹具，保留 prepared 路径和 scope 校验。
   evidence: 未修改 HEAD 的 plan_mvg.py 直接内存加载复现相同七项错误；见 logs/ci/2026-10-15/story-3-1/head-segment-baseline.log，已登记 docs/technical-debt.md。
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-mvg-chapter5-lossless-transport.md`
+  summary: 按各公共 API 的阻断合约修正既有 recovery tamper 测试，不改变生产准入。
+  evidence: tamper-single.xml 复现 validate 不抛异常；基线 validate 已将 selected-chain 错误写入 formal_blockers 并返回 formal_applicable=false，详见 docs/technical-debt.md。

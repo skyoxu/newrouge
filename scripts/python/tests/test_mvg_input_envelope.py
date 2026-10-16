@@ -57,6 +57,26 @@ class InputEnvelopeTests(unittest.TestCase):
         self.assertIn(DEFAULT_EXTRACTION_SNAPSHOT.as_posix(), required)
         mvg._validate_input_freshness(self.root, self.run, state)
 
+    def test_model_excluded_readiness_still_blocks_global_generation_on_drift(self):
+        state = self.prepare()
+        prepared = self.run / "analysis-input"
+        views = load_json(prepared / "task-views/tasks_gameplay.json")
+        requirement = next(row for row in views if row["taskmaster_id"] == 7)["semantic_refs"][0]
+        scope = {"capability": {}, "requirement_ids": [requirement], "cumulative_requirement_ids": [requirement]}
+        base = {"manifest_candidate": {"flows": []}, "coverage_table": [], "entrypoints": [], "tests": []}
+        context = complete_scope_context(prepared, scope, base)
+        self.assertEqual(["7"], context["evidence_selection"]["model_task_ids"])
+        self.assertEqual({"7", "42"}, set(context["evidence_selection"]["global_task_ids"]))
+        excluded = next(task for task in load_json(prepared / "analysis-index.json")["input_envelope"]["chapter5"]["tasks"]
+                        if task["task_id"] == "42")
+        self.assertNotIn(excluded["readiness"]["path"], {row["path"] for row in context["evidence"]})
+        (prepared / excluded["readiness"]["prepared_path"]).write_text("{}", encoding="utf-8")
+        invoke = Mock()
+        with self.assertRaisesRegex(ValueError, "MVG input drift"):
+            generate_append(self.root, state, self.run, invoke_factory=invoke,
+                            before_call=lambda phase: None, checkpoint=lambda ledger: None)
+        invoke.assert_not_called()
+
     def test_run_budget_default_and_explicit_are_frozen_with_source(self):
         state = self.prepare()
         index = load_json(self.run / "analysis-input/analysis-index.json")
@@ -504,9 +524,16 @@ class InputEnvelopeTests(unittest.TestCase):
         self.assertEqual(state["analysis_identity_sha256"], context["input_identity"]["analysis_identity_sha256"])
         self.assertTrue(context["input_identity"]["envelope_sha256"])
         evidence = {row["path"]: row for row in context["evidence"]}
-        for rel in (DEFAULT_EXTRACTION_SNAPSHOT.as_posix(), "logs/ci/chapter5/readiness/task-7.json",
-                    "logs/ci/chapter5/reconciliation/task-7.json"):
+        for rel in ("logs/ci/chapter5/readiness/task-7.json", "logs/ci/chapter5/reconciliation/task-7.json"):
             self.assertEqual((self.root / rel).read_text(encoding="utf-8"), evidence[rel]["text"])
+        extraction = DEFAULT_EXTRACTION_SNAPSHOT.as_posix()
+        self.assertNotIn(extraction, evidence)
+        selection = next(row for row in context["evidence_selection"]["sources"] if row["path"] == extraction)
+        self.assertFalse(selection["selected"])
+        self.assertEqual("outside_model_dependency_scope", selection["reason"])
+        envelope = load_json(prepared / "analysis-index.json")["input_envelope"]
+        self.assertEqual(envelope["chapter5"]["extraction"], context["chapter5"]["extraction"])
+        self.assertEqual(file_sha(self.root / extraction), context["chapter5"]["extraction"]["sha256"])
 
     def test_line_addressed_source_ref_resolves_to_prepared_file(self):
         views_path = self.root / mvg.TASK_VIEWS[1]

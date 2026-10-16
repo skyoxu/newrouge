@@ -93,9 +93,76 @@ class EvidenceTransportTests(unittest.TestCase):
     def test_core_oversize_blocks_before_any_model_call(self):
         module = self.transport()
         context = self.context()
+        probes = []
         def probe(prompt, schema):
+            probes.append(prompt)
             raise ValueError("runner_context_budget_exceeded:core")
         with self.assertRaisesRegex(ValueError, "runner_context_budget_exceeded"):
+            module.plan_transport(context, phase="inspect", probe=probe)
+        self.assertEqual(1, len(probes), "An oversized core cannot shrink by recursively splitting evidence")
+        self.assertNotIn("SOURCE PART ", probes[0])
+
+    def test_core_without_auxiliary_text_still_requires_preflight(self):
+        module = self.transport()
+        context = self.context()
+        context["evidence"] = []
+        for phase in ("inspect", "review"):
+            with self.subTest(phase=phase), self.assertRaisesRegex(ValueError, "runner_input_too_large:core"):
+                module.plan_transport(context, phase=phase, probe=lambda prompt, schema: (
+                    _ for _ in ()).throw(ValueError("runner_input_too_large:core")))
+
+    def test_adjacent_batches_are_coalesced_only_after_final_probe(self):
+        module = self.transport()
+        context = self.context()
+        context["evidence"][0]["text"] = "A" * 2500
+        context["evidence"][1].update(text="B" * 100, sha256="sha256:missing")
+        probes = []
+
+        def probe(prompt, schema):
+            probes.append(prompt)
+            if len(prompt.encode("utf-8")) > 4000:
+                raise ValueError("runner_context_budget_exceeded:fixture")
+            return {"request_sha256": canonical_sha(prompt), "truncation_allowed": False}
+
+        plan = module.plan_transport(context, phase="inspect", probe=probe)
+        # Binary splitting alone produces these three exact parts/batches.
+        # The final two batches can share one request without changing any
+        # source address or part hash.
+        expected_parts = [module.part(context["evidence"][0], 0, 1250),
+                          module.part(context["evidence"][0], 1250, 2500),
+                          module.part(context["evidence"][1])]
+        self.assertEqual(2, len(plan["batches"]))
+        self.assertEqual(2, len(plan["batches"][1]["parts"]))
+        self.assertEqual([], module.plan_errors(context, plan))
+        pieces = [part for batch in plan["batches"] for part in batch["parts"]]
+        self.assertEqual(expected_parts, pieces)
+        self.assertEqual(context["evidence"][0]["text"], "".join(
+            part["text"] for part in pieces if part["path"] == "test.cs"))
+        self.assertEqual(context["evidence"][1]["text"], "".join(
+            part["text"] for part in pieces if part["path"] == "missing.cs"))
+        # The merged request itself was sent through the same probe, rather
+        # than accepted from a byte estimate.
+        for batch in plan["batches"]:
+            prompt = module.audit_prompt(plan, batch["parts"])
+            self.assertIn(prompt, probes)
+            self.assertEqual(canonical_sha(prompt), batch["input_report"]["request_sha256"])
+
+    def test_adjacent_batch_merge_propagates_non_capacity_probe_errors(self):
+        module = self.transport()
+        context = self.context()
+        context["evidence"][0]["text"] = "A" * 2500
+        context["evidence"][1].update(text="B" * 100, sha256="sha256:missing")
+
+        def probe(prompt, schema):
+            payload = json.loads(prompt.split("\n", 1)[1].split("\nSOURCE PART ", 1)[0])
+            parts = payload["parts"]
+            if len(parts) == 2 and parts[0]["start"] == 1250:
+                raise ValueError("runner_isolation_invalid:fixture")
+            if len(prompt.encode("utf-8")) > 4000:
+                raise ValueError("runner_context_budget_exceeded:fixture")
+            return {"request_sha256": canonical_sha(prompt), "truncation_allowed": False}
+
+        with self.assertRaisesRegex(ValueError, "runner_isolation_invalid"):
             module.plan_transport(context, phase="inspect", probe=probe)
 
     def test_schema_dedup_keeps_exact_validation_constraints(self):

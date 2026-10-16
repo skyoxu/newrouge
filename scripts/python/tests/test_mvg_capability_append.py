@@ -765,6 +765,297 @@ class CapabilityAppendTests(unittest.TestCase):
         self.assertEqual("complete source", transport["context"]["evidence"][0]["text"])
         self.assertEqual(["unused/path.cs"], transport["context"]["available_reference_paths"])
 
+    def chapter5_transport_fixture(self, prepared, unrelated=False):
+        chapter5 = {"formal_ready": True, "tasks": []}
+        inventory = []
+        for task_id in ((7, 42, 99) if unrelated else (7, 42)):
+            payload = {"head": "HEAD", "body": "Large fingerprint payload\n" * 25000, "tail": "TAIL"}
+            fingerprint = {"schema_version": "newrouge.chapter5-input-fingerprint.v1",
+                           "payload": payload, "sha256": canonical_sha(payload)}
+            ref = "logs/ci/readiness/task-" + str(task_id) + ".json"
+            source = prepared / "references" / ref
+            source.parent.mkdir(parents=True, exist_ok=True)
+            raw = json.dumps({"head": "SOURCE HEAD", "input_fingerprint": fingerprint,
+                              "middle": "SOURCE MIDDLE", "tail": "SOURCE TAIL"}, indent=2).replace("\n", "\r\n") + "\r\n"
+            source.write_text(raw, encoding="utf-8", newline="")
+            binding = {"path": ref, "sha256": file_sha(source), "required": True,
+                       "prepared_path": "references/" + ref}
+            inventory.append(binding)
+            reconciliation_ref = "logs/ci/reconciliation/task-" + str(task_id) + ".json"
+            reconciliation_source = prepared / "references" / reconciliation_ref
+            atomic_json(reconciliation_source, {"authority_scope": {}})
+            reconciliation = {"path": reconciliation_ref, "sha256": file_sha(reconciliation_source),
+                "required": True, "prepared_path": "references/" + reconciliation_ref}
+            inventory.append(reconciliation)
+            chapter5["tasks"].append({"task_id": str(task_id), "ready": True, "reason": "ready",
+                "readiness": deepcopy(binding), "reconciliation": deepcopy(reconciliation), "input_fingerprint": fingerprint,
+                "source_revision": "fixture", "closure_allowed": True})
+        envelope = {"run_id": "lossless", "chapter5": chapter5, "inventory": inventory}
+        atomic_json(prepared / "analysis-index.json", {"analysis_identity_sha256": "sha256:fixture",
+                                                      "input_envelope": envelope})
+        atomic_json(prepared / "semantic-requirements.v1.json", {"requirements": [
+            {"requirement_id": "FR-A", "source_block_ids": []}]})
+        atomic_json(prepared / "task-views/tasks_back.json", [
+            {"taskmaster_id": tid, "semantic_refs": ["FR-B" if tid == 99 else "FR-A"], "acceptance": []}
+            for tid in ((7, 42, 99) if unrelated else (7, 42))])
+        atomic_json(prepared / "task-master.json", {"master": {"tasks": [
+            {"id": tid, "status": "done"} for tid in ((7, 42, 99) if unrelated else (7, 42))]}})
+        scope = {"capability_id": "CAP-A", "capability": {}, "requirement_ids": ["FR-A"],
+                 "cumulative_requirement_ids": ["FR-A"]}
+        base = {"manifest_candidate": {"flows": []}, "coverage_table": [], "entrypoints": [], "tests": []}
+        return envelope, scope, base
+
+    def test_model_evidence_scope_follows_handoff_owners_acceptance_authority_and_explicit_refs(self):
+        with tempfile.TemporaryDirectory() as directory:
+            prepared = Path(directory)
+            envelope, scope, base = self.chapter5_transport_fixture(prepared, unrelated=True)
+            views = plan_mvg.load_json(prepared / "task-views/tasks_back.json")
+            views[1]["semantic_refs"] = ["FR-B"]
+            views[1]["acceptance"] = ["Preserve the boundary. Refs: acceptance-extra.md"]
+            atomic_json(prepared / "task-views/tasks_back.json", views)
+            base["manifest_candidate"]["flows"] = [{"id": "flow-a", "requirement_ids": ["FR-A"],
+                "task_ids": [7], "test_ids": [], "handoffs": [
+                    {"producer_task": 7, "consumer_task": 42, "owner_task": 42}]}]
+            for ref, roles in (("acceptance-extra.md", ["acceptance_context"]),
+                               ("authority.md", ["chapter5_authority"]),
+                               ("explicit.md", ["explicit_evidence"]), ("unrelated.md", ["task_context"])):
+                source = prepared / "references" / ref
+                source.write_text("HEAD\nMIDDLE\nTAIL\n" + ref, encoding="utf-8", newline="")
+                envelope["inventory"].append({"path": ref, "sha256": file_sha(source), "required": True,
+                    "roles": roles, "prepared_path": "references/" + ref})
+            task = envelope["chapter5"]["tasks"][1]
+            source = prepared / task["reconciliation"]["prepared_path"]
+            atomic_json(source, {"authority_scope": {"adrs": [{"path": "authority.md", "ref": "ADR-TEST"}]}})
+            task["reconciliation"]["sha256"] = file_sha(source)
+            next(row for row in envelope["inventory"] if row["path"] == task["reconciliation"]["path"])["sha256"] = file_sha(source)
+            atomic_json(prepared / "analysis-index.json", {"analysis_identity_sha256": "sha256:fixture", "input_envelope": envelope})
+            frozen = (prepared / "analysis-index.json").read_bytes()
+            context = generation.complete_scope_context(prepared, scope, base)
+            self.assertEqual({"7", "42"}, {row["task_id"] for row in context["chapter5"]["tasks"]})
+            self.assertEqual({7, 42}, {row["id"] for row in context["task_master"]})
+            self.assertEqual(views[1], {key: value for key, value in context["task_views"][1].items() if key != "_source_view"})
+            evidence = {row["path"]: row for row in context["evidence"]}
+            self.assertTrue({"acceptance-extra.md", "authority.md", "explicit.md"} <= set(evidence))
+            self.assertNotIn("unrelated.md", evidence)
+            self.assertTrue(all("HEAD\nMIDDLE\nTAIL" in evidence[ref]["text"]
+                                for ref in ("acceptance-extra.md", "authority.md", "explicit.md")))
+            audit = context["evidence_selection"]
+            self.assertEqual(["7", "42", "99"], audit["global_task_ids"])
+            self.assertEqual(["7", "42"], audit["model_task_ids"])
+            self.assertEqual("outside_model_dependency_scope", next(row["reason"] for row in audit["sources"]
+                if row["path"] == "unrelated.md"))
+            self.assertEqual([], generation.evidence_scope_errors(prepared, scope, base, base, context))
+            for fault in ("source", "task", "selection"):
+                with self.subTest(fault=fault):
+                    changed = deepcopy(context)
+                    if fault == "source":
+                        changed["evidence"] = [row for row in changed["evidence"] if row["path"] != "authority.md"]
+                    elif fault == "task":
+                        changed["chapter5"]["tasks"].pop()
+                    else:
+                        changed["evidence_selection"]["sources"] = []
+                    self.assertEqual(["evidence_transport_scope_changed"],
+                        generation.evidence_scope_errors(prepared, scope, base, base, changed))
+            self.assertEqual(frozen, (prepared / "analysis-index.json").read_bytes())
+            (prepared / "references/acceptance-extra.md").unlink()
+            with self.assertRaisesRegex(ValueError, "mvg_model_required_evidence_missing:acceptance-extra.md"):
+                generation.complete_scope_context(prepared, scope, base)
+
+    def test_model_scope_includes_entrypoint_test_owners_and_every_owner_view(self):
+        for owner_kind in ("entrypoint", "test"):
+            with self.subTest(owner_kind=owner_kind), tempfile.TemporaryDirectory() as directory:
+                prepared = Path(directory)
+                _, scope, base = self.chapter5_transport_fixture(prepared, unrelated=True)
+                rows = plan_mvg.load_json(prepared / "task-views/tasks_back.json")
+                rows[1]["semantic_refs"] = ["FR-B"]
+                atomic_json(prepared / "task-views/tasks_back.json", rows)
+                second_view = {"taskmaster_id": 42, "acceptance": ["Full secondary view acceptance"], "metadata": "preserve"}
+                atomic_json(prepared / "task-views/tasks_gameplay.json", [second_view])
+                base["manifest_candidate"]["flows"] = [{"id": "flow-a", "requirement_ids": ["FR-A"],
+                    "task_ids": [7], "test_ids": ["test-a"]}]
+                if owner_kind == "entrypoint":
+                    base["entrypoints"] = [{"owner_task": 42, "flow_ids": ["flow-a"], "status": "planned"}]
+                else:
+                    base["tests"] = [{"id": "test-a", "owner_task": 42, "state": "planned"}]
+                context = generation.complete_scope_context(prepared, scope, base)
+                self.assertEqual({"7", "42"}, set(context["evidence_selection"]["model_task_ids"]))
+                self.assertIn({**second_view, "_source_view": "tasks_gameplay.json"}, context["task_views"])
+
+    def test_chapter5_payload_references_reconstruct_all_frozen_tasks_and_sources(self):
+        from _mvg_evidence_transport import plan_transport, plan_errors, wire_json
+        with tempfile.TemporaryDirectory() as directory:
+            prepared = Path(directory)
+            envelope, scope, base = self.chapter5_transport_fixture(prepared)
+            frozen = (prepared / "analysis-index.json").read_bytes()
+            context = generation.complete_scope_context(prepared, scope, base)
+            self.assertLess(len(wire_json(context["chapter5"])), 10000)
+            self.assertEqual(2, len(context["chapter5"]["tasks"]))
+            self.assertEqual(envelope["chapter5"], generation.restore_chapter5_projection(
+                context["chapter5"], context["evidence"]))
+            self.assertEqual(canonical_sha(envelope), context["input_identity"]["envelope_sha256"])
+            for original, projected in zip(envelope["chapter5"]["tasks"], context["chapter5"]["tasks"]):
+                fp = projected["input_fingerprint"]
+                self.assertNotIn("payload", fp)
+                self.assertEqual({"path": original["readiness"]["path"],
+                    "sha256": original["readiness"]["sha256"],
+                    "json_pointer": "/input_fingerprint/payload"}, fp["payload_ref"])
+            for phase in ("inspect", "review"):
+                def probe(prompt, schema):
+                    if len(prompt.encode("utf-8")) > generation.INPUT_LIMIT:
+                        raise ValueError("runner_input_too_large:fixture")
+                    return {"request_sha256": canonical_sha(prompt), "truncation_allowed": False}
+                plan = plan_transport(context, phase=phase, probe=probe)
+                self.assertEqual([], plan_errors(context, plan))
+                reduced = generation.synthesis_context(context, {"plan": plan, "audits": []})
+                self.assertEqual(envelope["chapter5"], generation.restore_chapter5_projection(
+                    reduced["chapter5"], context["evidence"]))
+                for source in context["evidence"]:
+                    restored = "".join(part["text"] for batch in plan["batches"] for part in batch["parts"]
+                                       if part["path"] == source["path"])
+                    self.assertEqual(source["text"], restored)
+                    if "/readiness/" in source["path"]:
+                        for sentinel in ("SOURCE HEAD", "SOURCE MIDDLE", "SOURCE TAIL"):
+                            self.assertIn(sentinel, restored)
+            self.assertEqual(frozen, (prepared / "analysis-index.json").read_bytes())
+
+    def test_historical_full_transport_recovers_against_frozen_baseline_projection(self):
+        """A pre-selection proof is accepted only after an independent full projection check."""
+        with tempfile.TemporaryDirectory() as directory:
+            prepared = Path(directory)
+            envelope, scope, base = self.chapter5_transport_fixture(prepared, unrelated=True)
+            current = generation.complete_scope_context(prepared, scope, base)
+            # Build the historical payload shape from frozen files, retaining
+            # the baseline's full Chapter 5 and Path.read_text newline rules.
+            from _mvg_input_envelope import input_identity
+            legacy = {"input_identity": input_identity(prepared), "chapter5": deepcopy(envelope["chapter5"]),
+                "scope": deepcopy(scope), "requirements": [{"requirement_id": "FR-A", "source_block_ids": []}],
+                "source_blocks": [], "task_views": [
+                    {"taskmaster_id": tid, "semantic_refs": ["FR-A"], "acceptance": [],
+                     "_source_view": "tasks_back.json"} for tid in (7, 42)],
+                "task_master": [{"id": tid, "status": "done"} for tid in (7, 42)], "capabilities": {},
+                "available_reference_paths": sorted(row["path"] for row in envelope["inventory"]),
+                "evidence": [{"path": row["path"], "sha256": row["sha256"],
+                    "text": (prepared / row["prepared_path"]).read_text(encoding="utf-8")}
+                    for row in sorted(envelope["inventory"], key=lambda row: row["path"])]}
+            self.assertEqual([], generation.evidence_scope_errors(
+                prepared, scope, base, base, legacy))
+            self.assertEqual(envelope["chapter5"], legacy["chapter5"])
+            readiness_text = next(row for row in legacy["evidence"]
+                if row["path"] == envelope["chapter5"]["tasks"][0]["readiness"]["path"])["text"]
+            self.assertIn("\n", readiness_text)
+            self.assertNotIn("\r", readiness_text)
+            before_bytes = (prepared / "analysis-index.json").read_bytes()
+            before_hash = canonical_sha(legacy)
+            # New scoped data cannot erase its selection audit and then enter
+            # the historical compatibility branch.
+            tampered = deepcopy(current)
+            tampered.pop("evidence_selection")
+            self.assertEqual(["evidence_transport_scope_selection_missing"],
+                             generation.evidence_scope_errors(prepared, scope, base, base, tampered))
+            # Historical bytes and hashes are bound: changing a readiness
+            # payload is rejected even if the shape remains otherwise valid.
+            for field in ("text", "hash", "task", "scope", "identity", "capabilities", "paths"):
+                with self.subTest(field=field):
+                    changed = deepcopy(legacy)
+                    if field == "text":
+                        changed["evidence"][0]["text"] += "DRIFT"
+                    elif field == "hash":
+                        changed["evidence"][0]["sha256"] = "sha256:drift"
+                    elif field == "task":
+                        changed["chapter5"]["tasks"].pop()
+                    elif field == "scope":
+                        changed["scope"]["capability_id"] = "CAP-OTHER"
+                    elif field == "identity":
+                        changed["input_identity"]["run_id"] = "other-run"
+                    elif field == "capabilities":
+                        changed["capabilities"] = {"drift": True}
+                    else:
+                        changed["available_reference_paths"].pop()
+                    self.assertEqual(["evidence_transport_scope_changed"],
+                                     generation.evidence_scope_errors(prepared, scope, base, base, changed))
+            self.assertEqual(before_bytes, (prepared / "analysis-index.json").read_bytes())
+            self.assertEqual(before_hash, canonical_sha(legacy))
+            # Exercise the complete historical proof reader as well as the
+            # frozen scope check. Recovery must not rewrite any old evidence.
+            import _mvg_evidence_transport as transport
+            context = dict(legacy, accepted_proposal=base, proposal=base)
+            plan = transport.plan_transport(context, phase="review", probe=lambda prompt, schema: {
+                "request_sha256": canonical_sha(prompt), "truncation_allowed": False})
+            audits = []
+            for batch in plan["batches"]:
+                audit = {"schema_version": transport.AUDIT_SCHEMA, "phase": "review",
+                    "context_sha256": plan["context_sha256"], "batch_sha256": canonical_sha(batch["parts"]),
+                    "reports": {part["part_id"]: {"part_id": part["part_id"], "verdict": "context_only",
+                        "requirement_ids": [], "rationale": "Historical full source", "facts": [],
+                        "citations": [], "hard_issues": []} for part in batch["parts"]}}
+                audits.append({"audit": audit, "execution": {"backend_info": {
+                    "schema_version": RUNNER_SCHEMA, "filesystem_scope": "workspace_only",
+                    "fresh_session_per_invocation": True, "can_read_outside_workspace": False,
+                    "model": "fixture", "model_tools": []}, "output_sha256": "sha256:output",
+                    "audit_sha256": canonical_sha(audit), "receipt": {"model": "fixture", "model_tools": [],
+                    "output_sha256": "sha256:output", "input_integrity": batch["input_report"]}}})
+            proof = {"context": context, "plan": plan, "audits": audits}
+            proof_hash = canonical_sha(proof)
+            self.assertEqual([], transport.transport_proof_errors(proof, scope=scope, base=base, proposal=base))
+            self.assertEqual([], generation.evidence_scope_errors(prepared, scope, base, base, context))
+            self.assertEqual(proof_hash, canonical_sha(proof))
+
+    def test_chapter5_projection_rejects_missing_hash_drift_and_payload_mismatch_before_probe(self):
+        for fault in ("missing", "hash", "payload", "pointer"):
+            with self.subTest(fault=fault), tempfile.TemporaryDirectory() as directory:
+                prepared = Path(directory)
+                envelope, scope, base = self.chapter5_transport_fixture(prepared)
+                task = envelope["chapter5"]["tasks"][0]
+                source = prepared / task["readiness"]["prepared_path"]
+                if fault == "missing":
+                    source.unlink()
+                elif fault == "hash":
+                    source.write_text("{}", encoding="utf-8")
+                elif fault == "payload":
+                    task["input_fingerprint"]["payload"]["head"] = "MISMATCH"
+                    atomic_json(prepared / "analysis-index.json", {"analysis_identity_sha256": "sha256:fixture",
+                                                                  "input_envelope": envelope})
+                else:
+                    atomic_json(source, {"input_fingerprint": {}})
+                    task["readiness"]["sha256"] = file_sha(source)
+                    envelope["inventory"][0]["sha256"] = file_sha(source)
+                    atomic_json(prepared / "analysis-index.json", {"analysis_identity_sha256": "sha256:fixture",
+                                                                  "input_envelope": envelope})
+                with patch.object(generation, "preflight_runner_payload") as probe:
+                    with self.assertRaisesRegex(ValueError, "mvg_(chapter5_payload_source_|model_required_evidence_)"):
+                        generation.complete_scope_context(prepared, scope, base)
+                    probe.assert_not_called()
+
+    def test_chapter5_reference_drift_blocks_transport_and_admission_revalidation(self):
+        from _mvg_evidence_transport import plan_errors, plan_transport, transport_proof_errors
+        with tempfile.TemporaryDirectory() as directory:
+            prepared = Path(directory)
+            _, scope, base = self.chapter5_transport_fixture(prepared)
+            context = generation.complete_scope_context(prepared, scope, base)
+            context.update(accepted_proposal=base, proposal=base)
+            for fault in ("missing", "content", "pointer", "reference"):
+                with self.subTest(fault=fault):
+                    changed = deepcopy(context)
+                    fingerprint = changed["chapter5"]["tasks"][0]["input_fingerprint"]
+                    if fault == "missing":
+                        changed["evidence"].pop(0)
+                    elif fault == "content":
+                        changed["evidence"][0]["text"] += "DRIFT"
+                    elif fault == "pointer":
+                        fingerprint["payload_ref"]["json_pointer"] = "/wrong"
+                    else:
+                        fingerprint.pop("payload_ref")
+                    with patch.object(generation, "preflight_runner_payload") as probe:
+                        with self.assertRaisesRegex(ValueError, "mvg_chapter5_payload_source_"):
+                            plan_transport(changed, phase="review", probe=probe)
+                        probe.assert_not_called()
+                    plan = {"phase": "review", "batches": []}
+                    self.assertTrue(any(code.startswith("mvg_chapter5_payload_source_")
+                                        for code in plan_errors(changed, plan)))
+                    proof = {"context": changed, "plan": plan, "audits": []}
+                    self.assertTrue(any(code.startswith("mvg_chapter5_payload_source_") for code in
+                        transport_proof_errors(proof, scope=scope, base=base, proposal=base)))
+
     def exercise_public_generation(self, planned_verification=False, fault=None, failed_generations=1,
                                    drift_after_first_dispatch=False, drift_after_final_dispatch=False,
                                    public_candidate_drift=False, coordinator_case=None, multi_route=False, legacy_next=False,
@@ -1070,7 +1361,15 @@ class CapabilityAppendTests(unittest.TestCase):
                     evidence = {row["path"]: row for row in transport["context"]["evidence"]}
                     self.assertTrue(set(refs) <= inventory)
                     self.assertTrue(all(len(evidence[ref]["text"]) > 50000 for ref in refs))
-                    self.assertIn(chapter5.DEFAULT_EXTRACTION_SNAPSHOT.as_posix(), inventory)
+                    extraction = chapter5.DEFAULT_EXTRACTION_SNAPSHOT.as_posix()
+                    self.assertNotIn(extraction, inventory)
+                    selection = next(row for row in transport["context"]["evidence_selection"]["sources"]
+                                     if row["path"] == extraction)
+                    self.assertFalse(selection["selected"])
+                    self.assertEqual("outside_model_dependency_scope", selection["reason"])
+                    frozen = plan_mvg.load_json(prepared / "analysis-index.json")["input_envelope"]["chapter5"]
+                    self.assertEqual(frozen["extraction"], transport["context"]["chapter5"]["extraction"])
+                    self.assertEqual(file_sha(root / extraction), frozen["extraction"]["sha256"])
                 corrupt_transport = deepcopy(proof)
                 corrupt_transport["records"][0]["proof"]["evidence_transport"]["audits"].pop()
                 self.assertTrue(plan_mvg.candidate_admission_errors(root, state, result["accepted"], corrupt_transport))
