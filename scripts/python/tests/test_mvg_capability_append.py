@@ -1304,7 +1304,8 @@ class CapabilityAppendTests(unittest.TestCase):
                             reports[part["part_id"]] = {"part_id": part["part_id"], "verdict": "relevant",
                                 "requirement_ids": [payload["core"]["requirements"][0]["requirement_id"]],
                                 "rationale": "Complete source inspected", "facts": ["Evidence supports runtime boundary"],
-                                "citations": [1], "hard_issues": []}
+                                "citations": [""] if part.get("citation_format") == "json_pointer" else [1],
+                                "hard_issues": []}
                         value["reports"] = reports
                     elif value["schema_version"] == plan_mvg.MVG_SELECTION_SCHEMA:
                         labels = props["candidate_reviews"]["items"]["properties"]["label"]["enum"]

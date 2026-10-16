@@ -79,6 +79,102 @@ class EvidenceTransportTests(unittest.TestCase):
         self.assertNotIn("newrouge.mvg-lossless-context.v1", legacy_prompt)
         self.assertIn("SOURCE PART ", legacy_prompt)
 
+    def test_inspection_prompt_delivers_only_related_complete_task_rows(self):
+        module = self.transport()
+        context = self.context()
+        context["evidence_scope_schema"] = "newrouge.mvg-scoped-evidence.v3"
+        repeated = {"taskmaster_id": 7, "status": "done", "acceptance": ["same acceptance " * 100],
+                    "test_refs": ["test.cs"]}
+        context["task_views"] = [
+            {**repeated, "_source_view": "back"},
+            {**repeated, "_source_view": "gameplay"},
+            {"taskmaster_id": 8, "status": "pending", "acceptance": ["different"], "test_refs": ["other.cs"]},
+        ]
+        context["evidence"].append({"path": "other.cs", "sha256": "sha256:other", "text": "Other task evidence"})
+        plan = module.plan_transport(context, phase="inspect", probe=lambda prompt, schema: {
+            "request_sha256": canonical_sha(prompt), "truncation_allowed": False})
+        parts = [p for b in plan["batches"] for p in b["parts"] if p["path"] == "test.cs"]
+        encoded = json.loads(module.audit_prompt(plan, parts).splitlines()[-1])
+        payload = module.restore_lossless_context(encoded)
+        self.assertEqual(context["task_views"][:2], payload["core"]["task_views"])
+        self.assertEqual(context["requirements"], payload["core"]["requirements"])
+        self.assertEqual(context["source_blocks"], payload["core"]["source_blocks"])
+        self.assertEqual(context["task_views"], plan["core"]["task_views"])
+
+    def test_scoped_inspector_unknown_dependency_keeps_all_authority(self):
+        module = self.transport()
+        context = self.context()
+        context["evidence_scope_schema"] = "newrouge.mvg-scoped-evidence.v3"
+        context["task_views"].append({"taskmaster_id": 8, "acceptance": ["Unclassified authority tail"]})
+        plan = module.plan_transport(context, phase="review", probe=lambda prompt, schema: {
+            "request_sha256": canonical_sha(prompt), "truncation_allowed": False})
+        payload = module.restore_lossless_context(json.loads(module.audit_prompt(
+            plan, plan["batches"][0]["parts"]).splitlines()[-1]))
+        self.assertEqual(context["task_views"], payload["core"]["task_views"])
+
+    def test_scoped_inspector_machine_checks_union_of_delivered_authority(self):
+        module = self.transport()
+        context = self.context()
+        context["evidence_scope_schema"] = "newrouge.mvg-scoped-evidence.v3"
+        context["task_views"] = [{"taskmaster_id": 7, "test_refs": ["test.cs"]},
+                                 {"taskmaster_id": 8, "test_refs": ["never-selected.cs"]}]
+        with self.assertRaisesRegex(ValueError, "evidence_inspection_authority_incomplete"):
+            module.plan_transport(context, phase="inspect", probe=lambda prompt, schema: {
+                "request_sha256": canonical_sha(prompt), "truncation_allowed": False})
+
+    def test_scoped_inspector_dependencies_shared_sources_and_explicit_fallback(self):
+        from _mvg_inspection_scope import inspection_core
+        context = {"evidence_scope_schema": "newrouge.mvg-scoped-evidence.v3",
+            "task_views": [{"taskmaster_id": 1, "test_refs": ["a.cs"], "depends_on": [2]},
+                           {"taskmaster_id": 2, "test_refs": ["b.cs"]},
+                           {"taskmaster_id": 3, "test_refs": ["b.cs"]}],
+            "task_master": [{"id": n, "unknown": [True, 1, None]} for n in (1, 2, 3)]}
+        reduced = inspection_core(context, [{"path": "a.cs"}])
+        self.assertEqual(context["task_views"][:2], reduced["task_views"])
+        self.assertEqual(context["task_master"][:2], reduced["task_master"])
+        self.assertEqual(context["task_views"][1:], inspection_core(context, [{"path": "b.cs"}])["task_views"])
+        context["evidence_selection"] = {"sources": [{"path": "a.cs", "reason": "explicit_evidence,task_test_refs"}]}
+        self.assertEqual(context, inspection_core(context, [{"path": "a.cs"}]))
+
+    def test_scoped_inspector_keeps_unattributed_rows_as_unknown_authority(self):
+        from _mvg_inspection_scope import inspection_core
+        context = {"evidence_scope_schema": "newrouge.mvg-scoped-evidence.v3",
+            "task_views": [{"taskmaster_id": 1, "test_refs": ["a.cs"]},
+                           {"semantic_refs": ["FR-B"]}],
+            "task_master": [{"id": 1}, {"id": 2}]}
+        reduced = inspection_core(context, [{"path": "a.cs"}])
+        self.assertEqual(context["task_views"], reduced["task_views"])
+
+    def test_scoped_inspector_keeps_interleaved_views_types_nulls_and_unknown_fields(self):
+        from _mvg_inspection_scope import inspection_core
+        module = self.transport()
+        rows = [{"taskmaster_id": 1, "_source_view": None, "test_refs": ["a.cs"], "flag": True},
+                {"taskmaster_id": 2, "test_refs": ["b.cs"], "flag": 1},
+                {"taskmaster_id": "1", "_source_view": "unknown", "test_refs": ["a.cs"], "flag": None}]
+        context = {"evidence_scope_schema": "newrouge.mvg-scoped-evidence.v3", "task_views": rows}
+        selected = inspection_core(context, [{"path": "a.cs"}])["task_views"]
+        encoded = module.lossless_context(selected)
+        self.assertEqual(module.wire_json([rows[0], rows[2]]), module.wire_json(module.restore_lossless_context(encoded)))
+
+    def test_scoped_synthesis_keeps_original_task_rows_for_exact_lossless_codec(self):
+        import _mvg_capability_generation as generation
+        context = self.context()
+        context["evidence_scope_schema"] = "newrouge.mvg-scoped-evidence.v3"
+        context["task_views"] = [{"taskmaster_id": 1, "flag": True}, {"taskmaster_id": "1", "flag": 1},
+                                 {"taskmaster_id": None, "_source_view": "unknown"}, {"flag": None}]
+        reduced = generation.synthesis_context(context, {"plan": {"inventory": [], "context_sha256": "fixture"}, "audits": []})
+        self.assertEqual(context["task_views"], reduced["task_views"])
+
+    def test_scoped_core_only_transport_needs_no_inspection_union(self):
+        module = self.transport()
+        context = self.context()
+        context["evidence_scope_schema"] = "newrouge.mvg-scoped-evidence.v3"
+        context["evidence"] = []
+        plan = module.plan_transport(context, phase="inspect", probe=lambda prompt, schema: {
+            "request_sha256": canonical_sha(prompt), "truncation_allowed": False})
+        self.assertEqual([], plan["batches"])
+        self.assertEqual([], module.plan_errors(context, plan))
+
     def test_new_model_source_lines_have_explicit_exact_citation_addresses(self):
         module = self.transport()
         context = self.context()

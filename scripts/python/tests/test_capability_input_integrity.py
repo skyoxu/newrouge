@@ -20,6 +20,7 @@ from _planning_skill_common import _write_model_batches, atomic_json, file_sha, 
 import codex_isolated_model_runner as codex
 import copilot_isolated_model_runner as copilot
 import openai_isolated_model_runner as api
+import _capability_input_integrity as integrity
 
 
 class CapabilityInputIntegrityTests(unittest.TestCase):
@@ -46,6 +47,9 @@ class CapabilityInputIntegrityTests(unittest.TestCase):
 
     def parts(self):
         return api.batched_workspace_parts(self.root, prompt_path=self.prompt, output_path=self.output)
+
+    def test_codex_transport_limit_is_two_megabytes(self):
+        self.assertEqual(2 * 1024 * 1024, integrity.CODEX_MAX_TURN_BYTES)
 
     def invoke(self):
         def fake_exec(command, **kwargs):

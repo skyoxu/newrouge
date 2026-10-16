@@ -342,6 +342,113 @@ def invoke(checkout: Path, script: str, arguments: list[str], log: Path) -> dict
         raise ValueError('Planning stage returned an invalid result') from exc
 
 
+def _refresh_capability_knowledge(root: Path, checkout: Path, job: dict) -> dict:
+    """Refresh the workspace Chapter 5 topology after a Capability apply.
+
+    Capability planning runs in an isolated worktree.  The planner's result is
+    therefore not visible to the Knowledge workspace until the registered
+    Chapter Knowledge refresh hook consumes that same worktree.  Refreshing the
+    worktree first keeps the source/Requirement/Capability hashes coherent; the
+    runtime snapshots are copied back only after a successful, closed refresh.
+    This never publishes main or changes task authority.
+    """
+    import shutil
+    from refresh_chapter_knowledge import run as refresh_knowledge
+
+    topology = checkout / TOPOLOGY_ROOT
+    evidence = checkout / 'logs/ci/task-generation'
+    # Capability apply rebinds the Chapter 5 fingerprint for every task whose
+    # capability_refs changed.  The global ``latest.json`` pointer may still
+    # refer to an older task, so close the refresh against a re-bound pair.
+    apply_summary = load_json(
+        checkout / 'logs/ci/capability-planning' / job['job_id'] / 'apply-summary.json', {}
+    )
+    changed_task_ids = [str(value) for value in apply_summary.get('changed_task_ids', [])]
+    candidates = evidence / 'task-candidates.enriched.json'
+    # Chapter 5 closure does not inspect the Chapter 3 candidate body, but the
+    # refresh contract requires the path to exist.  Hydrate it from the parent
+    # workspace when available; otherwise use an explicit empty source5 view.
+    if not candidates.is_file():
+        source_candidates = root / 'logs/ci/task-generation/task-candidates.enriched.json'
+        candidates.parent.mkdir(parents=True, exist_ok=True)
+        if source_candidates.is_file():
+            shutil.copyfile(source_candidates, candidates)
+        else:
+            atomic_json(candidates, {'schema_version': 'task-generation.candidates.v1', 'candidates': []})
+
+    # Validate every re-bound task, but build the expensive workspace topology
+    # once.  All task-scoped readiness files share the same source/ledger and
+    # Capability projection; one current pair is sufficient for the view after
+    # the complete set has passed its freshness gate.
+    if changed_task_ids:
+        from chapter5_semantic_reconciliation import load_task_readiness
+        for task_id in changed_task_ids:
+            ready, _payload, reason = load_task_readiness(checkout, task_id)
+            if not ready:
+                raise ValueError(f'Capability Knowledge refresh readiness blocked:{task_id}:{reason}')
+    task_id = changed_task_ids[0] if changed_task_ids else None
+    reconciliation = checkout / 'logs/ci/chapter5/reconciliation' / (
+        f'task-{task_id}.json' if task_id else 'latest.json'
+    )
+    readiness = checkout / 'logs/ci/chapter5/readiness' / (
+        f'task-{task_id}.json' if task_id else 'latest.json'
+    )
+    summary = refresh_knowledge(
+        checkout,
+        source='chapter5',
+        trigger_run_id=f'{job["job_id"]}:chapter5-knowledge-refresh:{task_id or "latest"}',
+        refresh_local=True,
+        write_planning=False,
+        publish_if_eligible=False,
+        triplet_status='unknown',
+        source_manifest_path=evidence / 'source-manifest.v1.json',
+        ledger_path=evidence / 'source-blocks.v1.json',
+        semantics_path=evidence / 'semantic-requirements.v1.json',
+        capabilities_path=topology / 'capabilities.v1.json',
+        edges_path=topology / 'topology-edges.v1.json',
+        candidates_path=candidates,
+        report_path=evidence / 'semantic-conservation-report.json',
+        reconciliation_path=reconciliation,
+        readiness_path=readiness,
+    )
+    if summary.get('closure_passed') is not True or summary.get('local_refresh_status') not in {
+        'stable_refreshed', 'stable_reused'
+    }:
+        raise ValueError(
+            'Capability Knowledge refresh did not produce a stable workspace topology: '
+            + compact_error(json.dumps(summary, ensure_ascii=False))
+        )
+
+    runtime = checkout / 'logs/ci/project-health-knowledge/topology'
+    target = root / 'logs/ci/project-health-knowledge/topology'
+    copied: list[str] = []
+    for name in (
+        'workspace-last-attempt.json', 'workspace-latest.json',
+        'workspace-latest-successful.json', 'workspace-latest-stabilized.json',
+    ):
+        source = runtime / name
+        if not source.is_file():
+            continue
+        target_path = target / name
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+        temporary = target_path.with_name(target_path.name + '.tmp')
+        shutil.copyfile(source, temporary)
+        temporary.replace(target_path)
+        copied.append((target_path.relative_to(root)).as_posix())
+    if not copied:
+        raise ValueError('Capability Knowledge refresh produced no workspace topology snapshot')
+    return {
+        'status': 'refreshed',
+        'source': 'chapter5',
+        'local_refresh_status': summary.get('local_refresh_status'),
+        'closure_passed': summary.get('closure_passed'),
+        'topology_revision': summary.get('topology_revision'),
+        'trigger_run_id': summary.get('trigger_run_id'),
+        'task_ids': changed_task_ids,
+        'paths': copied,
+    }
+
+
 def runner_path() -> Path:
     configured = os.environ.get('SC_KNOWLEDGE_PLANNING_RUNNER')
     if configured:
@@ -752,6 +859,13 @@ def run_job(root: Path, job: dict) -> dict:
                 raise ValueError('Capability review found no valid winner; inspect the retained review')
             if stage == 'align' and result.get('resolved') is not True:
                 raise ValueError('Capability ID alignment needs explicit reviewed decisions; existing data is preserved')
+            if action == 'capability' and stage == 'apply':
+                # Apply updates the derived Capability projection inside the
+                # isolated checkout. Refresh Chapter 5 Knowledge before
+                # publishing the planning result so workspace consumers and
+                # the subsequent MVG job see the same selected bytes.
+                job['knowledge_refresh'] = _refresh_capability_knowledge(root, checkout, job)
+                atomic_json(directory / 'job.json', job)
         # Errors while building or publishing the read-only result are not an
         # invocation-stage interruption.  Keep that distinction so durable
         # model evidence is never mistaken for a safe Apply retry.
@@ -759,6 +873,8 @@ def run_job(root: Path, job: dict) -> dict:
         stage = 'publish'
         validate_checkout(root, checkout, job['revision'])
         result = build_result(checkout, job)
+        if action == 'capability':
+            result['knowledge_refresh'] = job.get('knowledge_refresh')
         atomic_json(directory / 'result.json', result)
         owned_paths = set(git(checkout, 'diff', '--name-only', 'HEAD').splitlines())
         # Formal planning outputs are intentionally ignored by Git. Keep their

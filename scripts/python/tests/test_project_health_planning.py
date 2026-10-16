@@ -787,6 +787,13 @@ class ProjectHealthPlanningTests(unittest.TestCase):
             result = planning.run_job(self.root, cap_job)
             self.assertEqual('completed', result['status'], result)
             self.assertEqual(5, len(invocations))
+            stored_capability_job = planning.read_job(self.root, cap_job['job_id'])
+            refresh = stored_capability_job.get('knowledge_refresh') or {}
+            self.assertEqual('refreshed', refresh.get('status'))
+            self.assertTrue(refresh.get('closure_passed'))
+            self.assertTrue(
+                (self.root / 'logs/ci/project-health-knowledge/topology/workspace-latest-stabilized.json').is_file()
+            )
             topology = planning.generated_view(self.root, 'capability')
             self.assertEqual(2, len(topology['nodes']['capabilities']))
             self.assertEqual(self.revision, topology['identity']['revision'])

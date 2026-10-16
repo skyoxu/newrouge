@@ -61,7 +61,7 @@ class EvidenceScopeProjectionTests(unittest.TestCase):
             self.assertEqual([doc["topology_edges"][0], doc["topology_edges"][1], doc["topology_edges"][3]], projected["topology_edges"])
             self.assertEqual(doc["other_metadata"], projected["other_metadata"])
             self.assertNotIn("FOREIGN GLOBAL ROW", wire_json(wire))
-            self.assertEqual("newrouge.mvg-scoped-evidence.v2", context["evidence_scope_schema"])
+            self.assertEqual("newrouge.mvg-scoped-evidence.v3", context["evidence_scope_schema"])
             audit = row["model_projection"]
             self.assertEqual("json_projection", audit["citation_space"])
             self.assertEqual("/findings/1", audit["excluded_rows"][0]["json_pointer"])
@@ -121,6 +121,16 @@ class EvidenceScopeProjectionTests(unittest.TestCase):
             self.assertEqual([], generation.evidence_scope_errors(prepared, scope, base, base, legacy))
             legacy["evidence"][0]["text"] += "DRIFT"
             self.assertTrue(generation.evidence_scope_errors(prepared, scope, base, base, legacy))
+
+    def test_v2_scope_remains_reconstructible_without_inspector_narrowing(self):
+        from _mvg_inspection_scope import inspection_core
+        with tempfile.TemporaryDirectory() as directory:
+            prepared = Path(directory)
+            _, _, _, scope, base = self.fixture(prepared)
+            context = generation.complete_scope_context(prepared, scope, base,
+                scope_schema="newrouge.mvg-scoped-evidence.v2")
+            self.assertEqual([], generation.evidence_scope_errors(prepared, scope, base, base, context))
+            self.assertEqual(context, inspection_core(context, [{"path": "unknown.cs"}]))
 
     def test_ambiguous_record_ownership_and_cross_scope_boundaries_remain_complete(self):
         with tempfile.TemporaryDirectory() as directory:

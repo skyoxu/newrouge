@@ -257,8 +257,9 @@ def complete_scope_context(prepared, scope, base, proposal=None, *, scope_schema
     import plan_mvg as pm
     from _mvg_input_envelope import input_identity, _reference_path, _acceptance_refs, _looks_like_path
     from _mvg_reconciliation_projection import SCOPE_SCHEMA, LEGACY_SCOPE_SCHEMA, project_source
-    scope_schema = SCOPE_SCHEMA if scope_schema is None else scope_schema
-    if scope_schema not in {SCOPE_SCHEMA, LEGACY_SCOPE_SCHEMA}:
+    from _mvg_inspection_scope import SCOPE_SCHEMA as CURRENT_SCOPE_SCHEMA
+    scope_schema = CURRENT_SCOPE_SCHEMA if scope_schema is None else scope_schema
+    if scope_schema not in {CURRENT_SCOPE_SCHEMA, SCOPE_SCHEMA, LEGACY_SCOPE_SCHEMA}:
         raise ValueError("mvg_evidence_scope_schema_invalid")
     semantics = load_json(prepared / "semantic-requirements.v1.json", {})
     rids = set(scope["requirement_ids"])
@@ -365,10 +366,11 @@ def complete_scope_context(prepared, scope, base, proposal=None, *, scope_schema
                 evidence.append({"path": ref, "sha256": file_sha(path), "text": source.read()})
             # Explicit/claimed file references require the complete document.
             # Narrow only reconciliation selected as readiness context alone.
-            if (scope_schema == SCOPE_SCHEMA and "selected_chapter5_reconciliation" in dependencies[ref]
+            if (scope_schema in {CURRENT_SCOPE_SCHEMA, SCOPE_SCHEMA} and "selected_chapter5_reconciliation" in dependencies[ref]
                     and dependencies[ref] == {"selected_chapter5_reconciliation"}):
                 evidence[-1] = project_source(evidence[-1], requirement_ids=rids,
-                    task_ids=tids, source_block_ids=block_ids, capability_ids=[scope["capability_id"]])
+                    task_ids=tids, source_block_ids=block_ids,
+                    capability_ids=[scope.get("capability_id", "")])
         else:
             if ref in necessary:
                 raise ValueError("mvg_model_required_evidence_missing:" + ref)
@@ -380,7 +382,7 @@ def complete_scope_context(prepared, scope, base, proposal=None, *, scope_schema
         "sources": [{"path": ref, "selected": ref in dependencies,
             "reason": ",".join(sorted(dependencies[ref])) if ref in dependencies else "outside_model_dependency_scope"}
             for ref in sorted(set(inventory) | set(dependencies))]}
-    if scope_schema == SCOPE_SCHEMA:
+    if scope_schema in {CURRENT_SCOPE_SCHEMA, SCOPE_SCHEMA}:
         evidence_hashes = {row["path"]: row.get("sha256") for row in evidence}
         for row in selection["sources"]:
             row["sha256"] = inventory.get(row["path"], {}).get("sha256") or evidence_hashes.get(row["path"])
@@ -472,7 +474,8 @@ def evidence_scope_errors(prepared, scope, base, proposal, context):
         # selection in such a context is deletion/tampering, never a legacy
         # format, and must fail closed.
         from _mvg_reconciliation_projection import SCOPE_SCHEMA, LEGACY_SCOPE_SCHEMA
-        if context.get("evidence_scope_schema") in {SCOPE_SCHEMA, LEGACY_SCOPE_SCHEMA}:
+        from _mvg_inspection_scope import SCOPE_SCHEMA as CURRENT_SCOPE_SCHEMA
+        if context.get("evidence_scope_schema") in {CURRENT_SCOPE_SCHEMA, SCOPE_SCHEMA, LEGACY_SCOPE_SCHEMA}:
             if "evidence_selection" not in context:
                 return ["evidence_transport_scope_selection_missing"]
             expected = complete_scope_context(prepared, scope, base, proposal,
@@ -699,7 +702,10 @@ def synthesis_context(payload, transport):
     """Build a compact model view while retaining complete source text in transport."""
     reduced = deepcopy(payload)
     reduced["evidence"] = deepcopy(transport["plan"]["inventory"])
-    reduced["task_views"] = _compact_task_views(reduced.get("task_views", []))
+    if payload.get("evidence_scope_schema") != "newrouge.mvg-scoped-evidence.v3":
+        # Preserve historical synthesis hashes. New contexts use the existing
+        # typed, ordered lossless codec rather than a second grouping format.
+        reduced["task_views"] = _compact_task_views(reduced.get("task_views", []))
     # Exact source refs remain in the task views and evidence inventory. The
     # repository-wide names-only index remains in transport for local checks.
     reduced.pop("available_reference_paths", None)
@@ -955,8 +961,8 @@ def generate_append(root, state, candidate_root, *, invoke_factory, before_call,
         if selection is not None:
             atomic_json(candidate_root / "capability-append/evidence-selections" / phase /
                         (canonical_sha(selection).split(":")[-1] + ".json"), selection)
-        from _mvg_evidence_transport import ENCODING_INSTRUCTION, lossless_context
-        prompt = instruction + ENCODING_INSTRUCTION + wire_json(lossless_context(model_context(payload)))
+        from _mvg_evidence_transport import encode_model_context
+        prompt = instruction + encode_model_context(model_context(payload))
         try:
             preflight(prompt, schema, output_name)
             check_cost(phase, 0, payload)
@@ -1030,8 +1036,7 @@ def generate_append(root, state, candidate_root, *, invoke_factory, before_call,
             "Inspector facts are derived evidence, not new requirements or runtime proof. Citation line "
             "addresses remain bound to immutable source parts and are rechecked locally; do not reproduce "
             "or invent quote text. Complete source text, full task records, path inventory and exact citation "
-            "lines remain in the hash-bound transport proof.\n" + ENCODING_INSTRUCTION +
-            wire_json(lossless_context(reduced)))
+            "lines remain in the hash-bound transport proof.\n" + encode_model_context(reduced))
         preflight(prompt, schema, output_name)
         return prompt, transport
 

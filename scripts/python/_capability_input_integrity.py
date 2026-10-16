@@ -10,7 +10,9 @@ from typing import Any
 from _planning_skill_common import atomic_json, canonical_sha, file_sha, load_json, repo_path
 
 DEFAULT_MAX_INPUT_TOKENS = 96000
-CODEX_MAX_TURN_BYTES = 1024 * 1024
+# Keep a hard bound for the Codex text transport while allowing the complete
+# current Capability evidence bundle (without clipping source or task fields).
+CODEX_MAX_TURN_BYTES = 2 * 1024 * 1024
 REPORT_NAME = 'runner-input-integrity.json'
 
 
