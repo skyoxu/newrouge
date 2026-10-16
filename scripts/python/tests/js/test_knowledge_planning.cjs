@@ -8,7 +8,7 @@ const source = name => fs.readFileSync(path.join(root, 'scripts/python', name), 
 
 class Element {
   constructor(tag = 'div') {
-    this.tag = tag; this.children = []; this.dataset = {}; this.listeners = {};
+    this.tag = tag; this.tagName = tag.toUpperCase(); this.children = []; this.dataset = {}; this.listeners = {};
     this.disabled = false; this._value = ''; this.textContent = ''; this.attributes = {}; this.style = {};
     this.classList = {add() {}};
   }
@@ -185,6 +185,35 @@ async function operationLockPreservesBusinessState() {
   assert.equal(run.disabled, true, 'The planning-result runtime prohibition must survive unlock');
 }
 
-(async () => { await compactResults(); await topologyButton(); await mvgButton(); await slowCommittedProgressAndClear(); await operationLockPreservesBusinessState();
+async function committedProgressPreservesExpandedDetails() {
+  let epoch = 0, count = 1;
+  const {context, controls} = harness(async url => {
+    if (url.endsWith('/mvg-progress')) return response({epoch, completed: count, total: 3,
+      status: 'partial_planning', sha256: `epoch-${epoch}-count-${count}`,
+      items: [{capability_id: 'CAP-a', provenance: 'new'}],
+      proposal: {manifest_candidate: {flows: [{id: 'flow-a', outcome: 'Observe outcome'}]}}});
+    return response({revision: completed.revision, versions: [], manifests: []});
+  });
+  vm.runInContext(source('project_health_mvg_versions.js'), context);
+  await settle();
+  const display = controls['mvg-progress-items'];
+  const flow = display.children.find(row => row.tag === 'details');
+  flow.open = true;
+  const complete = display.children.at(-1); complete.open = true;
+  await context.window.refreshMvgProgress();
+  assert.equal(display.children.find(row => row.tag === 'details'), flow,
+    'Identical progress must retain the same DOM and text selection');
+  count = 2;
+  await context.window.refreshMvgProgress();
+  assert.equal(display.children.find(row => row.tag === 'details').open, true,
+    'New checkpoints must retain expanded flow details');
+  assert.equal(display.children.at(-1).open, true);
+  epoch = 1;
+  await context.window.refreshMvgProgress();
+  assert.notEqual(display.children.find(row => row.tag === 'details').open, true,
+    'A new clear epoch must not inherit old expanded state');
+}
+
+(async () => { await compactResults(); await topologyButton(); await mvgButton(); await slowCommittedProgressAndClear(); await operationLockPreservesBusinessState(); await committedProgressPreservesExpandedDetails();
   console.log('Planning frontend: authenticated polling, compact failures, both refreshed views and source provenance passed.');
 })().catch(error => { console.error(error); process.exitCode = 1; });

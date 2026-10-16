@@ -9,6 +9,7 @@ import sys
 import time
 
 from _planning_skill_common import atomic_json, canonical_sha, file_sha, load_json, parse_model_json
+from _mvg_worker_lifetime import worker_lifetime
 
 SCHEMA = "newrouge.mvg-capability-worker.v1"
 
@@ -136,12 +137,19 @@ def run_candidate(job_dir, data, *, reserve, cost_budget, outcome, inline=None):
     mailbox.mkdir()
     sequence = 1
     flags = subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0
-    with (job_dir / "worker.log").open("w", encoding="utf-8") as log:
-        process = subprocess.Popen([sys.executable, str(Path(__file__).resolve()), "--job", str(job_path)],
+    with (job_dir / "worker.log").open("w", encoding="utf-8") as log, worker_lifetime() as job:
+        process = subprocess.Popen([sys.executable, str(Path(__file__).resolve()), "--job", str(job_path), "--start-gate"],
             cwd=data["workspace"], stdout=log, stderr=subprocess.STDOUT,
+            stdin=subprocess.PIPE,
             env={**os.environ, "PYTHONIOENCODING": "utf-8", "PYTHONUNBUFFERED": "1"}, creationflags=flags)
-        atomic_json(job_dir / "process.json", {"pid": process.pid, "identity": identity})
         try:
+            if job is not None:
+                job.assign(process)
+            atomic_json(job_dir / "process.json", {"pid": process.pid, "identity": identity})
+            # EOF before assignment makes the child exit without dispatch. Once
+            # released, the entire descendant tree is owned by the Job Object.
+            process.stdin.write(b"start\n")
+            process.stdin.close()
             while True:
                 request_path = mailbox / (str(sequence) + ".request.json")
                 if request_path.is_file():
@@ -183,6 +191,7 @@ def run_candidate(job_dir, data, *, reserve, cost_budget, outcome, inline=None):
                 result["accepted"] = load_json(workspace / "proposal.json")
             return result
         finally:
+            process.stdin.close()
             if process.poll() is None:
                 if os.name == "nt":
                     subprocess.run(["taskkill", "/PID", str(process.pid), "/T", "/F"],
@@ -195,4 +204,7 @@ def run_candidate(job_dir, data, *, reserve, cost_budget, outcome, inline=None):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--job", type=Path, required=True)
-    execute(parser.parse_args().job)
+    parser.add_argument("--start-gate", action="store_true")
+    args = parser.parse_args()
+    if not args.start_gate or sys.stdin.buffer.readline() == b"start\n":
+        execute(args.job)

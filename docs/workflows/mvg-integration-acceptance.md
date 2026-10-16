@@ -4,9 +4,15 @@
 
 ADR-0039 规定当前 `capability-local-selection.v1` 的候选生命周期分别运行于独立 OS 子进程。父协调器通过持久 mailbox 预留每次调用费用，独立复验 proposal、proof 和执行 receipt 后才评选三个 admitted 增量。各稳定候选槽位跨 Capability、上下文和进程累计 64 次调用；run 默认 192 次，不因恢复或换进程重置。
 
+Windows 候选进程树由父协调器持有的 kill-on-close Job Object 管理；worker 通过启动管道等待绑定成功后才执行。父进程被强制终止时，已派发的 worker/模型子树也随之终止；绑定失败或启动管道关闭则禁止派发，不只依靠父进程的 `finally` 清理。
+
 新执行只恢复 `run.json` 原子提交的完成 checkpoint。候选、检查、修复和评选中间文件只保留审计；未完成项换新工作区从头执行。恢复唯一匹配键为完整单项 Capability JSON 的规范化 SHA-256：对象键序与排版无关，数组顺序、类型和值有关，Git revision、catalog 元信息和其他 Capability 不参与匹配。历史 proof 对照原冻结输入验证；当前相关依赖与累计 delta 另作机器重放验证。复用写独立 `newrouge.mvg-capability-adoption.v1` receipt，不伪造当前 run 的普通语义准入；损坏、撤销或不兼容项记录原因后重新生成。显式 reopen 在推进前撤销受影响 checkpoint 及后继的恢复资格。
 
+相关依赖同时绑定受影响累计 flow/handoff、测试、入口和 Requirement 映射的已选/重放边界；引用集合相同但行为改变也必须重新生成。未包含这些边界的旧本地产物不能证明兼容性，按不兼容处理，不补造历史语义证明。同一 run 显式恢复时，当前执行只校验自己的工作区和预留记录；旧执行的全部调用继续计入 run 与稳定候选槽位预算。
+
 `/knowledge/scenes` 的 Cumulative MVG scope 通过只读 `GET /api/knowledge/mvg-progress` 展示每个已提交项及完整累计规划，区分 `new`/`reused`，后续失败仍保留部分成果。轮询采用单飞请求，生成期间写控件保持锁定，已完成内容可展开；GET 不修复活跃预算账。进度仅表示 `partial_planning`，最终完成仍需完整 proof、全局机器 audit、review、validate 和 apply；所有规划结果保持 runtime 未验收。
+
+进度投影保留显式 reopen 绑定的全部历史费用，只排除后续活跃派发；因此首个替代项提交前仍可查看有效已完成前缀。相同内容不重建 DOM，新增 checkpoint 保留已有详情展开状态，清理代际改变后不继承旧页面状态。自包含回归见 `test_mvg_recovery_review_integration.py`、`test_mvg_review_regressions.py` 与 `test_mvg_worker_parent_exit.py`；不依赖设备历史日志。
 
 `POST /api/knowledge/mvg-clear` 要求现有 same-origin session token、空 JSON 请求和服务操作锁；CLI 生成与清理另共享跨进程 activity 锁。清理持久增加 `logs/ci/mvg-recovery/registry.json` 的 epoch 并清空恢复资格，旧 attempt/latest 指针、旧页面响应和晚到发布不能复活结果。历史账本留在 `logs/**`；正式 manifest、Capability、任务和运行验收历史保留。页面下一次 Generate 创建新 run。独立工作区通过 `SC_MVG_RECOVERY_ROOT`/`SC_MVG_RECOVERY_EPOCH` 绑定同一项目索引；这些变量是宿主内部协议。
 

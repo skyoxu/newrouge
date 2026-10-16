@@ -95,12 +95,29 @@ def _source_pointer(run_dir, state, step):
 
 
 def _dependency(prepared, scope, base, proposal):
-    from _mvg_capability_generation import complete_scope_context
+    from _mvg_capability_generation import complete_scope_context, review_projection
     context = complete_scope_context(prepared, scope, base, proposal)
     # Global catalogs/revision/readiness identities are provenance, not the
     # local dependency key. Full relevant source bytes remain bound below.
-    return {key: deepcopy(context[key]) for key in (
+    dependency = {key: deepcopy(context[key]) for key in (
         "requirements", "source_blocks", "task_views", "task_master", "evidence")}
+    affected, requirements = review_projection(scope, base, proposal)
+    flow_ids = {row["id"] for row in affected["manifest_candidate"]["flows"]}
+
+    def boundaries(value):
+        flows = [row for row in value["manifest_candidate"].get("flows", []) if row["id"] in flow_ids]
+        tests = {tid for row in flows for tid in row.get("test_ids", [])}
+        result = {"flows": flows,
+            "tests": [row for row in value.get("tests", []) if row["id"] in tests],
+            "entrypoints": [row for row in value.get("entrypoints", []) if flow_ids.intersection(row.get("flow_ids", []))]}
+        for field in ("coverage_table", "requirement_route_memberships", "requirement_verification", "requirement_evidence"):
+            result[field] = [row for row in value.get(field, []) if row.get("requirement_id") in requirements
+                            and (field != "requirement_route_memberships" or row.get("flow_id") in flow_ids)]
+        return deepcopy(result)
+
+    dependency["accepted_boundaries"] = boundaries(base)
+    dependency["result_boundaries"] = boundaries(proposal)
+    return dependency
 
 
 def register_committed(root, run_dir, state):
@@ -310,6 +327,12 @@ def progress(root, run_dir, state):
         completed_ids = {row["record"]["scope"]["capability_id"] for row in ledger["selected"]}
         cutoff = max((row["number"] for row in ledger.get("calls", [])
             if row.get("capability_id") in completed_ids), default=cutoff)
+    # Reopen archives bind the complete nonrefundable prior call prefix, even
+    # when the corresponding checkpoints have been invalidated. Only the
+    # later live dispatch suffix is excluded from the read-only projection.
+    from _mvg_global_audit import historical_states
+    for prior in historical_states(run_dir, committed):
+        cutoff = max(cutoff, len(prior["capability_selection"].get("calls", [])))
     ledger["calls"] = ledger.get("calls", [])[:cutoff]
     ledger["total_invocations"] = cutoff
     ledger["lineage_invocations"] = {label: sum(row.get("candidate") == label for row in ledger["calls"])

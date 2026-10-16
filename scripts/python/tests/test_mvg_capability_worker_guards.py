@@ -12,6 +12,23 @@ from _planning_skill_common import atomic_json, canonical_sha, file_sha, load_js
 
 
 class WorkerBoundaryTests(unittest.TestCase):
+    @unittest.skipUnless(worker.os.name == "nt", "Windows Job Object assignment contract")
+    def test_lifetime_assignment_failure_never_releases_dispatch_gate(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            process = Mock(pid=48293)
+            process.poll.return_value = None
+            with patch("_mvg_worker_lifetime.WindowsWorkerJob") as job, \
+                 patch.object(worker.subprocess, "Popen", return_value=process), \
+                 patch.object(worker.subprocess, "run"):
+                job.return_value.assign.side_effect = OSError("Fixture Job Object assignment denied")
+                with self.assertRaisesRegex(OSError, "assignment denied"):
+                    worker.run_candidate(root / "lifecycle", {"workspace": str(root)},
+                        reserve=Mock(), cost_budget=Mock(), outcome=Mock())
+                process.stdin.write.assert_not_called()
+                job.return_value.close.assert_called_once()
+                process.wait.assert_called_once_with(timeout=10)
+
     def test_tampered_child_artifact_is_rejected_before_parent_admission_or_rank(self):
         for target in ("proposal.json", "admission-review.json", "admission-execution.json"):
             with self.subTest(artifact=target), tempfile.TemporaryDirectory() as directory:
@@ -39,7 +56,8 @@ class WorkerBoundaryTests(unittest.TestCase):
                     atomic_json(workspace / target, {"tampered": True})
                     return process
 
-                with patch.object(worker.subprocess, "Popen", side_effect=finished_child), \
+                with patch("_mvg_worker_lifetime.WindowsWorkerJob"), \
+                     patch.object(worker.subprocess, "Popen", side_effect=finished_child), \
                      patch("_mvg_capability_selection.candidate_artifacts") as admission, \
                      patch("plan_mvg.run_isolated_model") as rank:
                     with self.assertRaisesRegex(ValueError, "candidate_worker_artifacts_changed"):
@@ -62,7 +80,8 @@ class WorkerBoundaryTests(unittest.TestCase):
             # The first poll interrupts the coordinator; finally observes the
             # still-active child and executes the actual cleanup branch.
             process.poll.side_effect = [KeyboardInterrupt("Fixture parent interrupted"), None]
-            with patch.object(worker.subprocess, "Popen", return_value=process), \
+            with patch("_mvg_worker_lifetime.WindowsWorkerJob"), \
+                 patch.object(worker.subprocess, "Popen", return_value=process), \
                  patch.object(worker.subprocess, "run") as terminate:
                 with self.assertRaises(KeyboardInterrupt), coordinator_lock(root):
                     worker.run_candidate(root / "lifecycle", {"workspace": str(workspace)},

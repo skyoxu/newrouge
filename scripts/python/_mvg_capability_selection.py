@@ -268,14 +268,18 @@ def verified_prefix(root, run_dir, state, *, verify_history=True, recover_counte
             or current.get("base_sha256") != canonical_sha(accepted)):
         raise ValueError("capability_selection_current_scope_changed")
     if current is not None:
+        execution = current.get("execution", 1)
+        if type(execution) is not int or execution < 1:
+            raise ValueError("capability_selection_current_execution_invalid")
         for label in pm.MVG_CANDIDATE_LABELS:
-            local_path = scope_workspace(run_dir, label, len(selected), generation(state)) / "capability-append/append-ledger.json"
+            local_path = scope_workspace(run_dir, label, len(selected), generation(state), execution) / "capability-append/append-ledger.json"
             local = load_json(local_path, None)
             if local is None:
                 continue
             charged = [row for row in calls if row.get("candidate") == label
                        and row.get("capability_id") == current["capability_id"]
-                       and row.get("generation", 1) == generation(state)]
+                       and row.get("generation", 1) == generation(state)
+                       and row.get("execution", 1) == execution]
             count = local.get("total_invocations")
             if type(count) is not int or count > len(charged):
                 raise ValueError("capability_selection_worker_budget_changed")
@@ -624,7 +628,8 @@ def _generate_selected_capabilities(root, run_dir, state, *, backend, invoke_fac
                             "append_terminal": not isinstance(exc, (OSError, RuntimeError)),
                             "total_invocations": sum(row.get("candidate") == label and
                                 row.get("capability_id") == scope["capability_id"] and
-                                row.get("generation", 1) == generation(state) for row in ledger.get("calls", [])),
+                                row.get("generation", 1) == generation(state) and
+                                row.get("execution", 1) == current.get("execution", 1) for row in ledger.get("calls", [])),
                             "errors": [{"code": "candidate_execution_failed", "error_type": pm.classify_review_error(exc),
                                         "detail": str(exc)[:2000]}]}
                         state["candidate_attempts"][label] = deepcopy(admission)

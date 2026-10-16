@@ -15,6 +15,7 @@
   let progressEpoch = -1;
   let progressRequest = 0;
   let progressLoading = null;
+  let progressContent = null;
   async function loadProgress() {
     if (progressLoading) return progressLoading;
     const request = ++progressRequest;
@@ -27,14 +28,24 @@
     const payload = await response.json();
     if (!response.ok) throw new Error(payload.reason || 'Unable to load completed Capabilities');
     if (request !== progressRequest || payload.epoch < progressEpoch) return;
+    const sameEpoch = payload.epoch === progressEpoch;
     progressEpoch = payload.epoch;
     get('mvg-progress-status').textContent = `${payload.completed}/${payload.total} completed Capabilities · ${payload.status} · current: ${payload.current || 'none'} · runtime not verified${payload.reason ? ' · ' + payload.reason : ''}`;
-    const display = get('mvg-progress-items'); display.replaceChildren();
+    const content = JSON.stringify({epoch: payload.epoch, run_id: payload.run_id,
+      items: payload.items || [], proposal: payload.proposal});
+    if (content === progressContent) return;
+    const display = get('mvg-progress-items');
+    const opened = new Set(sameEpoch ? Array.from(display.children)
+      .filter(row => row.tagName === 'DETAILS' && row.open).map(row => row.dataset.progressKey) : []);
+    display.replaceChildren();
+    progressContent = content;
     for (const row of payload.items || []) item('p', `${row.capability_id} · ${row.provenance}`, display);
     if (payload.proposal) {
       const manifest = payload.proposal.manifest_candidate || {};
       for (const flow of manifest.flows || []) {
         const row = document.createElement('details');
+        row.dataset.progressKey = 'flow:' + flow.id;
+        row.open = opened.has(row.dataset.progressKey);
         item('summary', flow.id, row);
         item('p', flow.outcome, row);
         item('p', 'Tasks: ' + (flow.task_ids || []).join(', '), row);
@@ -42,6 +53,8 @@
         display.append(row);
       }
       const complete = document.createElement('details');
+      complete.dataset.progressKey = 'complete';
+      complete.open = opened.has(complete.dataset.progressKey);
       item('summary', 'Complete committed planning scope', complete);
       item('pre', JSON.stringify(payload.proposal, null, 2), complete);
       display.append(complete);
@@ -66,6 +79,7 @@
       if (!response.ok) throw new Error(payload.reason || 'Unable to clear generated MVG');
       progressEpoch = payload.epoch;
       ++progressRequest;
+      progressContent = null;
       get('mvg-progress-items').replaceChildren();
       get('mvg-progress-status').textContent = '0 completed Capabilities · generated MVG cleared · runtime not verified';
       await load();
