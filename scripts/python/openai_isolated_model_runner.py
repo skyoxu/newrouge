@@ -24,7 +24,8 @@ from _llm_backend import (  # noqa: E402
 )
 from _planning_skill_common import atomic_json, load_json, validate_output_schema  # noqa: E402
 from _capability_input_integrity import (  # noqa: E402
-    DEFAULT_MAX_INPUT_TOKENS, REPORT_NAME, check_workspace_request, compact_file_section, configured_input_limit, measure_request, validate_batches,
+    DEFAULT_MAX_INPUT_TOKENS, REPORT_NAME, check_workspace_request, compact_file_section, configured_input_limit, measure_request, schema_max_json_chars, task_view_batch_sections, validate_batches,
+    task_view_batch_rows,
 )
 
 SCHEMA = "newrouge.isolated-model-runner.v1"
@@ -157,7 +158,11 @@ def batched_workspace_parts(
     total = 0
     for path in _safe_files(root, excluded):
         rel = path.resolve().relative_to(root).as_posix()
+        if rel.startswith(("batch-schemas/", "batch-analyses/")):
+            continue
         if rel.startswith("analysis-input/sources/"):
+            continue
+        if rel.startswith("analysis-input/task-views/"):
             continue
         if rel in {
             "analysis-input/source-blocks.v1.json",
@@ -172,6 +177,7 @@ def batched_workspace_parts(
             raise ValueError(f"base workspace exceeds max visible bytes: {max_bytes}")
         base_sections.append(compact_file_section(root, path))
 
+    task_view_sections, task_view_coverage = task_view_batch_sections(root, batch_index)
     ordered_batches: list[tuple[str, str]] = []
     seen_paths: set[str] = set()
     for row in rows:
@@ -187,7 +193,11 @@ def batched_workspace_parts(
             raise ValueError(f"Capability model batch file is missing: {rel}")
         if len(path.read_bytes()) > max_bytes:
             raise ValueError(f"single Capability model batch exceeds max visible bytes: {rel}")
-        ordered_batches.append((rel, compact_file_section(root, path)))
+        section = compact_file_section(root, path)
+        task_section = task_view_sections[len(ordered_batches)]
+        if task_section:
+            section += "\n\n" + task_section
+        ordered_batches.append((rel, section))
 
     base = "\n\n".join([
         "The following is the complete non-source model-visible workspace context.",
@@ -251,24 +261,33 @@ def _independent_batch_requests(
             "optimize for a fixed Capability count. This is evidence analysis, not the final grouping.",
             "For each Source Block, capture its concise meaning and concrete boundary/ownership "
             "signals. For each Requirement, preserve intent, user-visible outcome, and the exact "
-            "Source Block IDs listed in its row. This is evidence analysis, not the final grouping.",
+            "Source Block IDs listed in its row. Analyze every complete Task View row below and "
+            "preserve its identity, task intent, Acceptance/test meaning and exact Requirement refs. "
+            "This is evidence analysis, not the final grouping.",
             section,
             f"Return JSON only. This is batch {index}/{len(batches)} ({rel}).",
         ])))
     return requests
 
 
-def _batch_analysis_schema(batch: dict[str, Any]) -> dict[str, Any]:
+def _batch_analysis_schema(batch: dict[str, Any],
+                           task_views: dict[str, list[dict[str, Any]]] | None = None) -> dict[str, Any]:
     block_ids = [str(row["block_id"]) for row in batch.get("blocks", [])]
     requirement_ids = [str(row["requirement_id"]) for row in batch.get("requirements", [])]
     source_refs = sorted({str(value) for row in batch.get("requirements", [])
                           for value in row.get("source_block_ids", [])})
+    task_view_rows = [
+        (path, row) for path, rows in (task_views or {}).items() for row in rows
+    ]
+    task_view_keys = [f"{path}#{row.get('taskmaster_id', row.get('id', ''))}" for path, row in task_view_rows]
+    task_ref_ids = sorted({ref for _path, row in task_view_rows for ref in _task_view_refs(row)})
     block_id_schema = {"type": "string", **({"enum": block_ids} if block_ids else {})}
     requirement_id_schema = {"type": "string", **({"enum": requirement_ids} if requirement_ids else {})}
     source_ref_schema = {"type": "string", **({"enum": source_refs} if source_refs else {})}
     return {
         "type": "object", "additionalProperties": False,
-        "required": ["schema_version", "batch_index", "source_block_analyses", "requirement_analyses"],
+        "required": ["schema_version", "batch_index", "source_block_analyses", "requirement_analyses",
+                     "task_view_analyses"],
         "properties": {
             "schema_version": {"type": "string", "const": "newrouge.capability-batch-analysis.v1"},
             "batch_index": {"type": "integer", "enum": [int(batch.get("batch_index") or 0)]},
@@ -293,15 +312,34 @@ def _batch_analysis_schema(batch: dict[str, Any]) -> dict[str, Any]:
                     "user_outcome": {"type": "string", "maxLength": 1200},
                     "boundary_signals": {"type": "array", "maxItems": 8,
                                           "items": {"type": "string", "maxLength": 240}},
-                    "source_block_ids": {"type": "array", "items": source_ref_schema},
+                    "source_block_ids": {"type": "array", "maxItems": len(source_refs), "items": source_ref_schema},
                 },
             }, "minItems": len(requirement_ids), "maxItems": len(requirement_ids)},
+            "task_view_analyses": {"type": "array", "minItems": len(task_view_rows),
+                "maxItems": len(task_view_rows), "items": {
+                    "type": "object", "additionalProperties": False,
+                    "required": ["task_view_key", "task_intent", "acceptance_signals",
+                                 "verification_signals", "requirement_refs"],
+                    "properties": {
+                        "task_view_key": ({"type": "string", "enum": task_view_keys}
+                                          if task_view_keys else {"type": "string", "maxLength": 512}),
+                        "task_intent": {"type": "string", "maxLength": 1200},
+                        "acceptance_signals": {"type": "array", "maxItems": 12,
+                            "items": {"type": "string", "maxLength": 400}},
+                        "verification_signals": {"type": "array", "maxItems": 12,
+                            "items": {"type": "string", "maxLength": 300}},
+                        "requirement_refs": {"type": "array", "maxItems": len(task_ref_ids),
+                                             "items": ({"type": "string", "enum": task_ref_ids}
+                                                       if task_ref_ids else {"type": "string", "maxLength": 128})},
+                    },
+                }},
         },
     }
 
 
 def _validate_batch_analysis(
     value: dict[str, Any], batch: dict[str, Any],
+    task_views: dict[str, list[dict[str, Any]]] | None = None,
 ) -> dict[str, Any]:
     if value.get("schema_version") != "newrouge.capability-batch-analysis.v1":
         raise ValueError("capability_batch_analysis_schema_mismatch")
@@ -311,7 +349,8 @@ def _validate_batch_analysis(
     expected_requirements = [str(row["requirement_id"]) for row in batch.get("requirements", [])]
     block_rows = value.get("source_block_analyses")
     req_rows = value.get("requirement_analyses")
-    if not isinstance(block_rows, list) or not isinstance(req_rows, list):
+    task_rows = value.get("task_view_analyses", [])
+    if not isinstance(block_rows, list) or not isinstance(req_rows, list) or not isinstance(task_rows, list):
         raise ValueError("capability_batch_analysis_rows_missing")
     actual_blocks = [str(row.get("source_block_id") or "") for row in block_rows if isinstance(row, dict)]
     actual_requirements = [str(row.get("requirement_id") or "") for row in req_rows if isinstance(row, dict)]
@@ -338,7 +377,41 @@ def _validate_batch_analysis(
         if not isinstance(quotes, list) or not quotes or any(
                 not str(quote).strip() or str(quote) not in raw_text for quote in quotes):
             raise ValueError("capability_batch_analysis_evidence_quote_invalid:" + block_id)
+    expected_task_views = {
+        f"{path}#{row.get('taskmaster_id', row.get('id', ''))}": row
+        for path, rows in (task_views or {}).items() for row in rows
+    }
+    actual_task_keys = [str(row.get("task_view_key") or "") for row in task_rows if isinstance(row, dict)]
+    if sorted(actual_task_keys) != sorted(expected_task_views) or len(actual_task_keys) != len(set(actual_task_keys)):
+        raise ValueError("capability_batch_analysis_task_view_coverage_mismatch")
+    for row in task_rows:
+        key = str(row.get("task_view_key") or "")
+        expected_refs = sorted(_task_view_refs(expected_task_views[key]))
+        refs = row.get("requirement_refs")
+        if not str(row.get("task_intent") or "").strip():
+            raise ValueError("capability_batch_analysis_task_intent_missing:" + key)
+        if (not isinstance(row.get("acceptance_signals"), list)
+                or not row["acceptance_signals"]
+                or not isinstance(row.get("verification_signals"), list)
+                or not row["verification_signals"]):
+            raise ValueError("capability_batch_analysis_task_signals_missing:" + key)
+        if any(not isinstance(item, str) or not item.strip()
+               for item in row["acceptance_signals"] + row["verification_signals"]):
+            raise ValueError("capability_batch_analysis_task_signal_invalid:" + key)
+        if not isinstance(refs, list) or sorted(str(item) for item in refs) != expected_refs:
+            raise ValueError("capability_batch_analysis_task_requirement_refs_mismatch:" + key)
     return value
+
+
+def _task_view_refs(row: dict[str, Any]) -> set[str]:
+    refs: set[str] = set()
+    for key in ("requirement_ids", "semantic_refs", "requirement_refs", "requirement_ref"):
+        values = row.get(key, [])
+        if isinstance(values, str):
+            values = [values]
+        if isinstance(values, list):
+            refs.update(str(value).strip() for value in values if str(value).strip())
+    return refs
 
 
 def _coverage_checklist(workspace: Path) -> str:
@@ -376,6 +449,17 @@ def _synthesis_request(
     ])
 
 
+def _measured_request_text(prompt: str, schema: dict[str, Any] | None, *,
+                           schema_name: str = "newrouge_capability_batch_analysis") -> str:
+    """Canonical accounting payload for the prompt and structured schema sent together."""
+    if schema is None:
+        return prompt
+    envelope = {"type": "json_schema", "name": schema_name,
+                "strict": True, "schema": schema}
+    return prompt + "\n===== STRUCTURED OUTPUT SCHEMA =====\n" + json.dumps(
+        envelope, ensure_ascii=False, separators=(",", ":")) + "\n===== END STRUCTURED OUTPUT SCHEMA ====="
+
+
 def _run_batched_session(
     *,
     workspace: Path,
@@ -397,7 +481,9 @@ def _run_batched_session(
     request_count = 0
     request_integrity: list[dict[str, Any]] = []
 
-    coverage = validate_batches(workspace, load_json(_batch_index_path(workspace), {}))
+    batch_index = load_json(_batch_index_path(workspace), {})
+    coverage = validate_batches(workspace, batch_index)
+    task_view_rows_by_batch, task_view_coverage = task_view_batch_rows(workspace, batch_index)
     schema = None
     if output_schema_path is not None:
         schema = json.loads(output_schema_path.read_text(encoding="utf-8"))
@@ -406,35 +492,38 @@ def _run_batched_session(
                       for row in load_json(_batch_index_path(workspace), {}).get("batches", [])]
     if len(batch_payloads) != len(request_specs):
         raise ValueError("capability_batch_payload_count_mismatch")
-    batch_output_tokens = max(512, min(2048, max_input_tokens // max(3 * len(batches), 1)))
+    batch_output_tokens = max(2048, min(8192, max_input_tokens // max(3 * len(batches), 1)))
     final_output_tokens = max(256, min(32768, max_input_tokens // 3))
     request_texts: list[tuple[str, str, dict[str, Any] | None, int, str]] = []
-    for (label, text), payload in zip(request_specs, batch_payloads, strict=True):
-        batch_schema = _batch_analysis_schema(payload)
+    for index, ((label, text), payload) in enumerate(zip(request_specs, batch_payloads, strict=True)):
+        batch_schema = _batch_analysis_schema(payload, task_view_rows_by_batch[index])
         request_texts.append((label, text, batch_schema, batch_output_tokens, "newrouge_capability_batch_analysis"))
     checklist = _coverage_checklist(workspace)
+    # Reserve a conservative serialized-output ceiling before the first request.
+    # JSON escaping can expand one Unicode character to six ASCII characters.
+    analysis_char_reserve = [schema_max_json_chars(batch_schema)
+                             for _label, _text, batch_schema, _tokens, _name in request_texts]
     synthesis_text = _synthesis_request(original_prompt=original_prompt, base=base,
-        batch_outputs=[(f"batch-{index:03d}", "<bounded model analysis>") for index in range(1, len(batches) + 1)],
+        batch_outputs=[(f"batch-{index:03d}", "x" * size)
+                       for index, size in enumerate(analysis_char_reserve, 1)],
         schema=schema) + checklist
     schema_text = json.dumps({"text": {"format": {"type": "json_schema", "strict": True, "schema": schema}}},
                              ensure_ascii=False) if schema else ""
-    synthesis_capacity = len(batches) * batch_output_tokens
     preflight_requests = []
     for label, text, batch_schema, output_tokens, _name in request_texts:
-        visible = text + "\n" + json.dumps({"text": {"format": {"type": "json_schema", "strict": True,
-                                                                      "schema": batch_schema}}}, ensure_ascii=False)
+        visible = _measured_request_text(text, batch_schema)
         preflight_requests.append({"label": label, **measure_request(visible, max_bytes=max_bytes,
             max_input_tokens=max_input_tokens, reserved_tokens=output_tokens)})
-    # Reserve the maximum bounded size of all intermediate analyses plus the final
-    # model response before spending any batch calls.
-    # The compact analysis schema bounds each intermediate output; reserve all of
-    # them against the synthesis request without replaying raw source evidence.
+    # The placeholder already accounts for the bounded intermediate analyses in
+    # the synthesis input. Reserve only the final response continuation here.
     preflight_requests.append({"label": "synthesis-capacity", **measure_request(
-        synthesis_text + schema_text, max_bytes=max_bytes, max_input_tokens=max_input_tokens,
-        reserved_tokens=synthesis_capacity + final_output_tokens)})
+        _measured_request_text(synthesis_text, schema, schema_name="newrouge_capability_candidate"),
+        max_bytes=max_bytes, max_input_tokens=max_input_tokens,
+        reserved_tokens=final_output_tokens)})
     request_integrity.extend(preflight_requests)
     atomic_json(workspace / REPORT_NAME, {'status': 'ready', 'complete': True,
-        'truncation_allowed': False, 'coverage': coverage, 'requests': request_integrity,
+        'truncation_allowed': False, 'coverage': coverage,
+        'task_view_coverage': task_view_coverage, 'requests': request_integrity,
         'execution_mode': 'independent-evidence-batches-plus-bounded-synthesis'})
     client = _openai_client(timeout_sec)
 
@@ -467,20 +556,21 @@ def _run_batched_session(
             parsed = json.loads(output)
         except json.JSONDecodeError as exc:
             raise ValueError(f"capability_batch_analysis_invalid_json:{label}") from exc
-        parsed = _validate_batch_analysis(parsed, batch_payloads[index])
+        parsed = _validate_batch_analysis(parsed, batch_payloads[index], task_view_rows_by_batch[index])
         batch_outputs.append((label, json.dumps(parsed, ensure_ascii=False, separators=(",", ":"))))
 
     final_text = _synthesis_request(original_prompt=original_prompt, base=base,
                                     batch_outputs=batch_outputs, schema=schema) + checklist
     final_report = measure_request(
-        final_text + schema_text,
+        _measured_request_text(final_text, schema, schema_name="newrouge_capability_candidate"),
         max_bytes=max_bytes,
         max_input_tokens=max_input_tokens,
-        reserved_tokens=synthesis_capacity + final_output_tokens,
+        reserved_tokens=final_output_tokens,
     )
     request_integrity.append({"label": "synthesis", **final_report})
     atomic_json(workspace / REPORT_NAME, {'status': 'ready', 'complete': True,
-        'truncation_allowed': False, 'coverage': coverage, 'requests': request_integrity,
+        'truncation_allowed': False, 'coverage': coverage,
+        'task_view_coverage': task_view_coverage, 'requests': request_integrity,
         'execution_mode': 'independent-evidence-batches-plus-bounded-synthesis'})
     final = call(final_text, output_schema=schema, max_output_tokens=final_output_tokens,
                  output_schema_name="newrouge_capability_candidate")
@@ -505,6 +595,7 @@ def _run_batched_session(
         },
         "input_integrity": request_integrity,
         "input_coverage": coverage,
+        "task_view_coverage": task_view_coverage,
         "workspace": workspace.as_posix(),
     }
 

@@ -44,9 +44,20 @@ class CapabilityInputIntegrityTests(unittest.TestCase):
         self.output = self.root / 'candidate.json'
         self.args = argparse.Namespace(workspace=str(self.root), prompt_file=str(self.prompt),
             output=str(self.output), max_bytes=8 * 1024 * 1024, timeout_sec=30, output_schema='')
+        self.refresh_analysis_index()
 
     def parts(self):
+        self.refresh_analysis_index()
         return api.batched_workspace_parts(self.root, prompt_path=self.prompt, output_path=self.output)
+
+    def refresh_analysis_index(self):
+        files = {}
+        for path in sorted(self.analysis.rglob('*')):
+            if path.is_file() and path.name != 'analysis-index.json':
+                files[path.relative_to(self.analysis).as_posix()] = file_sha(path)
+        payload = {'schema_version': 'newrouge.planning-analysis-input.v1', 'files': files}
+        payload['analysis_identity_sha256'] = integrity.canonical_sha(payload)
+        atomic_json(self.analysis / 'analysis-index.json', payload)
 
     @staticmethod
     def batch_fixture_payload(batch):
@@ -62,12 +73,14 @@ class CapabilityInputIntegrityTests(unittest.TestCase):
                  'user_outcome': 'outcome', 'boundary_signals': ['signal'],
                  'source_block_ids': row['source_block_ids']}
                 for row in batch['requirements']],
+            'task_view_analyses': [],
         }
 
-    def test_codex_transport_limit_is_two_megabytes(self):
-        self.assertEqual(2 * 1024 * 1024, integrity.CODEX_MAX_TURN_BYTES)
+    def test_codex_transport_limit_matches_cli_character_cap(self):
+        self.assertEqual(1 * 1024 * 1024, integrity.CODEX_MAX_TURN_BYTES)
 
     def invoke(self):
+        self.refresh_analysis_index()
         self.codex_inputs = []
         def fake_exec(command, **kwargs):
             self.codex_inputs.append(kwargs['input'])
@@ -78,7 +91,19 @@ class CapabilityInputIntegrityTests(unittest.TestCase):
                 schema = load_json(Path(command[schema_arg]), {})
                 batch_index = int((schema.get('properties', {}).get('batch_index', {}).get('enum') or [1])[0])
                 batch = load_json(self.analysis / self.index['batches'][batch_index - 1]['path'])
-                atomic_json(output_path, self.batch_fixture_payload(batch))
+                payload = self.batch_fixture_payload(batch)
+                view_rows, _ = codex.api.task_view_batch_rows(self.root, self.index)
+                for task_path, rows in view_rows[batch_index - 1].items():
+                    for task in rows:
+                        refs = sorted(codex.api._task_view_refs(task))
+                        payload['task_view_analyses'].append({
+                            'task_view_key': f"{task_path}#{task.get('taskmaster_id', task.get('id', ''))}",
+                            'task_intent': 'fixture intent',
+                            'acceptance_signals': ['acceptance analyzed'],
+                            'verification_signals': ['verification analyzed'],
+                            'requirement_refs': refs,
+                        })
+                atomic_json(output_path, payload)
             else:
                 atomic_json(output_path, {'fixture': True})
             return subprocess.CompletedProcess(command, 0, stdout='')
@@ -97,12 +122,90 @@ class CapabilityInputIntegrityTests(unittest.TestCase):
         self.assertIn('FULL_DESCRIPTION_END', sent)
         self.assertIn('MANDATORY_ACCEPTANCE_END', sent)
         self.assertIn('verification.gd', sent)
-        self.assertIn('FULL_DESCRIPTION_END', self.codex_inputs[-1])
-        self.assertIn('MANDATORY_ACCEPTANCE_END', self.codex_inputs[-1])
+        self.assertIn('FULL_DESCRIPTION_END', self.codex_inputs[0])
+        self.assertIn('MANDATORY_ACCEPTANCE_END', self.codex_inputs[0])
+        self.assertIn('task_view_analyses', self.codex_inputs[-1])
+        self.assertIn('"task_intent":"fixture intent"', self.codex_inputs[-1])
+        self.assertNotIn('FULL_DESCRIPTION_END', self.codex_inputs[-1])
         self.assertEqual(receipt['input_integrity']['batch_count'] + 1,
                          receipt['runner_invocations'])
         self.assertTrue(receipt['input_integrity']['requests'])
-        self.assertTrue(receipt['input_integrity']['requests'])
+        self.assertEqual(1, receipt['input_integrity']['task_view_coverage']['views'][
+            'analysis-input/task-views/tasks_gameplay.json']['row_count'])
+
+    def test_task_views_are_partitioned_without_field_loss(self):
+        atomic_json(self.analysis / 'task-views/tasks_back.json', [
+            {'taskmaster_id': 7, 'description': 'TASK_A_FULL', 'acceptance': ['AC_A'],
+             'semantic_refs': ['RQ-1'], 'test_refs': ['TEST_A'], 'custom': {'keep': True}},
+            {'taskmaster_id': 8, 'description': 'TASK_CROSS_FULL', 'acceptance': ['AC_CROSS'],
+             'requirement_ids': ['RQ-1', 'RQ-2'], 'test_refs': ['TEST_CROSS']},
+            {'taskmaster_id': 9, 'description': 'TASK_UNBOUND_FULL', 'acceptance': ['AC_UNBOUND'],
+             'test_refs': ['TEST_UNBOUND']},
+        ])
+        base, batches = self.parts()
+        self.assertNotIn('TASK_A_FULL', base)
+        self.assertNotIn('TASK_CROSS_FULL', base)
+        self.assertIn('TASK_A_FULL', batches[0][1])
+        self.assertIn('TASK_CROSS_FULL', batches[0][1])
+        self.assertIn('TASK_CROSS_FULL', batches[1][1])
+        self.assertIn('TASK_UNBOUND_FULL', batches[0][1])
+        for marker in ('AC_A', 'AC_CROSS', 'TEST_CROSS', 'TEST_UNBOUND'):
+            self.assertGreaterEqual(sum(marker in section for _, section in batches), 1)
+        self.assertIn('"custom":{"keep":true}', batches[0][1])
+
+    def test_task_view_unknown_requirement_reference_fails_closed(self):
+        atomic_json(self.analysis / 'task-views/tasks_back.json', [
+            {'taskmaster_id': 7, 'description': 'TASK', 'semantic_refs': ['RQ-UNKNOWN']}])
+        self.refresh_analysis_index()
+        with self.assertRaisesRegex(ValueError, 'unknown_task_requirement_ref'):
+            api.task_view_batch_rows(self.root, self.index)
+
+    def test_task_view_duplicate_identity_fails_closed(self):
+        atomic_json(self.analysis / 'task-views/tasks_back.json', [
+            {'taskmaster_id': 7, 'semantic_refs': ['RQ-1']},
+            {'taskmaster_id': 7, 'semantic_refs': ['RQ-2']}])
+        self.refresh_analysis_index()
+        with self.assertRaisesRegex(ValueError, 'duplicate_task_view_id'):
+            api.task_view_batch_rows(self.root, self.index)
+
+    def test_task_view_singular_requirement_ref_is_preserved(self):
+        atomic_json(self.analysis / 'task-views/tasks_back.json', [
+            {'taskmaster_id': 7, 'requirement_ref': 'RQ-2', 'description': 'SINGULAR_REF'}])
+        self.refresh_analysis_index()
+        selected, _ = api.task_view_batch_rows(self.root, self.index)
+        self.assertNotIn('SINGULAR_REF', json.dumps(selected[0], ensure_ascii=False))
+        self.assertIn('SINGULAR_REF', json.dumps(selected[1], ensure_ascii=False))
+
+    def test_cross_batch_task_schema_allows_complete_requirement_refs(self):
+        atomic_json(self.analysis / 'task-views/tasks_back.json', [
+            {'taskmaster_id': 7, 'requirement_ids': ['RQ-1', 'RQ-2'], 'description': 'CROSS'}])
+        self.refresh_analysis_index()
+        rows, _ = api.task_view_batch_rows(self.root, self.index)
+        schema = api._batch_analysis_schema(
+            load_json(self.analysis / self.index['batches'][0]['path']), rows[0])
+        refs_schema = schema['properties']['task_view_analyses']['items']['properties']['requirement_refs']['items']
+        self.assertEqual(['RQ-1', 'RQ-2'], refs_schema['enum'])
+
+    def test_nested_task_views_are_rejected_as_unprepared(self):
+        atomic_json(self.analysis / 'task-views/nested/tasks_back.json', [
+            {'taskmaster_id': 17, 'description': 'NESTED_TASK_FULL', 'semantic_refs': ['RQ-2']}])
+        with self.assertRaisesRegex(ValueError, 'nested_task_view_unsupported'):
+            api.task_view_batch_rows(self.root, self.index)
+
+    def test_large_task_views_are_not_replayed_in_every_batch(self):
+        atomic_json(self.analysis / 'task-views/tasks_back.json', [
+            {'taskmaster_id': 7, 'description': 'A' * 50000, 'semantic_refs': ['RQ-1'],
+             'acceptance': ['AC_A']},
+            {'taskmaster_id': 8, 'description': 'B' * 50000, 'semantic_refs': ['RQ-2'],
+             'acceptance': ['AC_B']},
+        ])
+        base, batches = self.parts()
+        self.assertNotIn('A' * 1000, base)
+        self.assertNotIn('B' * 1000, base)
+        self.assertIn('A' * 1000, batches[0][1])
+        self.assertIn('B' * 1000, batches[1][1])
+        self.assertNotIn('A' * 1000, batches[1][1])
+        self.assertNotIn('B' * 1000, batches[0][1])
 
     def test_batch_hash_drift_blocks_even_when_ids_are_unchanged(self):
         path = self.analysis / self.index['batches'][0]['path']
@@ -148,7 +251,38 @@ class CapabilityInputIntegrityTests(unittest.TestCase):
         executable.assert_not_called()
         executor.assert_not_called()
 
+    def test_codex_character_limit_is_checked_before_any_invocation(self):
+        self.args.max_bytes = 4 * 1024 * 1024
+        self.prompt.write_text('x' * (integrity.CODEX_MAX_TURN_BYTES + 1), encoding='utf-8')
+        with patch.object(codex, '_codex_executable') as executable, \
+             patch.object(codex.subprocess, 'run') as executor:
+            with self.assertRaisesRegex(ValueError, 'complete_request_chars'):
+                codex.run(self.args)
+        executable.assert_not_called()
+        executor.assert_not_called()
+        report = load_json(self.root / 'runner-input-integrity.json')
+        self.assertFalse(report['model_invoked'])
+
+    def test_oversized_synthesis_capacity_blocks_before_first_codex_call(self):
+        self.refresh_analysis_index()
+        original = api._synthesis_request
+        def oversized_synthesis(**kwargs):
+            return original(**kwargs) + ('x' * (integrity.CODEX_MAX_TURN_BYTES + 1))
+        with patch.object(api, '_synthesis_request', side_effect=oversized_synthesis), \
+             patch.object(codex, '_codex_executable') as executable, \
+             patch.object(codex.subprocess, 'run') as executor:
+            with self.assertRaisesRegex(ValueError, 'runner_input_too_large'):
+                codex.run(self.args)
+        executable.assert_not_called()
+        executor.assert_not_called()
+        report = load_json(self.root / 'runner-input-integrity.json')
+        self.assertEqual('blocked', report['status'])
+        self.assertFalse(report['model_invoked'])
+        self.assertIn('complete_request_chars', report['reason'])
+        self.assertIn('coverage', report)
+
     def test_non_ascii_token_budget_is_checked_before_starting_codex(self):
+        self.refresh_analysis_index()
         self.prompt.write_text('Full evidence: ' + '\u96be\u5ea6' * 1000, encoding='utf-8')
         self.args.max_input_tokens = 1000
         with patch.object(codex, '_codex_executable') as executable:
@@ -217,15 +351,27 @@ class CapabilityInputIntegrityTests(unittest.TestCase):
                 blocks = batch['blocks']
                 requirements = batch['requirements']
                 payload = self.batch_fixture_payload(batch)
+                view_rows, _ = api.task_view_batch_rows(self.root, self.index)
+                batch_views = view_rows[len(responses) - 1]
+                for task_path, rows in batch_views.items():
+                    for task in rows:
+                        payload['task_view_analyses'].append({
+                            'task_view_key': f"{task_path}#{task.get('taskmaster_id', task.get('id', ''))}",
+                            'task_intent': 'fixture intent',
+                            'acceptance_signals': ['acceptance analyzed'],
+                            'verification_signals': ['verification analyzed'],
+                            'requirement_refs': sorted(api._task_view_refs(task)),
+                        })
                 return SimpleNamespace(id=f'fixture-{len(responses)}', status='completed',
                                        output_text=json.dumps(payload))
             return SimpleNamespace(id=f'fixture-{len(responses)}', status='completed', output_text='{}')
 
         with patch.object(api, '_openai_client', return_value=object()), \
              patch.object(api, '_response', side_effect=model):
+            self.refresh_analysis_index()
             receipt = api._run_batched_session(workspace=self.root, prompt_path=self.prompt,
-                output_path=self.output, timeout_sec=30, max_bytes=8 * 1024 * 1024,
-                max_input_tokens=9000)
+                output_path=self.output, timeout_sec=180, max_bytes=8 * 1024 * 1024,
+                max_input_tokens=40000)
 
         self.assertEqual(len(batches) + 1, receipt['model_request_count'])
         self.assertTrue(all(call.get('previous_response_id') is None for call in responses))
@@ -237,8 +383,11 @@ class CapabilityInputIntegrityTests(unittest.TestCase):
                     self.assertNotIn(other['blocks'][0]['raw_text'], responses[index]['prompt'])
             self.assertIsNone(responses[index].get('previous_response_id'))
         final_prompt = responses[-1]['prompt']
-        self.assertIn('SYNTHESIS_TASK_CONTEXT', final_prompt)
-        self.assertIn('SYNTHESIS_ACCEPTANCE_CONTEXT', final_prompt)
+        self.assertIn('SYNTHESIS_TASK_CONTEXT', responses[0]['prompt'])
+        self.assertIn('SYNTHESIS_ACCEPTANCE_CONTEXT', responses[0]['prompt'])
+        self.assertIn('task_view_analyses', final_prompt)
+        self.assertNotIn('SYNTHESIS_TASK_CONTEXT', final_prompt)
+        self.assertNotIn('SYNTHESIS_ACCEPTANCE_CONTEXT', final_prompt)
         for batch in batches:
             for block in batch['blocks']:
                 self.assertNotIn(block['raw_text'], final_prompt)
@@ -261,9 +410,10 @@ class CapabilityInputIntegrityTests(unittest.TestCase):
 
         with patch.object(api, '_openai_client', return_value=object()), \
              patch.object(api, '_response', side_effect=model):
+            self.refresh_analysis_index()
             receipt = api._run_batched_session(workspace=self.root, prompt_path=self.prompt,
                 output_path=self.output, timeout_sec=30, max_bytes=8 * 1024 * 1024,
-                max_input_tokens=9000)
+                max_input_tokens=30000)
 
         self.assertEqual(len(batches) + 1, receipt['model_request_count'])
         self.assertTrue(all(call.get('previous_response_id') is None for call in responses))
@@ -313,14 +463,15 @@ class CapabilityInputIntegrityTests(unittest.TestCase):
             return SimpleNamespace(id=f'fixture-{len(responses)}', status='completed', output_text=output)
         with patch.object(api, '_openai_client', return_value=object()), \
              patch.object(api, '_response', side_effect=model):
+            self.refresh_analysis_index()
             receipt = api._run_batched_session(workspace=self.root, prompt_path=self.prompt,
-                output_path=self.output, timeout_sec=30, max_bytes=8 * 1024 * 1024)
+                output_path=self.output, timeout_sec=120, max_bytes=8 * 1024 * 1024)
         self.assertEqual(3, receipt['model_request_count'])
         self.assertEqual(2, receipt['input_coverage']['batch_count'])
         self.assertEqual(['SB-1', 'SB-2'], receipt['input_coverage']['source_block_ids'])
         self.assertEqual(['RQ-1', 'RQ-2'], receipt['input_coverage']['requirement_ids'])
         self.assertIn(self.ledger['blocks'][0]['raw_text'], responses[0]['prompt'])
-        self.assertEqual(2048, responses[0]['max_output_tokens'])
+        self.assertEqual(8192, responses[0]['max_output_tokens'])
         self.assertEqual(32000, responses[-1]['max_output_tokens'])
 
     def test_deterministic_input_error_stops_all_candidate_retries(self):
@@ -363,6 +514,7 @@ class CapabilityInputIntegrityTests(unittest.TestCase):
         self.assertEqual('runner_context_budget_exceeded', state['error_type'])
 
     def test_preflight_never_starts_model_even_for_valid_input(self):
+        self.refresh_analysis_index()
         self.args.preflight = True
         with patch.object(codex, '_codex_executable') as executable, \
              contextlib.redirect_stdout(io.StringIO()) as stdout:
@@ -372,6 +524,7 @@ class CapabilityInputIntegrityTests(unittest.TestCase):
 
     def test_copilot_one_batch_context_is_checked_before_authentication(self):
         _write_model_batches(self.analysis, ledger=self.ledger, semantics=self.requirements, char_budget=10000)
+        self.refresh_analysis_index()
         self.args.max_input_tokens = 100
         with patch.object(copilot.shutil, 'which') as executable:
             with self.assertRaisesRegex(ValueError, 'runner_context_budget_exceeded'):
@@ -379,6 +532,7 @@ class CapabilityInputIntegrityTests(unittest.TestCase):
         executable.assert_not_called()
 
     def test_sent_text_and_receipt_remain_identical_after_preflight(self):
+        self.refresh_analysis_index()
         self.args.preflight = True
         with contextlib.redirect_stdout(io.StringIO()):
             codex.run(self.args)
@@ -387,6 +541,18 @@ class CapabilityInputIntegrityTests(unittest.TestCase):
         self.assertNotIn('FILE: runner-input-integrity.json', sent)
         self.assertEqual(receipt['input_integrity']['requests'],
                          load_json(self.root / 'runner-input-integrity.json')['requests'])
+
+    def test_preflight_and_execution_request_identity_ignores_generated_batch_files(self):
+        self.refresh_analysis_index()
+        self.args.preflight = True
+        with patch.object(codex, '_codex_executable') as executable, contextlib.redirect_stdout(io.StringIO()):
+            codex.run(self.args)
+            before = load_json(self.root / 'runner-input-integrity.json')
+            self.args.preflight = False
+            self.invoke()
+            after = load_json(self.root / 'runner-input-integrity.json')
+        executable.assert_not_called()
+        self.assertEqual(before['requests'], after['requests'][:len(before['requests'])])
 
 
 if __name__ == '__main__':
