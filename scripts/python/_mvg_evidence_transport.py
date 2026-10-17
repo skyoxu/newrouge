@@ -47,7 +47,8 @@ def restore_lossless_context(encoded):
 
 
 def encode_model_context(value):
-    if value.get("evidence_scope_schema") == "newrouge.mvg-scoped-evidence.v3":
+    from _mvg_inspection_scope import SCOPED_SCHEMAS
+    if value.get("evidence_scope_schema") in SCOPED_SCHEMAS:
         return STRUCTURED_ENCODING_INSTRUCTION + wire_json(structured_context(value))
     return ENCODING_INSTRUCTION + wire_json(lossless_context(value))
 
@@ -59,6 +60,9 @@ def wire_json(value):
 def model_context(context):
     """Keep local discovery and exclusion accounting in the bound proof only."""
     result = deepcopy(context)
+    # This machine-derived closure is bound in the local proof, not repeated in
+    # candidate prompts; its selected source rows are already delivered below.
+    result.pop("topology_base_closure", None)
     if "evidence" in result:
         from _mvg_reconciliation_projection import transport_sources
         result["evidence"] = transport_sources(context)
@@ -309,7 +313,8 @@ def audit_prompt(plan, parts):
             "and per-row inclusion/exclusion audits remain bound in the machine proof. "
             "Every selected row is complete. Do not infer omitted unrelated records or treat a "
             "projection as full-file verification. ")
-    if plan["core"].get("evidence_scope_schema") == "newrouge.mvg-scoped-evidence.v3":
+    from _mvg_inspection_scope import SCOPED_SCHEMAS
+    if plan["core"].get("evidence_scope_schema") in SCOPED_SCHEMAS:
         instruction = instruction.replace(
             "The complete Capability, Requirements, source blocks, Acceptance and cumulative context follow. ",
             "The complete Capability, Requirements, source blocks and affected cumulative context follow. "
@@ -373,8 +378,9 @@ def plan_transport(context, *, phase, probe, schema_version=None):
     if phase not in {"inspect", "review"}:
         raise ValueError("mvg_evidence_invalid_phase")
     if schema_version is None:
-        schema_version = (STRUCTURED_TRANSPORT_SCHEMA if context.get("evidence_scope_schema") ==
-                          "newrouge.mvg-scoped-evidence.v3" else TRANSPORT_SCHEMA)
+        from _mvg_inspection_scope import SCOPED_SCHEMAS
+        schema_version = (STRUCTURED_TRANSPORT_SCHEMA if context.get("evidence_scope_schema") in
+                          SCOPED_SCHEMAS else TRANSPORT_SCHEMA)
     if schema_version not in ENCODED_SCHEMAS | {LEGACY_TRANSPORT_SCHEMA}:
         raise ValueError("mvg_evidence_invalid_schema")
     plan = {"schema_version": schema_version, "context_sha256": canonical_sha(context),

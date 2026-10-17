@@ -9,7 +9,7 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
-from _planning_skill_common import atomic_json, file_sha
+from _planning_skill_common import atomic_json, file_sha, load_json, normalized_file_sha
 from build_source_ledger import build_ledger, source_set_payload
 from chapter5_semantic_reconciliation import (
     DEFAULT_EXTRACTION_CANDIDATE,
@@ -352,6 +352,82 @@ def _write_topology_seed(root: Path, ledger: dict[str, Any], semantics: dict[str
         "generator_revision": "planning-acceptance-fixture-v1",
         "artifacts": artifacts,
     })
+
+
+def bind_capability_topology(root: Path) -> None:
+    """Bind a test-created Capability catalog into the topology authority.
+
+    The base fixture intentionally starts without a Capability artifact. Tests
+    that create one must explicitly perform the same binding that Chapter 3
+    publishes before MVG admission can consume the topology closure.
+    """
+    topology_root = root / "docs/planning/semantic-topology"
+    capabilities_path = topology_root / "capabilities.v1.json"
+    manifest_path = topology_root / "topology-manifest.v1.json"
+    edges_path = topology_root / "topology-edges.v1.json"
+    if not capabilities_path.is_file():
+        raise FileNotFoundError(capabilities_path)
+
+    capabilities = load_json(capabilities_path, {})
+    manifest = load_json(manifest_path, {})
+    edges_document = load_json(edges_path, {})
+    edges = list(edges_document.get("edges") or [])
+
+    def add_edge(source_type: str, source_id: str, target_type: str,
+                 target_id: str, relation: str) -> None:
+        edge = {
+            "source_type": source_type,
+            "source_id": str(source_id),
+            "target_type": target_type,
+            "target_id": str(target_id),
+            "relation": relation,
+        }
+        if edge not in edges:
+            edges.append(edge)
+
+    for capability in capabilities.get("capabilities", []):
+        if not isinstance(capability, dict):
+            continue
+        capability_id = str(capability.get("capability_id") or "")
+        for requirement_id in capability.get("requirement_ids", []):
+            add_edge("requirement", str(requirement_id), "capability", capability_id, "grouped_by")
+
+    for view_path in (root / ".taskmaster/tasks/tasks_back.json",
+                      root / ".taskmaster/tasks/tasks_gameplay.json"):
+        rows = load_json(view_path, [])
+        if not isinstance(rows, list):
+            continue
+        for task in rows:
+            if not isinstance(task, dict):
+                continue
+            task_id = task.get("taskmaster_id", task.get("id"))
+            if task_id is None:
+                continue
+            for capability_id in task.get("capability_refs", []) or []:
+                add_edge("capability", str(capability_id), "task", str(task_id), "implemented_by")
+
+    edges_document["edges"] = sorted(
+        edges,
+        key=lambda edge: (
+            str(edge.get("source_type", "")), str(edge.get("source_id", "")),
+            str(edge.get("target_type", "")), str(edge.get("target_id", "")),
+            str(edge.get("relation", "")),
+        ),
+    )
+    edges_document["source_revision"] = manifest.get("source_revision")
+    atomic_json(edges_path, edges_document)
+
+    source_manifest = load_json(root / MANIFEST_PATH, {})
+    manifest["source_manifest_sha256"] = source_manifest.get("manifest_sha256")
+    manifest["artifacts"] = {
+        "docs/planning/semantic-topology/source-blocks.v1.json": normalized_file_sha(
+            topology_root / "source-blocks.v1.json"),
+        "docs/planning/semantic-topology/semantic-requirements.v1.json": normalized_file_sha(
+            topology_root / "semantic-requirements.v1.json"),
+        "docs/planning/semantic-topology/capabilities.v1.json": normalized_file_sha(capabilities_path),
+        "docs/planning/semantic-topology/topology-edges.v1.json": normalized_file_sha(edges_path),
+    }
+    atomic_json(manifest_path, manifest)
 
 
 def build_fixture(root: Path) -> dict[str, Any]:

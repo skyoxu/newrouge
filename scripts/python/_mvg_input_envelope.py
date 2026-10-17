@@ -9,6 +9,8 @@ import re
 from _planning_skill_common import atomic_json, canonical_sha, file_sha, load_json, normalized_file_sha, repo_path
 
 ENVELOPE_SCHEMA = "newrouge.mvg-input-envelope.v1"
+TOPOLOGY_MANIFEST = Path("docs/planning/semantic-topology/topology-manifest.v1.json")
+TOPOLOGY_EDGES = Path("docs/planning/semantic-topology/topology-edges.v1.json")
 
 
 def _reference_path(value):
@@ -104,6 +106,14 @@ def freeze_envelope(root, *, run_id, capabilities_path, readiness, manifest_path
         bind(rel, "core_authority", required=True, prepared_path=prepared)
     for rel in pm.TASK_VIEWS:
         bind(rel, "task_view", required=True, prepared_path="task-views/" + rel.name)
+    topology_paths = ((TOPOLOGY_MANIFEST, "topology-manifest.v1.json"),
+                      (TOPOLOGY_EDGES, "topology-edges.v1.json"))
+    topology_present = [(root / path).is_file() for path, _ in topology_paths]
+    if any(topology_present) and not all(topology_present):
+        raise ValueError("MVG topology input is partial")
+    for rel, prepared in topology_paths:
+        if (root / rel).is_file():
+            bind(rel, "topology_authority", required=True, prepared_path=prepared)
     for row in load_json(root / pm.SOURCE_MANIFEST, {}).get("sources", []):
         bind(row["path"], "source", required=True, prepared_path="sources/" + _reference_path(row["path"]))
     for path in (root / "Game.Core/Contracts").rglob("*.cs"):
@@ -193,6 +203,10 @@ def freeze_envelope(root, *, run_id, capabilities_path, readiness, manifest_path
     from _mvg_capability_generation import capability_scopes
     scope = pm._manifest_planning_scope(load_json(manifest_path, {}), pm._task_view_rows(root)) \
         if predecessor["status"] == "present" else None
+    topology = {"status": "bound" if all(topology_present) else "legacy_unmapped",
+                "resolver_revision": "registered-edge-closure.v1",
+                "paths": [rel.as_posix() for rel, _ in topology_paths] if all(topology_present) else [],
+                "reason": None if all(topology_present) else "topology artifacts are not present"}
     return {"schema_version": ENVELOPE_SCHEMA, "run_id": run_id,
         "capabilities": {"path": cap_rel, "sha256": file_sha(capabilities_path),
                          "source_revision": capabilities.get("source_revision"),
@@ -201,6 +215,7 @@ def freeze_envelope(root, *, run_id, capabilities_path, readiness, manifest_path
                               "requirement_ids": deepcopy(row.get("requirement_ids", []))}
                              for i, row in enumerate(capabilities.get("capabilities", []))],
         "scopes": capability_scopes(capabilities, semantics, scope),
+        "topology": topology,
         "chapter5": {"formal_ready": formal, "tasks": tasks,
                      "extraction": deepcopy(inventory[DEFAULT_EXTRACTION_SNAPSHOT.as_posix()])},
         "inventory": sorted(inventory.values(), key=lambda row: row["path"]), "predecessor": predecessor}

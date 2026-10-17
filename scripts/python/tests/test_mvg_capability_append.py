@@ -911,6 +911,72 @@ class CapabilityAppendTests(unittest.TestCase):
         base = {"manifest_candidate": {"flows": []}, "coverage_table": [], "entrypoints": [], "tests": []}
         return envelope, scope, base
 
+    def bind_scope_topology(self, prepared):
+        from _planning_skill_common import normalized_file_sha
+        revision = "fixture-revision"
+        documents = {
+            "source-blocks.v1.json": {"blocks": [{"block_id": "BLOCK-shared"}]},
+            "semantic-requirements.v1.json": {"requirements": [
+                {"requirement_id": rid, "source_block_ids": ["BLOCK-shared"]}
+                for rid in ("FR-A", "FR-B")]},
+            "capabilities.v1.json": {"capabilities": [
+                {"capability_id": "CAP-A", "requirement_ids": ["FR-A"]},
+                {"capability_id": "CAP-B", "requirement_ids": ["FR-B"]}]},
+            "topology-edges.v1.json": {"edges": [
+                {"source_type": source_type, "source_id": source, "target_type": target_type,
+                 "target_id": target, "relation": relation}
+                for source_type, source, target_type, target, relation in (
+                    ("source_block", "BLOCK-shared", "requirement", "FR-A", "projects_to"),
+                    ("source_block", "BLOCK-shared", "requirement", "FR-B", "projects_to"),
+                    ("requirement", "FR-A", "capability", "CAP-A", "grouped_by"),
+                    ("requirement", "FR-B", "capability", "CAP-B", "grouped_by"),
+                    ("requirement", "FR-A", "task", "7", "implemented_by"),
+                    ("requirement", "FR-B", "task", "7", "implemented_by"))]}}
+        for name, document in documents.items():
+            atomic_json(prepared / name, dict(document, source_revision=revision))
+        atomic_json(prepared / "source-manifest.v1.json", {"source_revision": revision,
+            "manifest_sha256": "sha256:fixture"})
+        atomic_json(prepared / "topology-manifest.v1.json", {"source_revision": revision,
+            "source_manifest_sha256": "sha256:fixture", "artifacts": {
+                "docs/planning/semantic-topology/" + name: normalized_file_sha(prepared / name)
+                for name in documents}})
+
+    def test_topology_scope_is_bounded_and_its_proof_cannot_be_changed(self):
+        from _mvg_evidence_transport import model_context, plan_transport, STRUCTURED_TRANSPORT_SCHEMA
+        with tempfile.TemporaryDirectory() as directory:
+            prepared = Path(directory)
+            _, scope, base = self.chapter5_transport_fixture(prepared, unrelated=True)
+            self.bind_scope_topology(prepared)
+            context = generation.complete_scope_context(prepared, scope, base)
+            self.assertEqual("newrouge.mvg-scoped-evidence.v4", context["evidence_scope_schema"])
+            self.assertEqual({"FR-A"}, {row["requirement_id"] for row in context["requirements"]})
+            self.assertNotIn({"type": "capability", "id": "CAP-B"}, context["topology_base_closure"]["nodes"])
+            self.assertEqual([], generation.evidence_scope_errors(prepared, scope, base, base, context))
+            self.assertNotIn("topology_base_closure", model_context(context))
+            plan = plan_transport(context, phase="inspect", probe=lambda *_: {"truncation_allowed": False})
+            self.assertEqual(STRUCTURED_TRANSPORT_SCHEMA, plan["schema_version"])
+            for fault in ("removed", "changed"):
+                changed = deepcopy(context)
+                if fault == "removed":
+                    changed.pop("topology_base_closure")
+                else:
+                    changed["topology_base_closure"]["edges"] = []
+                self.assertEqual(["evidence_transport_scope_changed"],
+                    generation.evidence_scope_errors(prepared, scope, base, base, changed))
+
+    def test_historical_scoped_contexts_never_gain_topology_fields_or_dependencies(self):
+        with tempfile.TemporaryDirectory() as directory:
+            prepared = Path(directory)
+            _, scope, base = self.chapter5_transport_fixture(prepared)
+            for version in (1, 2, 3):
+                schema = "newrouge.mvg-scoped-evidence.v" + str(version)
+                with self.subTest(version=version), patch.object(generation, "_validate_topology_binding",
+                        side_effect=AssertionError("Historical scopes must not read new topology")):
+                    context = generation.complete_scope_context(prepared, scope, base, scope_schema=schema)
+                    self.assertNotIn("topology_base_closure", context)
+                    self.assertNotIn("topology_base_closure", context["evidence_selection"])
+                    self.assertEqual([], generation.evidence_scope_errors(prepared, scope, base, base, context))
+
     def test_model_evidence_scope_follows_handoff_owners_acceptance_authority_and_explicit_refs(self):
         with tempfile.TemporaryDirectory() as directory:
             prepared = Path(directory)
@@ -1226,6 +1292,7 @@ class CapabilityAppendTests(unittest.TestCase):
                     "\n// Full auxiliary source line\n" * 2000 if fault in {
                         "evidence_transport", "stage_cost_transport", "inspection_cost_recovery",
                         "stage_cost_dynamic_review"} else ""), encoding="utf-8")
+            fixture.bind_capability_topology(root)
             if accounting_evidence:
                 evidence_ref = 'docs/testing/accounting-proof.json'
                 evidence_records = [{'evidence_id': rid + '-' + fid, 'requirement_ids': [rid], 'status': 'passed',
@@ -1959,11 +2026,15 @@ class CapabilityAppendTests(unittest.TestCase):
                         with self.assertRaises(ValueError, msg=mutation):
                             plan_mvg.generate(root, run_id="fixture", timeout_sec=1, llm_backend="codex-cli")
                         for operation in (lambda: plan_mvg.review(root, run_id="fixture", runner=Path("unused"), timeout_sec=1),
-                                          lambda: plan_mvg.validate(root, run_id="fixture"),
                                           lambda: plan_mvg.apply(root, run_id="fixture", confirm=True)):
                             atomic_json(run / "run.json", changed_state)
                             with self.assertRaises(ValueError, msg=mutation):
                                 operation()
+                        atomic_json(run / "run.json", changed_state)
+                        validation = plan_mvg.validate(root, run_id="fixture")
+                        self.assertFalse(validation["formal_applicable"], mutation)
+                        self.assertTrue(any("selected_chain_invalid" in item
+                                            for item in validation["formal_blockers"]), mutation)
                         self.assertEqual(calls_before_review, len(seen))
                         atomic_json(path, original_payload)
                     atomic_json(run / "run.json", persisted)

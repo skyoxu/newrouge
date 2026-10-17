@@ -60,6 +60,7 @@ def build_project(root):
         "schema_version": "newrouge.capabilities.v1", "capabilities": caps, "source_revision": semantics["source_revision"]})
     for path in pm.TASK_VIEWS:
         atomic_json(root / path, views)
+    fixture.bind_capability_topology(root)
     (root / refs[1]).parent.mkdir(parents=True, exist_ok=True)
     # Evidence already present in the portable fixture stays unchanged.
     atomic_json(root / refs[1], {"runtime": "planned fixture entrypoint"})
@@ -99,6 +100,7 @@ class WorkerRecoveryIntegrationTests(unittest.TestCase):
             catalog = load_json(capabilities_path)
             catalog["generated_at"] = "unrelated catalog metadata"
             atomic_json(capabilities_path, catalog)
+            fixture.bind_capability_topology(root)
             subprocess.run(["git", "-C", str(root), "commit", "--allow-empty", "-m", "fixture: unrelated revision"],
                 check=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
             prepare(root, "reused", refs, run_invocation_limit=1)
@@ -176,6 +178,7 @@ class WorkerRecoveryIntegrationTests(unittest.TestCase):
             catalog = load_json(catalog_path)
             catalog["capabilities"][1]["description"] += " changed individual content"
             atomic_json(catalog_path, catalog)
+            fixture.bind_capability_topology(root)
             prepare(root, "next", refs)
             pm.generate(root, run_id="next", timeout_sec=10, llm_backend="codex-cli")
             next_run = root / "logs/ci/mvg-planning/next"

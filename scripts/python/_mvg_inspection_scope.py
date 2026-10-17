@@ -4,12 +4,14 @@ from copy import deepcopy
 from _planning_skill_common import canonical_sha
 
 SCOPE_SCHEMA = "newrouge.mvg-scoped-evidence.v3"
+TOPOLOGY_SCOPE_SCHEMA = "newrouge.mvg-scoped-evidence.v4"
+SCOPED_SCHEMAS = frozenset({SCOPE_SCHEMA, TOPOLOGY_SCOPE_SCHEMA})
 
 
 def inspection_core(core, parts):
     """Deliver complete related rows plus an explicit global boundary map."""
     result = deepcopy(core)
-    if core.get("evidence_scope_schema") != SCOPE_SCHEMA or not parts:
+    if core.get("evidence_scope_schema") not in SCOPED_SCHEMAS or not parts:
         return result
     from _mvg_input_envelope import _acceptance_refs, _reference_path
     views = core.get("task_views", [])
@@ -81,7 +83,7 @@ def inspection_core(core, parts):
 
 def authority_delivery_errors(core, batches):
     """Require the batch union to deliver every frozen authority row exactly."""
-    if core.get("evidence_scope_schema") != SCOPE_SCHEMA or not batches:
+    if core.get("evidence_scope_schema") not in SCOPED_SCHEMAS or not batches:
         return []
     delivered = [inspection_core(core, batch["parts"]) for batch in batches]
     for name, getter in (("task_views", lambda c: c.get("task_views", [])),

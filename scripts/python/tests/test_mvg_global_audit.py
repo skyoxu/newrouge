@@ -70,6 +70,17 @@ class GlobalAuditTests(unittest.TestCase):
             conflict_report=str(path), conflict_report_sha256=file_sha(path))
 
     def test_offline_audit_reopen_replacements_and_stale_matrix(self):
+        def assert_invocation_ledger(state, expected_total):
+            ledger = state["capability_selection"]
+            calls = ledger["calls"]
+            self.assertEqual(expected_total, ledger["total_invocations"])
+            self.assertEqual(expected_total, len(calls))
+            self.assertEqual(list(range(1, expected_total + 1)),
+                             [row["number"] for row in calls])
+            self.assertEqual({label: sum(row.get("candidate") == label for row in calls)
+                              for label in plan_mvg.MVG_CANDIDATE_LABELS},
+                             ledger["lineage_invocations"])
+
         def completed(root, run):
             initial = load_json(run / "run.json")
             original_calls = deepcopy(initial["capability_selection"]["calls"])
@@ -146,6 +157,16 @@ class GlobalAuditTests(unittest.TestCase):
                     if mutation.endswith("journal"):
                         (run / "apply-journal.json").unlink()
                     atomic_json(run / "run.json", bound_state)
+            # This evidence list is shared by both reopen scenarios below.
+            # Keep its construction outside ``subTest`` blocks so a failed
+            # assertion in one scenario cannot leave the later scenario with
+            # an uninitialized local.
+            old = initial["capability_selection"]["selected"][0]
+            unselected = next(label for label in old["admissions"] if label != old["selected_candidate"])
+            historical = [run / old["admissions"][unselected][key + "_path"] for key in ("proposal", "proof")]
+            historical += [(run / old["selection_path"]).parent / "A.json"]
+            historical += [run / call["request_identity"]["output_path"] for call in original_calls
+                if call["request_identity"]["output_path"].endswith("capability-review.json")][:1]
             with self.subTest(scenario="REOPEN atomic failure before replace"):
                 def fail_before(path, value):
                     raise OSError("fixture_before_replace")
@@ -160,6 +181,8 @@ class GlobalAuditTests(unittest.TestCase):
                 self.assertEqual(original_total, reopened["total_invocations"])
                 pending = load_json(run / "run.json")
                 self.assertEqual([], pending["capability_selection"]["selected"])
+                archived = global_audit.historical_states(run, pending)[0]
+                historical += [run / archived[key]["path"] for key in ("global_audit", "global_conflict_report")]
                 self.assertEqual(2, pending["capability_selection"]["generation"])
                 gap = global_audit.operate(root, run_id="fixture", operation="audit")
                 self.assertTrue(any(row["code"] == "unresolved_reopened_conflicts" for row in gap["evidence_gaps"]))
@@ -226,23 +249,36 @@ class GlobalAuditTests(unittest.TestCase):
                     ("CAP-b", "capability-append.json"), ("CAP-b", "capability-review.json")}, set(transmitted))
                 state = load_json(run / "run.json")
                 selection.verify_published_chain(root, run, state)
-                self.assertEqual(original_total * 2 + 4, state["capability_selection"]["total_invocations"])
-                retried = load_json(retry_ledger_path)
-                self.assertEqual(["generate", "semantic", "repair", "repair", "generate", "semantic"],
-                    [row["phase"] for row in retried["calls"]])
-                self.assertEqual(2, len(retried["rejected_repairs"]))
-                self.assertTrue(all("repair_target_unchanged" in row["errors"] for row in retried["rejected_repairs"]))
-                self.assertEqual(1, len(retried["restarts"]))
-                self.assertEqual(3, retried["restarts"][0]["repair_attempts"])
+                # Reopen retains the original 14 dispatches and charges each
+                # replacement scope exactly once. CAP-a has one injected
+                # blocked review and therefore costs 9; CAP-b costs 7.
+                assert_invocation_ledger(state, original_total + 9 + 7)
+                self.assertEqual({1: original_total, 2: 16},
+                    {generation: sum(row.get("generation", 1) == generation
+                                     for row in state["capability_selection"]["calls"])
+                     for generation in (1, 2)})
+                # This fixture interrupted before the first repair dispatch.
+                # Recovery intentionally starts a clean worker execution for
+                # the incomplete Capability; it must not replay the old issue
+                # or count the fresh-context generation as a repair attempt.
+                interrupted_ledger = load_json(run / "candidates/candidate-1/generation-2/scope-1/capability-append/append-ledger.json")
+                restarted_ledger = load_json(run / "candidates/candidate-1/generation-2/scope-1/execution-2/capability-append/append-ledger.json")
+                self.assertEqual(["generate", "semantic"],
+                    [row["phase"] for row in interrupted_ledger["calls"]])
+                self.assertEqual([1], list(interrupted_ledger["current"]["issue_attempts"].values()))
+                self.assertEqual(["generate", "semantic"],
+                    [row["phase"] for row in restarted_ledger["calls"]])
+                self.assertIsNone(restarted_ledger["current"])
+                self.assertEqual([], restarted_ledger.get("restarts", []))
+                self.assertEqual("admitted", restarted_ledger["status"])
                 self.assertEqual(original_calls, state["capability_selection"]["calls"][:original_total])
-                self.assertEqual({label: 12 if label == "candidate-1" else 8 for label in plan_mvg.MVG_CANDIDATE_LABELS},
+                self.assertEqual({label: 10 if label == "candidate-1" else 8 for label in plan_mvg.MVG_CANDIDATE_LABELS},
                                  state["capability_selection"]["lineage_invocations"])
                 for step in state["capability_selection"]["selected"]:
                     for label, admission in step["admissions"].items():
                         self.assertEqual(label + "-r2", admission["lineage"])
                         self.assertIn("generation-2", admission["workspace"])
-                        self.assertEqual(6 if label == "candidate-1" and step == state["capability_selection"]["selected"][0]
-                            else 2, admission["total_invocations"])
+                        self.assertEqual(2, admission["total_invocations"])
                     self.assertEqual("resolved", step["record"]["proof"]["review"]["reopen_reviews"][0]["verdict"])
                 self.assertEqual(2, len(state["reopen_history"][0]["replacement_selections"]))
                 audited = global_audit.verified_audit(root, run, state)
@@ -252,7 +288,7 @@ class GlobalAuditTests(unittest.TestCase):
                 self.assertEqual(immutable, {path: path.read_bytes() for path in immutable})
                 with patch.object(plan_mvg, "run_isolated_model", side_effect=AssertionError("Unexpected paid recovery")):
                     plan_mvg.generate(root, run_id="fixture", timeout_sec=1, llm_backend="codex-cli")
-                self.assertEqual(original_total * 2 + 4, load_json(run / "run.json")["capability_selection"]["total_invocations"])
+                assert_invocation_ledger(load_json(run / "run.json"), original_total + 9 + 7)
                 proposal = load_json(run / "proposal.json")
                 proof = load_json(root / state["selected_admission_review"]["path"])
                 for bad in (None, [], "invalid", {"generation": "2"}, {"generation": 2, "plan": []}):
@@ -263,14 +299,6 @@ class GlobalAuditTests(unittest.TestCase):
                         changed["records"][0]["proof"]["reopen_context"] = bad
                     self.assertTrue(any("reopen_context" in row["code"] for row in
                         plan_mvg.candidate_admission_errors(root, state, proposal, changed)))
-                old = initial["capability_selection"]["selected"][0]
-                unselected = next(label for label in old["admissions"] if label != old["selected_candidate"])
-                historical = [run / old["admissions"][unselected][key + "_path"] for key in ("proposal", "proof")]
-                historical += [(run / old["selection_path"]).parent / "A.json"]
-                archived = global_audit.historical_states(run, state)[0]
-                historical += [run / archived[key]["path"] for key in ("global_audit", "global_conflict_report")]
-                historical += [run / call["request_identity"]["output_path"] for call in original_calls
-                    if call["request_identity"]["output_path"].endswith("capability-review.json")][:1]
                 for path in historical:
                     before = path.read_bytes()
                     try:
@@ -305,7 +333,13 @@ class GlobalAuditTests(unittest.TestCase):
                 self.assertEqual(3, recovered["generation"])
                 plan_mvg.generate(root, run_id="fixture", timeout_sec=1, llm_backend="codex-cli")
                 state = load_json(run / "run.json")
-                self.assertEqual(39, state["capability_selection"]["total_invocations"])
+                # The second reopen replaces CAP-b only and does not refund
+                # any historical dispatches from generations 1 or 2.
+                assert_invocation_ledger(state, original_total + 9 + 7 + 7)
+                self.assertEqual({1: original_total, 2: 16, 3: 7},
+                    {generation: sum(row.get("generation", 1) == generation
+                                     for row in state["capability_selection"]["calls"])
+                     for generation in (1, 2, 3)})
                 self.assertEqual("passed", global_audit.verified_audit(root, run, state)["status"])
                 self.assertEqual(immutable, {path: path.read_bytes() for path in immutable})
             with self.subTest(scenario="REOPEN generation-bound apply and free journal replay"):
@@ -331,7 +365,7 @@ class GlobalAuditTests(unittest.TestCase):
                     dependency.write_bytes(before)
                 self.assertEqual(applied, plan_mvg.apply(root, run_id="fixture", confirm=True))
                 self.assertFalse(applied["runtime_verified"])
-                self.assertEqual(39, load_json(run / "run.json")["capability_selection"]["total_invocations"])
+                assert_invocation_ledger(load_json(run / "run.json"), original_total + 9 + 7 + 7)
         append_fixture.CapabilityAppendTests().exercise_public_generation(coordinator_case="mixed", multi_route=True, on_completed=completed)
 
     def test_unresolved_resolution_cannot_become_admitted(self):

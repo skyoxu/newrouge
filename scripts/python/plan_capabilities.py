@@ -338,7 +338,7 @@ def prepare(
 
 CANDIDATE_PROMPT = """You are producing one independent cumulative Capability proposal for a game repository.
 
-Use the complete prepared analysis-input. The runner may stream authoritative Source Block raw text and reviewed Requirements in ordered batches from analysis-input/model-batches; every batch belongs to this same fresh candidate session and no block may be truncated. Sanitized task views and readiness context are also part of the allowed input. Do not infer or search for any prior Capability answer. Preserve any capability/module organization written in the authoritative GDD itself; that source organization is evidence, not a derived answer to hide.
+Use the complete prepared analysis-input. The runner sends authoritative Source Block raw text and reviewed Requirements in ordered batches from analysis-input/model-batches. Each batch analysis is an independent fresh request; no batch may rely on a previous response and no block may be truncated. A separate synthesis request receives the bounded batch analyses plus the complete non-source workspace context. Sanitized task views and readiness context are also part of the allowed input. Do not infer or search for any prior Capability answer. Preserve any capability/module organization written in the authoritative GDD itself; that source organization is evidence, not a derived answer to hide.
 
 The prepared workspace may include capability-reference.v1.json. It is an optional cross-project diagnostic only, never a template, authority, target shape, or ID source. Do not copy its count, titles, membership, or boundaries. Start from current user-visible outcomes and end-to-end journey handoffs, then use current Source Blocks and Requirements as authoritative. Split when there is a distinct user outcome, owner, lifecycle, or independently reviewable journey handoff; merge when several requirements are only implementation steps of one outcome. Do not optimize for a fixed Capability count, historical count, Requirement count, or symmetry. Avoid oversized buckets that combine unrelated lifecycle, runtime, persistence, UI, or governance responsibilities, and avoid one-Requirement atoms unless that Requirement has a genuinely independent outcome or boundary. A Capability should normally represent one cohesive responsibility that a human can understand and that MVG can use as a meaningful journey stage or handoff. Explain any use of the diagnostic and all major split/merge decisions in generation_notes.
 
@@ -561,7 +561,7 @@ def _estimated_requests(state: dict[str, Any], runner_info: dict[str, Any]) -> i
     if runner_info.get("request_accounting") != "exact_per_runner_invocation":
         return None
     if runner_info.get("supports_batched_session") is True:
-        return int(state.get("model_batch_count") or 0) + 2
+        return int(state.get("model_batch_count") or 0) + 1
     return 1
 
 

@@ -2,7 +2,9 @@
 
 ## 已完成 Capability 恢复与进度
 
-当前默认范围为 `newrouge.mvg-scoped-evidence.v3`，继承下述 v2 来源投影规则，历史 scoped v1/v2 按原版投影、提示词与哈希重建，不改写旧证明。v3 的 inspection 每批保留完整 Capability、Requirement、source block、受影响累计 flow，以及该批来源关联的完整任务行、Acceptance 和 readiness；其他任务以明确的全局边界表呈现。关联范围由任务引用、Acceptance Refs、Chapter 5 descriptor 和依赖闭包确定，共享路径包含全部关联任务；未知归属、异常结构和 explicit evidence 保守回退全量任务上下文。全部批次的任务行/master/readiness 并集必须精确覆盖 frozen core，缺失在首个模型调用前阻断。生成与独立语义准入分别执行此检查；synthesis 仍保留全部相关核心正文，新 synthesis 由既有无损编码保存原任务数组顺序、缺失值、null 与字段类型。不得用跨批次引用代替正文；重复指纹快照仍全文传送，仅允许同一请求内的自包含无损共享。优化不保证批次数或耗时降低，最终完整包装继续预检，64/192 预算不变。
+新范围默认使用 `newrouge.mvg-scoped-evidence.v4`：Knowledge 与 MVG 共享 `_semantic_topology.resolve_relation_closure` 及定向 Capability 关系规则。基础范围为选定 Capability → Requirement → source block/任务 owner；共享任务或来源块是边界，不反向拉入其他 Capability。准备阶段冻结 topology manifest/edges，使用前校验四项产物哈希、来源版本与已注册端点；部分缺失或失配阻断，完全缺失的旧输入显式标记 `legacy_unmapped`。MVG 仅在此基础上扩展受影响累计 flow/handoff、owner 的 Acceptance/Chapter 5 权威引用及显式证据，不另建搜索/RAG，也不向通用拓扑写入 MVG 专属关系。完整闭包与选择理由写入机器证明，模型收到完整选中正文，不重复机器闭包元数据。历史 scoped v1/v2/v3 保持原投影和哈希，不补读新拓扑。
+
+当前 v4 继承 `newrouge.mvg-scoped-evidence.v3` 的完整分批规则与下述 v2 来源投影规则，历史版本按原版投影、提示词与哈希重建，不改写旧证明。inspection 每批保留完整 Capability、Requirement、source block、受影响累计 flow，以及该批来源关联的完整任务行、Acceptance 和 readiness；其他任务以明确的全局边界表呈现。关联范围由任务引用、Acceptance Refs、Chapter 5 descriptor 和依赖闭包确定，共享路径包含全部关联任务；未知归属、异常结构和 explicit evidence 保守回退全量任务上下文。全部批次的任务行/master/readiness 并集必须精确覆盖 frozen core，缺失在首个模型调用前阻断。生成与独立语义准入分别执行此检查；synthesis 仍保留全部相关核心正文，新 synthesis 由既有无损编码保存原任务数组顺序、缺失值、null 与字段类型。不得用跨批次引用代替正文；重复指纹快照仍全文传送，仅允许同一请求内的自包含无损共享。优化不保证批次数或耗时降低，最终完整包装继续预检，64/192 预算不变。
 
 模型证据范围使用 `newrouge.mvg-scoped-evidence.v2`。完整 frozen source、原始 SHA、Chapter 5 readiness 与全局机器门禁保留。仅作为当前项 readiness 上下文使用的 `newrouge.semantic-reconciliation.v1`，允许向模型发送确定性 JSON 投影：保留当前 Requirement/Task/source block/Capability 相关的完整 finding 与 typed topology boundary，并保留未知格式、无法归属及未解决的硬问题。只有明确无关的稳定 `source_semantic/equivalent/keep` finding 和无关已知类型边可省略；每项均记录原 JSON Pointer、内容哈希与理由。完整源、选中行、排除行及投影哈希一起绑定，准入时从 frozen source 独立重建。explicit evidence 或 proposal 直接引用的文件仍全文发送。内联与分批请求使用同一投影，行引用明确属于投影，不伪装成原文件行号。历史 scoped v1 proof 保留原全文与原提示词哈希，不补造投影。范围/容量测量不执行模型，也不证明 MVG 准入或运行验收完成。
 

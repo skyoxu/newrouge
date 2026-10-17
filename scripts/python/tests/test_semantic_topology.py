@@ -17,6 +17,7 @@ from scripts.python._semantic_topology import (
     attach_scene_design_trace,
     load_topology_from_snapshot,
     load_workspace_topology,
+    resolve_relation_closure,
 )
 
 
@@ -83,6 +84,90 @@ def valid_docs(revision="a" * 40):
 
 
 class SemanticTopologyTests(unittest.TestCase):
+    def test_capability_evidence_closure_stops_at_shared_tasks_and_source_blocks(self):
+        from scripts.python._semantic_topology import CAPABILITY_EVIDENCE_RELATIONS
+        closure = resolve_relation_closure(
+            source_blocks=[{"block_id": "SB"}],
+            requirements=[{"requirement_id": "R1"}, {"requirement_id": "R2"}],
+            capabilities=[{"capability_id": "C1"}, {"capability_id": "C2"}],
+            tasks=[{"id": 7}], seed_nodes=[("capability", "C1")],
+            traversal_rules=CAPABILITY_EVIDENCE_RELATIONS, edges=[
+                {"source_type": "requirement", "source_id": rid,
+                 "target_type": kind, "target_id": target, "relation": relation}
+                for rid, cid in (("R1", "C1"), ("R2", "C2"))
+                for kind, target, relation in (("capability", cid, "grouped_by"),
+                                               ("task", "7", "implemented_by"))
+            ] + [{"source_type": "source_block", "source_id": "SB",
+                  "target_type": "requirement", "target_id": rid, "relation": "projects_to"}
+                 for rid in ("R1", "R2")])
+        self.assertEqual([], closure["problems"])
+        self.assertEqual({("capability", "C1"), ("requirement", "R1"),
+                          ("task", "7"), ("source_block", "SB")},
+                         {(row["type"], row["id"]) for row in closure["nodes"]})
+
+    def test_relation_closure_registers_only_declared_non_task_sinks(self):
+        kwargs = dict(source_blocks=[], capabilities=[], tasks=[],
+            requirements=[{"requirement_id": "R",
+                           "non_task_sinks": [{"type": "adr", "id": "ADR-1"}]}],
+            seed_nodes=[("requirement", "R")])
+        edge = {"source_type": "requirement", "source_id": "R",
+                "target_type": "adr", "target_id": "ADR-1", "relation": "constrained_by"}
+        self.assertEqual([], resolve_relation_closure(edges=[edge], **kwargs)["problems"])
+        self.assertTrue(resolve_relation_closure(edges=[dict(edge, target_id="ADR-missing")],
+                                                **kwargs)["problems"])
+
+    def test_relation_closure_resolves_capability_requirements_sources_and_tasks(self):
+        docs = valid_docs()
+        docs[TOPOLOGY_ARTIFACTS["edges"]]["edges"].extend([
+            {"source_type": "source_block", "source_id": "SB-1",
+             "target_type": "requirement", "target_id": "FR-1", "relation": "projects_to"},
+            {"source_type": "requirement", "source_id": "FR-1",
+             "target_type": "capability", "target_id": "CAP-1", "relation": "grouped_by"},
+        ])
+        closure = resolve_relation_closure(
+            source_blocks=docs[TOPOLOGY_ARTIFACTS["source_blocks"]],
+            requirements=docs[TOPOLOGY_ARTIFACTS["requirements"]],
+            capabilities=docs[TOPOLOGY_ARTIFACTS["capabilities"]],
+            edges=docs[TOPOLOGY_ARTIFACTS["edges"]],
+            tasks=[{"id": 7}],
+            seed_nodes=[("capability", "CAP-1")],
+        )
+        self.assertEqual([], closure["problems"])
+        self.assertEqual(
+            {("capability", "CAP-1"), ("requirement", "FR-1"),
+             ("source_block", "SB-1"), ("task", "7")},
+            {(row["type"], row["id"]) for row in closure["nodes"]},
+        )
+
+    def test_relation_closure_is_stable_for_edge_order_and_cycles(self):
+        docs = valid_docs()
+        edges = docs[TOPOLOGY_ARTIFACTS["edges"]]["edges"] + [
+            {"source_type": "capability", "source_id": "CAP-1",
+             "target_type": "requirement", "target_id": "FR-1", "relation": "reviewed_by"},
+            {"source_type": "requirement", "source_id": "FR-1",
+             "target_type": "capability", "target_id": "CAP-1", "relation": "reviewed_by"},
+        ]
+        kwargs = dict(source_blocks=docs[TOPOLOGY_ARTIFACTS["source_blocks"]],
+                      requirements=docs[TOPOLOGY_ARTIFACTS["requirements"]],
+                      capabilities=docs[TOPOLOGY_ARTIFACTS["capabilities"]],
+                      tasks=[{"id": 7}], seed_nodes=[("capability", "CAP-1")])
+        first = resolve_relation_closure(edges=edges, **kwargs)
+        second = resolve_relation_closure(edges=list(reversed(edges)), **kwargs)
+        self.assertEqual(first, second)
+
+    def test_relation_closure_fails_closed_for_unknown_edges_and_seeds(self):
+        docs = valid_docs()
+        closure = resolve_relation_closure(
+            source_blocks=docs[TOPOLOGY_ARTIFACTS["source_blocks"]],
+            requirements=docs[TOPOLOGY_ARTIFACTS["requirements"]],
+            capabilities=docs[TOPOLOGY_ARTIFACTS["capabilities"]],
+            edges={"edges": [{"source_type": "capability", "source_id": "CAP-1",
+                               "target_type": "future", "target_id": "X", "relation": "unknown"}]},
+            tasks=[], seed_nodes=[("capability", "CAP-MISSING")],
+        )
+        self.assertTrue(any(item["kind"] == "edge_endpoint_missing" for item in closure["problems"]))
+        self.assertTrue(any(item["kind"] == "seed_node_missing" for item in closure["problems"]))
+
     def test_validator_allows_legacy_checkout_without_git_main_ref(self):
         with tempfile.TemporaryDirectory() as tmp:
             completed = subprocess.run(

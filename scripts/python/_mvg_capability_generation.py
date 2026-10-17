@@ -18,6 +18,94 @@ from _mvg_evidence_transport import (audit_errors, audit_execution_errors, audit
 APPEND_SCHEMA = "newrouge.mvg-capability-append.v1"
 INPUT_LIMIT = 850_000
 
+_TOPOLOGY_ARTIFACT_PREPARED_PATHS = {
+    "docs/planning/semantic-topology/source-blocks.v1.json": "source-blocks.v1.json",
+    "docs/planning/semantic-topology/semantic-requirements.v1.json": "semantic-requirements.v1.json",
+    "docs/planning/semantic-topology/capabilities.v1.json": "capabilities.v1.json",
+    "docs/planning/semantic-topology/topology-edges.v1.json": "topology-edges.v1.json",
+}
+
+
+def _topology_artifact_sha(path: Path) -> str:
+    """Match the topology validator's newline-independent JSON identity."""
+    from _planning_skill_common import normalized_file_sha
+    return normalized_file_sha(path)
+
+
+def _validate_topology_binding(prepared: Path, *, scope: dict[str, Any]) -> tuple[dict[str, Any], set[tuple[str, str]]]:
+    """Validate the complete frozen topology authority before deriving a closure."""
+    from _semantic_topology import CAPABILITY_EVIDENCE_RELATIONS, resolve_relation_closure
+
+    manifest_path = prepared / "topology-manifest.v1.json"
+    edges_path = prepared / "topology-edges.v1.json"
+    if manifest_path.is_file() != edges_path.is_file():
+        raise ValueError("mvg_topology_artifacts_partial")
+    # Historical callers may build a scope-only context without selecting a
+    # Capability.  Preserve that read-only context path; topology is only a
+    # base closure when an explicit Capability seed is available.
+    if not str(scope.get("capability_id") or "").strip():
+        return ({"available": False, "status": "legacy_unmapped",
+                 "resolver_revision": "registered-edge-closure.v1",
+                 "reason": "Capability seed is not present in scope",
+                 "nodes": [], "edges": [], "seed_nodes": [], "problems": []}, set())
+    if not (manifest_path.is_file() and edges_path.is_file()):
+        return ({"available": False, "status": "legacy_unmapped",
+                 "resolver_revision": "registered-edge-closure.v1",
+                 "reason": "topology artifacts are not present in prepared inputs",
+                 "nodes": [], "edges": [], "seed_nodes": [], "problems": []}, set())
+
+    manifest = load_json(manifest_path, {})
+    bindings = manifest.get("artifacts") if isinstance(manifest, dict) else None
+    if not isinstance(bindings, dict):
+        raise ValueError("mvg_topology_manifest_artifacts_missing")
+    for artifact_path, prepared_name in _TOPOLOGY_ARTIFACT_PREPARED_PATHS.items():
+        path = prepared / prepared_name
+        expected = bindings.get(artifact_path)
+        if not path.is_file() or not isinstance(expected, str):
+            raise ValueError("mvg_topology_artifact_binding_missing:" + artifact_path)
+        actual = _topology_artifact_sha(path)
+        if expected != actual:
+            raise ValueError("mvg_topology_artifact_hash_mismatch:" + artifact_path)
+
+    source_manifest = load_json(prepared / "source-manifest.v1.json", {})
+    source_revision = manifest.get("source_revision")
+    if not isinstance(source_revision, str) or not source_revision:
+        raise ValueError("mvg_topology_source_revision_missing")
+    if source_manifest.get("source_revision") != source_revision:
+        raise ValueError("mvg_topology_source_manifest_revision_mismatch")
+    if manifest.get("source_manifest_sha256") != source_manifest.get("manifest_sha256"):
+        raise ValueError("mvg_topology_source_manifest_hash_mismatch")
+
+    documents = {
+        "source_blocks": load_json(prepared / "source-blocks.v1.json", {}),
+        "requirements": load_json(prepared / "semantic-requirements.v1.json", {}),
+        "capabilities": load_json(prepared / "capabilities.v1.json", {}),
+        "edges": load_json(edges_path, {}),
+    }
+    for name, document in documents.items():
+        if name != "edges" and document.get("source_revision") != source_revision:
+            raise ValueError("mvg_topology_artifact_revision_mismatch:" + name)
+    if documents["edges"].get("source_revision") != source_revision:
+        raise ValueError("mvg_topology_artifact_revision_mismatch:edges")
+
+    task_master_doc = load_json(prepared / "task-master.json", {})
+    capabilities_doc = documents["capabilities"]
+    closure = resolve_relation_closure(
+        source_blocks=documents["source_blocks"], requirements=documents["requirements"],
+        capabilities=capabilities_doc, edges=documents["edges"],
+        tasks=task_master_doc.get("master", {}).get("tasks", []),
+        seed_nodes=[("capability", str(scope.get("capability_id") or ""))],
+        allowed_node_types={"capability", "requirement", "source_block", "task"},
+        traversal_rules=CAPABILITY_EVIDENCE_RELATIONS,
+    )
+    if closure["problems"]:
+        raise ValueError("mvg_topology_closure_invalid:" + canonical_sha(closure["problems"]))
+    closure.update({"available": True, "status": "fresh",
+                    "manifest_sha256": _topology_artifact_sha(manifest_path),
+                    "edges_sha256": _topology_artifact_sha(edges_path),
+                    "source_revision": source_revision})
+    return closure, {(row["type"], row["id"]) for row in closure["nodes"]}
+
 
 def capability_scopes(capabilities, semantics, planning_scope, task_statuses=None, *, prepared=None,
                       accepted_requirement_ids=()):
@@ -257,15 +345,19 @@ def complete_scope_context(prepared, scope, base, proposal=None, *, scope_schema
     import plan_mvg as pm
     from _mvg_input_envelope import input_identity, _reference_path, _acceptance_refs, _looks_like_path
     from _mvg_reconciliation_projection import SCOPE_SCHEMA, LEGACY_SCOPE_SCHEMA, project_source
-    from _mvg_inspection_scope import SCOPE_SCHEMA as CURRENT_SCOPE_SCHEMA
-    scope_schema = CURRENT_SCOPE_SCHEMA if scope_schema is None else scope_schema
-    if scope_schema not in {CURRENT_SCOPE_SCHEMA, SCOPE_SCHEMA, LEGACY_SCOPE_SCHEMA}:
+    from _mvg_inspection_scope import SCOPED_SCHEMAS, TOPOLOGY_SCOPE_SCHEMA
+    scope_schema = TOPOLOGY_SCOPE_SCHEMA if scope_schema is None else scope_schema
+    if scope_schema not in SCOPED_SCHEMAS | {SCOPE_SCHEMA, LEGACY_SCOPE_SCHEMA}:
         raise ValueError("mvg_evidence_scope_schema_invalid")
     semantics = load_json(prepared / "semantic-requirements.v1.json", {})
     rids = set(scope["requirement_ids"])
     affected, required = review_projection(scope, base, proposal or base)
     rids |= required
     rids |= {rid for flow in affected["manifest_candidate"]["flows"] for rid in flow.get("requirement_ids", [])}
+    topology_closure, topology_nodes = ({}, set())
+    if scope_schema == TOPOLOGY_SCOPE_SCHEMA:
+        topology_closure, topology_nodes = _validate_topology_binding(prepared, scope=scope)
+    rids |= {node_id for kind, node_id in topology_nodes if kind == "requirement"}
     requirements = [row for row in semantics["requirements"] if row["requirement_id"] in rids]
     owners = {str(tid) for tid in pm._review_task_ids(affected)}
     owners |= {str(row["owner_task"]) for row in affected.get("tests", []) if row.get("owner_task") is not None}
@@ -274,11 +366,17 @@ def complete_scope_context(prepared, scope, base, proposal=None, *, scope_schema
              for row in load_json(prepared / "task-views" / name, [])]
     tids = owners | {str(row["taskmaster_id"]) for row in all_views
                     if set(row.get("semantic_refs", row.get("requirement_ids", []))) & rids}
+    task_master_rows = load_json(prepared / "task-master.json", {}).get("master", {}).get("tasks", [])
+    if topology_closure.get("available"):
+        for edge in topology_closure["edges"]:
+            if edge["target_type"] == "task" and edge["source_type"] in {"capability", "requirement"}:
+                tids.add(edge["target_id"])
     views = [row for row in all_views if str(row.get("taskmaster_id")) in tids]
-    tasks = [row for row in load_json(prepared / "task-master.json", {}).get("master", {}).get("tasks", [])
+    tasks = [row for row in task_master_rows
              if str(row["id"]) in tids]
     block_ids = set(scope["capability"].get("source_block_ids", [])) | {
         block for row in requirements for block in row.get("source_block_ids", [])}
+    block_ids |= {node_id for kind, node_id in topology_nodes if kind == "source_block"}
     ledger = load_json(prepared / "source-blocks.v1.json", {})
     blocks = [row for row in ledger.get("blocks", []) if row.get("block_id") in block_ids]
     if block_ids - {row.get("block_id") for row in blocks}:
@@ -366,7 +464,7 @@ def complete_scope_context(prepared, scope, base, proposal=None, *, scope_schema
                 evidence.append({"path": ref, "sha256": file_sha(path), "text": source.read()})
             # Explicit/claimed file references require the complete document.
             # Narrow only reconciliation selected as readiness context alone.
-            if (scope_schema in {CURRENT_SCOPE_SCHEMA, SCOPE_SCHEMA} and "selected_chapter5_reconciliation" in dependencies[ref]
+            if (scope_schema in SCOPED_SCHEMAS | {SCOPE_SCHEMA} and "selected_chapter5_reconciliation" in dependencies[ref]
                     and dependencies[ref] == {"selected_chapter5_reconciliation"}):
                 evidence[-1] = project_source(evidence[-1], requirement_ids=rids,
                     task_ids=tids, source_block_ids=block_ids,
@@ -382,11 +480,20 @@ def complete_scope_context(prepared, scope, base, proposal=None, *, scope_schema
         "sources": [{"path": ref, "selected": ref in dependencies,
             "reason": ",".join(sorted(dependencies[ref])) if ref in dependencies else "outside_model_dependency_scope"}
             for ref in sorted(set(inventory) | set(dependencies))]}
-    if scope_schema in {CURRENT_SCOPE_SCHEMA, SCOPE_SCHEMA}:
+    if scope_schema == TOPOLOGY_SCOPE_SCHEMA:
+        selection["topology_base_closure"] = {
+            "status": topology_closure["status"],
+            "resolver_revision": topology_closure["resolver_revision"],
+            "node_count": len(topology_closure["nodes"]),
+            "edge_count": len(topology_closure["edges"]),
+            "manifest_sha256": topology_closure.get("manifest_sha256"),
+            "edges_sha256": topology_closure.get("edges_sha256"),
+        }
+    if scope_schema in SCOPED_SCHEMAS | {SCOPE_SCHEMA}:
         evidence_hashes = {row["path"]: row.get("sha256") for row in evidence}
         for row in selection["sources"]:
             row["sha256"] = inventory.get(row["path"], {}).get("sha256") or evidence_hashes.get(row["path"])
-    return {"input_identity": input_identity(prepared),
+    context = {"input_identity": input_identity(prepared),
             "evidence_scope_schema": scope_schema,
             "chapter5": _chapter5_model_projection(chapter5, evidence), "evidence_selection": selection,
             "scope": scope, "requirements": requirements, "source_blocks": blocks,
@@ -394,6 +501,9 @@ def complete_scope_context(prepared, scope, base, proposal=None, *, scope_schema
             "capabilities": load_json(prepared / "capabilities.v1.json", {}),
             "available_reference_paths": sorted({p.relative_to(prepared / family).as_posix()
                 for family in ("sources", "references") for p in (prepared / family).rglob("*") if p.is_file()})}
+    if scope_schema == TOPOLOGY_SCOPE_SCHEMA:
+        context["topology_base_closure"] = topology_closure
+    return context
 
 
 def _legacy_complete_scope_context(prepared, scope, base, proposal=None):
@@ -474,8 +584,8 @@ def evidence_scope_errors(prepared, scope, base, proposal, context):
         # selection in such a context is deletion/tampering, never a legacy
         # format, and must fail closed.
         from _mvg_reconciliation_projection import SCOPE_SCHEMA, LEGACY_SCOPE_SCHEMA
-        from _mvg_inspection_scope import SCOPE_SCHEMA as CURRENT_SCOPE_SCHEMA
-        if context.get("evidence_scope_schema") in {CURRENT_SCOPE_SCHEMA, SCOPE_SCHEMA, LEGACY_SCOPE_SCHEMA}:
+        from _mvg_inspection_scope import SCOPED_SCHEMAS
+        if context.get("evidence_scope_schema") in SCOPED_SCHEMAS | {SCOPE_SCHEMA, LEGACY_SCOPE_SCHEMA}:
             if "evidence_selection" not in context:
                 return ["evidence_transport_scope_selection_missing"]
             expected = complete_scope_context(prepared, scope, base, proposal,
@@ -492,6 +602,8 @@ def evidence_scope_errors(prepared, scope, base, proposal, context):
               "task_views", "task_master", "evidence", "capabilities", "available_reference_paths")
     if "evidence_selection" in expected:
         fields = ("evidence_scope_schema", "evidence_selection") + fields
+    if "topology_base_closure" in expected:
+        fields += ("topology_base_closure",)
     # Only runtime review bindings may accompany the reconstructed scope.
     # Reject unknown/new fields in an alleged legacy context as well.
     if set(context) - set(expected) - {"accepted_proposal", "proposal", "reopen_context"}:
@@ -702,7 +814,8 @@ def synthesis_context(payload, transport):
     """Build a compact model view while retaining complete source text in transport."""
     reduced = deepcopy(payload)
     reduced["evidence"] = deepcopy(transport["plan"]["inventory"])
-    if payload.get("evidence_scope_schema") != "newrouge.mvg-scoped-evidence.v3":
+    from _mvg_inspection_scope import SCOPED_SCHEMAS
+    if payload.get("evidence_scope_schema") not in SCOPED_SCHEMAS:
         # Preserve historical synthesis hashes. New contexts use the existing
         # typed, ordered lossless codec rather than a second grouping format.
         reduced["task_views"] = _compact_task_views(reduced.get("task_views", []))

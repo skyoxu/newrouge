@@ -4213,6 +4213,15 @@ def _prepare_impl(
         files[f"sources/{value}"] = _copy_file(root, repo_path(root, value), bundle, f"sources/{value}")
     for path in TASK_VIEWS:
         files[f"task-views/{path.name}"] = _copy_file(root, root / path, bundle, f"task-views/{path.name}")
+    # The topology graph is a machine-side authority input.  Bind only its
+    # manifest and edges; the complete topology documents stay out of model
+    # transport and are used to derive a compact base closure below.
+    for path, prepared_name in (
+        (Path("docs/planning/semantic-topology/topology-manifest.v1.json"), "topology-manifest.v1.json"),
+        (Path("docs/planning/semantic-topology/topology-edges.v1.json"), "topology-edges.v1.json"),
+    ):
+        if (root / path).is_file():
+            files[prepared_name] = _copy_file(root, root / path, bundle, prepared_name)
     files["task-master.json"] = _copy_file(root, root / ".taskmaster/tasks/tasks.json", bundle, "task-master.json")
 
     referenced: set[str] = set()
@@ -4322,6 +4331,10 @@ def _prepare_impl(
     # introduced manifest at apply time.
     originals = [capabilities_path, root / SOURCE_MANIFEST, root / LEDGER, root / SEMANTICS,
                  root / ".taskmaster/tasks/tasks.json", *(root / p for p in TASK_VIEWS)]
+    originals.extend(root / path for path in (
+        Path("docs/planning/semantic-topology/topology-manifest.v1.json"),
+        Path("docs/planning/semantic-topology/topology-edges.v1.json"),
+    ) if (root / path).is_file())
     originals.extend(repo_path(root, str(row["path"])) for row in manifest.get("sources", []))
     originals.extend(repo_path(root, value) for value in referenced)
     from chapter5_semantic_reconciliation import (

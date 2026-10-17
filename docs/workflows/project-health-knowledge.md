@@ -21,6 +21,8 @@ The existing loopback service exposes a read-only `/knowledge/topology` view and
 
 The registered structural source is `docs/planning/semantic-topology/**`.
 
+Knowledge exposes deterministic per-Capability `relation_closures` using the same registered-edge resolver and directional evidence policy consumed by MVG scoped evidence v4. Resolve the selected Capability's Requirements, source blocks and task owners; shared tasks/source blocks are terminal boundaries rather than a route into unrelated Capabilities. Unknown registered endpoints remain concerns. MVG adds affected flow/handoff and owner authority evidence in its own prepared scope, not in this general graph. Neither path runs a separate semantic search/RAG pipeline or treats a model's generation analysis as source authority. Closure hashes and source-selection accounting are machine proof; selected source bodies remain complete model evidence. Historical MVG proofs do not gain this new dependency.
+
 ### 页面生成 Capability 与 MVG
 
 `/knowledge/topology` 的 Filters 提供 `Generate Capability from main`。按钮在当前本地工作区的已提交输入上执行既有 `plan-capabilities` 的 prepare → generate → review → preview-alignment → apply。Capability、选择/审查结果和拓扑投影只保存在本地并被输入指纹保护，不由 Git 跟踪，也不因单纯的本地提交号变化而失效；GDD、Chapter 3 证据、任务三联和 Chapter 5 readiness 变化时才需要重新生成。

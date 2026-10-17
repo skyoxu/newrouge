@@ -316,6 +316,105 @@ def _validate_source_hashes(snapshot: Any, source_blocks: list[dict[str, Any]],
                              "path": path, "expected": expected, "actual": actual})
 
 
+CAPABILITY_EVIDENCE_RELATIONS = frozenset({
+    ("capability", "grouped_by", "requirement", "reverse"),
+    ("capability", "implemented_by", "task", "forward"),
+    ("requirement", "implemented_by", "task", "forward"),
+    ("requirement", "projects_to", "source_block", "reverse"),
+})
+
+
+def resolve_relation_closure(*, source_blocks: Any, requirements: Any,
+                             capabilities: Any, edges: Any,
+                             seed_nodes: list[tuple[str, str]],
+                             tasks: Any = None,
+                             allowed_node_types: set[str] | None = None,
+                             traversal_rules: frozenset[tuple[str, str, str, str]] | None = None,
+                             acceptance: Any = None) -> dict[str, Any]:
+    """Resolve a deterministic, read-only closure over registered topology edges."""
+    node_rows = {
+        "source_block": _rows(source_blocks, "blocks", "source_blocks"),
+        "requirement": _rows(requirements, "requirements", "semantic_requirements", "atoms"),
+        "capability": _rows(capabilities, "capabilities"),
+        "task": _rows(tasks, "tasks"),
+        "acceptance": _rows(acceptance, "acceptance"),
+    }
+    nodes: set[tuple[str, str]] = set()
+    problems: list[dict[str, Any]] = []
+    for kind, rows in node_rows.items():
+        for row in rows:
+            node_id = _node_id(kind, row)
+            if node_id is None:
+                problems.append({"kind": "missing_node_id", "node_type": kind})
+            elif (kind, node_id) in nodes:
+                problems.append({"kind": "duplicate_node_id", "node_type": kind, "id": node_id})
+            else:
+                nodes.add((kind, node_id))
+
+    # External sinks are declared by Requirement authority, never inferred from
+    # arbitrary edge endpoints. Shared sinks are boundaries, not new ownership.
+    for requirement in node_rows["requirement"]:
+        for sink in requirement.get("non_task_sinks", []):
+            if not isinstance(sink, dict):
+                problems.append({"kind": "invalid_non_task_sink"})
+                continue
+            kind, node_id = sink.get("type"), sink.get("id")
+            if kind in {"global_constraint", "quality_gate", "adr", "deferred", "exclusion"} and node_id:
+                nodes.add((kind, str(node_id)))
+
+    adjacency: dict[tuple[str, str], list[tuple[tuple[str, str], dict[str, str]]]] = {}
+    normalized_edges: list[dict[str, str]] = []
+    for edge in _rows(edges, "edges"):
+        source_type, source_id = _edge_endpoint(edge, "source")
+        target_type, target_id = _edge_endpoint(edge, "target")
+        relation = edge.get("relation")
+        if not all(isinstance(value, str) and value for value in
+                   (source_type, source_id, target_type, target_id, relation)):
+            problems.append({"kind": "invalid_edge_shape"})
+            continue
+        left, right = (source_type.casefold(), source_id), (target_type.casefold(), target_id)
+        row = {"source_type": left[0], "source_id": left[1],
+               "target_type": right[0], "target_id": right[1], "relation": relation}
+        normalized_edges.append(row)
+        for endpoint in (left, right):
+            if endpoint not in nodes:
+                problems.append({"kind": "edge_endpoint_missing", "node_type": endpoint[0],
+                                 "node_id": endpoint[1], "relation": relation})
+        if traversal_rules is None or (left[0], relation, right[0], "forward") in traversal_rules:
+            adjacency.setdefault(left, []).append((right, row))
+        if traversal_rules is None or (right[0], relation, left[0], "reverse") in traversal_rules:
+            adjacency.setdefault(right, []).append((left, row))
+
+    seeds = sorted({(str(kind).casefold(), str(node_id)) for kind, node_id in seed_nodes})
+    for seed in seeds:
+        if seed not in nodes:
+            problems.append({"kind": "seed_node_missing", "node_type": seed[0], "node_id": seed[1]})
+    reached = {seed for seed in seeds if seed in nodes}
+    traversed: dict[tuple[str, str, str, str, str], dict[str, str]] = {}
+    frontier = list(sorted(reached))
+    while frontier:
+        current = frontier.pop(0)
+        for neighbor, edge in sorted(adjacency.get(current, []), key=lambda item: (
+                item[0], item[1]["relation"], item[1]["source_type"],
+                item[1]["source_id"], item[1]["target_type"], item[1]["target_id"])):
+            if neighbor not in nodes or (allowed_node_types is not None and neighbor[0] not in allowed_node_types):
+                continue
+            key = (edge["source_type"], edge["source_id"], edge["target_type"],
+                   edge["target_id"], edge["relation"])
+            traversed[key] = edge
+            if neighbor not in reached:
+                reached.add(neighbor)
+                frontier.append(neighbor)
+    return {
+        "schema_version": "newrouge.semantic-topology-closure.v1",
+        "resolver_revision": "registered-edge-closure.v1",
+        "seed_nodes": [{"type": kind, "id": node_id} for kind, node_id in seeds],
+        "nodes": [{"type": kind, "id": node_id} for kind, node_id in sorted(reached)],
+        "edges": [traversed[key] for key in sorted(traversed)],
+        "problems": sorted(problems, key=lambda row: json.dumps(row, sort_keys=True)),
+    }
+
+
 def build_topology_view(identity: dict[str, Any], manifest: dict[str, Any],
                         source_blocks_doc: Any, requirements_doc: Any,
                         capabilities_doc: Any, edges_doc: Any,
@@ -326,6 +425,7 @@ def build_topology_view(identity: dict[str, Any], manifest: dict[str, Any],
     requirements = _rows(requirements_doc, "requirements", "semantic_requirements", "atoms")
     capabilities = _rows(capabilities_doc, "capabilities")
     edges = list(_rows(edges_doc, "edges"))
+    formal_edges = list(edges)
     tasks = _task_rows(task_details)
     acceptance = _acceptance_rows(task_details)
     overlay_nodes: dict[str, dict[str, Any]] = {}
@@ -554,6 +654,30 @@ def build_topology_view(identity: dict[str, Any], manifest: dict[str, Any],
         task_id: {key: sorted(values) for key, values in trace.items()}
         for task_id, trace in task_trace.items()
     }
+    relation_closures: dict[str, dict[str, Any]] = {}
+    resolver_tasks = list(tasks)
+    known_task_ids = {str(row.get("task_id")) for row in resolver_tasks}
+    for edge in formal_edges if not task_details else []:
+        for side in ("source", "target"):
+            edge_kind, edge_id = _edge_endpoint(edge, side)
+            if (edge_kind or "").casefold() == "task" and edge_id not in known_task_ids:
+                resolver_tasks.append({"task_id": edge_id})
+                known_task_ids.add(edge_id)
+    for capability in capabilities:
+        capability_id = _node_id("capability", capability)
+        if not capability_id:
+            continue
+        closure = resolve_relation_closure(
+            source_blocks=source_blocks, requirements=requirements,
+            capabilities=capabilities, edges=formal_edges, tasks=resolver_tasks,
+            acceptance=acceptance, traversal_rules=CAPABILITY_EVIDENCE_RELATIONS,
+            seed_nodes=[("capability", capability_id)],
+            allowed_node_types={"capability", "requirement", "source_block", "task"},
+        )
+        relation_closures[capability_id] = closure
+        for problem in closure["problems"]:
+            problems.append({"kind": "relation_closure_problem",
+                             "capability_id": capability_id, **problem})
     return {
         "schema_version": "newrouge.semantic-topology-view.v1",
         "available": True,
@@ -576,6 +700,7 @@ def build_topology_view(identity: dict[str, Any], manifest: dict[str, Any],
             "contracts": sorted(contract_nodes.values(), key=lambda row: row["id"]),
         },
         "edges": edges,
+        "relation_closures": relation_closures,
         "task_trace": serial_trace,
         "summary": {
             "source_blocks": len(source_blocks),

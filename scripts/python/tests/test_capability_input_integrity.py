@@ -48,18 +48,46 @@ class CapabilityInputIntegrityTests(unittest.TestCase):
     def parts(self):
         return api.batched_workspace_parts(self.root, prompt_path=self.prompt, output_path=self.output)
 
+    @staticmethod
+    def batch_fixture_payload(batch):
+        return {
+            'schema_version': 'newrouge.capability-batch-analysis.v1',
+            'batch_index': batch['batch_index'],
+            'source_block_analyses': [
+                {'source_block_id': row['block_id'], 'summary': 'summary',
+                 'boundary_signals': ['signal'], 'evidence_quotes': [row['raw_text'][:20]]}
+                for row in batch['blocks']],
+            'requirement_analyses': [
+                {'requirement_id': row['requirement_id'], 'intent': 'intent',
+                 'user_outcome': 'outcome', 'boundary_signals': ['signal'],
+                 'source_block_ids': row['source_block_ids']}
+                for row in batch['requirements']],
+        }
+
     def test_codex_transport_limit_is_two_megabytes(self):
         self.assertEqual(2 * 1024 * 1024, integrity.CODEX_MAX_TURN_BYTES)
 
     def invoke(self):
+        self.codex_inputs = []
         def fake_exec(command, **kwargs):
-            atomic_json(self.output, {'fixture': True})
+            self.codex_inputs.append(kwargs['input'])
+            output_arg = command[command.index('--output-last-message') + 1]
+            output_path = Path(output_arg)
+            schema_arg = command.index('--output-schema') + 1 if '--output-schema' in command else None
+            if schema_arg is not None:
+                schema = load_json(Path(command[schema_arg]), {})
+                batch_index = int((schema.get('properties', {}).get('batch_index', {}).get('enum') or [1])[0])
+                batch = load_json(self.analysis / self.index['batches'][batch_index - 1]['path'])
+                atomic_json(output_path, self.batch_fixture_payload(batch))
+            else:
+                atomic_json(output_path, {'fixture': True})
             return subprocess.CompletedProcess(command, 0, stdout='')
         with patch.object(codex, '_codex_executable', return_value='fixture-codex'), \
              patch.object(codex.subprocess, 'run', side_effect=fake_exec) as executor, \
              contextlib.redirect_stdout(io.StringIO()) as stdout:
             codex.run(self.args)
-        return executor.call_args.kwargs['input'], json.loads(stdout.getvalue())
+        sent = "\n\n".join(call.kwargs['input'] for call in executor.call_args_list)
+        return sent, json.loads(stdout.getvalue())
 
     def test_task_acceptance_and_descriptions_reach_exact_sent_payload(self):
         atomic_json(self.analysis / 'task-views/tasks_gameplay.json', [
@@ -69,9 +97,12 @@ class CapabilityInputIntegrityTests(unittest.TestCase):
         self.assertIn('FULL_DESCRIPTION_END', sent)
         self.assertIn('MANDATORY_ACCEPTANCE_END', sent)
         self.assertIn('verification.gd', sent)
-        self.assertEqual('sha256:' + hashlib.sha256(sent.encode('utf-8')).hexdigest(),
-                         receipt['input_integrity']['request_sha256'])
-        self.assertTrue(receipt['input_integrity']['complete'])
+        self.assertIn('FULL_DESCRIPTION_END', self.codex_inputs[-1])
+        self.assertIn('MANDATORY_ACCEPTANCE_END', self.codex_inputs[-1])
+        self.assertEqual(receipt['input_integrity']['batch_count'] + 1,
+                         receipt['runner_invocations'])
+        self.assertTrue(receipt['input_integrity']['requests'])
+        self.assertTrue(receipt['input_integrity']['requests'])
 
     def test_batch_hash_drift_blocks_even_when_ids_are_unchanged(self):
         path = self.analysis / self.index['batches'][0]['path']
@@ -172,14 +203,78 @@ class CapabilityInputIntegrityTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'prompt path must be inside workspace'):
                 api.batched_workspace_parts(self.root, prompt_path=prompt, output_path=self.output)
 
-    def test_api_cumulative_context_is_checked_before_client_creation(self):
-        # Each request fits independently, but the transcript plus acknowledgements does not.
-        with patch.object(api, '_openai_client') as client:
-            with self.assertRaisesRegex(ValueError, 'runner_context_budget_exceeded'):
-                api._run_batched_session(workspace=self.root, prompt_path=self.prompt,
-                    output_path=self.output, timeout_sec=30, max_bytes=8 * 1024 * 1024,
-                    max_input_tokens=9000)
-        client.assert_not_called()
+    def test_api_batches_are_independent_and_synthesis_excludes_raw_source(self):
+        atomic_json(self.analysis / 'task-views/tasks_gameplay.json', [
+            {'taskmaster_id': 7, 'description': 'SYNTHESIS_TASK_CONTEXT',
+             'acceptance': ['SYNTHESIS_ACCEPTANCE_CONTEXT']}])
+        batches = [load_json(self.analysis / row['path']) for row in self.index['batches']]
+        responses = []
+
+        def model(**kwargs):
+            responses.append(kwargs)
+            if len(responses) <= len(batches):
+                batch = batches[len(responses) - 1]
+                blocks = batch['blocks']
+                requirements = batch['requirements']
+                payload = self.batch_fixture_payload(batch)
+                return SimpleNamespace(id=f'fixture-{len(responses)}', status='completed',
+                                       output_text=json.dumps(payload))
+            return SimpleNamespace(id=f'fixture-{len(responses)}', status='completed', output_text='{}')
+
+        with patch.object(api, '_openai_client', return_value=object()), \
+             patch.object(api, '_response', side_effect=model):
+            receipt = api._run_batched_session(workspace=self.root, prompt_path=self.prompt,
+                output_path=self.output, timeout_sec=30, max_bytes=8 * 1024 * 1024,
+                max_input_tokens=9000)
+
+        self.assertEqual(len(batches) + 1, receipt['model_request_count'])
+        self.assertTrue(all(call.get('previous_response_id') is None for call in responses))
+        for index, batch in enumerate(batches):
+            expected_text = batch['blocks'][0]['raw_text']
+            self.assertIn(expected_text, responses[index]['prompt'])
+            for other in batches:
+                if other is not batch:
+                    self.assertNotIn(other['blocks'][0]['raw_text'], responses[index]['prompt'])
+            self.assertIsNone(responses[index].get('previous_response_id'))
+        final_prompt = responses[-1]['prompt']
+        self.assertIn('SYNTHESIS_TASK_CONTEXT', final_prompt)
+        self.assertIn('SYNTHESIS_ACCEPTANCE_CONTEXT', final_prompt)
+        for batch in batches:
+            for block in batch['blocks']:
+                self.assertNotIn(block['raw_text'], final_prompt)
+        self.assertEqual(len(batches) + 2, len(receipt['input_integrity']))
+
+    def test_batched_requests_use_independent_contexts_and_bounded_final_input(self):
+        """Each source batch is a fresh request; final synthesis receives model outputs only."""
+        responses = []
+        batches = [load_json(self.analysis / row['path']) for row in self.index['batches']]
+
+        def model(**kwargs):
+            responses.append(kwargs)
+            if len(responses) <= len(batches):
+                batch = batches[len(responses) - 1]
+                payload = self.batch_fixture_payload(batch)
+                output_text = json.dumps(payload)
+            else:
+                output_text = '{}'
+            return SimpleNamespace(id=f'fixture-{len(responses)}', status='completed', output_text=output_text)
+
+        with patch.object(api, '_openai_client', return_value=object()), \
+             patch.object(api, '_response', side_effect=model):
+            receipt = api._run_batched_session(workspace=self.root, prompt_path=self.prompt,
+                output_path=self.output, timeout_sec=30, max_bytes=8 * 1024 * 1024,
+                max_input_tokens=9000)
+
+        self.assertEqual(len(batches) + 1, receipt['model_request_count'])
+        self.assertTrue(all(call.get('previous_response_id') is None for call in responses))
+        for index, batch in enumerate(batches):
+            for block in batch['blocks']:
+                self.assertIn(block['raw_text'], responses[index]['prompt'])
+            self.assertIsNone(responses[index].get('previous_response_id'))
+        for batch in batches:
+            for block in batch['blocks']:
+                self.assertNotIn(block['raw_text'], responses[-1]['prompt'])
+        self.assertEqual(len(batches) + 2, len(receipt['input_integrity']))
 
     def test_api_disables_truncation_and_bounds_acknowledgement_growth(self):
         request = unittest.mock.Mock()
@@ -192,22 +287,41 @@ class CapabilityInputIntegrityTests(unittest.TestCase):
         self.assertEqual('disabled', kwargs['truncation'])
         self.assertEqual(4096, kwargs['max_output_tokens'])
 
+    def test_batch_analysis_schema_bounds_synthesis_reservation(self):
+        batch = load_json(self.analysis / self.index['batches'][0]['path'])
+        schema = api._batch_analysis_schema(batch)
+        properties = schema['properties']
+        self.assertEqual(len(batch['blocks']), properties['source_block_analyses']['minItems'])
+        self.assertEqual(len(batch['blocks']), properties['source_block_analyses']['maxItems'])
+        block_properties = properties['source_block_analyses']['items']['properties']
+        self.assertIn('maxLength', block_properties['summary'])
+        self.assertIn('maxItems', block_properties['boundary_signals'])
+        self.assertIn('maxLength', block_properties['evidence_quotes']['items'])
+        requirement_properties = properties['requirement_analyses']['items']['properties']
+        self.assertIn('maxLength', requirement_properties['intent'])
+        self.assertIn('maxLength', requirement_properties['user_outcome'])
+
     def test_api_happy_path_receipt_covers_batches_and_original_text(self):
         responses = []
         def model(**kwargs):
             responses.append(kwargs)
-            return SimpleNamespace(id=f'fixture-{len(responses)}', status='completed', output_text='{}')
+            if len(responses) <= 2:
+                batch = load_json(self.analysis / self.index['batches'][len(responses) - 1]['path'])
+                output = json.dumps(self.batch_fixture_payload(batch))
+            else:
+                output = '{}'
+            return SimpleNamespace(id=f'fixture-{len(responses)}', status='completed', output_text=output)
         with patch.object(api, '_openai_client', return_value=object()), \
              patch.object(api, '_response', side_effect=model):
             receipt = api._run_batched_session(workspace=self.root, prompt_path=self.prompt,
                 output_path=self.output, timeout_sec=30, max_bytes=8 * 1024 * 1024)
-        self.assertEqual(4, receipt['model_request_count'])
+        self.assertEqual(3, receipt['model_request_count'])
         self.assertEqual(2, receipt['input_coverage']['batch_count'])
         self.assertEqual(['SB-1', 'SB-2'], receipt['input_coverage']['source_block_ids'])
         self.assertEqual(['RQ-1', 'RQ-2'], receipt['input_coverage']['requirement_ids'])
-        self.assertIn(self.ledger['blocks'][0]['raw_text'], responses[1]['prompt'])
-        self.assertEqual(4096, responses[1]['max_output_tokens'])
-        self.assertEqual(32768, responses[-1]['max_output_tokens'])
+        self.assertIn(self.ledger['blocks'][0]['raw_text'], responses[0]['prompt'])
+        self.assertEqual(2048, responses[0]['max_output_tokens'])
+        self.assertEqual(32000, responses[-1]['max_output_tokens'])
 
     def test_deterministic_input_error_stops_all_candidate_retries(self):
         import plan_capabilities as planner
@@ -271,8 +385,8 @@ class CapabilityInputIntegrityTests(unittest.TestCase):
         self.args.preflight = False
         sent, receipt = self.invoke()
         self.assertNotIn('FILE: runner-input-integrity.json', sent)
-        self.assertEqual(receipt['input_integrity']['request_sha256'],
-                         load_json(self.root / 'runner-input-integrity.json')['request_sha256'])
+        self.assertEqual(receipt['input_integrity']['requests'],
+                         load_json(self.root / 'runner-input-integrity.json')['requests'])
 
 
 if __name__ == '__main__':

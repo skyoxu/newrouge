@@ -9,7 +9,7 @@ from unittest.mock import Mock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import plan_mvg as mvg
-from _mvg_capability_generation import complete_scope_context, generate_append
+from _mvg_capability_generation import complete_scope_context, generate_append, _validate_topology_binding
 from _mvg_input_envelope import _acceptance_refs
 from _planning_skill_common import atomic_json, canonical_sha, file_sha, load_json, normalized_file_sha
 from chapter5_semantic_reconciliation import DEFAULT_EXTRACTION_SNAPSHOT
@@ -31,12 +31,20 @@ class InputEnvelopeTests(unittest.TestCase):
                               "source_block_ids": row["source_block_ids"]}
                              for i, row in enumerate(semantics["requirements"], 1)]})
         self.run = self.root / mvg.DEFAULT_RUN_ROOT / "envelope"
+        self.add_topology_inputs()
 
     def prepare(self, **options):
         args = dict(run_id="envelope", capabilities_path=self.capabilities, task_ids=["7", "42"],
                     manifest_path=self.root / "docs/testing/mvg/envelope.json", allow_unready=False)
         args.update(options)
         return mvg.prepare(self.root, **args)
+
+    def add_topology_inputs(self):
+        manifest_path = self.root / "docs/planning/semantic-topology/topology-manifest.v1.json"
+        manifest = load_json(manifest_path)
+        manifest["source_manifest_sha256"] = load_json(self.root / mvg.SOURCE_MANIFEST)["manifest_sha256"]
+        manifest["artifacts"]["docs/planning/semantic-topology/capabilities.v1.json"] = normalized_file_sha(self.capabilities)
+        atomic_json(manifest_path, manifest)
 
     def test_order_snapshot_inventory_and_explicit_absent_predecessor(self):
         state = self.prepare()
@@ -56,6 +64,44 @@ class InputEnvelopeTests(unittest.TestCase):
         self.assertIn(GDD_PATH.as_posix(), required)
         self.assertIn(DEFAULT_EXTRACTION_SNAPSHOT.as_posix(), required)
         mvg._validate_input_freshness(self.root, self.run, state)
+
+    def test_topology_binding_validates_complete_artifact_set_before_closure(self):
+        self.add_topology_inputs()
+        self.prepare()
+        closure, nodes = _validate_topology_binding(
+            self.run / "analysis-input", scope={"capability_id": "CAP-1"})
+        self.assertEqual("fresh", closure["status"])
+        self.assertIn(("capability", "CAP-1"), nodes)
+
+    def test_topology_binding_rejects_artifact_hash_drift(self):
+        self.add_topology_inputs()
+        self.prepare()
+        path = self.run / "analysis-input/semantic-requirements.v1.json"
+        path.write_text(path.read_text(encoding="utf-8") + "\n", encoding="utf-8", newline="\n")
+        with self.assertRaisesRegex(ValueError, "mvg_topology_artifact_hash_mismatch:docs/planning/semantic-topology/semantic-requirements.v1.json"):
+            _validate_topology_binding(self.run / "analysis-input", scope={"capability_id": "CAP-1"})
+
+    def test_topology_binding_rejects_revision_and_source_manifest_drift(self):
+        self.add_topology_inputs()
+        self.prepare()
+        prepared = self.run / "analysis-input"
+        edges_path = prepared / "topology-edges.v1.json"
+        edges = load_json(edges_path)
+        edges["source_revision"] = "source-set:stale"
+        atomic_json(edges_path, edges)
+        manifest_path = prepared / "topology-manifest.v1.json"
+        manifest = load_json(manifest_path)
+        manifest["artifacts"]["docs/planning/semantic-topology/topology-edges.v1.json"] = normalized_file_sha(edges_path)
+        atomic_json(manifest_path, manifest)
+        with self.assertRaisesRegex(ValueError, "mvg_topology_artifact_revision_mismatch:edges"):
+            _validate_topology_binding(prepared, scope={"capability_id": "CAP-1"})
+        edges["source_revision"] = load_json(prepared / "semantic-requirements.v1.json")["source_revision"]
+        atomic_json(edges_path, edges)
+        manifest["artifacts"]["docs/planning/semantic-topology/topology-edges.v1.json"] = normalized_file_sha(edges_path)
+        manifest["source_manifest_sha256"] = "sha256:" + "0" * 64
+        atomic_json(manifest_path, manifest)
+        with self.assertRaisesRegex(ValueError, "mvg_topology_source_manifest_hash_mismatch"):
+            _validate_topology_binding(prepared, scope={"capability_id": "CAP-1"})
 
     def test_model_excluded_readiness_still_blocks_global_generation_on_drift(self):
         state = self.prepare()

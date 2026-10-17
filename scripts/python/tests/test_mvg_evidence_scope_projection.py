@@ -61,7 +61,7 @@ class EvidenceScopeProjectionTests(unittest.TestCase):
             self.assertEqual([doc["topology_edges"][0], doc["topology_edges"][1], doc["topology_edges"][3]], projected["topology_edges"])
             self.assertEqual(doc["other_metadata"], projected["other_metadata"])
             self.assertNotIn("FOREIGN GLOBAL ROW", wire_json(wire))
-            self.assertEqual("newrouge.mvg-scoped-evidence.v3", context["evidence_scope_schema"])
+            self.assertEqual("newrouge.mvg-scoped-evidence.v4", context["evidence_scope_schema"])
             audit = row["model_projection"]
             self.assertEqual("json_projection", audit["citation_space"])
             self.assertEqual("/findings/1", audit["excluded_rows"][0]["json_pointer"])
