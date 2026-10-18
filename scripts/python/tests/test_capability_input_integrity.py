@@ -290,6 +290,36 @@ class CapabilityInputIntegrityTests(unittest.TestCase):
         self.assertIn('Second authoritative intent',
                       json.dumps(result['task_view_analyses'], ensure_ascii=False))
 
+    def test_task_batch_discards_mixed_source_and_requirement_rows(self):
+        atomic_json(self.analysis / 'task-views/tasks_gameplay.json', [
+            {'taskmaster_id': 7, 'description': 'Authoritative task',
+             'acceptance': ['Acceptance'], 'test_refs': ['test_ref.gd'],
+             'semantic_refs': ['RQ-1']}])
+        self.refresh_analysis_index()
+        task_rows = integrity.task_view_payload_chunks(self.root)[0]
+        path = next(iter(task_rows))
+        task = task_rows[path][0]
+        payload = {
+            'schema_version': 'newrouge.capability-batch-analysis.v1',
+            'batch_index': 1,
+            'source_block_analyses': [],
+            'requirement_analyses': [{
+                'requirement_id': 'RQ-1', 'intent': 'wrong channel',
+                'user_outcome': 'wrong channel', 'boundary_signals': [],
+                'source_block_ids': [],
+            }],
+            'task_view_analyses': [{
+                'task_view_key': f'{path}#{task["taskmaster_id"]}',
+                'task_intent': 'model task', 'acceptance_signals': ['accepted'],
+                'verification_signals': ['verified'], 'requirement_refs': ['RQ-1'],
+            }],
+        }
+        result = api._validate_batch_analysis(payload,
+            {'schema_version': 'newrouge.capability-model-batch.v1', 'batch_index': 1,
+             'blocks': [], 'requirements': []}, task_rows)
+        self.assertEqual([], result['requirement_analyses'])
+        self.assertEqual(1, len(result['task_view_analyses']))
+
     def test_large_task_views_are_not_replayed_in_every_batch(self):
         atomic_json(self.analysis / 'task-views/tasks_back.json', [
             {'taskmaster_id': 7, 'description': 'A' * 50000, 'semantic_refs': ['RQ-1'],

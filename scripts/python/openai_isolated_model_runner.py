@@ -349,6 +349,16 @@ def _validate_batch_analysis(
     task_rows = value.get("task_view_analyses", [])
     if not isinstance(block_rows, list) or not isinstance(req_rows, list) or not isinstance(task_rows, list):
         raise ValueError("capability_batch_analysis_rows_missing")
+    # Task-view requests are a separate evidence channel.  A model may still
+    # emit generic Source Block/Requirement rows despite the task-only schema;
+    # those rows are unrelated to this request and must not be allowed to
+    # trigger a false Requirement coverage failure or enter synthesis.
+    task_only = not batch.get("blocks") and not batch.get("requirements") and bool(task_views)
+    if task_only:
+        block_rows = []
+        req_rows = []
+        value["source_block_analyses"] = []
+        value["requirement_analyses"] = []
     actual_blocks = [str(row.get("source_block_id") or "") for row in block_rows if isinstance(row, dict)]
     actual_requirements = [str(row.get("requirement_id") or "") for row in req_rows if isinstance(row, dict)]
     if sorted(actual_blocks) != sorted(expected_blocks) or len(actual_blocks) != len(set(actual_blocks)):
