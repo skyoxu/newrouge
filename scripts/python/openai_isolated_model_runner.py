@@ -258,7 +258,8 @@ def _independent_batch_requests(
             "Use cohesive user-visible outcomes and journey/ownership boundaries as signals; do not "
             "optimize for a fixed Capability count. This is evidence analysis, not the final grouping.",
             "For each Source Block, capture its concise meaning and concrete boundary/ownership "
-            "signals. For each Requirement, preserve intent, user-visible outcome, and the exact "
+            "signals. Do not reproduce source text verbatim; evidence quotes are optional and "
+            "will be bound mechanically from the authoritative Source Block. For each Requirement, preserve intent, user-visible outcome, and the exact "
             "Source Block IDs listed in its row. Analyze every complete Task View row below and "
             "preserve its identity, task intent, Acceptance/test meaning and exact Requirement refs. "
             "This is evidence analysis, not the final grouping.",
@@ -291,14 +292,12 @@ def _batch_analysis_schema(batch: dict[str, Any],
             "batch_index": {"type": "integer", "enum": [int(batch.get("batch_index") or 0)]},
             "source_block_analyses": {"type": "array", "minItems": len(block_ids), "maxItems": len(block_ids), "items": {
                 "type": "object", "additionalProperties": False,
-                "required": ["source_block_id", "summary", "boundary_signals", "evidence_quotes"],
+                "required": ["source_block_id", "summary", "boundary_signals"],
                 "properties": {
                     "source_block_id": block_id_schema,
                     "summary": {"type": "string", "maxLength": 1200},
                     "boundary_signals": {"type": "array", "maxItems": 8,
                                           "items": {"type": "string", "maxLength": 240}},
-                    "evidence_quotes": {"type": "array", "minItems": 1, "maxItems": 3,
-                                        "items": {"type": "string", "maxLength": 400}},
                 },
             }},
             "requirement_analyses": {"type": "array", "items": {
@@ -313,7 +312,7 @@ def _batch_analysis_schema(batch: dict[str, Any],
                     "source_block_ids": {"type": "array", "maxItems": len(source_refs), "items": source_ref_schema},
                 },
             }, "minItems": len(requirement_ids), "maxItems": len(requirement_ids)},
-            "task_view_analyses": {"type": "array", "minItems": len(task_view_rows),
+            "task_view_analyses": {"type": "array", "minItems": 0,
                 "maxItems": len(task_view_rows), "items": {
                     "type": "object", "additionalProperties": False,
                     "required": ["task_view_key", "task_intent", "acceptance_signals",
@@ -371,16 +370,15 @@ def _validate_batch_analysis(
             raise ValueError("capability_batch_analysis_source_summary_missing:" + block_id)
         source = next((item for item in batch.get("blocks", []) if item.get("block_id") == block_id), {})
         raw_text = str(source.get("raw_text") or "")
-        quotes = row.get("evidence_quotes")
-        if not isinstance(quotes, list) or not quotes or any(
-                not str(quote).strip() or not _quote_matches_source(str(quote), raw_text) for quote in quotes):
-            raise ValueError("capability_batch_analysis_evidence_quote_invalid:" + block_id)
+        if not raw_text:
+            raise ValueError("capability_batch_analysis_source_text_missing:" + block_id)
+        row["evidence_quotes"] = [raw_text[:400]]
     expected_task_views = {
         f"{path}#{row.get('taskmaster_id', row.get('id', ''))}": row
         for path, rows in (task_views or {}).items() for row in rows
     }
     actual_task_keys = [str(row.get("task_view_key") or "") for row in task_rows if isinstance(row, dict)]
-    if sorted(actual_task_keys) != sorted(expected_task_views) or len(actual_task_keys) != len(set(actual_task_keys)):
+    if not set(actual_task_keys).issubset(set(expected_task_views)) or len(actual_task_keys) != len(set(actual_task_keys)):
         raise ValueError("capability_batch_analysis_task_view_coverage_mismatch")
     for row in task_rows:
         key = str(row.get("task_view_key") or "")
@@ -398,6 +396,20 @@ def _validate_batch_analysis(
             raise ValueError("capability_batch_analysis_task_signal_invalid:" + key)
         if not isinstance(refs, list) or sorted(str(item) for item in refs) != expected_refs:
             raise ValueError("capability_batch_analysis_task_requirement_refs_mismatch:" + key)
+    for key, source in expected_task_views.items():
+        if key in actual_task_keys:
+            continue
+        acceptance = source.get("acceptance", [])
+        tests = source.get("test_refs", [])
+        if isinstance(acceptance, str):
+            acceptance = [acceptance]
+        if isinstance(tests, str):
+            tests = [tests]
+        task_rows.append({"task_view_key": key,
+                          "task_intent": str(source.get("description") or source.get("title") or "")[:1200],
+                          "acceptance_signals": [str(item) for item in acceptance if str(item).strip()][:12] or ["Authoritative task acceptance"],
+                          "verification_signals": [str(item) for item in tests if str(item).strip()][:12] or ["Authoritative task verification"],
+                          "requirement_refs": sorted(_task_view_refs(source))})
     return value
 
 
@@ -538,7 +550,8 @@ def _run_batched_session(
         text = "\n\n".join([base,
             "Analyze every complete Task View row below as auxiliary ownership and acceptance evidence. "
             "Preserve task identity, intent, Acceptance/test meaning, and exact Requirement refs. "
-            "Do not infer Capability grouping or omit any row.",
+            "Do not infer Capability grouping. Missing rows are mechanically restored from the "
+            "authoritative task view after this response.",
             "===== COMPLETE TASK-VIEW ROWS =====\n" + json.dumps(task_rows, ensure_ascii=False, separators=(",", ":"))])
         label = f"task-views-{index:03d}"
         task_schema = _batch_analysis_schema(payload, task_rows)

@@ -250,6 +250,46 @@ class CapabilityInputIntegrityTests(unittest.TestCase):
         normalized = 'Acceptance and test evidence remain in the two task views.'
         self.assertTrue(api._quote_matches_source(normalized, raw))
 
+    def test_batch_analysis_reconciles_missing_rows_and_binds_quotes_to_source(self):
+        batch = load_json(self.analysis / self.index['batches'][0]['path'])
+        value = self.batch_fixture_payload(batch)
+        value['source_block_analyses'][0].pop('evidence_quotes')
+        # Source Block identity coverage remains a hard gate.
+        reconciled = api._validate_batch_analysis(value, batch)
+        expected_ids = [str(row['block_id']) for row in batch['blocks']]
+        self.assertEqual(expected_ids, [row['source_block_id'] for row in reconciled['source_block_analyses']])
+        self.assertTrue(reconciled['source_block_analyses'][0]['evidence_quotes'])
+        self.assertIn(batch['blocks'][0]['raw_text'][:40], reconciled['source_block_analyses'][0]['evidence_quotes'][0])
+
+    def test_task_analysis_reconciles_missing_rows_from_authoritative_task_view(self):
+        atomic_json(self.analysis / 'task-views/tasks_gameplay.json', [
+            {'taskmaster_id': 7, 'title': 'Task title', 'description': 'Authoritative intent',
+             'acceptance': ['Authoritative acceptance'], 'test_refs': ['test_ref.gd'],
+             'semantic_refs': ['RQ-1']}])
+        self.refresh_analysis_index()
+        chunks = integrity.task_view_payload_chunks(self.root)
+        task_rows = chunks[0]
+        payload = {'schema_version': 'newrouge.capability-batch-analysis.v1', 'batch_index': 1,
+                   'source_block_analyses': [], 'requirement_analyses': [],
+                   'task_view_analyses': []}
+        key = next(path for path in task_rows)
+        row = task_rows[key][0]
+        payload['task_view_analyses'] = [{
+            'task_view_key': f'{key}#{row["taskmaster_id"]}',
+            'task_intent': 'model intent', 'acceptance_signals': ['model acceptance'],
+            'verification_signals': ['model verification'], 'requirement_refs': ['RQ-1']}]
+        # A second authoritative row is intentionally omitted from the model output.
+        row2 = dict(row, taskmaster_id=8, description='Second authoritative intent')
+        atomic_json(self.analysis / 'task-views/tasks_gameplay.json', [row, row2])
+        self.refresh_analysis_index()
+        task_rows = integrity.task_view_payload_chunks(self.root)[0]
+        result = api._validate_batch_analysis(payload,
+            {'schema_version': 'newrouge.capability-model-batch.v1', 'batch_index': 1,
+             'blocks': [], 'requirements': []}, task_rows)
+        self.assertEqual(2, len(result['task_view_analyses']))
+        self.assertIn('Second authoritative intent',
+                      json.dumps(result['task_view_analyses'], ensure_ascii=False))
+
     def test_large_task_views_are_not_replayed_in_every_batch(self):
         atomic_json(self.analysis / 'task-views/tasks_back.json', [
             {'taskmaster_id': 7, 'description': 'A' * 50000, 'semantic_refs': ['RQ-1'],
@@ -520,7 +560,7 @@ class CapabilityInputIntegrityTests(unittest.TestCase):
         block_properties = properties['source_block_analyses']['items']['properties']
         self.assertIn('maxLength', block_properties['summary'])
         self.assertIn('maxItems', block_properties['boundary_signals'])
-        self.assertIn('maxLength', block_properties['evidence_quotes']['items'])
+        self.assertNotIn('evidence_quotes', block_properties)
         requirement_properties = properties['requirement_analyses']['items']['properties']
         self.assertIn('maxLength', requirement_properties['intent'])
         self.assertIn('maxLength', requirement_properties['user_outcome'])
