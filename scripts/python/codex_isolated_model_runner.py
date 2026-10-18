@@ -20,10 +20,11 @@ from openai_isolated_model_runner import (
 import openai_isolated_model_runner as api
 from _planning_skill_common import atomic_json, load_json, validate_output_schema
 from _capability_input_integrity import (
-    CODEX_MAX_TURN_BYTES, DEFAULT_MAX_INPUT_TOKENS, REPORT_NAME, check_workspace_request, configured_input_limit, measure_request, schema_max_json_chars, task_view_batch_rows, validate_batches,
+    CODEX_MAX_TURN_BYTES, DEFAULT_MAX_INPUT_TOKENS, REPORT_NAME, check_workspace_request, configured_input_limit, measure_request, task_view_batch_sections, task_view_payload_chunks, task_view_batch_rows, validate_batches,
 )
 
 SCHEMA = "newrouge.isolated-model-runner.v1"
+TASK_VIEW_CHUNK_CHAR_BUDGET = 150000
 
 
 def _codex_executable() -> str:
@@ -106,6 +107,12 @@ def _run_codex_request(executable: str, workspace: Path, *, prompt: str, output:
     return output.read_text(encoding="utf-8")
 
 
+def _bounded_analysis_placeholder(label: str, token_budget: int) -> tuple[str, str]:
+    if token_budget < 1:
+        raise ValueError("capability_batch_output_budget_invalid")
+    return label, "x" * (token_budget * 6)
+
+
 def _run_batched_codex(workspace: Path, prompt_path: Path, output_path: Path, *,
                        executable: str | None, timeout_sec: int, max_bytes: int,
                        max_input_tokens: int, output_schema_path: Path | None = None,
@@ -116,13 +123,25 @@ def _run_batched_codex(workspace: Path, prompt_path: Path, output_path: Path, *,
     batch_index = json.loads(index_path.read_text(encoding="utf-8"))
     coverage = validate_batches(workspace, batch_index)
     task_view_rows_by_batch, task_view_coverage = task_view_batch_rows(workspace, batch_index)
+    all_task_chunks = task_view_payload_chunks(workspace, char_budget=TASK_VIEW_CHUNK_CHAR_BUDGET)
+    task_chars = sum(len(json.dumps(row, ensure_ascii=False, separators=(",", ":")))
+                     for chunk in all_task_chunks for rows in chunk.values() for row in rows)
+    # Keep task views in independent bounded requests even when small. Inline
+    # task rows were repeated in every source batch and caused avoidable
+    # context growth.
+    task_chunks = all_task_chunks
     payloads = [json.loads((workspace / "analysis-input" / row["path"]).read_text(encoding="utf-8"))
                 for row in batch_index["batches"]]
     if len(payloads) != len(batches):
         raise ValueError("capability_batch_payload_count_mismatch")
     prompt = prompt_path.read_text(encoding="utf-8").rstrip()
-    output_tokens = max(512, min(32768, max_input_tokens // max(3 * len(batches), 1)))
-    final_tokens = max(256, min(32768, max_input_tokens // 3))
+    total_request_batches = len(batches) + len(task_chunks)
+    # Keep enough output room for complete task-row analysis. Input and output
+    # budgets are independent; shrinking this with batch count caused valid
+    # task chunks to return incomplete coverage JSON.
+    output_tokens = max(2048, min(8192, max_input_tokens // 10))
+    task_output_tokens = 3072
+    final_tokens = max(4096, min(16384, max_input_tokens // 6)) if task_chunks else max(256, min(32768, max_input_tokens // 3))
     batch_specs = []
     reports = []
 
@@ -148,7 +167,7 @@ def _run_batched_codex(workspace: Path, prompt_path: Path, output_path: Path, *,
             raise
 
     for ordinal, ((rel, section), batch) in enumerate(zip(batches, payloads, strict=True), 1):
-        task_view_rows = task_view_rows_by_batch[ordinal - 1]
+        task_view_rows = {} if task_chunks else task_view_rows_by_batch[ordinal - 1]
         schema = api._batch_analysis_schema(batch, task_view_rows)
         schema_path = workspace / "batch-schemas" / f"batch-{ordinal:03d}.json"
         atomic_json(schema_path, schema)
@@ -161,11 +180,27 @@ def _run_batched_codex(workspace: Path, prompt_path: Path, output_path: Path, *,
             section])
         batch_specs.append((f"batch-{ordinal:03d}", text, batch, schema_path,
             preflight_request(f"batch-{ordinal:03d}", measured(text, schema_path), reserved_tokens=output_tokens)))
+    for index, task_rows in enumerate(task_chunks, 1):
+        payload = {"schema_version": "newrouge.capability-model-batch.v1",
+                   "batch_index": index, "blocks": [], "requirements": []}
+        text = "\n\n".join([base,
+            "Analyze every complete Task View row below as auxiliary ownership and acceptance evidence. "
+            "Preserve task identity, intent, Acceptance/test meaning, and exact Requirement refs. "
+            "Do not infer Capability grouping or omit any row.",
+            "===== COMPLETE TASK-VIEW ROWS =====\n" + json.dumps(task_rows, ensure_ascii=False, separators=(",", ":"))])
+        schema_path = workspace / "batch-schemas" / f"task-views-{index:03d}.json"
+        schema = api._batch_analysis_schema(payload, task_rows)
+        atomic_json(schema_path, schema)
+        batch_specs.append((f"task-views-{index:03d}", text, payload, schema_path,
+            preflight_request(f"task-views-{index:03d}", measured(text, schema_path), reserved_tokens=task_output_tokens)))
     coverage_text = api._coverage_checklist(workspace)
     # Reserve all bounded model outputs before starting the first CLI process.
-    # Use the actual bounded JSON schema to reserve maximum legal analysis size.
+    # Reserve against each request's actual max_output_tokens. Schema maxima
+    # can be much larger than the response budget and block valid complete input.
     placeholder_analyses = [
-        (label, "x" * schema_max_json_chars(load_json(schema_path, {})))
+        _bounded_analysis_placeholder(
+            label, task_output_tokens if label.startswith("task-views-") else output_tokens
+        )
         for label, _text, _batch, schema_path, _report in batch_specs
     ]
     synth_input = api._synthesis_request(original_prompt=prompt, base=base,
@@ -179,7 +214,7 @@ def _run_batched_codex(workspace: Path, prompt_path: Path, output_path: Path, *,
         "execution_mode": "independent-evidence-batches-plus-bounded-synthesis"})
     if preflight:
         return {"complete": True, "source_block_ids": coverage["source_block_ids"],
-            "requirement_ids": coverage["requirement_ids"], "batch_count": len(batches),
+            "requirement_ids": coverage["requirement_ids"], "batch_count": len(batches) + len(task_chunks),
             "requests": reports, "model_invoked": False,
             "runner_invocations": 0,
             "execution_mode": "independent-evidence-batches-plus-bounded-synthesis"}
@@ -196,8 +231,13 @@ def _run_batched_codex(workspace: Path, prompt_path: Path, output_path: Path, *,
         raw = _run_codex_request(executable, workspace, prompt=text, output=target,
             schema_path=schema_path, timeout_sec=remaining)
         value = json.loads(raw)
-        batch_number = int(label.rsplit("-", 1)[1]) - 1
-        value = api._validate_batch_analysis(value, batch, task_view_rows_by_batch[batch_number])
+        if label.startswith("task-views-"):
+            task_number = int(label.rsplit("-", 1)[1]) - 1
+            value = api._validate_batch_analysis(value, batch, task_chunks[task_number])
+        else:
+            batch_number = int(label.rsplit("-", 1)[1]) - 1
+            value = api._validate_batch_analysis(value, batch,
+                {} if task_chunks else task_view_rows_by_batch[batch_number])
         normalized = json.dumps(value, ensure_ascii=False, separators=(",", ":"))
         analyses.append((label, normalized))
 
@@ -219,7 +259,7 @@ def _run_batched_codex(workspace: Path, prompt_path: Path, output_path: Path, *,
     _run_codex_request(executable, workspace, prompt=final_text, output=output_path,
         schema_path=output_schema_path, timeout_sec=remaining)
     return {"complete": True, "source_block_ids": coverage["source_block_ids"],
-        "requirement_ids": coverage["requirement_ids"], "batch_count": len(batches),
+        "requirement_ids": coverage["requirement_ids"], "batch_count": len(batches) + len(task_chunks),
         "task_view_coverage": task_view_coverage,
         "batch_analysis_sha256": {label: "sha256:" + hashlib.sha256(text.encode("utf-8")).hexdigest()
                                   for label, text in analyses},

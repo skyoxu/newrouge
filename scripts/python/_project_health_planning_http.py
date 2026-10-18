@@ -4,7 +4,7 @@ from __future__ import annotations
 import threading
 from datetime import datetime, timezone
 
-from _project_health_planning import create_job, generated_view, public_job, run_job
+from _project_health_planning import create_job, generated_view, public_job, request_cancel, run_job
 
 
 def start_planning(handler, root, request, operation, guard, state):
@@ -38,6 +38,15 @@ def start_planning(handler, root, request, operation, guard, state):
                          verification_mode=None, planning_job_id=None)
         operation.release()
         raise
+    handler.send(public_job(job), 202)
+
+
+def cancel_planning(handler, root, request, guard, state):
+    if set(request) - {'job_id'} or not request.get('job_id'):
+        raise ValueError('job_id is required')
+    job = request_cancel(root, str(request['job_id']))
+    with guard:
+        state['cancel_requested'] = True
     handler.send(public_job(job), 202)
 
 

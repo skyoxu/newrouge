@@ -161,6 +161,34 @@ class ProjectHealthPlanningHttpTests(unittest.TestCase):
         self.assertEqual('align', payload['recoverable_stage'])
         self.assertIn('retry', payload['message'])
 
+    def test_active_planning_job_can_be_cancelled_without_releasing_operation_lock(self):
+        started, release = threading.Event(), threading.Event()
+
+        def execute(root, job):
+            started.set()
+            release.wait(5)
+
+        try:
+            with patch('_project_health_planning_http.run_job', side_effect=execute):
+                code, created = self.request('/api/knowledge/planning', {'action': 'capability'})
+                self.assertEqual(202, code)
+                self.assertTrue(started.wait(2))
+                code, cancelled = self.request('/api/knowledge/planning-cancel', {'job_id': created['job_id']})
+                self.assertEqual(202, code)
+                self.assertEqual('cancelling', cancelled['status'])
+                self.assertTrue(cancelled['cancel_requested'])
+                self.assertTrue(self.request('/api/knowledge/operation')[1]['active'])
+                self.assertEqual(409, self.request('/api/knowledge/planning', {'action': 'mvg'})[0])
+        finally:
+            release.set()
+
+    def test_cancel_rejects_completed_or_unknown_jobs(self):
+        self.assertEqual(422, self.request('/api/knowledge/planning-cancel', {'job_id': 'planning-' + 'f' * 32})[0])
+        job = planning.create_job(self.root, 'capability')
+        job.update(status='completed', stage='complete')
+        atomic_json(planning.job_path(self.root, job['job_id']), job)
+        self.assertEqual(422, self.request('/api/knowledge/planning-cancel', {'job_id': job['job_id']})[0])
+
     def test_generated_views_refresh_while_same_revision_gdd_navigation_is_retained(self):
         old_version = {'id': 'existing-version'}
         write_json(base_dir(self.root) / 'latest.json', {'revision': self.revision,

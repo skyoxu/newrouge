@@ -2025,6 +2025,17 @@ def apply(root: Path, *, run_id: str, alignment_override: Path | None, confirm: 
         raise ValueError("Capability readiness rebind preflight blocked: " + str(rebind))
     manifest_path = root / FORMAL_MANIFEST
     manifest = load_json(manifest_path, {})
+    # Bind the topology manifest to the logical Chapter 3 source-manifest
+    # identity, not to the bytes of the source-manifest JSON file itself.
+    # `source_manifest_sha256` is the stable producer identity consumed by
+    # MVG topology validation; using file_sha here makes the field point at a
+    # different hash domain and blocks every Capability-local candidate.
+    source_manifest_path = run_dir / "analysis-input/source-manifest.v1.json"
+    source_manifest = load_json(source_manifest_path, {})
+    source_manifest_sha = source_manifest.get("manifest_sha256")
+    if not isinstance(source_manifest_sha, str) or not source_manifest_sha:
+        raise ValueError("Capability apply source-manifest identity is missing")
+    manifest["source_manifest_sha256"] = source_manifest_sha
     artifacts = dict(manifest.get("artifacts") or {})
     for rel_path in (
         "docs/planning/semantic-topology/source-blocks.v1.json",
@@ -2076,7 +2087,10 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--source-manifest", default="logs/ci/task-generation/source-manifest.v1.json")
     p.add_argument("--ledger", default="logs/ci/task-generation/source-blocks.v1.json")
     p.add_argument("--semantics", default="logs/ci/task-generation/semantic-requirements.v1.json")
-    p.add_argument("--model-batch-char-budget", type=int, default=160000)
+    # Keep each evidence request below the practical context/latency ceiling
+    # after the shared readiness context is added. No evidence is truncated;
+    # this only increases the number of complete source batches.
+    p.add_argument("--model-batch-char-budget", type=int, default=80000)
     p.add_argument("--candidate-retry-limit", type=int, default=2)
     p.add_argument("--review-retry-limit", type=int, default=1)
     p.add_argument("--candidate-budget-sec", type=int, default=1800)

@@ -214,6 +214,46 @@ def task_view_batch_sections(workspace: Path, batch_index: dict[str, Any]) -> tu
     return sections, coverage
 
 
+def task_view_payload_chunks(workspace: Path, *, char_budget: int = 100000) -> list[dict[str, list[dict[str, Any]]]]:
+    """Split complete task-view rows into size-bounded, independently addressable chunks."""
+    if char_budget < 1000:
+        raise ValueError("Capability task-view chunk char budget must be at least 1000")
+    analysis = workspace / "analysis-input"
+    batch_index = load_json(analysis / "model-batches/batch-index.json", {})
+    # Reuse the strict identity/reference checks before repartitioning rows.
+    task_view_batch_rows(workspace, batch_index)
+    view_dir = analysis / "task-views"
+    rows: list[tuple[str, dict[str, Any]]] = []
+    for path in sorted(view_dir.glob("*.json"), key=lambda value: value.name):
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        rel = f"task-views/{path.name}"
+        rows.extend((rel, item) for item in payload)
+    chunks: list[dict[str, list[dict[str, Any]]]] = []
+    current: dict[str, list[dict[str, Any]]] = {}
+    current_chars = 0
+    seen: set[str] = set()
+    for rel, row in rows:
+        identity = f"{rel}#{row.get('taskmaster_id', row.get('id', ''))}"
+        if identity in seen:
+            raise ValueError("capability_input_integrity_duplicate_task_view_id:" + identity)
+        seen.add(identity)
+        row_chars = len(json.dumps(row, ensure_ascii=False, separators=(",", ":")))
+        if current and current_chars + row_chars > char_budget:
+            chunks.append(current)
+            current, current_chars = {}, 0
+        current.setdefault(rel, []).append(row)
+        current_chars += row_chars
+    if current:
+        chunks.append(current)
+    expected = {
+        f"{rel}#{row.get('taskmaster_id', row.get('id', ''))}"
+        for rel, row in rows
+    }
+    if seen != expected:
+        raise ValueError("capability_input_integrity_task_view_chunk_coverage_mismatch")
+    return chunks
+
+
 def measure_request(payload: str, *, max_bytes: int, max_input_tokens: int,
                     reserved_tokens: int = 0) -> dict:
     """Bound the final serialized request, including wrappers and prompt text."""

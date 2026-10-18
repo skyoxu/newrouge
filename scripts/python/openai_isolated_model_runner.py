@@ -7,6 +7,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import sys
 import time
 from pathlib import Path
@@ -24,12 +25,13 @@ from _llm_backend import (  # noqa: E402
 )
 from _planning_skill_common import atomic_json, load_json, validate_output_schema  # noqa: E402
 from _capability_input_integrity import (  # noqa: E402
-    DEFAULT_MAX_INPUT_TOKENS, REPORT_NAME, check_workspace_request, compact_file_section, configured_input_limit, measure_request, schema_max_json_chars, task_view_batch_sections, validate_batches,
+    DEFAULT_MAX_INPUT_TOKENS, REPORT_NAME, check_workspace_request, compact_file_section, configured_input_limit, measure_request, schema_max_json_chars, task_view_batch_sections, task_view_payload_chunks, validate_batches,
     task_view_batch_rows,
 )
 
 SCHEMA = "newrouge.isolated-model-runner.v1"
 DEFAULT_MAX_BYTES = 8 * 1024 * 1024
+TASK_VIEW_CHUNK_CHAR_BUDGET = 150000
 
 
 def model_name() -> str:
@@ -177,7 +179,6 @@ def batched_workspace_parts(
             raise ValueError(f"base workspace exceeds max visible bytes: {max_bytes}")
         base_sections.append(compact_file_section(root, path))
 
-    task_view_sections, task_view_coverage = task_view_batch_sections(root, batch_index)
     ordered_batches: list[tuple[str, str]] = []
     seen_paths: set[str] = set()
     for row in rows:
@@ -194,9 +195,6 @@ def batched_workspace_parts(
         if len(path.read_bytes()) > max_bytes:
             raise ValueError(f"single Capability model batch exceeds max visible bytes: {rel}")
         section = compact_file_section(root, path)
-        task_section = task_view_sections[len(ordered_batches)]
-        if task_section:
-            section += "\n\n" + task_section
         ordered_batches.append((rel, section))
 
     base = "\n\n".join([
@@ -375,7 +373,7 @@ def _validate_batch_analysis(
         raw_text = str(source.get("raw_text") or "")
         quotes = row.get("evidence_quotes")
         if not isinstance(quotes, list) or not quotes or any(
-                not str(quote).strip() or str(quote) not in raw_text for quote in quotes):
+                not str(quote).strip() or not _quote_matches_source(str(quote), raw_text) for quote in quotes):
             raise ValueError("capability_batch_analysis_evidence_quote_invalid:" + block_id)
     expected_task_views = {
         f"{path}#{row.get('taskmaster_id', row.get('id', ''))}": row
@@ -401,6 +399,16 @@ def _validate_batch_analysis(
         if not isinstance(refs, list) or sorted(str(item) for item in refs) != expected_refs:
             raise ValueError("capability_batch_analysis_task_requirement_refs_mismatch:" + key)
     return value
+
+
+def _quote_matches_source(quote: str, raw_text: str) -> bool:
+    """Match a quote exactly after normalizing whitespace only.
+
+    Models commonly turn a source newline into a space. No punctuation,
+    wording, or token changes are tolerated by this comparison.
+    """
+    normalize = lambda value: re.sub(r"\s+", " ", str(value).strip())
+    return bool(normalize(quote)) and normalize(quote) in normalize(raw_text)
 
 
 def _task_view_refs(row: dict[str, Any]) -> set[str]:
@@ -460,6 +468,16 @@ def _measured_request_text(prompt: str, schema: dict[str, Any] | None, *,
         envelope, ensure_ascii=False, separators=(",", ":")) + "\n===== END STRUCTURED OUTPUT SCHEMA ====="
 
 
+def _bounded_analysis_placeholder(label: str, token_budget: int) -> tuple[str, str]:
+    if token_budget < 1:
+        raise ValueError("capability_batch_output_budget_invalid")
+    # Each request enforces max_output_tokens. Reserve a conservative six
+    # characters per output token rather than expanding every schema field to
+    # its theoretical JSON-escape maximum. The latter can be many times larger
+    # than a response the transport allows, blocking valid complete inputs.
+    return label, "x" * (token_budget * 6)
+
+
 def _run_batched_session(
     *,
     workspace: Path,
@@ -484,6 +502,15 @@ def _run_batched_session(
     batch_index = load_json(_batch_index_path(workspace), {})
     coverage = validate_batches(workspace, batch_index)
     task_view_rows_by_batch, task_view_coverage = task_view_batch_rows(workspace, batch_index)
+    all_task_chunks = task_view_payload_chunks(workspace, char_budget=TASK_VIEW_CHUNK_CHAR_BUDGET)
+    task_chars = sum(
+        len(json.dumps(row, ensure_ascii=False, separators=(",", ":")))
+        for chunk in all_task_chunks for rows in chunk.values() for row in rows
+    )
+    # Task views always use independent bounded requests. Attaching even a
+    # small task view to every source batch duplicates evidence and can push a
+    # source request over its context limit.
+    task_chunks = all_task_chunks
     schema = None
     if output_schema_path is not None:
         schema = json.loads(output_schema_path.read_text(encoding="utf-8"))
@@ -492,25 +519,43 @@ def _run_batched_session(
                       for row in load_json(_batch_index_path(workspace), {}).get("batches", [])]
     if len(batch_payloads) != len(request_specs):
         raise ValueError("capability_batch_payload_count_mismatch")
-    batch_output_tokens = max(2048, min(8192, max_input_tokens // max(3 * len(batches), 1)))
-    final_output_tokens = max(256, min(32768, max_input_tokens // 3))
-    request_texts: list[tuple[str, str, dict[str, Any] | None, int, str]] = []
+    total_request_batches = len(batches) + len(task_chunks)
+    # Keep enough output room for complete task-row analysis. Input and output
+    # budgets are independent; shrinking this with batch count caused valid
+    # task chunks to return incomplete coverage JSON.
+    batch_output_tokens = max(2048, min(8192, max_input_tokens // 10))
+    task_output_tokens = 3072
+    final_output_tokens = max(4096, min(16384, max_input_tokens // 6)) if task_chunks else max(256, min(32768, max_input_tokens // 3))
+    request_texts: list[tuple[str, str, dict[str, Any] | None, int, str, dict[str, Any], dict[str, list[dict[str, Any]]]]] = []
     for index, ((label, text), payload) in enumerate(zip(request_specs, batch_payloads, strict=True)):
-        batch_schema = _batch_analysis_schema(payload, task_view_rows_by_batch[index])
-        request_texts.append((label, text, batch_schema, batch_output_tokens, "newrouge_capability_batch_analysis"))
+        batch_views = {} if task_chunks else task_view_rows_by_batch[index]
+        batch_schema = _batch_analysis_schema(payload, batch_views)
+        request_texts.append((label, text, batch_schema, batch_output_tokens,
+                              "newrouge_capability_batch_analysis", payload, batch_views))
+    for index, task_rows in enumerate(task_chunks, 1):
+        payload = {"schema_version": "newrouge.capability-model-batch.v1",
+                   "batch_index": index, "blocks": [], "requirements": []}
+        text = "\n\n".join([base,
+            "Analyze every complete Task View row below as auxiliary ownership and acceptance evidence. "
+            "Preserve task identity, intent, Acceptance/test meaning, and exact Requirement refs. "
+            "Do not infer Capability grouping or omit any row.",
+            "===== COMPLETE TASK-VIEW ROWS =====\n" + json.dumps(task_rows, ensure_ascii=False, separators=(",", ":"))])
+        label = f"task-views-{index:03d}"
+        task_schema = _batch_analysis_schema(payload, task_rows)
+        request_texts.append((label, text, task_schema, task_output_tokens,
+                              "newrouge_capability_batch_analysis", payload, task_rows))
     checklist = _coverage_checklist(workspace)
-    # Reserve a conservative serialized-output ceiling before the first request.
-    # JSON escaping can expand one Unicode character to six ASCII characters.
-    analysis_char_reserve = [schema_max_json_chars(batch_schema)
-                             for _label, _text, batch_schema, _tokens, _name in request_texts]
+    # Reserve against each request's actual max_output_tokens, not the
+    # theoretical schema maximum (which may be far larger than the response
+    # budget and produce an impossible synthesis preflight).
     synthesis_text = _synthesis_request(original_prompt=original_prompt, base=base,
-        batch_outputs=[(f"batch-{index:03d}", "x" * size)
-                       for index, size in enumerate(analysis_char_reserve, 1)],
+        batch_outputs=[_bounded_analysis_placeholder(label, tokens)
+        for label, _text, _batch_schema, tokens, _name, _payload, _task_views in request_texts],
         schema=schema) + checklist
     schema_text = json.dumps({"text": {"format": {"type": "json_schema", "strict": True, "schema": schema}}},
                              ensure_ascii=False) if schema else ""
     preflight_requests = []
-    for label, text, batch_schema, output_tokens, _name in request_texts:
+    for label, text, batch_schema, output_tokens, _name, _payload, _task_views in request_texts:
         visible = _measured_request_text(text, batch_schema)
         preflight_requests.append({"label": label, **measure_request(visible, max_bytes=max_bytes,
             max_input_tokens=max_input_tokens, reserved_tokens=output_tokens)})
@@ -546,7 +591,7 @@ def _run_batched_session(
         return response
 
     batch_outputs: list[tuple[str, str]] = []
-    for index, (label, text, batch_schema, output_tokens, schema_name) in enumerate(request_texts):
+    for index, (label, text, batch_schema, output_tokens, schema_name, payload, task_views) in enumerate(request_texts):
         response = call(text, output_schema=batch_schema, max_output_tokens=output_tokens,
                         output_schema_name=schema_name)
         output = _extract_response_output_text(response)
@@ -556,7 +601,7 @@ def _run_batched_session(
             parsed = json.loads(output)
         except json.JSONDecodeError as exc:
             raise ValueError(f"capability_batch_analysis_invalid_json:{label}") from exc
-        parsed = _validate_batch_analysis(parsed, batch_payloads[index], task_view_rows_by_batch[index])
+        parsed = _validate_batch_analysis(parsed, payload, task_views)
         batch_outputs.append((label, json.dumps(parsed, ensure_ascii=False, separators=(",", ":"))))
 
     final_text = _synthesis_request(original_prompt=original_prompt, base=base,

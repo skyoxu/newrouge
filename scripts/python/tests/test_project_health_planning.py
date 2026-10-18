@@ -20,7 +20,7 @@ import plan_capabilities as cap
 import plan_mvg as mvg
 from _planning_skill_common import atomic_json, canonical_sha, load_json
 from _project_health_planning_inputs import MainCheckout, git, main_revision, prepare_checkout, validate_checkout
-from planning_acceptance_fixture import build_fixture, GDD_PATH
+from planning_acceptance_fixture import build_fixture, GDD_PATH, TEST_PATH
 from scripts.python.tests.test_planning_audit_repair import prepared_mvg
 from scripts.python.tests.test_planning_main_audit_fixes import review_report
 
@@ -90,6 +90,15 @@ class ProjectHealthPlanningTests(unittest.TestCase):
         topology_path = self.root / 'docs/planning/semantic-topology/topology-manifest.v1.json'
         topology = load_json(topology_path)
         source_manifest = load_json(self.root / 'logs/ci/task-generation/source-manifest.v1.json')
+        # The fixture now starts with the corrected logical binding. Seed the
+        # legacy file-hash form first so this test still exercises a real
+        # migration and commits both revisions instead of attempting to commit
+        # an unchanged file.
+        topology['source_manifest_sha256'] = planning.file_sha(
+            self.root / 'logs/ci/task-generation/source-manifest.v1.json')
+        atomic_json(topology_path, topology)
+        git(self.root, 'add', topology_path.as_posix())
+        git(self.root, 'commit', '-m', 'fixture: seed legacy source manifest binding')
         topology['source_manifest_sha256'] = source_manifest['manifest_sha256']
         atomic_json(topology_path, topology)
         git(self.root, 'add', topology_path.as_posix())
@@ -489,7 +498,8 @@ class ProjectHealthPlanningTests(unittest.TestCase):
                             'flow_id': fid, 'disposition': 'flow', 'rationale': 'Owned observable relay behavior.',
                             'sink_id': None, 'verification_ref': None, 'authority_ref': None, 'authority_review': None}
                             for rid in scope['new_requirement_ids']],
-                        tests=[{'id': tid, 'kind': 'dotnet', 'state': 'planned', 'flow_id': fid, 'test_refs': [],
+                        tests=[{'id': tid, 'kind': 'dotnet', 'state': 'planned', 'flow_id': fid,
+                                'test_refs': [TEST_PATH.as_posix()],
                             'path': 'Game.Core.Tests/Tasks/PlanningAcceptanceTests.cs', 'selector': 'PlanningAcceptanceTests',
                             'evidence_level': 'domain-integration', 'min_tests': 1}],
                         entrypoints=[{'status': 'planned', 'flow_ids': prior_flow_ids + [fid], 'owner_task': 42,
@@ -659,7 +669,7 @@ class ProjectHealthPlanningTests(unittest.TestCase):
                     envelope['tests'] = [{
                         'id': f'{scope_id}-{index:02d}',
                         'flow_id': flow_id,
-                        'test_refs': [],
+                        'test_refs': [TEST_PATH.as_posix()],
                         'kind': 'dotnet',
                         'state': 'planned',
                         'path': 'Game.Core.Tests/Tasks/PlanningAcceptanceTests.cs',
@@ -766,6 +776,65 @@ class ProjectHealthPlanningTests(unittest.TestCase):
         (checkout / 'docs/gdd/untracked.md').write_text('Uncommitted input', encoding='utf-8')
         with self.assertRaisesRegex(ValueError, 'Uncommitted input'):
             validate_checkout(self.root, checkout, self.revision)
+
+    def test_service_restart_closes_active_planning_jobs(self):
+        job = planning.create_job(self.root, 'capability')
+        job.update(status='running', stage='generate', heartbeat_at='2026-01-01T00:00:00+00:00')
+        atomic_json(planning.job_path(self.root, job['job_id']), job)
+        recovered = planning.recover_stale_jobs(self.root)
+        self.assertIn(job['job_id'], recovered)
+        stored = planning.read_job(self.root, job['job_id'])
+        self.assertEqual('failed', stored['status'])
+        self.assertIn('service restart', stored['message'])
+
+    def test_service_restart_closes_job_with_dead_owner_pid(self):
+        job = planning.create_job(self.root, 'capability')
+        job.update(status='running', stage='generate', owner_pid=99999999,
+                   heartbeat_at='2026-01-01T00:00:00+00:00')
+        atomic_json(planning.job_path(self.root, job['job_id']), job)
+        recovered = planning.recover_stale_jobs(self.root)
+        self.assertIn(job['job_id'], recovered)
+        stored = planning.read_job(self.root, job['job_id'])
+        self.assertEqual('failed', stored['status'])
+        self.assertIn('Interrupted by service restart', stored['message'])
+
+    def test_cancelled_invoke_terminates_planner_process_tree(self):
+        class FakeProcess:
+            pid = 424242
+            returncode = -9
+
+            def poll(self):
+                return None
+
+            def wait(self, timeout=None):
+                return self.returncode
+
+        job = planning.create_job(self.root, 'capability')
+        planning.request_cancel(self.root, job['job_id'])
+        log = self.root / 'cancelled-invoke.log'
+        token = planning._ACTIVE_JOB_CONTEXT.set((self.root, job['job_id']))
+        try:
+            with patch('subprocess.Popen', return_value=FakeProcess()), \
+                 patch.object(planning, '_terminate_process_tree') as terminate, \
+                 patch.object(planning.time, 'sleep'):
+                with self.assertRaises(planning.PlanningCancelled):
+                    planning.invoke(self.root, 'fixture.py', [], log)
+        finally:
+            planning._ACTIVE_JOB_CONTEXT.reset(token)
+        terminate.assert_called_once()
+
+    def test_capability_apply_preserves_logical_source_manifest_binding(self):
+        invoke, _invocations = self._production_consumers()
+        with patch.object(planning, 'invoke', side_effect=invoke), \
+             patch.object(planning, 'runner_path', return_value=Path('fixture')):
+            job = planning.create_job(self.root, 'capability')
+            result = planning.run_job(self.root, job)
+        self.assertEqual('completed', result['status'], result)
+        source_manifest = load_json(self.root / 'logs/ci/task-generation/source-manifest.v1.json')
+        topology_manifest = load_json(self.root / 'docs/planning/semantic-topology/topology-manifest.v1.json')
+        self.assertEqual(source_manifest['manifest_sha256'], topology_manifest['source_manifest_sha256'])
+        self.assertNotEqual(planning.file_sha(self.root / 'logs/ci/task-generation/source-manifest.v1.json'),
+                            topology_manifest['source_manifest_sha256'])
 
     def test_crlf_checkout_preserves_chapter3_text_identity(self):
         (self.root / '.gitattributes').write_text('*.md text eol=crlf\n', encoding='utf-8')

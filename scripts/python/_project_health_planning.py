@@ -7,17 +7,127 @@ import re
 import subprocess
 import sys
 import tempfile
+import threading
+import time
 import uuid
+from contextvars import ContextVar
 from datetime import datetime, timezone
 from pathlib import Path
 
-from _planning_skill_common import atomic_json, canonical_sha, file_sha, load_json, normalized_file_sha, repo_path
+from _planning_skill_common import (
+    _terminate_process_tree, atomic_json, canonical_sha, file_sha, load_json,
+    normalized_file_sha, repo_path,
+)
 from _project_health_planning_inputs import (
     LOCAL_DERIVED_TOPOLOGY, MainCheckout, TOPOLOGY_ROOT, git, prepare_checkout, task_scope, validate_checkout,
     workspace_revision,
 )
 
 JOB_ROOT = Path('logs/ci/knowledge-planning')
+_JOB_LOCKS: dict[str, threading.Lock] = {}
+_JOB_LOCKS_GUARD = threading.Lock()
+_ACTIVE_JOB_CONTEXT: ContextVar[tuple[Path, str] | None] = ContextVar(
+    'project_health_active_job_context', default=None
+)
+
+
+class PlanningCancelled(RuntimeError):
+    pass
+
+
+def _job_lock(job_id: str) -> threading.Lock:
+    with _JOB_LOCKS_GUARD:
+        return _JOB_LOCKS.setdefault(job_id, threading.Lock())
+
+
+def update_job(root: Path, job: dict, **values) -> dict:
+    """Merge worker updates with a concurrent cancellation request."""
+    with _job_lock(job['job_id']):
+        path = job_path(root, job['job_id'])
+        current = load_json(path, {})
+        merged = {**current, **job, **values}
+        if current.get('cancel_requested'):
+            merged['cancel_requested'] = True
+            merged['cancel_requested_at'] = current.get('cancel_requested_at')
+            if current.get('status') == 'cancelling' and merged.get('status') in ('queued', 'running'):
+                merged['status'] = 'cancelling'
+        merged['heartbeat_at'] = datetime.now(timezone.utc).isoformat()
+        atomic_json(path, merged)
+        job.clear()
+        job.update(merged)
+        return merged
+
+
+def request_cancel(root: Path, job_id: str) -> dict:
+    with _job_lock(job_id):
+        path = job_path(root, job_id)
+        job = load_json(path, {})
+        if job.get('job_id') != job_id:
+            raise ValueError('Planning job is unavailable')
+        if job.get('status') not in ('queued', 'running', 'cancelling'):
+            raise ValueError('Planning job is not active')
+        job.update(status='cancelling', cancel_requested=True,
+                   cancel_requested_at=datetime.now(timezone.utc).isoformat(),
+                   message='Cancellation requested; waiting for the current stage to stop')
+        job['heartbeat_at'] = datetime.now(timezone.utc).isoformat()
+        atomic_json(path, job)
+        return job
+
+
+def recover_stale_jobs(root: Path) -> list[str]:
+    """Close jobs left active after the previous server process exited."""
+    jobs_dir = repo_path(root, JOB_ROOT.as_posix())
+    recovered = []
+    if not jobs_dir.is_dir():
+        return recovered
+    for path in jobs_dir.glob('planning-*/job.json'):
+        try:
+            job = load_json(path, {})
+            if job.get('status') not in ('queued', 'running', 'cancelling'):
+                continue
+            owner_pid = int(job.get('owner_pid') or 0)
+            if owner_pid and _pid_alive(owner_pid):
+                continue
+            cancelled = bool(job.get('cancel_requested')) or job.get('status') == 'cancelling'
+            job.update(status='cancelled' if cancelled else 'failed',
+                       message=('Cancelled during service restart' if cancelled else
+                                f'Interrupted by service restart during {job.get("stage", "unknown")}'),
+                       interrupted_at=datetime.now(timezone.utc).isoformat(),
+                       heartbeat_at=datetime.now(timezone.utc).isoformat())
+            atomic_json(path, job)
+            recovered.append(str(job.get('job_id') or path.parent.name))
+        except (OSError, ValueError, TypeError):
+            continue
+    return recovered
+
+
+def _pid_alive(pid: int) -> bool:
+    if pid <= 0:
+        return False
+    if os.name == 'nt':
+        result = subprocess.run(['tasklist', '/FI', f'PID eq {pid}', '/FO', 'CSV', '/NH'],
+                                capture_output=True, text=True, check=False)
+        return result.returncode == 0 and f'"{pid}"' in result.stdout
+    try:
+        os.kill(pid, 0)
+        return True
+    except (ProcessLookupError, PermissionError, OSError):
+        return False
+
+
+def _cancel_requested(root: Path, job_id: str) -> bool:
+    return bool(load_json(job_path(root, job_id), {}).get('cancel_requested'))
+
+
+def _touch_job(root: Path, job_id: str) -> None:
+    """Refresh liveness without allowing a worker snapshot to overwrite state."""
+    with _job_lock(job_id):
+        path = job_path(root, job_id)
+        current = load_json(path, {})
+        if not current or current.get('job_id') != job_id:
+            return
+        current['heartbeat_at'] = datetime.now(timezone.utc).isoformat()
+        atomic_json(path, current)
 
 
 def compact_error(value: str) -> str:
@@ -47,7 +157,7 @@ def job_path(root: Path, job_id: str) -> Path:
 def public_job(job: dict) -> dict:
     return {key: job.get(key) for key in (
         'job_id', 'action', 'status', 'stage', 'revision', 'message', 'count',
-        'recoverable_stage',
+        'recoverable_stage', 'heartbeat_at', 'cancel_requested', 'cancel_requested_at',
     )}
 
 
@@ -330,8 +440,20 @@ def invoke(checkout: Path, script: str, arguments: list[str], log: Path) -> dict
         child_env.update(SC_MVG_RECOVERY_ROOT=recovery_binding['store'],
                          SC_MVG_RECOVERY_EPOCH=str(recovery_binding['epoch']))
     with log.open('w', encoding='utf-8', newline='\n') as output:
-        result = subprocess.run(command, cwd=checkout, stdout=output, stderr=subprocess.STDOUT,
-                                text=True, encoding='utf-8', env=child_env)
+        process = subprocess.Popen(command, cwd=checkout, stdout=output, stderr=subprocess.STDOUT,
+                                   text=True, encoding='utf-8', env=child_env)
+        last_heartbeat = 0.0
+        while process.poll() is None:
+            context = _ACTIVE_JOB_CONTEXT.get()
+            if context and _cancel_requested(*context):
+                _terminate_process_tree(process)
+                process.wait(timeout=15)
+                raise PlanningCancelled('Planning cancelled by operator')
+            if context and time.monotonic() - last_heartbeat >= 2.0:
+                _touch_job(*context)
+                last_heartbeat = time.monotonic()
+            time.sleep(0.2)
+        result = process
     text = log.read_text(encoding='utf-8')
     if result.returncode:
         raise ValueError(compact_error(text))
@@ -797,8 +919,9 @@ def run_job(root: Path, job: dict) -> dict:
     run_id = job['job_id']
     invoked_stage: str | None = None
     try:
-        job.update(status='running', message=f'Generating {action} from local workspace {job["revision"][:12]}')
-        atomic_json(directory / 'job.json', job)
+        update_job(root, job, status='running',
+                   message=f'Generating {action} from local workspace {job["revision"][:12]}',
+                   owner_pid=os.getpid())
         derived_source = None
         if action == 'mvg' and job.get('checkout_job_id'):
             parent = read_job(root, job['checkout_job_id'])
@@ -821,12 +944,14 @@ def run_job(root: Path, job: dict) -> dict:
         script = 'plan_capabilities.py' if action == 'capability' else 'plan_mvg.py'
         stages = ['prepare', 'generate', 'review', 'align', 'apply'] if action == 'capability' else ['prepare', 'generate', 'review', 'validate', 'apply']
         for stage in stages[stages.index(job['stage']):]:
+            if _cancel_requested(root, run_id):
+                raise PlanningCancelled('Planning cancelled by operator')
             if action == 'mvg' and not _mvg_epoch_current(root, job):
                 raise ValueError('MVG generation was cleared; start a new job')
             invoked_stage = None
             validate_checkout(root, checkout, job['revision'])
             job['stage'] = stage
-            atomic_json(directory / 'job.json', job)
+            update_job(root, job, stage=stage)
             args = [stage, '--run-id', run_id]
             if stage == 'prepare':
                 args += task_args
@@ -849,7 +974,11 @@ def run_job(root: Path, job: dict) -> dict:
             if stage == 'prepare' and run_state.is_file():
                 continue
             invoked_stage = stage
-            result = invoke(checkout, script, args, directory / f'{stage}.log')
+            context_token = _ACTIVE_JOB_CONTEXT.set((root, run_id))
+            try:
+                result = invoke(checkout, script, args, directory / f'{stage}.log')
+            finally:
+                _ACTIVE_JOB_CONTEXT.reset(context_token)
             if action == 'mvg' and stage == 'prepare' and job.get('capabilities_sha256'):
                 validate_mvg_capability_binding(root, checkout, job)
             if result.get('status') in ('blocked', 'failed') or result.get('formal_applicable') is False:
@@ -865,7 +994,7 @@ def run_job(root: Path, job: dict) -> dict:
                 # publishing the planning result so workspace consumers and
                 # the subsequent MVG job see the same selected bytes.
                 job['knowledge_refresh'] = _refresh_capability_knowledge(root, checkout, job)
-                atomic_json(directory / 'job.json', job)
+            update_job(root, job)
         # Errors while building or publishing the read-only result are not an
         # invocation-stage interruption.  Keep that distinction so durable
         # model evidence is never mistaken for a safe Apply retry.
@@ -905,7 +1034,7 @@ def run_job(root: Path, job: dict) -> dict:
         job.update(status='completed', stage='complete', message=f'{action.title()} generated: {job["count"]} '
                    + ('capabilities' if action == 'capability' else 'flows') +
                    f' · local workspace {job["revision"][:12]} · local planning result')
-        atomic_json(directory / 'job.json', job)
+        update_job(root, job)
         if action == 'mvg' and not _mvg_epoch_current(root, job):
             raise ValueError('MVG generation was cleared before publication')
         atomic_json(root / JOB_ROOT / f'{action}-latest.json', {'job_id': job['job_id']})
@@ -916,7 +1045,11 @@ def run_job(root: Path, job: dict) -> dict:
             if invoked_stage is not None and invoked_stage == stage
             else None
         )
-        if recovery_stage:
+        if isinstance(exc, PlanningCancelled) or _cancel_requested(root, run_id):
+            job.pop('recoverable_stage', None)
+            job.update(status='cancelled', stage=stage,
+                       message=f'Capability planning cancelled during {stage}')
+        elif recovery_stage:
             job.update(
                 status='recoverable',
                 stage=recovery_stage,
@@ -929,7 +1062,7 @@ def run_job(root: Path, job: dict) -> dict:
         else:
             job.pop('recoverable_stage', None)
             job.update(status='failed', message=f'{action.title()} failed ({stage}): {error}')
-        atomic_json(directory / 'job.json', job)
+        update_job(root, job)
     return public_job(job)
 
 

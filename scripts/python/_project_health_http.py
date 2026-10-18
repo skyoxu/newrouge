@@ -18,8 +18,9 @@ from urllib.parse import parse_qs, urlsplit
 from project_health_knowledge import CONFIG, safe_file, write_json, validate_config, load_config, read_json, base_dir
 from _semantic_topology import load_workspace_topology
 from _project_health_mvg_versions import with_runtime_evidence
-from _project_health_planning import generated_view, planning_source, public_job, read_job, selected_result, mvg_progress
-from _project_health_planning_http import start_planning, clear_mvg
+from _project_health_planning import (generated_view, planning_source, public_job, read_job,
+                                      recover_stale_jobs, selected_result, mvg_progress)
+from _project_health_planning_http import start_planning, cancel_planning, clear_mvg
 
 
 def image_bytes(root, path, revision):
@@ -312,6 +313,8 @@ def handler_factory(root: Path):
                     self.cli('scan')
                 elif path == '/api/knowledge/planning':
                     start_planning(self, root, request, operation, operation_guard, operation_state)
+                elif path == '/api/knowledge/planning-cancel':
+                    cancel_planning(self, root, request, operation_guard, operation_state)
                 elif path == '/api/knowledge/mvg-clear':
                     clear_mvg(self, root, request, operation)
                 elif path == '/api/knowledge/mvg-run':
@@ -380,7 +383,9 @@ def main():
     parser.add_argument('--repo-root', type=Path, required=True)
     parser.add_argument('--port', type=int, required=True)
     args = parser.parse_args()
-    server = ThreadingHTTPServer(('127.0.0.1', args.port), handler_factory(args.repo_root.resolve()))
+    root = args.repo_root.resolve()
+    recover_stale_jobs(root)
+    server = ThreadingHTTPServer(('127.0.0.1', args.port), handler_factory(root))
     server.serve_forever()
 
 

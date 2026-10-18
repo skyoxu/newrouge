@@ -92,8 +92,18 @@ class CapabilityInputIntegrityTests(unittest.TestCase):
                 batch_index = int((schema.get('properties', {}).get('batch_index', {}).get('enum') or [1])[0])
                 batch = load_json(self.analysis / self.index['batches'][batch_index - 1]['path'])
                 payload = self.batch_fixture_payload(batch)
+                is_task_batch = schema.get('properties', {}).get('source_block_analyses', {}).get('minItems') == 0
+                if is_task_batch:
+                    payload['batch_index'] = batch_index
+                    payload['source_block_analyses'] = []
+                    payload['requirement_analyses'] = []
                 view_rows, _ = codex.api.task_view_batch_rows(self.root, self.index)
-                for task_path, rows in view_rows[batch_index - 1].items():
+                task_groups = (
+                    {path: rows for chunk in integrity.task_view_payload_chunks(self.root)
+                     for path, rows in chunk.items()}
+                    if is_task_batch else {}
+                )
+                for task_path, rows in (task_groups if is_task_batch else {}).items():
                     for task in rows:
                         refs = sorted(codex.api._task_view_refs(task))
                         payload['task_view_analyses'].append({
@@ -122,8 +132,16 @@ class CapabilityInputIntegrityTests(unittest.TestCase):
         self.assertIn('FULL_DESCRIPTION_END', sent)
         self.assertIn('MANDATORY_ACCEPTANCE_END', sent)
         self.assertIn('verification.gd', sent)
-        self.assertIn('FULL_DESCRIPTION_END', self.codex_inputs[0])
-        self.assertIn('MANDATORY_ACCEPTANCE_END', self.codex_inputs[0])
+        source_inputs = [value for value in self.codex_inputs
+                         if '===== COMPLETE TASK-VIEW ROWS =====' not in value]
+        task_inputs = [value for value in self.codex_inputs
+                       if '===== COMPLETE TASK-VIEW ROWS =====' in value]
+        self.assertTrue(source_inputs)
+        self.assertTrue(task_inputs)
+        self.assertTrue(all('FULL_DESCRIPTION_END' not in value for value in source_inputs))
+        self.assertTrue(all('MANDATORY_ACCEPTANCE_END' not in value for value in source_inputs))
+        self.assertTrue(any('FULL_DESCRIPTION_END' in value for value in task_inputs))
+        self.assertTrue(any('MANDATORY_ACCEPTANCE_END' in value for value in task_inputs))
         self.assertIn('task_view_analyses', self.codex_inputs[-1])
         self.assertIn('"task_intent":"fixture intent"', self.codex_inputs[-1])
         self.assertNotIn('FULL_DESCRIPTION_END', self.codex_inputs[-1])
@@ -132,6 +150,20 @@ class CapabilityInputIntegrityTests(unittest.TestCase):
         self.assertTrue(receipt['input_integrity']['requests'])
         self.assertEqual(1, receipt['input_integrity']['task_view_coverage']['views'][
             'analysis-input/task-views/tasks_gameplay.json']['row_count'])
+
+    def test_task_views_are_separate_even_when_small(self):
+        atomic_json(self.analysis / 'task-views/tasks_gameplay.json', [
+            {'taskmaster_id': 7, 'description': 'TASK_ONLY',
+             'semantic_refs': ['RQ-1'], 'acceptance': ['ACCEPTANCE_ONLY'],
+             'test_refs': ['verification.gd']}])
+        self.refresh_analysis_index()
+        sent, _ = self.invoke()
+        source_inputs = [value for value in self.codex_inputs
+                         if '===== COMPLETE TASK-VIEW ROWS =====' not in value]
+        task_inputs = [value for value in self.codex_inputs
+                       if '===== COMPLETE TASK-VIEW ROWS =====' in value]
+        self.assertTrue(all('TASK_ONLY' not in value for value in source_inputs))
+        self.assertTrue(any('TASK_ONLY' in value for value in task_inputs))
 
     def test_task_views_are_partitioned_without_field_loss(self):
         atomic_json(self.analysis / 'task-views/tasks_back.json', [
@@ -145,13 +177,34 @@ class CapabilityInputIntegrityTests(unittest.TestCase):
         base, batches = self.parts()
         self.assertNotIn('TASK_A_FULL', base)
         self.assertNotIn('TASK_CROSS_FULL', base)
-        self.assertIn('TASK_A_FULL', batches[0][1])
-        self.assertIn('TASK_CROSS_FULL', batches[0][1])
-        self.assertIn('TASK_CROSS_FULL', batches[1][1])
-        self.assertIn('TASK_UNBOUND_FULL', batches[0][1])
-        for marker in ('AC_A', 'AC_CROSS', 'TEST_CROSS', 'TEST_UNBOUND'):
-            self.assertGreaterEqual(sum(marker in section for _, section in batches), 1)
-        self.assertIn('"custom":{"keep":true}', batches[0][1])
+        self.assertTrue(all('TASK_A_FULL' not in section for _, section in batches))
+        self.assertTrue(all('TASK_CROSS_FULL' not in section for _, section in batches))
+        self.assertTrue(all('TASK_UNBOUND_FULL' not in section for _, section in batches))
+        task_chunks = integrity.task_view_payload_chunks(self.root)
+        task_text = '\n'.join(json.dumps(chunk, ensure_ascii=False, separators=(',', ':'))
+                               for chunk in task_chunks)
+        for marker in ('TASK_A_FULL', 'TASK_CROSS_FULL', 'TASK_UNBOUND_FULL',
+                       'AC_A', 'AC_CROSS', 'TEST_CROSS', 'TEST_UNBOUND',
+                       '"custom":{"keep":true}'):
+            self.assertIn(marker, task_text)
+        self.assertEqual(1, task_text.count('TASK_CROSS_FULL'))
+
+    def test_large_task_views_are_split_into_complete_size_bounded_chunks(self):
+        rows = [
+            {"taskmaster_id": str(index), "description": "task " + ("x" * 2400),
+             "acceptance": ["accept " + str(index)], "semantic_refs": ["RQ-1"]}
+            for index in range(25)
+        ]
+        atomic_json(self.analysis / "task-views/tasks_gameplay.json", rows)
+        self.refresh_analysis_index()
+        chunks = integrity.task_view_payload_chunks(self.root, char_budget=10000)
+        self.assertGreater(len(chunks), 1)
+        actual = [row["taskmaster_id"] for chunk in chunks for part in chunk.values() for row in part]
+        self.assertEqual([str(index) for index in range(25)], actual)
+        for chunk in chunks:
+            size = sum(len(json.dumps(row, ensure_ascii=False, separators=(",", ":")))
+                       for part in chunk.values() for row in part)
+            self.assertLessEqual(size, 10000)
 
     def test_task_view_unknown_requirement_reference_fails_closed(self):
         atomic_json(self.analysis / 'task-views/tasks_back.json', [
@@ -192,6 +245,11 @@ class CapabilityInputIntegrityTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'nested_task_view_unsupported'):
             api.task_view_batch_rows(self.root, self.index)
 
+    def test_quote_matching_accepts_model_whitespace_normalization(self):
+        raw = 'Acceptance and test evidence remain\nin the two task views.'
+        normalized = 'Acceptance and test evidence remain in the two task views.'
+        self.assertTrue(api._quote_matches_source(normalized, raw))
+
     def test_large_task_views_are_not_replayed_in_every_batch(self):
         atomic_json(self.analysis / 'task-views/tasks_back.json', [
             {'taskmaster_id': 7, 'description': 'A' * 50000, 'semantic_refs': ['RQ-1'],
@@ -202,10 +260,15 @@ class CapabilityInputIntegrityTests(unittest.TestCase):
         base, batches = self.parts()
         self.assertNotIn('A' * 1000, base)
         self.assertNotIn('B' * 1000, base)
-        self.assertIn('A' * 1000, batches[0][1])
-        self.assertIn('B' * 1000, batches[1][1])
-        self.assertNotIn('A' * 1000, batches[1][1])
-        self.assertNotIn('B' * 1000, batches[0][1])
+        task_chunks = integrity.task_view_payload_chunks(self.root)
+        self.assertEqual(2, len(task_chunks))
+        task_text = json.dumps(task_chunks[0], ensure_ascii=False, separators=(',', ':'))
+        all_task_text = ''.join(json.dumps(chunk, ensure_ascii=False, separators=(',', ':'))
+                                for chunk in task_chunks)
+        self.assertIn('A' * 1000, all_task_text)
+        self.assertIn('B' * 1000, all_task_text)
+        self.assertTrue(all('A' * 1000 not in section for _, section in batches))
+        self.assertTrue(all('B' * 1000 not in section for _, section in batches))
 
     def test_batch_hash_drift_blocks_even_when_ids_are_unchanged(self):
         path = self.analysis / self.index['batches'][0]['path']
@@ -351,17 +414,25 @@ class CapabilityInputIntegrityTests(unittest.TestCase):
                 blocks = batch['blocks']
                 requirements = batch['requirements']
                 payload = self.batch_fixture_payload(batch)
-                view_rows, _ = api.task_view_batch_rows(self.root, self.index)
-                batch_views = view_rows[len(responses) - 1]
-                for task_path, rows in batch_views.items():
-                    for task in rows:
-                        payload['task_view_analyses'].append({
-                            'task_view_key': f"{task_path}#{task.get('taskmaster_id', task.get('id', ''))}",
-                            'task_intent': 'fixture intent',
-                            'acceptance_signals': ['acceptance analyzed'],
-                            'verification_signals': ['verification analyzed'],
-                            'requirement_refs': sorted(api._task_view_refs(task)),
-                        })
+                return SimpleNamespace(id=f'fixture-{len(responses)}', status='completed',
+                                       output_text=json.dumps(payload))
+            if '===== COMPLETE TASK-VIEW ROWS =====' in responses[-1]['prompt']:
+                payload = {
+                    'schema_version': 'newrouge.capability-batch-analysis.v1',
+                    'batch_index': 1,
+                    'source_block_analyses': [], 'requirement_analyses': [],
+                    'task_view_analyses': [],
+                }
+                for chunk in integrity.task_view_payload_chunks(self.root):
+                    for task_path, rows in chunk.items():
+                        for task in rows:
+                            payload['task_view_analyses'].append({
+                                'task_view_key': f"{task_path}#{task.get('taskmaster_id', task.get('id', ''))}",
+                                'task_intent': 'fixture intent',
+                                'acceptance_signals': ['acceptance analyzed'],
+                                'verification_signals': ['verification analyzed'],
+                                'requirement_refs': sorted(api._task_view_refs(task)),
+                            })
                 return SimpleNamespace(id=f'fixture-{len(responses)}', status='completed',
                                        output_text=json.dumps(payload))
             return SimpleNamespace(id=f'fixture-{len(responses)}', status='completed', output_text='{}')
@@ -373,7 +444,7 @@ class CapabilityInputIntegrityTests(unittest.TestCase):
                 output_path=self.output, timeout_sec=180, max_bytes=8 * 1024 * 1024,
                 max_input_tokens=40000)
 
-        self.assertEqual(len(batches) + 1, receipt['model_request_count'])
+        self.assertEqual(len(batches) + 2, receipt['model_request_count'])
         self.assertTrue(all(call.get('previous_response_id') is None for call in responses))
         for index, batch in enumerate(batches):
             expected_text = batch['blocks'][0]['raw_text']
@@ -383,15 +454,18 @@ class CapabilityInputIntegrityTests(unittest.TestCase):
                     self.assertNotIn(other['blocks'][0]['raw_text'], responses[index]['prompt'])
             self.assertIsNone(responses[index].get('previous_response_id'))
         final_prompt = responses[-1]['prompt']
-        self.assertIn('SYNTHESIS_TASK_CONTEXT', responses[0]['prompt'])
-        self.assertIn('SYNTHESIS_ACCEPTANCE_CONTEXT', responses[0]['prompt'])
+        self.assertNotIn('SYNTHESIS_TASK_CONTEXT', responses[0]['prompt'])
+        self.assertNotIn('SYNTHESIS_ACCEPTANCE_CONTEXT', responses[0]['prompt'])
+        self.assertIn('SYNTHESIS_TASK_CONTEXT', responses[len(batches)]['prompt'])
+        self.assertIn('SYNTHESIS_ACCEPTANCE_CONTEXT', responses[len(batches)]['prompt'])
         self.assertIn('task_view_analyses', final_prompt)
         self.assertNotIn('SYNTHESIS_TASK_CONTEXT', final_prompt)
         self.assertNotIn('SYNTHESIS_ACCEPTANCE_CONTEXT', final_prompt)
         for batch in batches:
             for block in batch['blocks']:
                 self.assertNotIn(block['raw_text'], final_prompt)
-        self.assertEqual(len(batches) + 2, len(receipt['input_integrity']))
+        task_chunk_count = len(integrity.task_view_payload_chunks(self.root))
+        self.assertEqual(len(batches) + task_chunk_count + 2, len(receipt['input_integrity']))
 
     def test_batched_requests_use_independent_contexts_and_bounded_final_input(self):
         """Each source batch is a fresh request; final synthesis receives model outputs only."""
@@ -450,6 +524,14 @@ class CapabilityInputIntegrityTests(unittest.TestCase):
         requirement_properties = properties['requirement_analyses']['items']['properties']
         self.assertIn('maxLength', requirement_properties['intent'])
         self.assertIn('maxLength', requirement_properties['user_outcome'])
+
+    def test_synthesis_reservation_respects_actual_batch_response_budget(self):
+        for runner in (api, codex):
+            with self.subTest(runner=runner.__name__):
+                placeholder = runner._bounded_analysis_placeholder('batch-001', 8192)
+                self.assertEqual('batch-001', placeholder[0])
+                self.assertEqual(49152, len(placeholder[1]))
+                self.assertLess(len(placeholder[1]), 8192 * 20)
 
     def test_api_happy_path_receipt_covers_batches_and_original_text(self):
         responses = []

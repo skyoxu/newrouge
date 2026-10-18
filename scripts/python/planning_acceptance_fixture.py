@@ -347,7 +347,9 @@ def _write_topology_seed(root: Path, ledger: dict[str, Any], semantics: dict[str
     atomic_json(topology_root / "topology-manifest.v1.json", {
         "schema_version": "newrouge.semantic-topology-manifest.v1",
         "source_revision": ledger.get("source_revision"),
-        "source_manifest_sha256": file_sha(root / MANIFEST_PATH),
+        # This field is the logical producer identity published inside the
+        # Chapter 3 source manifest, not the hash of that JSON file.
+        "source_manifest_sha256": ledger.get("source_manifest_sha256"),
         "schema_revision": "v1",
         "generator_revision": "planning-acceptance-fixture-v1",
         "artifacts": artifacts,
