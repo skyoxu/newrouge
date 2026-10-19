@@ -500,7 +500,13 @@ def _generate_selected_capabilities(root, run_dir, state, *, backend, invoke_fac
     try:
         # A new execution restores only selected commit points. Keep all old
         # candidate/repair/ranking files and charges as immutable audit.
-        if worker_config is not None and ledger.get("current") is not None:
+        # The checkpoint protocol owns worker interruption recovery for new
+        # runs.  A legacy run has no hash-bound checkpoint and must retain its
+        # persisted current prefix so the historical resume path can replay
+        # completed local evidence without dispatching fresh model calls.
+        if (worker_config is not None and ledger.get("current") is not None
+                and selected_checkpoint.enabled(state)
+                and not ledger.get("terminal")):
             ledger["next_execution"] = (ledger["current"].get("execution", 1) + 1)
             ledger["current"] = None
             ledger.pop("terminal", None)

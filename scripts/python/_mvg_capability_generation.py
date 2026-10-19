@@ -89,11 +89,12 @@ def _validate_topology_binding(prepared: Path, *, scope: dict[str, Any]) -> tupl
         raise ValueError("mvg_topology_artifact_revision_mismatch:edges")
 
     task_master_doc = load_json(prepared / "task-master.json", {})
+    from _capability_input_integrity import task_master_rows, task_master_identity
     capabilities_doc = documents["capabilities"]
     closure = resolve_relation_closure(
         source_blocks=documents["source_blocks"], requirements=documents["requirements"],
         capabilities=capabilities_doc, edges=documents["edges"],
-        tasks=task_master_doc.get("master", {}).get("tasks", []),
+        tasks=task_master_rows(task_master_doc),
         seed_nodes=[("capability", str(scope.get("capability_id") or ""))],
         allowed_node_types={"capability", "requirement", "source_block", "task"},
         traversal_rules=CAPABILITY_EVIDENCE_RELATIONS,
@@ -194,7 +195,10 @@ def review_projection(scope, base, proposal):
 def seed_proposal(state, prepared):
     import plan_mvg as pm
     baseline = load_json(prepared / "existing-manifest.json", None)
-    statuses = {str(row["id"]): row.get("status", "") for row in load_json(prepared / "task-master.json", {}).get("master", {}).get("tasks", [])}
+    from _capability_input_integrity import task_master_rows, task_master_identity
+    statuses = {task_master_identity(row): row.get("status", "")
+                for row in task_master_rows(load_json(prepared / "task-master.json", {}))
+                if task_master_identity(row) is not None}
     manifest = deepcopy(baseline) if baseline else pm.build_manifest_skeleton(state["run_id"], [], statuses)
     result = {"schema_version": pm.PROPOSAL_SCHEMA, "analysis_identity_sha256": state["analysis_identity_sha256"],
             "planning_status": "ready_for_validation", "manifest_candidate": manifest,
@@ -361,19 +365,28 @@ def complete_scope_context(prepared, scope, base, proposal=None, *, scope_schema
     requirements = [row for row in semantics["requirements"] if row["requirement_id"] in rids]
     owners = {str(tid) for tid in pm._review_task_ids(affected)}
     owners |= {str(row["owner_task"]) for row in affected.get("tests", []) if row.get("owner_task") is not None}
+    # Taskmaster's master file is the status authority.  Views are retained
+    # as evidence, but inactive/orphaned rows must never become effective MVG
+    # context even when they still carry old semantic references.
+    from _capability_input_integrity import _load_master_task_statuses, _task_view_is_active
+    master_statuses = _load_master_task_statuses(prepared)
     all_views = [{**row, "_source_view": name}
              for name in ("tasks_back.json", "tasks_gameplay.json")
-             for row in load_json(prepared / "task-views" / name, [])]
+             for row in load_json(prepared / "task-views" / name, [])
+             if _task_view_is_active(row, master_statuses)]
     tids = owners | {str(row["taskmaster_id"]) for row in all_views
                     if set(row.get("semantic_refs", row.get("requirement_ids", []))) & rids}
-    task_master_rows = load_json(prepared / "task-master.json", {}).get("master", {}).get("tasks", [])
+    task_master_payload = load_json(prepared / "task-master.json", {})
+    from _capability_input_integrity import task_master_rows as canonical_task_master_rows, task_master_identity
+    task_master_rows = [row for row in canonical_task_master_rows(task_master_payload)
+                        if _task_view_is_active(row, master_statuses)]
     if topology_closure.get("available"):
         for edge in topology_closure["edges"]:
             if edge["target_type"] == "task" and edge["source_type"] in {"capability", "requirement"}:
                 tids.add(edge["target_id"])
     views = [row for row in all_views if str(row.get("taskmaster_id")) in tids]
     tasks = [row for row in task_master_rows
-             if str(row["id"]) in tids]
+             if task_master_identity(row) in tids]
     block_ids = set(scope["capability"].get("source_block_ids", [])) | {
         block for row in requirements for block in row.get("source_block_ids", [])}
     block_ids |= {node_id for kind, node_id in topology_nodes if kind == "source_block"}
@@ -412,7 +425,8 @@ def complete_scope_context(prepared, scope, base, proposal=None, *, scope_schema
             for field in ("authority_ref", "verification_ref"):
                 if row.get(field):
                     bind(row[field], "affected_" + field)
-    statuses = {str(row["id"]): str(row.get("status", "")).lower() for row in tasks}
+    statuses = {task_master_identity(row): str(row.get("status", "")).lower()
+                for row in tasks if task_master_identity(row) is not None}
     for row in views:
         for field in ("overlay_refs", "contractRefs", "test_refs", "source_refs", "adr_refs"):
             for ref in row.get(field, []):
@@ -425,8 +439,9 @@ def complete_scope_context(prepared, scope, base, proposal=None, *, scope_schema
     for block in blocks:
         bind(block.get("source_path"), "requirement_source_block")
     chapter5 = deepcopy(envelope["chapter5"])
-    if chapter5.get("formal_ready") is True and tids - {str(row["id"]) for row in tasks}:
-        raise ValueError("mvg_model_required_task_master_missing:" + ",".join(sorted(tids - {str(row["id"]) for row in tasks})))
+    task_ids = {task_master_identity(row) for row in tasks if task_master_identity(row) is not None}
+    if chapter5.get("formal_ready") is True and tids - task_ids:
+        raise ValueError("mvg_model_required_task_master_missing:" + ",".join(sorted(tids - task_ids)))
     chapter5["tasks"] = [row for row in chapter5.get("tasks", []) if str(row["task_id"]) in tids]
     if chapter5.get("formal_ready") is True and tids - {str(row["task_id"]) for row in chapter5["tasks"]}:
         raise ValueError("mvg_model_required_task_readiness_missing:" + ",".join(sorted(tids - {str(row["task_id"]) for row in chapter5["tasks"]})))
@@ -531,8 +546,9 @@ def _legacy_complete_scope_context(prepared, scope, base, proposal=None):
              if set(row.get("semantic_refs", row.get("requirement_ids", []))) & rids
              or row.get("taskmaster_id") in owners]
     tids = {row.get("taskmaster_id") for row in views} | owners
-    tasks = [row for row in load_json(prepared / "task-master.json", {}).get("master", {}).get("tasks", [])
-             if row["id"] in tids]
+    from _capability_input_integrity import task_master_rows, task_master_identity
+    tasks = [row for row in task_master_rows(load_json(prepared / "task-master.json", {}))
+             if task_master_identity(row) in {str(value) for value in tids}]
     block_ids = set(scope["capability"].get("source_block_ids", [])) | {
         block for row in requirements for block in row.get("source_block_ids", [])}
     ledger = load_json(prepared / "source-blocks.v1.json", {})
@@ -1014,8 +1030,10 @@ def generate_append(root, state, candidate_root, *, invoke_factory, before_call,
         raise ValueError("MVG formal generation requires current Chapter 5 readiness")
     capabilities = load_json(prepared / "capabilities.v1.json", {})
     semantics = load_json(prepared / "semantic-requirements.v1.json", {})
-    task_statuses = {str(row["id"]): str(row.get("status", "")).lower()
-                    for row in load_json(prepared / "task-master.json", {}).get("master", {}).get("tasks", [])}
+    from _capability_input_integrity import task_master_rows, task_master_identity
+    task_statuses = {task_master_identity(row): str(row.get("status", "")).lower()
+                    for row in task_master_rows(load_json(prepared / "task-master.json", {}))
+                    if task_master_identity(row) is not None}
     all_scopes = capability_scopes(capabilities, semantics, state.get("planning_scope"), task_statuses, prepared=prepared)
     scopes = all_scopes
     baseline = load_json(prepared / "existing-manifest.json", None)

@@ -26,7 +26,8 @@ from scripts.python.tests.test_planning_main_audit_fixes import review_report
 
 RUNNER = {'schema_version': 'newrouge.isolated-model-runner.v1', 'model': 'deterministic-fixture',
           'filesystem_scope': 'workspace_only', 'fresh_session_per_invocation': True,
-          'can_read_outside_workspace': False, 'model_tools': []}
+          'can_read_outside_workspace': False, 'model_tools': [],
+          'supports_batched_session': True}
 
 
 class ProjectHealthPlanningTests(unittest.TestCase):
@@ -822,6 +823,23 @@ class ProjectHealthPlanningTests(unittest.TestCase):
         finally:
             planning._ACTIVE_JOB_CONTEXT.reset(token)
         terminate.assert_called_once()
+
+    def test_cancelling_planning_marks_child_attempts_non_running(self):
+        run = self.root / 'logs/ci/capability-planning/planning-fixture'
+        atomic_json(run / 'run.json', {
+            'phase': 'prepared',
+            'candidate_attempts': {
+                'candidate-1': {'attempts': [{'attempt': 1, 'status': 'running'}]},
+            },
+            'review_attempts': [{'attempt': 1, 'status': 'running'}],
+            'alignment_attempts': [{'attempt': 1, 'status': 'completed'}],
+        })
+        planning._mark_run_cancelled(run, action='capability', stage='generate')
+        state = load_json(run / 'run.json')
+        self.assertEqual('cancelled', state['phase'])
+        self.assertEqual('cancelled', state['candidate_attempts']['candidate-1']['attempts'][0]['status'])
+        self.assertEqual('cancelled', state['review_attempts'][0]['status'])
+        self.assertEqual('completed', state['alignment_attempts'][0]['status'])
 
     def test_capability_apply_preserves_logical_source_manifest_binding(self):
         invoke, _invocations = self._production_consumers()

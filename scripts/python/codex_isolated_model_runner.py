@@ -10,11 +10,15 @@ import shutil
 import subprocess
 import os
 import time
+import uuid
 from pathlib import Path
 
 from openai_isolated_model_runner import (
     DEFAULT_MAX_BYTES,
     batched_workspace_parts,
+    _error_type,
+    _persist_batch_integrity,
+    _take_task_view_reconciliation,
     workspace_payload,
 )
 import openai_isolated_model_runner as api
@@ -92,19 +96,29 @@ def _run_codex_request(executable: str, workspace: Path, *, prompt: str, output:
             f"runner_input_too_large:complete_request_chars={len(prompt)};"
             f"limit={CODEX_MAX_TURN_BYTES}"
         )
+    # Never let a failed/retried invocation consume a previous output. Each
+    # dispatch writes an isolated temp artifact and publishes it only after
+    # the CLI exits successfully and the file is readable.
+    output.parent.mkdir(parents=True, exist_ok=True)
+    temporary_output = output.with_name(f"{output.name}.{os.getpid()}.{uuid.uuid4().hex}.tmp")
     command = [executable, "exec", "-s", "read-only", "-C", str(workspace),
-               "--output-last-message", str(output)]
+               "--output-last-message", str(temporary_output)]
     if schema_path is not None:
         command.extend(["--output-schema", str(schema_path)])
     command.append("-")
     proc = subprocess.run(command, cwd=workspace, input=prompt, text=True,
         encoding="utf-8", errors="replace", stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT, timeout=max(1, timeout_sec))
-    if proc.returncode != 0:
-        raise RuntimeError(f"Codex CLI failed rc={proc.returncode}: {(proc.stdout or '')[-4000:]}")
-    if not output.is_file():
-        raise RuntimeError("Codex CLI produced no output")
-    return output.read_text(encoding="utf-8")
+    try:
+        if proc.returncode != 0:
+            raise RuntimeError(f"Codex CLI failed rc={proc.returncode}: {(proc.stdout or '')[-4000:]}")
+        if not temporary_output.is_file():
+            raise RuntimeError("Codex CLI produced no output")
+        raw = temporary_output.read_text(encoding="utf-8")
+        temporary_output.replace(output)
+        return raw
+    finally:
+        temporary_output.unlink(missing_ok=True)
 
 
 def _bounded_analysis_placeholder(label: str, token_budget: int) -> tuple[str, str]:
@@ -162,7 +176,9 @@ def _run_batched_codex(workspace: Path, prompt_path: Path, output_path: Path, *,
                 "coverage": coverage, "task_view_coverage": task_view_coverage,
                 "requests": reports + [{"label": label, "request_chars": len(text),
                     "request_bytes": len(data), "max_bytes": max_bytes,
-                    "max_input_tokens": max_input_tokens}],
+                    "max_input_tokens": max_input_tokens,
+                    "error_type": _error_type(exc)}],
+                "error_type": _error_type(exc),
                 "model_invoked": False, "truncation_allowed": False})
             raise
 
@@ -208,10 +224,12 @@ def _run_batched_codex(workspace: Path, prompt_path: Path, output_path: Path, *,
     synth_reserve = final_tokens
     reports = [{"label": label, **report} for label, _text, _batch, _schema_path, report in batch_specs]
     reports.append(preflight_request("synthesis-capacity", measured(synth_input, output_schema_path), reserved_tokens=synth_reserve))
-    atomic_json(workspace / REPORT_NAME, {"status": "ready", "complete": True,
-        "truncation_allowed": False, "coverage": coverage,
-        "task_view_coverage": task_view_coverage, "requests": reports,
-        "execution_mode": "independent-evidence-batches-plus-bounded-synthesis"})
+    batch_attempts: list[dict[str, object]] = []
+    model_request_count = 0
+    _persist_batch_integrity(workspace, coverage=coverage,
+        task_view_coverage=task_view_coverage, requests=reports,
+        batch_attempts=batch_attempts, status="ready", model_invoked=False,
+        model_request_count=model_request_count)
     if preflight:
         return {"complete": True, "source_block_ids": coverage["source_block_ids"],
             "requirement_ids": coverage["requirement_ids"], "batch_count": len(batches) + len(task_chunks),
@@ -222,24 +240,76 @@ def _run_batched_codex(workspace: Path, prompt_path: Path, output_path: Path, *,
 
     deadline = time.monotonic() + timeout_sec
     analyses = []
+    batch_retry_limit = 2
     for label, text, batch, schema_path, _report in batch_specs:
         remaining = int(deadline - time.monotonic())
         if remaining <= 0:
             raise TimeoutError("isolated model active-time budget exhausted")
         target = workspace / "batch-analyses" / f"{label}.json"
         target.parent.mkdir(parents=True, exist_ok=True)
-        raw = _run_codex_request(executable, workspace, prompt=text, output=target,
-            schema_path=schema_path, timeout_sec=remaining)
-        value = json.loads(raw)
-        if label.startswith("task-views-"):
-            task_number = int(label.rsplit("-", 1)[1]) - 1
-            value = api._validate_batch_analysis(value, batch, task_chunks[task_number])
-        else:
-            batch_number = int(label.rsplit("-", 1)[1]) - 1
-            value = api._validate_batch_analysis(value, batch,
-                {} if task_chunks else task_view_rows_by_batch[batch_number])
-        normalized = json.dumps(value, ensure_ascii=False, separators=(",", ":"))
-        analyses.append((label, normalized))
+        accepted = False
+        last_error = None
+        retry_errors: list[dict[str, str]] = []
+        for attempt in range(1, batch_retry_limit + 2):
+            remaining = int(deadline - time.monotonic())
+            if remaining <= 0:
+                raise TimeoutError("isolated model active-time budget exhausted")
+            request_text = text if attempt == 1 else (
+                text + "\n\nBATCH CORRECTION RETRY:\n"
+                "The previous response for this batch failed local validation. "
+                "Return the complete batch JSON again, preserving every authoritative row "
+                "and correcting only this deterministic error:\n"
+                f"- {last_error}\n"
+            )
+            try:
+                model_request_count += 1
+                _persist_batch_integrity(workspace, coverage=coverage,
+                    task_view_coverage=task_view_coverage, requests=reports,
+                    batch_attempts=batch_attempts, status="running", model_invoked=True,
+                    model_request_count=model_request_count)
+                raw = _run_codex_request(executable, workspace, prompt=request_text, output=target,
+                    schema_path=schema_path, timeout_sec=remaining)
+                value = json.loads(raw)
+                if label.startswith("task-views-"):
+                    task_number = int(label.rsplit("-", 1)[1]) - 1
+                    value = api._validate_batch_analysis(value, batch, task_chunks[task_number])
+                else:
+                    batch_number = int(label.rsplit("-", 1)[1]) - 1
+                    value = api._validate_batch_analysis(value, batch,
+                        {} if task_chunks else task_view_rows_by_batch[batch_number])
+                reconciliation = _take_task_view_reconciliation(value)
+                normalized = json.dumps(value, ensure_ascii=False, separators=(",", ":"))
+                analyses.append((label, normalized))
+                attempt_record: dict[str, object] = {"label": label, "attempts": attempt, "status": "accepted"}
+                if retry_errors:
+                    attempt_record["retry_errors"] = retry_errors
+                if any(reconciliation.values()):
+                    attempt_record["task_view_reconciliation"] = reconciliation
+                batch_attempts.append(attempt_record)
+                _persist_batch_integrity(workspace, coverage=coverage,
+                    task_view_coverage=task_view_coverage, requests=reports,
+                    batch_attempts=batch_attempts, status="running", model_invoked=True,
+                    model_request_count=model_request_count)
+                accepted = True
+                break
+            except (OSError, RuntimeError, TimeoutError, ValueError, json.JSONDecodeError) as exc:
+                last_error = exc
+                retry_errors.append({"error_type": _error_type(exc), "error": str(exc)[:500]})
+                if attempt >= batch_retry_limit + 1:
+                    batch_attempts.append({"label": label, "attempts": attempt,
+                                           "status": "failed", "error": str(exc)[:500],
+                                           "error_type": _error_type(exc)})
+                    _persist_batch_integrity(workspace, coverage=coverage,
+                        task_view_coverage=task_view_coverage, requests=reports,
+                        batch_attempts=batch_attempts, status="failed",
+                        model_invoked=True, error=exc,
+                        model_request_count=model_request_count)
+                    raise ValueError(
+                        f"capability_batch_analysis_retry_exhausted:{label}:attempts={attempt}:"
+                        f"{type(exc).__name__}:{exc}"
+                    ) from exc
+        if not accepted:
+            raise ValueError(f"capability_batch_analysis_retry_exhausted:{label}")
 
     final_text = api._synthesis_request(original_prompt=prompt, base=base,
         batch_outputs=analyses) + coverage_text
@@ -249,20 +319,41 @@ def _run_batched_codex(workspace: Path, prompt_path: Path, output_path: Path, *,
     if final_report["request_chars"] > capacity["request_chars"]:
         raise ValueError("runner_synthesis_exceeded_preflight_capacity")
     reports.append({"label": "synthesis", **final_report})
-    atomic_json(workspace / REPORT_NAME, {"status": "ready", "complete": True,
-        "truncation_allowed": False, "coverage": coverage,
-        "task_view_coverage": task_view_coverage, "requests": reports,
-        "execution_mode": "independent-evidence-batches-plus-bounded-synthesis"})
+    _persist_batch_integrity(workspace, coverage=coverage,
+        task_view_coverage=task_view_coverage, requests=reports,
+        batch_attempts=batch_attempts, status="synthesis_pending", model_invoked=True,
+        model_request_count=model_request_count)
     remaining = int(deadline - time.monotonic())
     if remaining <= 0:
         raise TimeoutError("isolated model active-time budget exhausted")
-    _run_codex_request(executable, workspace, prompt=final_text, output=output_path,
-        schema_path=output_schema_path, timeout_sec=remaining)
-    return {"complete": True, "source_block_ids": coverage["source_block_ids"],
+    try:
+        model_request_count += 1
+        _persist_batch_integrity(workspace, coverage=coverage,
+            task_view_coverage=task_view_coverage, requests=reports,
+            batch_attempts=batch_attempts, status="running", model_invoked=True,
+            model_request_count=model_request_count)
+        _run_codex_request(executable, workspace, prompt=final_text, output=output_path,
+            schema_path=output_schema_path, timeout_sec=remaining)
+    except (OSError, RuntimeError, TimeoutError, ValueError, json.JSONDecodeError) as exc:
+        _persist_batch_integrity(workspace, coverage=coverage,
+            task_view_coverage=task_view_coverage, requests=reports,
+            batch_attempts=batch_attempts + [{"label": "synthesis", "attempts": 1,
+                "status": "failed", "error": str(exc)[:500], "error_type": _error_type(exc)}],
+            status="failed", model_invoked=True, error=exc,
+            model_request_count=model_request_count)
+        raise
+    _persist_batch_integrity(workspace, coverage=coverage,
+        task_view_coverage=task_view_coverage, requests=reports,
+        batch_attempts=batch_attempts + [{"label": "synthesis", "attempts": 1, "status": "accepted"}],
+        status="ready", model_invoked=True, model_request_count=model_request_count)
+    return {"complete": True, "model_request_count": model_request_count,
+        "source_block_ids": coverage["source_block_ids"],
         "requirement_ids": coverage["requirement_ids"], "batch_count": len(batches) + len(task_chunks),
         "task_view_coverage": task_view_coverage,
         "batch_analysis_sha256": {label: "sha256:" + hashlib.sha256(text.encode("utf-8")).hexdigest()
                                   for label, text in analyses},
+        "batch_attempts": batch_attempts,
+        "batch_retry_limit": batch_retry_limit,
         "requests": reports, "runner_invocations": len(analyses) + 1,
         "execution_mode": "independent-evidence-batches-plus-bounded-synthesis"}
 
@@ -309,9 +400,12 @@ def run(args: argparse.Namespace) -> int:
         except ValueError as exc:
             report_path = workspace / REPORT_NAME
             existing = load_json(report_path, {})
-            if existing.get('status') != 'blocked':
+            if existing.get('status') not in {'blocked', 'failed'}:
                 atomic_json(report_path, {'status': 'blocked', 'reason': str(exc),
                     'model_invoked': False, 'truncation_allowed': False})
+            elif existing.get('status') == 'failed' and not existing.get('reason'):
+                existing['reason'] = str(exc)
+                atomic_json(report_path, existing)
             raise
         print(json.dumps({
             "schema_version": "newrouge.isolated-model-runner-receipt.v1",

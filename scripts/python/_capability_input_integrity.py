@@ -16,6 +16,38 @@ CODEX_MAX_TURN_BYTES = 1 * 1024 * 1024
 REPORT_NAME = 'runner-input-integrity.json'
 
 
+def task_master_rows(payload: Any) -> list[dict[str, Any]]:
+    """Return canonical Taskmaster rows from either supported snapshot shape."""
+    if not isinstance(payload, dict):
+        raise ValueError("capability_input_integrity_invalid_task_master")
+    nested = payload.get("master")
+    if "master" in payload:
+        if not isinstance(nested, dict) or "tasks" not in nested:
+            raise ValueError("capability_input_integrity_invalid_task_master")
+        rows = nested["tasks"]
+    elif "tasks" in payload:
+        rows = payload.get("tasks")
+    else:
+        raise ValueError("capability_input_integrity_invalid_task_master")
+    if not isinstance(rows, list):
+        raise ValueError("capability_input_integrity_invalid_task_master")
+    for row in rows:
+        if not isinstance(row, dict):
+            raise ValueError("capability_input_integrity_invalid_task_master_row")
+        if task_master_identity(row) is None:
+            raise ValueError("capability_input_integrity_task_master_id_missing")
+    return rows
+
+
+def task_master_identity(row: dict[str, Any]) -> str | None:
+    value = row.get("taskmaster_id", row.get("id"))
+    return None if value is None else str(value)
+
+
+def task_master_status(row: dict[str, Any]) -> str:
+    return str(row.get("status", "active")).strip().casefold()
+
+
 def configured_input_limit() -> int:
     """Operator input allowance; never infer capacity from a default model name."""
     return int(os.environ.get('SC_CAPABILITY_MAX_INPUT_TOKENS') or DEFAULT_MAX_INPUT_TOKENS)
@@ -122,6 +154,43 @@ def _task_view_requirement_refs(row: dict[str, Any]) -> set[str]:
     return refs
 
 
+def _task_view_is_active(row: dict[str, Any], master_statuses: dict[str, str] | None = None) -> bool:
+    """Only active task views are model-generation evidence.
+
+    Retired/cancelled views remain available for audit history, but their old
+    semantic references must never be projected into a new Capability input.
+    """
+    identity = row.get("taskmaster_id", row.get("id"))
+    if master_statuses is not None and str(identity) not in master_statuses:
+        return False
+    master_status = master_statuses.get(str(identity)) if master_statuses is not None else None
+    status = str(master_status if master_status is not None else row.get("status", "active")).strip().casefold()
+    return status not in {"cancelled", "retired", "superseded"}
+
+
+def _load_master_task_statuses(workspace: Path) -> dict[str, str] | None:
+    """Load the master task status map when the prepared bundle contains it."""
+    path = workspace / "analysis-input" / "task-master.json"
+    if not path.is_file():
+        return None
+    payload = load_json(path, {})
+    rows = task_master_rows(payload)
+    if not isinstance(rows, list):
+        raise ValueError("capability_input_integrity_invalid_task_master")
+    result: dict[str, str] = {}
+    for row in rows:
+        if not isinstance(row, dict):
+            raise ValueError("capability_input_integrity_invalid_task_master_row")
+        identity = task_master_identity(row)
+        if identity is None:
+            continue
+        key = str(identity)
+        if key in result:
+            raise ValueError("capability_input_integrity_duplicate_task_master_id:" + key)
+        result[key] = task_master_status(row)
+    return result
+
+
 def task_view_batch_rows(workspace: Path, batch_index: dict[str, Any]) -> tuple[list[dict[str, list[dict[str, Any]]]], dict[str, Any]]:
     """Pack complete task-view rows into the Requirement batches they support."""
     rows = batch_index.get("batches")
@@ -146,6 +215,7 @@ def task_view_batch_rows(workspace: Path, batch_index: dict[str, Any]) -> tuple[
     if discovered != expected_view_files:
         raise ValueError("capability_input_integrity_task_view_inventory_mismatch")
     identities: set[str] = set()
+    master_statuses = _load_master_task_statuses(workspace)
     for path in sorted(view_dir.rglob("*.json"), key=lambda value: value.as_posix()):
         if path.is_symlink() or not path.resolve().is_relative_to(view_dir.resolve()):
             raise ValueError(f"capability_input_integrity_unsafe_task_view:{path.name}")
@@ -168,6 +238,8 @@ def task_view_batch_rows(workspace: Path, batch_index: dict[str, Any]) -> tuple[
             if identity_key in identities:
                 raise ValueError(f"capability_input_integrity_duplicate_task_view_id:{identity_key}")
             identities.add(identity_key)
+            if not _task_view_is_active(item, master_statuses):
+                continue
             refs = _task_view_requirement_refs(item)
             unknown_refs = refs.difference(set().union(*requirements_by_batch))
             if unknown_refs:
@@ -181,11 +253,29 @@ def task_view_batch_rows(workspace: Path, batch_index: dict[str, Any]) -> tuple[
             for index in matches:
                 selected[index].setdefault(rel, []).append(item)
                 coverage["batch_row_counts"][index] += 1
+        orphaned_count = (
+            sum(1 for item in payload
+                if master_statuses is not None
+                and str(item.get("taskmaster_id", item.get("id"))) not in master_statuses)
+        )
+        cancelled_count = sum(
+            1 for item in payload
+            if master_statuses is not None
+            and str(item.get("taskmaster_id", item.get("id"))) in master_statuses
+            and str(master_statuses[str(item.get("taskmaster_id", item.get("id")))])
+            .strip().casefold() == "cancelled"
+        ) if master_statuses is not None else sum(
+            1 for item in payload if str(item.get("status", "active")).strip().casefold() == "cancelled"
+        )
         coverage["views"][rel] = {
             "row_count": len(payload),
+            "active_row_count": sum(1 for item in payload if _task_view_is_active(item, master_statuses)),
+            "excluded_inactive_row_count": sum(1 for item in payload if not _task_view_is_active(item, master_statuses)),
+            "excluded_cancelled_row_count": cancelled_count,
+            "excluded_orphaned_row_count": orphaned_count,
             "sha256": file_sha(path),
             "row_keys": [f"{path.relative_to(view_dir).as_posix()}#{item.get('taskmaster_id', item.get('id'))}"
-                         for item in payload],
+                         for item in payload if _task_view_is_active(item, master_statuses)],
             "assigned_batch_indexes": assignments,
         }
     return selected, coverage
@@ -222,12 +312,14 @@ def task_view_payload_chunks(workspace: Path, *, char_budget: int = 100000) -> l
     batch_index = load_json(analysis / "model-batches/batch-index.json", {})
     # Reuse the strict identity/reference checks before repartitioning rows.
     task_view_batch_rows(workspace, batch_index)
+    master_statuses = _load_master_task_statuses(workspace)
     view_dir = analysis / "task-views"
     rows: list[tuple[str, dict[str, Any]]] = []
     for path in sorted(view_dir.glob("*.json"), key=lambda value: value.name):
         payload = json.loads(path.read_text(encoding="utf-8"))
         rel = f"task-views/{path.name}"
-        rows.extend((rel, item) for item in payload)
+        rows.extend((rel, item) for item in payload
+                    if _task_view_is_active(item, master_statuses))
     chunks: list[dict[str, list[dict[str, Any]]]] = []
     current: dict[str, list[dict[str, Any]]] = {}
     current_chars = 0

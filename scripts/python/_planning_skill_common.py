@@ -11,6 +11,8 @@ import signal
 import shutil
 import subprocess
 import sys
+import threading
+import uuid
 from pathlib import Path
 from typing import Any
 
@@ -33,7 +35,14 @@ def load_json(path: Path, default: Any = None) -> Any:
 
 def atomic_json(path: Path, payload: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_name(path.name + ".tmp")
+    # Use a per-writer temporary name.  A shared ``.tmp`` path is unsafe when
+    # independent worker threads/processes update the same journal on Windows:
+    # one writer can replace or unlink the other's temporary file between
+    # write and ``replace``.  The final rename remains atomic while each
+    # writer owns its temporary inode.
+    tmp = path.with_name(
+        f"{path.name}.{os.getpid()}.{threading.get_ident()}.{uuid.uuid4().hex}.tmp"
+    )
     try:
         tmp.write_text(
             json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
@@ -333,6 +342,47 @@ def build_blinded_analysis_bundle(
             "source_sha256": file_sha(source),
             "analysis_sha256": files[analysis_name],
             "removed_fields": removed,
+        })
+
+    # Task views carry descriptive/acceptance evidence, but completion status
+    # is authoritative only in the master Taskmaster export. Include a compact
+    # copy in the prepared bundle so runners can filter retired views without
+    # treating a stale overlay status as the source of truth.
+    master_source = root / ".taskmaster/tasks/tasks.json"
+    if master_source.is_file():
+        master_payload = load_json(master_source, {})
+        master_rows = (master_payload.get("master") or {}).get("tasks") if isinstance(master_payload, dict) else None
+        if master_rows is None and isinstance(master_payload, dict):
+            master_rows = master_payload.get("tasks")
+        if not isinstance(master_rows, list):
+            raise ValueError("invalid master task export")
+        if any(not isinstance(row, dict) for row in master_rows):
+            raise ValueError("invalid master task export row")
+        task_rows = [
+                {
+                    "id": row.get("id", row.get("taskmaster_id")),
+                    "taskmaster_id": row.get("taskmaster_id", row.get("id")),
+                    "status": row.get("status", "active"),
+                }
+                for row in master_rows
+            ]
+        # Keep the Taskmaster container shape while using the canonical
+        # taskmaster_id/status projection. Consumers that understand the
+        # compact top-level form remain supported by the compatibility helper.
+        master_payload = {
+            "schema_version": "newrouge.task-master-statuses.v1",
+            "master": {"tasks": task_rows},
+        }
+        master_target = out_dir / "task-master.json"
+        atomic_json(master_target, master_payload)
+        files["task-master.json"] = file_sha(master_target)
+        authority_inputs[relative(root, master_source)] = normalized_file_sha(master_source)
+        transformations.append({
+            "source_path": relative(root, master_source),
+            "analysis_path": "task-master.json",
+            "source_sha256": file_sha(master_source),
+            "analysis_sha256": files["task-master.json"],
+            "removed_fields": [],
         })
 
     batch_index = _write_model_batches(

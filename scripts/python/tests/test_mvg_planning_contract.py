@@ -130,7 +130,7 @@ class MvgPlanningContractTests(unittest.TestCase):
             before = baseline.read_bytes()
             with patch.object(plan_mvg, "_load_run", return_value=(run_dir / "run.json", state)), \
                  patch.object(plan_mvg, "_validate_input_freshness"), \
-                 patch.object(plan_mvg, "inspect_isolated_runner", return_value={}), \
+                 patch.object(plan_mvg, "inspect_isolated_runner", return_value={"supports_batched_session": True}), \
                  patch.object(plan_mvg, "_task_ids", return_value=set()), \
                  patch.object(plan_mvg, "_task_view_rows", return_value=[]), \
                  patch("_mvg_capability_generation.generate_append", return_value={
@@ -220,7 +220,7 @@ class MvgPlanningContractTests(unittest.TestCase):
                 return output, {}
             with patch.object(plan_mvg, "_load_run", return_value=(run_dir / "run.json", state)), \
                  patch.object(plan_mvg, "_validate_input_freshness"), \
-                 patch.object(plan_mvg, "inspect_isolated_runner", return_value={}), \
+                 patch.object(plan_mvg, "inspect_isolated_runner", return_value={"supports_batched_session": True}), \
                  patch.object(plan_mvg, "_task_ids", return_value=set()), \
                  patch.object(plan_mvg, "_task_view_rows", return_value=[]), \
                  patch.object(plan_mvg, "invoke_segmented", side_effect=segment), \
@@ -265,7 +265,7 @@ class MvgPlanningContractTests(unittest.TestCase):
                 raise RuntimeError("Fixture execution stops")
             with patch.object(plan_mvg, "_load_run", return_value=(run_dir / "run.json", state)), \
                  patch.object(plan_mvg, "_validate_input_freshness"), \
-                 patch.object(plan_mvg, "inspect_isolated_runner", return_value={}), \
+                 patch.object(plan_mvg, "inspect_isolated_runner", return_value={"supports_batched_session": True}), \
                  patch.object(plan_mvg, "_task_ids", return_value=set()), \
                  patch.object(plan_mvg, "_task_view_rows", return_value=[]), \
                  patch.object(plan_mvg, "invoke_segmented", side_effect=segment), \
@@ -303,7 +303,7 @@ class MvgPlanningContractTests(unittest.TestCase):
                      "path": "coverage_reviews"} for row in proposal["coverage_table"] if row["rationale"] == "broken"]}
             with patch.object(plan_mvg, "_load_run", return_value=(run_dir / "run.json", state)), \
                  patch.object(plan_mvg, "_validate_input_freshness"), \
-                 patch.object(plan_mvg, "inspect_isolated_runner", return_value={}), \
+                 patch.object(plan_mvg, "inspect_isolated_runner", return_value={"supports_batched_session": True}), \
                  patch.object(plan_mvg, "_task_ids", return_value=set()), \
                  patch.object(plan_mvg, "_task_view_rows", return_value=[]), \
                  patch.object(plan_mvg, "invoke_segmented", side_effect=segment), \
@@ -337,7 +337,7 @@ class MvgPlanningContractTests(unittest.TestCase):
 
             with patch.object(plan_mvg, "_load_run", return_value=(run_dir / "run.json", state)), \
                  patch.object(plan_mvg, "_validate_input_freshness"), \
-                 patch.object(plan_mvg, "inspect_isolated_runner", return_value={}), \
+                 patch.object(plan_mvg, "inspect_isolated_runner", return_value={"supports_batched_session": True}), \
                  patch.object(plan_mvg, "_task_ids", return_value=set()), \
                  patch.object(plan_mvg, "_task_view_rows", return_value=[]), \
                  patch.object(plan_mvg, "invoke_segmented", side_effect=segment), \
@@ -380,7 +380,7 @@ class MvgPlanningContractTests(unittest.TestCase):
 
             with patch.object(plan_mvg, "_load_run", return_value=(run_dir / "run.json", state)), \
                  patch.object(plan_mvg, "_validate_input_freshness"), \
-                 patch.object(plan_mvg, "inspect_isolated_runner", return_value={}), \
+                 patch.object(plan_mvg, "inspect_isolated_runner", return_value={"supports_batched_session": True}), \
                  patch.object(plan_mvg, "_task_ids", return_value=set()), \
                  patch.object(plan_mvg, "_task_view_rows", return_value=[]), \
                  patch.object(plan_mvg, "atomic_json", side_effect=write), \
@@ -413,7 +413,7 @@ class MvgPlanningContractTests(unittest.TestCase):
 
             with patch.object(plan_mvg, "_load_run", return_value=(run_dir / "run.json", state)), \
                  patch.object(plan_mvg, "_validate_input_freshness"), \
-                 patch.object(plan_mvg, "inspect_isolated_runner", return_value={}), \
+                 patch.object(plan_mvg, "inspect_isolated_runner", return_value={"supports_batched_session": True}), \
                  patch.object(plan_mvg, "_task_ids", return_value=set()), \
                  patch.object(plan_mvg, "_task_view_rows", return_value=[]), \
                  patch.object(plan_mvg, "invoke_segmented", side_effect=segment), \
@@ -462,7 +462,7 @@ class MvgPlanningContractTests(unittest.TestCase):
 
             with patch.object(plan_mvg, "_load_run", return_value=(run_dir / "run.json", state)), \
                  patch.object(plan_mvg, "_validate_input_freshness"), \
-                 patch.object(plan_mvg, "inspect_isolated_runner", return_value={}), \
+                 patch.object(plan_mvg, "inspect_isolated_runner", return_value={"supports_batched_session": True}), \
                  patch.object(plan_mvg, "_task_ids", return_value=set()), \
                  patch.object(plan_mvg, "_task_view_rows", return_value=[]), \
                  patch.object(plan_mvg, "atomic_json", side_effect=write), \
@@ -500,7 +500,7 @@ class MvgPlanningContractTests(unittest.TestCase):
 
             with patch.object(plan_mvg, "_load_run", return_value=(run_dir / "run.json", state)), \
                  patch.object(plan_mvg, "_validate_input_freshness"), \
-                 patch.object(plan_mvg, "inspect_isolated_runner", return_value={}), \
+                 patch.object(plan_mvg, "inspect_isolated_runner", return_value={"supports_batched_session": True}), \
                  patch.object(plan_mvg, "_task_ids", return_value=set()), \
                  patch.object(plan_mvg, "_task_view_rows", return_value=[]), \
                  patch.object(plan_mvg, "invoke_segmented", side_effect=segment), \
@@ -546,7 +546,7 @@ class MvgPlanningContractTests(unittest.TestCase):
 
             with patch.object(plan_mvg, "_load_run", return_value=(run_dir / "run.json", state)), \
                  patch.object(plan_mvg, "_validate_input_freshness"), \
-                 patch.object(plan_mvg, "inspect_isolated_runner", return_value={}), \
+                 patch.object(plan_mvg, "inspect_isolated_runner", return_value={"supports_batched_session": True}), \
                  patch.object(plan_mvg, "_task_ids", return_value=set()), \
                  patch.object(plan_mvg, "_task_view_rows", return_value=[]), \
                  patch.object(plan_mvg, "invoke_segmented", side_effect=segment), \
@@ -1020,7 +1020,7 @@ class MvgPlanningContractTests(unittest.TestCase):
         def stop():
             raise plan_mvg.MVGGenerationStoppedError("Sibling execution failed")
 
-        with patch.object(plan_mvg, "inspect_isolated_runner", return_value={}):
+        with patch.object(plan_mvg, "inspect_isolated_runner", return_value={"supports_batched_session": True}):
             self._exercise_accounting_echo_retry(before_invoke=stop)
 
     def test_admission_cli_schema_binds_echo_but_not_semantic_verdict(self):
@@ -2363,6 +2363,22 @@ class MvgPlanningContractTests(unittest.TestCase):
             }
             result = validate_proposal(root, state, proposal)
             self.assertIn("unknown_capability_ref:CAP-MISSING", result["errors"])
+
+    def test_frozen_legacy_strategy_cannot_bypass_accounting_protocol(self) -> None:
+        from _mvg_requirement_accounting import PROTOCOL, PROTOCOL_FIELD
+        with tempfile.TemporaryDirectory() as folder:
+            root = self._root(folder)
+            prepared = root / 'logs/ci/mvg-planning/contract/analysis-input'
+            atomic_json(prepared / 'analysis-index.json', {PROTOCOL_FIELD: PROTOCOL})
+            state = {'run_id': 'contract', 'analysis_identity_sha256': 'sha256:x',
+                     'generation_strategy': 'independent-candidates-single',
+                     'capabilities_sha256': 'sha256:frozen'}
+            proposal = {'schema_version': plan_mvg.PROPOSAL_SCHEMA,
+                        'analysis_identity_sha256': 'sha256:x', 'planning_status': 'ready_for_validation',
+                        'manifest_candidate': self.manifest(), 'coverage_table': [], 'entrypoints': [], 'gaps': []}
+            errors = validate_proposal(root, state, proposal)['errors']
+            self.assertIn('requirement_verification_required_by_protocol', errors)
+            self.assertIn('requirement_evidence_required_by_protocol', errors)
 
     def test_proposal_does_not_fallback_to_live_capability_when_snapshot_is_frozen(self) -> None:
         with tempfile.TemporaryDirectory() as folder:

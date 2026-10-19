@@ -26,6 +26,8 @@ from _project_health_planning_inputs import (
 JOB_ROOT = Path('logs/ci/knowledge-planning')
 _JOB_LOCKS: dict[str, threading.Lock] = {}
 _JOB_LOCKS_GUARD = threading.Lock()
+_RUN_LOCKS: dict[str, threading.Lock] = {}
+_RUN_LOCKS_GUARD = threading.Lock()
 _ACTIVE_JOB_CONTEXT: ContextVar[tuple[Path, str] | None] = ContextVar(
     'project_health_active_job_context', default=None
 )
@@ -38,6 +40,13 @@ class PlanningCancelled(RuntimeError):
 def _job_lock(job_id: str) -> threading.Lock:
     with _JOB_LOCKS_GUARD:
         return _JOB_LOCKS.setdefault(job_id, threading.Lock())
+
+
+def _run_lock(run_dir: Path) -> threading.Lock:
+    """Serialize cancellation cleanup with the publication boundary."""
+    key = str(run_dir.resolve())
+    with _RUN_LOCKS_GUARD:
+        return _RUN_LOCKS.setdefault(key, threading.Lock())
 
 
 def update_job(root: Path, job: dict, **values) -> dict:
@@ -59,6 +68,9 @@ def update_job(root: Path, job: dict, **values) -> dict:
 
 
 def request_cancel(root: Path, job_id: str) -> dict:
+    # Set the cancellation token under the durable job lock first.  The worker
+    # checks this token while holding the run lock before publishing a latest
+    # pointer, so a request arriving in that narrow window wins deterministically.
     with _job_lock(job_id):
         path = job_path(root, job_id)
         job = load_json(path, {})
@@ -71,7 +83,18 @@ def request_cancel(root: Path, job_id: str) -> dict:
                    message='Cancellation requested; waiting for the current stage to stop')
         job['heartbeat_at'] = datetime.now(timezone.utc).isoformat()
         atomic_json(path, job)
-        return job
+    # Cleanup is serialized with publication, but never holds the job lock
+    # while waiting for the run lock (the worker uses the opposite order).
+    try:
+        run_dir = execution_root(root, job) / 'logs/ci' / (
+            'capability-planning' if job.get('action') == 'capability' else 'mvg-planning'
+        ) / job_id
+        with _run_lock(run_dir):
+            _isolate_cancelled_result(root, job)
+            _revoke_latest_pointer(root, job)
+    except (OSError, ValueError, TypeError, json.JSONDecodeError):
+        pass
+    return job
 
 
 def recover_stale_jobs(root: Path) -> list[str]:
@@ -117,6 +140,134 @@ def _pid_alive(pid: int) -> bool:
 
 def _cancel_requested(root: Path, job_id: str) -> bool:
     return bool(load_json(job_path(root, job_id), {}).get('cancel_requested'))
+
+
+def _applied_truth(run_dir: Path, state: dict) -> bool:
+    """Return true only for an explicit apply receipt, never generic phases."""
+    if state.get('applied') is True:
+        return True
+    journal = load_json(run_dir / 'apply-journal.json', {})
+    summary = load_json(run_dir / 'apply-summary.json', {})
+    if not isinstance(journal, dict) or journal.get('status') != 'complete':
+        return False
+    if not isinstance(summary, dict) or not summary:
+        return False
+    # Both production apply paths persist an explicit digest in state and a
+    # non-empty summary after the journal reaches complete.
+    return any(key in state for key in (
+        'applied_manifest_sha256', 'applied_capabilities_sha256', 'changed_task_ids'))
+
+
+def _close_attempt_records(value, *, stage: str, cancelled_at: str):
+    if isinstance(value, dict):
+        result = dict(value)
+        if str(result.get('status', '')).casefold() in {
+                'queued', 'running', 'in_progress', 'pending', 'started'}:
+            result['status'] = 'cancelled'
+            result['cancelled_at'] = cancelled_at
+            result['cancelled_stage'] = stage
+        return {key: _close_attempt_records(child, stage=stage, cancelled_at=cancelled_at)
+                for key, child in result.items()}
+    if isinstance(value, list):
+        return [_close_attempt_records(child, stage=stage, cancelled_at=cancelled_at)
+                for child in value]
+    return value
+
+
+def _isolate_cancelled_result(root: Path, job: dict) -> None:
+    result_path = job_path(root, job['job_id']).parent / 'result.json'
+    if not result_path.is_file():
+        return
+    quarantine = result_path.with_name('result.cancelled.json')
+    if quarantine.exists():
+        quarantine = result_path.with_name(f'result.cancelled.{uuid.uuid4().hex}.json')
+    result_path.replace(quarantine)
+
+
+def _revoke_latest_pointer(root: Path, job: dict) -> None:
+    action = job.get('action')
+    if action not in ('capability', 'mvg'):
+        return
+    pointer_path = root / JOB_ROOT / f'{action}-latest.json'
+    pointer = load_json(pointer_path, {})
+    if pointer.get('job_id') == job.get('job_id'):
+        pointer_path.unlink(missing_ok=True)
+
+
+def _write_result_if_not_cancelled(root: Path, job: dict, result: dict) -> bool:
+    """Publish result.json only while the cancellation token is clear."""
+    run_dir = execution_root(root, job) / 'logs/ci' / (
+        'capability-planning' if job.get('action') == 'capability' else 'mvg-planning'
+    ) / job['job_id']
+    with _job_lock(job['job_id']):
+        current = load_json(job_path(root, job['job_id']), {})
+        if current.get('cancel_requested') or current.get('status') == 'cancelling':
+            return False
+        with _run_lock(run_dir):
+            atomic_json(job_path(root, job['job_id']).parent / 'result.json', result)
+            return True
+
+
+def _publish_latest_if_not_cancelled(root: Path, job: dict) -> bool:
+    """Publish a latest pointer using a cancellation-token compare-and-set."""
+    action = job.get('action')
+    if action not in ('capability', 'mvg'):
+        return False
+    with _job_lock(job['job_id']):
+        current = load_json(job_path(root, job['job_id']), {})
+        if (current.get('cancel_requested') or current.get('status') in ('cancelling', 'cancelled')
+                or current.get('status') != 'completed'):
+            return False
+        run_dir = execution_root(root, job) / 'logs/ci' / (
+            'capability-planning' if action == 'capability' else 'mvg-planning'
+        ) / job['job_id']
+        with _run_lock(run_dir):
+            atomic_json(root / JOB_ROOT / f'{action}-latest.json', {'job_id': job['job_id']})
+            return True
+
+
+def _mark_run_cancelled(run_dir: Path, *, action: str, stage: str) -> None:
+    """Close active child attempts after a planning run is cancelled.
+
+    The HTTP job and the planner's durable ``run.json`` are separate state
+    machines.  Updating only the former leaves a stale ``running`` attempt
+    that recovery can later mistake for resumable work.  Preserve completed
+    evidence and only transition active attempt records to ``cancelled``.
+    """
+    path = run_dir / 'run.json'
+    with _run_lock(run_dir):
+        state = load_json(path, {})
+        if not isinstance(state, dict) or not state:
+            return
+        cancelled_at = datetime.now(timezone.utc).isoformat()
+        applied_truth = _applied_truth(run_dir, state)
+        updated = dict(state)
+        # Only known attempt containers are mutable cancellation state.  Do
+        # not recursively rewrite arbitrary evidence payloads containing a
+        # business-level status such as ``running``.
+        for key in ('candidate_attempts', 'review_attempts', 'alignment_attempts',
+                    'generation_attempts', 'selection_attempts', 'semantic_review_attempts'):
+            if key in updated:
+                updated[key] = _close_attempt_records(updated[key], stage=stage,
+                                                      cancelled_at=cancelled_at)
+        selection = updated.get('capability_selection')
+        if isinstance(selection, dict) and 'attempts' in selection:
+            selection = dict(selection)
+            selection['attempts'] = _close_attempt_records(
+                selection['attempts'], stage=stage, cancelled_at=cancelled_at)
+            updated['capability_selection'] = selection
+        # A late cancellation request must not rewrite a successfully applied
+        # projection as if it had never happened. Keep the applied phase and add a
+        # cancellation audit marker; only unfinished runs become cancelled.
+        if not applied_truth:
+            updated['phase'] = 'cancelled'
+            updated['status'] = 'cancelled'
+        else:
+            updated['cancel_requested_after_apply'] = True
+        updated['cancelled_action'] = action
+        updated['cancelled_stage'] = stage
+        updated['cancelled_at'] = cancelled_at
+        atomic_json(path, updated)
 
 
 def _touch_job(root: Path, job_id: str) -> None:
@@ -979,6 +1130,11 @@ def run_job(root: Path, job: dict) -> dict:
                 result = invoke(checkout, script, args, directory / f'{stage}.log')
             finally:
                 _ACTIVE_JOB_CONTEXT.reset(context_token)
+            # Cancellation may arrive while the child is returning.  Check it
+            # before accepting the stage result so a late request cannot race
+            # into a completed publication.
+            if _cancel_requested(root, run_id):
+                raise PlanningCancelled('Planning cancelled before stage result acceptance')
             if action == 'mvg' and stage == 'prepare' and job.get('capabilities_sha256'):
                 validate_mvg_capability_binding(root, checkout, job)
             if result.get('status') in ('blocked', 'failed') or result.get('formal_applicable') is False:
@@ -1000,11 +1156,16 @@ def run_job(root: Path, job: dict) -> dict:
         # model evidence is never mistaken for a safe Apply retry.
         invoked_stage = None
         stage = 'publish'
+        if _cancel_requested(root, run_id):
+            raise PlanningCancelled('Planning cancelled before publication')
         validate_checkout(root, checkout, job['revision'])
         result = build_result(checkout, job)
         if action == 'capability':
             result['knowledge_refresh'] = job.get('knowledge_refresh')
-        atomic_json(directory / 'result.json', result)
+        if _cancel_requested(root, run_id):
+            raise PlanningCancelled('Planning cancelled before result write')
+        if not _write_result_if_not_cancelled(root, job, result):
+            raise PlanningCancelled('Planning cancelled before result publication')
         owned_paths = set(git(checkout, 'diff', '--name-only', 'HEAD').splitlines())
         # Formal planning outputs are intentionally ignored by Git. Keep their
         # hashes in the local job record so a tampered generated result is still
@@ -1031,13 +1192,16 @@ def run_job(root: Path, job: dict) -> dict:
         job['count'] = len(result['topology']['nodes']['capabilities']) if action == 'capability' else len(next(
             row['flows'] for row in result['overview']['manifests'] if row['path'] == job['manifest']))
         job.pop('recoverable_stage', None)
+        if _cancel_requested(root, run_id):
+            raise PlanningCancelled('Planning cancelled before completion')
         job.update(status='completed', stage='complete', message=f'{action.title()} generated: {job["count"]} '
                    + ('capabilities' if action == 'capability' else 'flows') +
                    f' · local workspace {job["revision"][:12]} · local planning result')
         update_job(root, job)
         if action == 'mvg' and not _mvg_epoch_current(root, job):
             raise ValueError('MVG generation was cleared before publication')
-        atomic_json(root / JOB_ROOT / f'{action}-latest.json', {'job_id': job['job_id']})
+        if not _publish_latest_if_not_cancelled(root, job):
+            raise PlanningCancelled('Planning cancelled before latest pointer publication')
     except Exception as exc:
         error = compact_error(str(exc))
         recovery_stage = (
@@ -1046,9 +1210,18 @@ def run_job(root: Path, job: dict) -> dict:
             else None
         )
         if isinstance(exc, PlanningCancelled) or _cancel_requested(root, run_id):
+            run_dir = checkout / 'logs/ci' / (
+                'capability-planning' if action == 'capability' else 'mvg-planning'
+            ) / run_id
+            try:
+                _mark_run_cancelled(run_dir, action=action, stage=stage)
+            except (OSError, ValueError, TypeError, json.JSONDecodeError):
+                # The HTTP job must still reach a terminal cancelled state if
+                # a very early cancellation happened before run.json existed.
+                pass
             job.pop('recoverable_stage', None)
             job.update(status='cancelled', stage=stage,
-                       message=f'Capability planning cancelled during {stage}')
+                       message=f'{action.title()} planning cancelled during {stage}')
         elif recovery_stage:
             job.update(
                 status='recoverable',

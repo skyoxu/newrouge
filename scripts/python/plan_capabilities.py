@@ -300,6 +300,13 @@ def prepare(
         model_batch_char_budget=model_batch_char_budget,
         repository_identity=_repository_identity(root),
     )
+    # Persist the number of auxiliary task-view chunks alongside source
+    # batches.  The isolated runner may retry each chunk, so this is part of
+    # the frozen request-budget input rather than a best-effort estimate.
+    from _capability_input_integrity import task_view_payload_chunks
+    # Keep prepare accounting byte-for-byte aligned with the isolated runners.
+    # A different default here can reserve phantom requests at chunk boundaries.
+    task_view_chunk_count = len(task_view_payload_chunks(run_dir, char_budget=150000))
     state = {
         "schema_version": RUN_SCHEMA,
         "run_id": run_id,
@@ -316,6 +323,7 @@ def prepare(
         "final_candidate_path": None,
         "budget": {
             "candidate_retry_limit": int(candidate_retry_limit),
+            "candidate_batch_retry_limit": 2,
             "review_retry_limit": int(review_retry_limit),
             "alignment_retry_limit": 1,
             "candidate_budget_sec": int(candidate_budget_sec),
@@ -329,6 +337,7 @@ def prepare(
             "review_activity_sec": 0.0,
         },
         "model_batch_count": int((index.get("model_batch_index") or {}).get("batch_count") or 0),
+        "task_view_chunk_count": task_view_chunk_count,
         "applied": False,
     }
     state.update(_prepare_incumbent(root, run_dir, analysis_dir, state["analysis_identity_sha256"]))
@@ -546,6 +555,26 @@ def _candidate_retry_mode(errors: list[str]) -> str:
     return "repair"
 
 
+def _classify_runner_error(errors: list[str]) -> str | None:
+    """Return a stable machine category without replacing human diagnostics."""
+    text = " ".join(str(value) for value in errors).casefold()
+    if "runner_input_too_large" in text:
+        return "runner_input_too_large"
+    if "runner_context_budget_exceeded" in text:
+        return "runner_context_budget_exceeded"
+    if "timed out" in text or "timeout" in text:
+        return "runner_timeout"
+    if "not valid json" in text or "invalid_json" in text:
+        return "invalid_model_json"
+    if "actual_model_identity_missing" in text:
+        return "model_identity_missing"
+    if "actual_model_mismatch" in text:
+        return "model_identity_mismatch"
+    if any(str(value).startswith("runner_or_output_failure:") for value in errors):
+        return "runner_transport_or_output"
+    return None
+
+
 def _latest_candidate_attempt_path(run_dir: Path, label: str, attempts: list[dict[str, Any]]) -> Path | None:
     """Return the most recent parsed candidate artifact for a failed attempt."""
     for row in reversed(attempts):
@@ -557,11 +586,18 @@ def _latest_candidate_attempt_path(run_dir: Path, label: str, attempts: list[dic
     return None
 
 
-def _estimated_requests(state: dict[str, Any], runner_info: dict[str, Any]) -> int | None:
+def _estimated_requests(state: dict[str, Any], runner_info: dict[str, Any], *, label: str | None = None) -> int | None:
     if runner_info.get("request_accounting") != "exact_per_runner_invocation":
         return None
+    # Review/alignment are single requests; only candidate generation uses
+    # the source and task-view batch session.
+    if label is None:
+        return 1
     if runner_info.get("supports_batched_session") is True:
-        return int(state.get("model_batch_count") or 0) + 1
+        batches = (int(state.get("model_batch_count") or 0)
+                   + int(state.get("task_view_chunk_count") or 0))
+        retries = int(_budget(state).get("candidate_batch_retry_limit") or 2)
+        return batches * (retries + 1) + 1
     return 1
 
 
@@ -585,7 +621,7 @@ def _remaining_attempt_budget(
         if candidate_remaining <= 0:
             raise ValueError(f"{label} active-time budget exhausted")
         remaining = min(remaining, candidate_remaining)
-    estimated = _estimated_requests(state, runner_info)
+    estimated = _estimated_requests(state, runner_info, label=label)
     if estimated is not None:
         observed = int(budget.get("model_requests_observed") or 0) + int(budget.get("model_requests_reserved") or 0)
         if observed + estimated > int(budget["request_limit"]):
@@ -629,7 +665,7 @@ def _begin_attempt(run_path: Path, state: dict[str, Any], attempts: list[dict[st
                    activity_key: str | None = None) -> dict[str, Any]:
     """Reserve before starting: process loss cannot erase an invocation or its cap."""
     reserved = float(timeout_sec)
-    requests = _estimated_requests(state, runner_info)
+    requests = _estimated_requests(state, runner_info, label=label)
     row = {"attempt": len(attempts) + 1, "status": "running", "started_at_utc": now(),
         "reserved_active_sec": reserved, "reserved_requests": requests,
         "candidate": label, "runner_contract_model": runner_info.get("model")}
@@ -659,6 +695,11 @@ def _finish_attempt(state: dict[str, Any], row: dict[str, Any], *, elapsed_sec: 
         by_candidate[label] = max(0.0, float(by_candidate.get(label) or 0.0) - reserved)
     if isinstance(receipt, dict) and receipt.get("request_count_observable") is True:
         budget["model_requests_reserved"] = max(0, int(budget.get("model_requests_reserved") or 0) - int(row.get("reserved_requests") or 0))
+    else:
+        # No receipt means the child may have dispatched one or more requests.
+        # Keep the reservation outstanding: it is the conservative cap for an
+        # unobservable dispatch, not an observed request count.
+        budget["request_count_complete"] = False
     # A killed/hung child can outlive the runner timeout while process-tree
     # cleanup completes. Never charge wall-clock cleanup time against the
     # persisted active-time budget; the reservation is the authoritative cap.
@@ -730,7 +771,9 @@ def generate(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict
     if state.get("formal_ready") is not True:
         raise ValueError("formal generation is blocked until the explicit Chapter 5 scope is ready")
     runner_info = inspect_isolated_runner(runner)
-    if int(state.get("model_batch_count") or 0) > 1 and runner_info.get("supports_batched_session") is not True:
+    if (int(state.get("model_batch_count") or 0)
+            + int(state.get("task_view_chunk_count") or 0)) > 1 \
+            and runner_info.get("supports_batched_session") is not True:
         raise ValueError(
             "formal Capability generation with multiple model batches requires "
             "supports_batched_session=true"
@@ -741,7 +784,7 @@ def generate(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict
     outputs = []
     blocked: list[str] = []
     max_attempts = 1 + int(_budget(state).get("candidate_retry_limit") or 0)
-    estimated = _estimated_requests(state, runner_info)
+    estimated = _estimated_requests(state, runner_info, label="candidate-1")
     budget = _budget(state)
     if estimated is not None:
         remaining_initial = sum(
@@ -891,7 +934,12 @@ def generate(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict
             actual_model = str((receipt or {}).get("model") or "").strip()
             if actual_model.lower() in {"auto", "automatic"}:
                 actual_model = ""
-            if not actual_model:
+            # A transport/runner exception leaves no receipt at all.  In that
+            # case the primary runner_or_output_failure is the actionable
+            # error; do not append a misleading model-identity failure.  An
+            # explicit empty receipt still fails closed because a successful
+            # model invocation must identify the model that produced it.
+            if receipt is not None and not actual_model:
                 errors.append("actual_model_identity_missing")
             expected_actual_model = str(state.get("actual_model") or "").strip()
             if actual_model and expected_actual_model and actual_model != expected_actual_model:
@@ -913,6 +961,7 @@ def generate(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict
                 "analysis_identity_sha256": state["analysis_identity_sha256"],
                 "elapsed_active_sec": elapsed,
                 "validation_errors": errors,
+                "error_type": _classify_runner_error(errors),
                 "receipt": receipt or {},
                 "output_sha256": file_sha(output) if output.is_file() else None,
             }
@@ -1392,7 +1441,9 @@ def review(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict[s
         elapsed = time.monotonic() - started
         _finish_attempt(state, attempt_record, elapsed_sec=elapsed, receipt=receipt)
         actual_model = str((receipt or {}).get("model") or "").strip()
-        if not actual_model or actual_model.lower() in {"auto", "automatic"} or (receipt or {}).get("model_tools") != []:
+        if (receipt is not None and not actual_model) or (
+                receipt is not None and actual_model.lower() in {"auto", "automatic"}
+        ) or (receipt is not None and (receipt or {}).get("model_tools") != []):
             errors.append("review_execution_identity_missing")
         if actual_model and actual_model != state.get("actual_model"):
             errors.append("review_actual_model_differs_from_candidates")
@@ -1405,6 +1456,7 @@ def review(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict[s
             "analysis_identity_sha256": state["analysis_identity_sha256"],
             "elapsed_active_sec": elapsed,
             "validation_errors": errors,
+            "error_type": _classify_runner_error(errors),
             "receipt": receipt or {},
             "output_sha256": file_sha(output) if output.is_file() else None,
             "candidate_sha256": candidate_hashes,
@@ -1672,7 +1724,7 @@ def align_with_llm(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -
         actual_model = str((receipt or {}).get("model") or "").strip()
         if actual_model.lower() in {"auto", "automatic"}:
             actual_model = ""
-        if not actual_model:
+        if receipt is not None and not actual_model:
             errors.append("alignment_execution_identity_missing")
         expected_actual_model = str(state.get("actual_model") or "").strip()
         if actual_model and expected_actual_model and actual_model != expected_actual_model:
@@ -1692,6 +1744,7 @@ def align_with_llm(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -
             "base_sha256": base_sha,
             "elapsed_active_sec": min(max(0.0, elapsed), float(attempt_record["reserved_active_sec"])),
             "validation_errors": errors,
+            "error_type": _classify_runner_error(errors),
             "receipt": receipt or {},
             "output_sha256": file_sha(output) if output.is_file() else None,
         }

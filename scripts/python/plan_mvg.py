@@ -434,10 +434,15 @@ def candidate_admission_errors(root: Path, state: dict[str, Any],
         if semantic_review.get("schema_version") == "newrouge.mvg-capability-admission.v1":
             from _mvg_capability_generation import capability_scopes, seed_proposal
             prepared = _run_dir(root, str(state.get("run_id"))) / "analysis-input"
+            from _capability_input_integrity import task_master_rows, task_master_identity
+            task_master_path = prepared / "task-master.json"
+            task_master_payload = load_json(task_master_path, None) if task_master_path.is_file() else None
+            task_master_rows_value = task_master_rows(task_master_payload) if isinstance(task_master_payload, dict) else []
             expected_scopes = capability_scopes(load_json(prepared / "capabilities.v1.json", {}),
                 load_json(prepared / "semantic-requirements.v1.json", {}), state.get("planning_scope"),
-                {str(row["id"]): str(row.get("status", "")).lower() for row in
-                 load_json(prepared / "task-master.json", {}).get("master", {}).get("tasks", [])}, prepared=prepared)
+                {task_master_identity(row): str(row.get("status", "")).lower() for row in
+                 task_master_rows_value
+                 if task_master_identity(row) is not None}, prepared=prepared)
             if append_requirement_ids is not None:
                 matching = [index for index, scope in enumerate(expected_scopes)
                             if set(scope["cumulative_requirement_ids"]) == append_requirement_ids]
@@ -3973,11 +3978,14 @@ def invoke_segmented(invoke: Any, run_dir: Path, state: dict[str, Any], attempt:
 
     flow_rows = [row for segment in segments if segment.get("section") == "flows"
                  for row in (segment.get("flows", []) or []) if isinstance(row, dict)]
-    status_payload = load_json(run_dir / "analysis-input/task-master.json", {})
+    status_path = run_dir / "analysis-input/task-master.json"
+    status_payload = load_json(status_path, None) if status_path.is_file() else None
+    from _capability_input_integrity import task_master_rows, task_master_identity
+    status_rows = task_master_rows(status_payload) if isinstance(status_payload, dict) else []
     task_statuses = {
-        str(row.get("id")): str(row.get("status", "")).lower()
-        for row in (status_payload.get("master", {}) or {}).get("tasks", [])
-        if isinstance(row, dict)
+        task_master_identity(row): str(row.get("status", "")).lower()
+        for row in status_rows
+        if isinstance(row, dict) and task_master_identity(row) is not None
     }
     existing_manifest = load_json(run_dir / "analysis-input/existing-manifest.json", None)
     baseline_flow_ids = {
@@ -4094,11 +4102,14 @@ def _copy_file(root: Path, source: Path, bundle: Path, rel: str | None = None) -
 
 
 def _task_ids(root: Path) -> set[int]:
-    payload = load_json(root / ".taskmaster/tasks/tasks.json", {})
+    from _capability_input_integrity import task_master_rows, task_master_identity
+    path = root / ".taskmaster/tasks/tasks.json"
+    payload = load_json(path, None) if path.is_file() else {"tasks": []}
     return {
-        int(row["id"])
-        for row in (payload.get("master", {}) or {}).get("tasks", [])
-        if isinstance(row, dict) and type(row.get("id")) is int
+        int(task_master_identity(row))
+        for row in task_master_rows(payload)
+        if isinstance(row, dict) and task_master_identity(row) is not None
+        and task_master_identity(row).isdigit()
     }
 
 
@@ -4629,7 +4640,9 @@ coverage_table must account for EVERY active delivery-relevant Requirement. Star
 def generate(root: Path, *, run_id: str, timeout_sec: int, llm_backend: str, segmented: bool = True) -> dict[str, Any]:
     """Serialize fresh incremental generation before any run state mutation."""
     run_path, state = _load_run(root, run_id)
-    if state.get("generation_strategy") == "capability-local-selection.v1":
+    if (state.get("generation_strategy") == "capability-local-selection.v1"
+            and isinstance(state.get("capability_selection"), dict)
+            and state.get("capability_selection")):
         from _mvg_capability_checkpoint import coordinator_lock, recover_commit_outcome
         from _mvg_capability_selection import verified_prefix
         from _mvg_capability_recovery import operation_lock
@@ -4724,9 +4737,12 @@ def _generate(root: Path, *, run_id: str, timeout_sec: int, llm_backend: str, se
     backend_info = inspect_isolated_runner(runner)
 
     known_task_ids = sorted(_task_ids(root))
-    task_master = load_json(root / ".taskmaster/tasks/tasks.json", {})
-    task_statuses = {str(row["id"]): str(row.get("status", "")).lower()
-                     for row in task_master.get("master", {}).get("tasks", [])}
+    task_master_path = root / ".taskmaster/tasks/tasks.json"
+    task_master = load_json(task_master_path, {"tasks": []}) if task_master_path.is_file() else {"tasks": []}
+    from _capability_input_integrity import task_master_rows, task_master_identity
+    task_statuses = {task_master_identity(row): str(row.get("status", "")).lower()
+                     for row in task_master_rows(task_master)
+                     if task_master_identity(row) is not None}
     known_non_done_ids = sorted(int(task_id) for task_id, status in task_statuses.items() if status != "done")
     source_manifest = load_json(root / SOURCE_MANIFEST, {})
     known_source_paths = sorted(str(row.get("path")) for row in source_manifest.get("sources", [])
@@ -6000,6 +6016,15 @@ Frozen manifest scope:
 def validate_proposal(root: Path, state: dict[str, Any], proposal: dict[str, Any], *,
                       append_requirement_ids: set[str] | None = None, check_originals: bool = True) -> dict[str, Any]:
     errors: list[str] = []
+    original_proposal = proposal
+    # Read old whole-proposal artifacts through the lossless accounting
+    # projection.  Current model contracts emit these fields explicitly, but
+    # pre-accounting proposals remain valid inputs when their coverage rows
+    # carry the legacy route/evidence shape.
+    if isinstance(proposal, dict) and not any(
+            key in proposal for key in ("requirement_verification", "requirement_evidence")):
+        from _mvg_requirement_accounting import project_accounting
+        proposal = project_accounting(proposal)
     if proposal.get("schema_version") != PROPOSAL_SCHEMA:
         errors.append("invalid_proposal_schema")
     if proposal.get("analysis_identity_sha256") != state.get("analysis_identity_sha256"):
@@ -6027,9 +6052,30 @@ def validate_proposal(root: Path, state: dict[str, Any], proposal: dict[str, Any
                            if error != "At least one flow and test are required"]
     errors.extend(manifest_errors)
     prepared = _run_dir(root, str(state.get("run_id"))) / "analysis-input"
-    errors.extend(protocol_errors(load_json(prepared / 'analysis-index.json', {}), proposal))
-    from _mvg_requirement_accounting import protocol_errors as accounting_protocol_errors
-    errors.extend(accounting_protocol_errors(load_json(prepared / 'analysis-index.json', {}), proposal))
+    accounting_index = load_json(prepared / 'analysis-index.json', {})
+    # Historical whole-proposal fixtures (the pre-accounting independent
+    # candidate strategy) predate the explicit verification/evidence fields.
+    # Keep those immutable runs readable while retaining strict protocol
+    # enforcement for current Capability-local and newly prepared runs.
+    # Only pre-accounting snapshots (which lack the frozen Capability
+    # fingerprint written by current prepare) may use the compatibility path.
+    # A strategy name alone is not sufficient: a current run must never skip
+    # requirement accounting merely because it uses a legacy strategy label.
+    legacy_accounting = (state.get("generation_strategy") in {
+        "independent-candidates-single", "independent-candidates-segmented",
+        "independent-candidates-capability-append",
+    } and not state.get("capabilities_sha256"))
+    accounting_protocol_errors = protocol_errors(accounting_index, original_proposal)
+    if legacy_accounting and not any(
+            key in original_proposal for key in ("requirement_verification", "requirement_evidence")):
+        accounting_protocol_errors = []
+    errors.extend(accounting_protocol_errors)
+    from _mvg_requirement_accounting import protocol_errors as requirement_accounting_protocol_errors
+    protocol_errors_for_accounting = requirement_accounting_protocol_errors(accounting_index, original_proposal)
+    if legacy_accounting and not any(
+            key in original_proposal for key in ("requirement_verification", "requirement_evidence")):
+        protocol_errors_for_accounting = []
+    errors.extend(protocol_errors_for_accounting)
     # Validate against the byte-bound prepared snapshot. The selected local
     # Capability is the planning SSoT; live auxiliary files cannot drift into
     # a candidate after prepare.
@@ -6062,17 +6108,21 @@ def validate_proposal(root: Path, state: dict[str, Any], proposal: dict[str, Any
         for row in semantics.get("requirements", [])
         if isinstance(row, dict)
     }
-    task_master = load_json(prepared / "task-master.json", None)
+    task_master_path = prepared / "task-master.json"
+    task_master = load_json(task_master_path, None) if task_master_path.is_file() else None
     if not isinstance(task_master, dict):
         if state.get("capabilities_sha256"):
             errors.append("prepared_task_master_snapshot_missing")
             task_master = {"master": {"tasks": []}}
         else:
-            task_master = load_json(root / ".taskmaster/tasks/tasks.json", {})
+            live_task_master_path = root / ".taskmaster/tasks/tasks.json"
+            task_master = load_json(live_task_master_path, {"tasks": []}) if live_task_master_path.is_file() else {"tasks": []}
+    from _capability_input_integrity import task_master_rows, task_master_identity
     known_tasks = {
-        int(row["id"])
-        for row in (task_master.get("master", {}) or {}).get("tasks", [])
-        if isinstance(row, dict) and type(row.get("id")) is int
+        int(task_master_identity(row))
+        for row in task_master_rows(task_master)
+        if isinstance(row, dict) and task_master_identity(row) is not None
+        and task_master_identity(row).isdigit()
     }
     prepared_task_views: list[dict[str, Any]] = []
     for name in ("tasks_back.json", "tasks_gameplay.json"):
@@ -6256,7 +6306,9 @@ def review(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict[s
     run_dir = run_path.parent
     _validate_input_freshness(root, run_dir, state)
     proposal = load_json(run_dir / "proposal.json", {})
-    if state.get("generation_strategy") == "capability-local-selection.v1":
+    if (state.get("generation_strategy") == "capability-local-selection.v1"
+            and isinstance(state.get("capability_selection"), dict)
+            and state.get("capability_selection")):
         from _mvg_capability_selection import verify_published_chain
         verify_published_chain(root, run_dir, state)
     if validate_proposal(root, state, proposal)["status"] != "passed":
@@ -6584,13 +6636,33 @@ def build_delta(existing: dict[str, Any], proposal: dict[str, Any]) -> dict[str,
 
 
 def validate(root: Path, *, run_id: str) -> dict[str, Any]:
-    run_path, state = _load_run(root, run_id)
+    try:
+        run_path, state = _load_run(root, run_id)
+    except ValueError as exc:
+        # Validation is the diagnostic endpoint.  Preserve a malformed
+        # recovery selection as a formal blocker instead of failing before a
+        # validation report can be written.  Generation/review/apply continue
+        # to fail closed through _load_run.
+        if not str(exc).startswith("recovery_selection_checkpoint_invalid:"):
+            raise
+        run_path = _run_dir(root, run_id) / "run.json"
+        state = load_json(run_path, {})
+        if state.get("schema_version") != RUN_SCHEMA:
+            raise
     _require_unblocked_selection(state)
     run_dir = run_path.parent
     _validate_input_freshness(root, run_dir, state)
     chain_errors = []
+    from _mvg_capability_checkpoint import enabled as checkpoint_enabled
+    if state.get("recovery") and checkpoint_enabled(state):
+        selected = (state.get("capability_selection") or {}).get("selected") or []
+        if any(not isinstance(step, dict) or not isinstance(step.get("checkpoint"), dict)
+               for step in selected):
+            chain_errors.append("selected_chain_invalid:recovery_selection_checkpoint_invalid")
     global_receipt = None
-    if state.get("generation_strategy") == "capability-local-selection.v1":
+    if (state.get("generation_strategy") == "capability-local-selection.v1"
+            and isinstance(state.get("capability_selection"), dict)
+            and state.get("capability_selection")):
         from _mvg_capability_selection import verify_published_chain
         try:
             verify_published_chain(root, run_dir, state)
@@ -6606,7 +6678,9 @@ def validate(root: Path, *, run_id: str) -> dict[str, Any]:
     review_errors.extend(review_execution_errors(state, proposal,
         load_json(run_dir / "semantic-review-execution.json", {}),
         load_json(run_dir / "semantic-review.json", {})))
-    if state.get("generation_strategy") == "capability-local-selection.v1":
+    if (state.get("generation_strategy") == "capability-local-selection.v1"
+            and isinstance(state.get("capability_selection"), dict)
+            and state.get("capability_selection")):
         from _mvg_global_audit import verified_audit
         try:
             global_receipt = verified_audit(root, run_dir, state)

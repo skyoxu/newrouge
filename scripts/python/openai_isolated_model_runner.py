@@ -387,13 +387,65 @@ def _validate_batch_analysis(
         f"{path}#{row.get('taskmaster_id', row.get('id', ''))}": row
         for path, rows in (task_views or {}).items() for row in rows
     }
-    actual_task_keys = [str(row.get("task_view_key") or "") for row in task_rows if isinstance(row, dict)]
-    if not set(actual_task_keys).issubset(set(expected_task_views)) or len(actual_task_keys) != len(set(actual_task_keys)):
-        raise ValueError("capability_batch_analysis_task_view_coverage_mismatch")
+    # Task identity and Requirement refs are authoritative machine fields. A
+    # model may summarize an active row, but it cannot invent refs, duplicate a
+    # row, or make a historical/unknown row part of the current evidence.
+    normalized: dict[str, dict[str, Any]] = {}
+    ignored_unknown: set[str] = set()
+    ignored_duplicate: set[str] = set()
     for row in task_rows:
+        if not isinstance(row, dict):
+            ignored_unknown.add("<invalid-task-view-row>")
+            continue
         key = str(row.get("task_view_key") or "")
-        expected_refs = sorted(_task_view_refs(expected_task_views[key]))
-        refs = row.get("requirement_refs")
+        if key not in expected_task_views:
+            ignored_unknown.add(key or "<missing-task-view-key>")
+            continue
+        if key in normalized:
+            ignored_duplicate.add(key)
+            continue
+        normalized[key] = row
+    reconciled_task_rows: list[dict[str, Any]] = []
+    for key, source in expected_task_views.items():
+        row = dict(normalized.get(key) or {})
+        expected_refs = sorted(_task_view_refs(source))
+        row["task_view_key"] = key
+        row["requirement_refs"] = expected_refs
+        authoritative_intent = str(source.get("description") or source.get("title") or "")
+        if not str(row.get("task_intent") or "").strip():
+            # Keep the complete authoritative text in a separate evidence field
+            # when the bounded model-summary field cannot hold it. This avoids
+            # both silent truncation and an invalid intermediate schema.
+            if len(authoritative_intent) > 1200:
+                row["task_intent"] = str(source.get("title") or "")[:1200] or "Authoritative task intent"
+                row["task_intent_source"] = authoritative_intent
+            else:
+                row["task_intent"] = authoritative_intent
+        elif len(str(row.get("task_intent"))) > 1200:
+            row["task_intent_source"] = str(row["task_intent"])
+            row["task_intent"] = str(row["task_intent"])[:1200]
+        if not isinstance(row.get("acceptance_signals"), list) or not row["acceptance_signals"]:
+            acceptance = source.get("acceptance", [])
+            row["acceptance_signals"] = (
+                [acceptance] if isinstance(acceptance, str)
+                else list(acceptance) if isinstance(acceptance, list)
+                else []
+            ) or ["Authoritative task acceptance"]
+        if not isinstance(row.get("verification_signals"), list) or not row["verification_signals"]:
+            tests = source.get("test_refs", [])
+            row["verification_signals"] = (
+                [tests] if isinstance(tests, str)
+                else list(tests) if isinstance(tests, list)
+                else []
+            ) or ["Authoritative task verification"]
+        reconciled_task_rows.append(row)
+    value["task_view_analyses"] = reconciled_task_rows
+    value["_task_view_reconciliation"] = {
+        "ignored_unknown_task_rows": sorted(ignored_unknown),
+        "ignored_duplicate_task_rows": sorted(ignored_duplicate),
+    }
+    for row in reconciled_task_rows:
+        key = str(row.get("task_view_key") or "")
         if not str(row.get("task_intent") or "").strip():
             raise ValueError("capability_batch_analysis_task_intent_missing:" + key)
         if (not isinstance(row.get("acceptance_signals"), list)
@@ -404,23 +456,62 @@ def _validate_batch_analysis(
         if any(not isinstance(item, str) or not item.strip()
                for item in row["acceptance_signals"] + row["verification_signals"]):
             raise ValueError("capability_batch_analysis_task_signal_invalid:" + key)
-        if not isinstance(refs, list) or sorted(str(item) for item in refs) != expected_refs:
-            raise ValueError("capability_batch_analysis_task_requirement_refs_mismatch:" + key)
-    for key, source in expected_task_views.items():
-        if key in actual_task_keys:
-            continue
-        acceptance = source.get("acceptance", [])
-        tests = source.get("test_refs", [])
-        if isinstance(acceptance, str):
-            acceptance = [acceptance]
-        if isinstance(tests, str):
-            tests = [tests]
-        task_rows.append({"task_view_key": key,
-                          "task_intent": str(source.get("description") or source.get("title") or "")[:1200],
-                          "acceptance_signals": [str(item) for item in acceptance if str(item).strip()][:12] or ["Authoritative task acceptance"],
-                          "verification_signals": [str(item) for item in tests if str(item).strip()][:12] or ["Authoritative task verification"],
-                          "requirement_refs": sorted(_task_view_refs(source))})
     return value
+
+
+def _error_type(exc: BaseException) -> str:
+    """Return a stable machine-readable class for runner audit records."""
+    text = str(exc)
+    for prefix in ("runner_input_too_large", "runner_context_budget_exceeded"):
+        if text.startswith(prefix):
+            return prefix
+    if isinstance(exc, TimeoutError):
+        return "runner_timeout"
+    if isinstance(exc, json.JSONDecodeError):
+        return "batch_invalid_json"
+    if isinstance(exc, RuntimeError):
+        return "runner_transport"
+    if text.startswith("capability_batch_analysis_"):
+        return "batch_validation"
+    return type(exc).__name__.lower()
+
+
+def _persist_batch_integrity(
+    workspace: Path, *, coverage: dict[str, Any], task_view_coverage: dict[str, Any],
+    requests: list[dict[str, Any]], batch_attempts: list[dict[str, Any]],
+    status: str, model_invoked: bool, error: BaseException | None = None,
+    model_request_count: int = 0,
+) -> None:
+    """Persist an auditable snapshot after every batch transition."""
+    payload: dict[str, Any] = {
+        "status": status,
+        "complete": status == "ready",
+        "truncation_allowed": False,
+        "coverage": coverage,
+        "task_view_coverage": task_view_coverage,
+        "requests": requests,
+        "batch_attempts": batch_attempts,
+        "model_invoked": model_invoked,
+        # Durable attempted-dispatch count. This is intentionally persisted
+        # before transport so timeout/connection failures cannot disappear
+        # from the audit when no receipt is returned.
+        "model_request_count": int(model_request_count),
+        "execution_mode": "independent-evidence-batches-plus-bounded-synthesis",
+    }
+    if error is not None:
+        payload.update({"error": str(error)[:1000], "error_type": _error_type(error)})
+    atomic_json(workspace / REPORT_NAME, payload)
+
+
+def _take_task_view_reconciliation(value: dict[str, Any]) -> dict[str, list[str]]:
+    """Remove intermediate audit metadata before synthesis and return it."""
+    raw = value.pop("_task_view_reconciliation", {})
+    if not isinstance(raw, dict):
+        return {"ignored_unknown_task_rows": [], "ignored_duplicate_task_rows": []}
+    return {
+        "ignored_unknown_task_rows": sorted(str(item) for item in raw.get("ignored_unknown_task_rows", []) if str(item)),
+        "ignored_duplicate_task_rows": sorted(str(item) for item in raw.get("ignored_duplicate_task_rows", []) if str(item)),
+    }
 
 
 def _quote_matches_source(quote: str, raw_text: str) -> bool:
@@ -578,21 +669,33 @@ def _run_batched_session(
     schema_text = json.dumps({"text": {"format": {"type": "json_schema", "strict": True, "schema": schema}}},
                              ensure_ascii=False) if schema else ""
     preflight_requests = []
+    batch_attempts: list[dict[str, Any]] = []
     for label, text, batch_schema, output_tokens, _name, _payload, _task_views in request_texts:
         visible = _measured_request_text(text, batch_schema)
-        preflight_requests.append({"label": label, **measure_request(visible, max_bytes=max_bytes,
-            max_input_tokens=max_input_tokens, reserved_tokens=output_tokens)})
+        try:
+            preflight_requests.append({"label": label, **measure_request(visible, max_bytes=max_bytes,
+                max_input_tokens=max_input_tokens, reserved_tokens=output_tokens)})
+        except (ValueError, OSError, RuntimeError, TimeoutError, json.JSONDecodeError) as exc:
+            _persist_batch_integrity(workspace, coverage=coverage,
+                task_view_coverage=task_view_coverage, requests=preflight_requests,
+                batch_attempts=batch_attempts, status='blocked', model_invoked=False, error=exc)
+            raise
     # The placeholder already accounts for the bounded intermediate analyses in
     # the synthesis input. Reserve only the final response continuation here.
-    preflight_requests.append({"label": "synthesis-capacity", **measure_request(
-        _measured_request_text(synthesis_text, schema, schema_name="newrouge_capability_candidate"),
-        max_bytes=max_bytes, max_input_tokens=max_input_tokens,
-        reserved_tokens=final_output_tokens)})
+    try:
+        preflight_requests.append({"label": "synthesis-capacity", **measure_request(
+            _measured_request_text(synthesis_text, schema, schema_name="newrouge_capability_candidate"),
+            max_bytes=max_bytes, max_input_tokens=max_input_tokens,
+            reserved_tokens=final_output_tokens)})
+    except (ValueError, OSError, RuntimeError, TimeoutError, json.JSONDecodeError) as exc:
+        _persist_batch_integrity(workspace, coverage=coverage,
+            task_view_coverage=task_view_coverage, requests=preflight_requests,
+            batch_attempts=batch_attempts, status='blocked', model_invoked=False, error=exc)
+        raise
     request_integrity.extend(preflight_requests)
-    atomic_json(workspace / REPORT_NAME, {'status': 'ready', 'complete': True,
-        'truncation_allowed': False, 'coverage': coverage,
-        'task_view_coverage': task_view_coverage, 'requests': request_integrity,
-        'execution_mode': 'independent-evidence-batches-plus-bounded-synthesis'})
+    _persist_batch_integrity(workspace, coverage=coverage,
+        task_view_coverage=task_view_coverage, requests=request_integrity,
+        batch_attempts=batch_attempts, status='ready', model_invoked=False)
     client = _openai_client(timeout_sec)
 
     def call(text: str, *, output_schema: dict[str, Any] | None = None,
@@ -601,6 +704,14 @@ def _run_batched_session(
         remaining = deadline - time.monotonic()
         if remaining <= 0:
             raise TimeoutError("isolated model active-time budget exhausted")
+        # Count an invocation before transport.  A timeout/connection failure
+        # still consumed a model-dispatch attempt even when no receipt can be
+        # returned to the coordinator.
+        request_count += 1
+        _persist_batch_integrity(workspace, coverage=coverage,
+            task_view_coverage=task_view_coverage, requests=request_integrity,
+            batch_attempts=batch_attempts, status="running", model_invoked=True,
+            model_request_count=request_count)
         response = _response(
             client=client,
             prompt=text,
@@ -610,22 +721,66 @@ def _run_batched_session(
             max_output_tokens=max_output_tokens,
             output_schema_name=output_schema_name,
         )
-        request_count += 1
         return response
 
     batch_outputs: list[tuple[str, str]] = []
+    batch_retry_limit = 2
     for index, (label, text, batch_schema, output_tokens, schema_name, payload, task_views) in enumerate(request_texts):
-        response = call(text, output_schema=batch_schema, max_output_tokens=output_tokens,
-                        output_schema_name=schema_name)
-        output = _extract_response_output_text(response)
-        if not output:
-            raise RuntimeError(f"empty independent analysis for {label}")
-        try:
-            parsed = json.loads(output)
-        except json.JSONDecodeError as exc:
-            raise ValueError(f"capability_batch_analysis_invalid_json:{label}") from exc
-        parsed = _validate_batch_analysis(parsed, payload, task_views)
-        batch_outputs.append((label, json.dumps(parsed, ensure_ascii=False, separators=(",", ":"))))
+        accepted = False
+        last_error: Exception | None = None
+        retry_errors: list[dict[str, str]] = []
+        for attempt in range(1, batch_retry_limit + 2):
+            request_text = text if attempt == 1 else (
+                text + "\n\nBATCH CORRECTION RETRY:\n"
+                "The previous response for this batch failed local validation. "
+                "Return the complete batch JSON again, preserving every authoritative row "
+                "and correcting only this deterministic error:\n"
+                f"- {last_error}\n"
+            )
+            try:
+                response = call(request_text, output_schema=batch_schema,
+                                max_output_tokens=output_tokens,
+                                output_schema_name=schema_name)
+                output = _extract_response_output_text(response)
+                if not output:
+                    raise RuntimeError(f"empty independent analysis for {label}")
+                try:
+                    parsed = json.loads(output)
+                except json.JSONDecodeError as exc:
+                    raise ValueError(f"capability_batch_analysis_invalid_json:{label}") from exc
+                parsed = _validate_batch_analysis(parsed, payload, task_views)
+                reconciliation = _take_task_view_reconciliation(parsed)
+                batch_outputs.append((label, json.dumps(parsed, ensure_ascii=False, separators=(",", ":"))))
+                attempt_record: dict[str, Any] = {"label": label, "attempts": attempt, "status": "accepted"}
+                if retry_errors:
+                    attempt_record["retry_errors"] = retry_errors
+                if any(reconciliation.values()):
+                    attempt_record["task_view_reconciliation"] = reconciliation
+                batch_attempts.append(attempt_record)
+                _persist_batch_integrity(workspace, coverage=coverage,
+                    task_view_coverage=task_view_coverage, requests=request_integrity,
+                    batch_attempts=batch_attempts, status='running', model_invoked=request_count > 0,
+                    model_request_count=request_count)
+                accepted = True
+                break
+            except (OSError, RuntimeError, TimeoutError, ValueError, json.JSONDecodeError) as exc:
+                last_error = exc
+                retry_errors.append({"error_type": _error_type(exc), "error": str(exc)[:500]})
+                if attempt >= batch_retry_limit + 1:
+                    batch_attempts.append({"label": label, "attempts": attempt,
+                                           "status": "failed", "error": str(exc)[:500],
+                                           "error_type": _error_type(exc)})
+                    _persist_batch_integrity(workspace, coverage=coverage,
+                        task_view_coverage=task_view_coverage, requests=request_integrity,
+                        batch_attempts=batch_attempts, status='failed',
+                        model_invoked=request_count > 0, error=exc,
+                        model_request_count=request_count)
+                    raise ValueError(
+                        f"capability_batch_analysis_retry_exhausted:{label}:attempts={attempt}:"
+                        f"{type(exc).__name__}:{exc}"
+                    ) from exc
+        if not accepted:
+            raise ValueError(f"capability_batch_analysis_retry_exhausted:{label}")
 
     final_text = _synthesis_request(original_prompt=original_prompt, base=base,
                                     batch_outputs=batch_outputs, schema=schema) + checklist
@@ -636,17 +791,48 @@ def _run_batched_session(
         reserved_tokens=final_output_tokens,
     )
     request_integrity.append({"label": "synthesis", **final_report})
-    atomic_json(workspace / REPORT_NAME, {'status': 'ready', 'complete': True,
-        'truncation_allowed': False, 'coverage': coverage,
-        'task_view_coverage': task_view_coverage, 'requests': request_integrity,
-        'execution_mode': 'independent-evidence-batches-plus-bounded-synthesis'})
-    final = call(final_text, output_schema=schema, max_output_tokens=final_output_tokens,
-                 output_schema_name="newrouge_capability_candidate")
+    # Synthesis has not been transported yet.  Keep the durable receipt
+    # explicitly pending so a crash cannot be audited as a complete result.
+    _persist_batch_integrity(workspace, coverage=coverage,
+        task_view_coverage=task_view_coverage, requests=request_integrity,
+        batch_attempts=batch_attempts, status='synthesis_pending', model_invoked=request_count > 0,
+        model_request_count=request_count)
+    try:
+        final = call(final_text, output_schema=schema, max_output_tokens=final_output_tokens,
+                     output_schema_name="newrouge_capability_candidate")
+    except (OSError, RuntimeError, TimeoutError, ValueError, json.JSONDecodeError) as exc:
+        _persist_batch_integrity(workspace, coverage=coverage,
+            task_view_coverage=task_view_coverage, requests=request_integrity,
+            batch_attempts=batch_attempts + [{"label": "synthesis", "attempts": 1,
+                "status": "failed", "error": str(exc)[:500], "error_type": _error_type(exc)}],
+            status='failed', model_invoked=request_count > 0, error=exc,
+            model_request_count=request_count)
+        raise
     output_text = _extract_response_output_text(final)
     if not output_text:
-        raise RuntimeError("OpenAI batched session returned empty final output")
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text(output_text.rstrip() + "\n", encoding="utf-8", newline="\n")
+        exc = RuntimeError("OpenAI batched session returned empty final output")
+        _persist_batch_integrity(workspace, coverage=coverage,
+            task_view_coverage=task_view_coverage, requests=request_integrity,
+            batch_attempts=batch_attempts + [{"label": "synthesis", "attempts": 1,
+                "status": "failed", "error": str(exc), "error_type": _error_type(exc)}],
+            status='failed', model_invoked=request_count > 0, error=exc,
+            model_request_count=request_count)
+        raise exc
+    try:
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_text(output_text.rstrip() + "\n", encoding="utf-8", newline="\n")
+    except (OSError, UnicodeError) as exc:
+        _persist_batch_integrity(workspace, coverage=coverage,
+            task_view_coverage=task_view_coverage, requests=request_integrity,
+            batch_attempts=batch_attempts + [{"label": "synthesis", "attempts": 1,
+                "status": "failed", "error": str(exc)[:500], "error_type": _error_type(exc)}],
+            status='failed', model_invoked=True, error=exc,
+            model_request_count=request_count)
+        raise
+    _persist_batch_integrity(workspace, coverage=coverage,
+        task_view_coverage=task_view_coverage, requests=request_integrity,
+        batch_attempts=batch_attempts + [{"label": "synthesis", "attempts": 1, "status": "accepted"}],
+        status='ready', model_invoked=True, model_request_count=request_count)
     return {
         "schema_version": "newrouge.isolated-model-runner-receipt.v1",
         "model": model_name(),
@@ -661,6 +847,8 @@ def _run_batched_session(
             label: "sha256:" + hashlib.sha256(text.encode("utf-8")).hexdigest()
             for label, text in batch_outputs
         },
+        "batch_attempts": batch_attempts,
+        "batch_retry_limit": batch_retry_limit,
         "input_integrity": request_integrity,
         "input_coverage": coverage,
         "task_view_coverage": task_view_coverage,

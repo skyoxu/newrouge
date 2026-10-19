@@ -221,6 +221,120 @@ class CapabilityInputIntegrityTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'duplicate_task_view_id'):
             api.task_view_batch_rows(self.root, self.index)
 
+    def test_cancelled_task_views_are_excluded_from_model_batches(self):
+        atomic_json(self.analysis / 'task-views/tasks_gameplay.json', [
+            {'taskmaster_id': 7, 'status': 'cancelled', 'semantic_refs': ['RQ-1'],
+             'ui_wiring_candidate': {'scope_task_ids': [1, 11, 14]},
+             'title': 'Historical task'},
+            {'taskmaster_id': 8, 'status': 'done', 'semantic_refs': ['RQ-2'],
+             'title': 'Active task'},
+        ])
+        self.refresh_analysis_index()
+        chunks = integrity.task_view_payload_chunks(self.root)
+        serialized = json.dumps(chunks, ensure_ascii=False)
+        self.assertNotIn('Historical task', serialized)
+        self.assertNotIn('scope_task_ids', serialized)
+        self.assertIn('Active task', serialized)
+        _, coverage = api.task_view_batch_rows(self.root, self.index)
+        view = next(iter(coverage['views'].values()))
+        self.assertEqual(1, view['active_row_count'])
+        self.assertEqual(1, view['excluded_cancelled_row_count'])
+
+    def test_master_task_status_is_authoritative_over_stale_view_status(self):
+        atomic_json(self.analysis / 'task-master.json', {
+            'master': {'tasks': [
+                {'taskmaster_id': 7, 'status': 'cancelled'},
+                {'taskmaster_id': 8, 'status': 'done'},
+            ]}
+        })
+        atomic_json(self.analysis / 'task-views/tasks_gameplay.json', [
+            {'taskmaster_id': 7, 'status': 'done', 'semantic_refs': ['RQ-1'], 'title': 'Stale active view'},
+            {'taskmaster_id': 8, 'status': 'cancelled', 'semantic_refs': ['RQ-2'], 'title': 'Stale cancelled view'},
+        ])
+        self.refresh_analysis_index()
+        serialized = json.dumps(integrity.task_view_payload_chunks(self.root), ensure_ascii=False)
+        self.assertNotIn('Stale active view', serialized)
+        self.assertIn('Stale cancelled view', serialized)
+
+    def test_task_missing_from_master_is_excluded_and_audited_as_orphaned(self):
+        atomic_json(self.analysis / 'task-master.json', {
+            'master': {'tasks': [{'taskmaster_id': 7, 'status': 'done'}]}
+        })
+        atomic_json(self.analysis / 'task-views/tasks_gameplay.json', [
+            {'taskmaster_id': 7, 'status': 'done', 'description': 'Known task', 'semantic_refs': ['RQ-1']},
+            {'taskmaster_id': 99, 'status': 'done', 'description': 'Orphan task', 'semantic_refs': ['RQ-2']},
+        ])
+        self.refresh_analysis_index()
+        serialized = json.dumps(integrity.task_view_payload_chunks(self.root), ensure_ascii=False)
+        self.assertIn('Known task', serialized)
+        self.assertNotIn('Orphan task', serialized)
+        _, coverage = api.task_view_batch_rows(self.root, self.index)
+        view = next(iter(coverage['views'].values()))
+        self.assertEqual(1, view['excluded_orphaned_row_count'])
+
+    def test_retired_rows_are_not_counted_as_cancelled(self):
+        atomic_json(self.analysis / 'task-master.json', {
+            'master': {'tasks': [
+                {'taskmaster_id': 7, 'status': 'retired'},
+                {'taskmaster_id': 8, 'status': 'cancelled'},
+            ]}
+        })
+        atomic_json(self.analysis / 'task-views/tasks_gameplay.json', [
+            {'taskmaster_id': 7, 'description': 'Retired task', 'semantic_refs': ['RQ-1']},
+            {'taskmaster_id': 8, 'description': 'Cancelled task', 'semantic_refs': ['RQ-2']},
+        ])
+        self.refresh_analysis_index()
+        _, coverage = api.task_view_batch_rows(self.root, self.index)
+        view = next(iter(coverage['views'].values()))
+        self.assertEqual(2, view['excluded_inactive_row_count'])
+        self.assertEqual(1, view['excluded_cancelled_row_count'])
+
+    def test_task_requirement_refs_are_bound_from_authoritative_view_not_model(self):
+        atomic_json(self.analysis / 'task-views/tasks_gameplay.json', [
+            {'taskmaster_id': 7, 'status': 'done', 'description': 'Authoritative task',
+             'acceptance': ['Acceptance'], 'test_refs': ['test_ref.gd'], 'semantic_refs': []}])
+        self.refresh_analysis_index()
+        task_rows = integrity.task_view_payload_chunks(self.root)[0]
+        path = next(iter(task_rows))
+        task = task_rows[path][0]
+        payload = {'schema_version': 'newrouge.capability-batch-analysis.v1', 'batch_index': 1,
+                   'source_block_analyses': [], 'requirement_analyses': [],
+                   'task_view_analyses': [{
+                       'task_view_key': f'{path}#{task["taskmaster_id"]}',
+                       'task_intent': 'Model summary', 'acceptance_signals': ['Accepted'],
+                       'verification_signals': ['Verified'], 'requirement_refs': ['RQ-1']} ]}
+        result = api._validate_batch_analysis(payload,
+            {'schema_version': 'newrouge.capability-model-batch.v1', 'batch_index': 1,
+             'blocks': [], 'requirements': []}, task_rows)
+        self.assertEqual([], result['task_view_analyses'][0]['requirement_refs'])
+
+    def test_unexpected_and_duplicate_task_analysis_rows_are_reconciled_from_authority(self):
+        atomic_json(self.analysis / 'task-views/tasks_gameplay.json', [
+            {'taskmaster_id': 7, 'status': 'done', 'description': 'Authoritative task 7',
+             'acceptance': ['Acceptance 7'], 'test_refs': ['test7.gd'], 'semantic_refs': ['RQ-1']},
+            {'taskmaster_id': 8, 'status': 'done', 'description': 'Authoritative task 8',
+             'acceptance': ['Acceptance 8'], 'test_refs': ['test8.gd'], 'semantic_refs': ['RQ-2']}])
+        self.refresh_analysis_index()
+        task_rows = integrity.task_view_payload_chunks(self.root)[0]
+        path = next(iter(task_rows))
+        first = task_rows[path][0]
+        output_row = {'task_view_key': f'{path}#{first["taskmaster_id"]}',
+                      'task_intent': 'Model summary', 'acceptance_signals': ['Accepted'],
+                      'verification_signals': ['Verified'], 'requirement_refs': ['RQ-1']}
+        payload = {'schema_version': 'newrouge.capability-batch-analysis.v1', 'batch_index': 1,
+                   'source_block_analyses': [], 'requirement_analyses': [],
+                   'task_view_analyses': [output_row, dict(output_row), {
+                       **output_row, 'task_view_key': f'{path}#999'}]}
+        result = api._validate_batch_analysis(payload,
+            {'schema_version': 'newrouge.capability-model-batch.v1', 'batch_index': 1,
+             'blocks': [], 'requirements': []}, task_rows)
+        keys = [row['task_view_key'] for row in result['task_view_analyses']]
+        self.assertEqual([f'{path}#7', f'{path}#8'], keys)
+        self.assertEqual('RQ-2', result['task_view_analyses'][1]['requirement_refs'][0])
+        audit = result['_task_view_reconciliation']
+        self.assertEqual([f'{path}#999'], audit['ignored_unknown_task_rows'])
+        self.assertEqual([f'{path}#7'], audit['ignored_duplicate_task_rows'])
+
     def test_task_view_singular_requirement_ref_is_preserved(self):
         atomic_json(self.analysis / 'task-views/tasks_back.json', [
             {'taskmaster_id': 7, 'requirement_ref': 'RQ-2', 'description': 'SINGULAR_REF'}])
@@ -289,6 +403,48 @@ class CapabilityInputIntegrityTests(unittest.TestCase):
         self.assertEqual(2, len(result['task_view_analyses']))
         self.assertIn('Second authoritative intent',
                       json.dumps(result['task_view_analyses'], ensure_ascii=False))
+
+    def test_long_authoritative_task_intent_is_preserved_outside_bounded_summary(self):
+        long_description = 'FULL_AUTHORITATIVE_INTENT_' + ('x' * 1400)
+        atomic_json(self.analysis / 'task-views/tasks_gameplay.json', [
+            {'taskmaster_id': 7, 'title': 'Short task title',
+             'description': long_description, 'semantic_refs': ['RQ-1']}])
+        self.refresh_analysis_index()
+        task_rows = integrity.task_view_payload_chunks(self.root)[0]
+        path = next(iter(task_rows))
+        payload = {'schema_version': 'newrouge.capability-batch-analysis.v1', 'batch_index': 1,
+                   'source_block_analyses': [], 'requirement_analyses': [],
+                   'task_view_analyses': [{'task_view_key': f'{path}#7',
+                       'task_intent': '', 'acceptance_signals': ['accepted'],
+                       'verification_signals': ['verified'], 'requirement_refs': []}]}
+        result = api._validate_batch_analysis(payload,
+            {'schema_version': 'newrouge.capability-model-batch.v1', 'batch_index': 1,
+             'blocks': [], 'requirements': []}, task_rows)
+        row = result['task_view_analyses'][0]
+        self.assertLessEqual(len(row['task_intent']), 1200)
+        self.assertEqual(long_description, row['task_intent_source'])
+
+    def test_task_row_reconciliation_audit_is_not_forwarded_to_synthesis_payload(self):
+        atomic_json(self.analysis / 'task-views/tasks_gameplay.json', [
+            {'taskmaster_id': 7, 'description': 'Known', 'semantic_refs': ['RQ-1']}])
+        self.refresh_analysis_index()
+        task_rows = integrity.task_view_payload_chunks(self.root)[0]
+        path = next(iter(task_rows))
+        payload = {'schema_version': 'newrouge.capability-batch-analysis.v1', 'batch_index': 1,
+                   'source_block_analyses': [], 'requirement_analyses': [],
+                   'task_view_analyses': [
+                       {'task_view_key': f'{path}#7', 'task_intent': 'known',
+                        'acceptance_signals': ['accepted'], 'verification_signals': ['verified'],
+                        'requirement_refs': []},
+                       {'task_view_key': f'{path}#999', 'task_intent': 'unknown',
+                        'acceptance_signals': ['accepted'], 'verification_signals': ['verified'],
+                        'requirement_refs': []}]}
+        result = api._validate_batch_analysis(payload,
+            {'schema_version': 'newrouge.capability-model-batch.v1', 'batch_index': 1,
+             'blocks': [], 'requirements': []}, task_rows)
+        audit = api._take_task_view_reconciliation(result)
+        self.assertEqual([f'{path}#999'], audit['ignored_unknown_task_rows'])
+        self.assertNotIn('_task_view_reconciliation', result)
 
     def test_task_batch_discards_mixed_source_and_requirement_rows(self):
         atomic_json(self.analysis / 'task-views/tasks_gameplay.json', [
@@ -570,6 +726,65 @@ class CapabilityInputIntegrityTests(unittest.TestCase):
                 self.assertNotIn(block['raw_text'], responses[-1]['prompt'])
         self.assertEqual(len(batches) + 2, len(receipt['input_integrity']))
 
+    def test_batch_validation_retries_only_failed_batch_and_records_attempts(self):
+        """A malformed batch is retried locally; accepted batches are not replayed."""
+        responses = []
+        batches = [load_json(self.analysis / row['path']) for row in self.index['batches']]
+
+        def model(**kwargs):
+            responses.append(kwargs)
+            # First source batch returns a deterministic coverage error. The
+            # correction request then returns the valid first batch. The next
+            # source batch and final synthesis each run once.
+            if len(responses) == 1:
+                value = self.batch_fixture_payload(batches[0])
+                value['requirement_analyses'] = []
+            elif len(responses) == 2:
+                value = self.batch_fixture_payload(batches[0])
+            elif len(responses) == 3:
+                value = self.batch_fixture_payload(batches[1])
+            else:
+                value = {}
+            return SimpleNamespace(id=f'fixture-{len(responses)}', status='completed',
+                                   output_text=json.dumps(value))
+
+        with patch.object(api, '_openai_client', return_value=object()), \
+             patch.object(api, '_response', side_effect=model):
+            self.refresh_analysis_index()
+            receipt = api._run_batched_session(workspace=self.root, prompt_path=self.prompt,
+                output_path=self.output, timeout_sec=30, max_bytes=8 * 1024 * 1024,
+                max_input_tokens=30000)
+
+        self.assertEqual(len(batches) + 2, receipt['model_request_count'])
+        self.assertEqual('accepted', receipt['batch_attempts'][0]['status'])
+        self.assertEqual(2, receipt['batch_attempts'][0]['attempts'])
+        self.assertEqual('batch_validation', receipt['batch_attempts'][0]['retry_errors'][0]['error_type'])
+        self.assertEqual('accepted', receipt['batch_attempts'][1]['status'])
+        self.assertEqual(1, receipt['batch_attempts'][1]['attempts'])
+        first_raw = batches[0]['blocks'][0]['raw_text']
+        self.assertIn(first_raw, responses[0]['prompt'])
+        self.assertIn(first_raw, responses[1]['prompt'])
+        self.assertIn('BATCH CORRECTION RETRY', responses[1]['prompt'])
+        second_raw = batches[1]['blocks'][0]['raw_text']
+        self.assertIn(second_raw, responses[2]['prompt'])
+        self.assertNotIn(second_raw, responses[0]['prompt'])
+
+    def test_batch_retry_exhaustion_persists_failure_audit(self):
+        def rejected(**kwargs):
+            raise RuntimeError('runner_transport: fixture failure')
+        with patch.object(api, '_openai_client', return_value=object()), \
+             patch.object(api, '_response', side_effect=rejected):
+            self.refresh_analysis_index()
+            with self.assertRaisesRegex(ValueError, 'retry_exhausted:batch-001'):
+                api._run_batched_session(workspace=self.root, prompt_path=self.prompt,
+                    output_path=self.output, timeout_sec=30, max_bytes=8 * 1024 * 1024,
+                    max_input_tokens=30000)
+        report = load_json(self.root / 'runner-input-integrity.json')
+        self.assertEqual('failed', report['status'])
+        self.assertEqual('runner_transport', report['error_type'])
+        self.assertEqual('failed', report['batch_attempts'][0]['status'])
+        self.assertEqual('runner_transport', report['batch_attempts'][0]['error_type'])
+
     def test_api_disables_truncation_and_bounds_acknowledgement_growth(self):
         request = unittest.mock.Mock()
         request.responses.create.return_value = SimpleNamespace(id='fixture-response')
@@ -625,6 +840,20 @@ class CapabilityInputIntegrityTests(unittest.TestCase):
         self.assertIn(self.ledger['blocks'][0]['raw_text'], responses[0]['prompt'])
         self.assertEqual(8192, responses[0]['max_output_tokens'])
         self.assertEqual(32000, responses[-1]['max_output_tokens'])
+
+    def test_multiple_batches_require_explicit_runner_support_before_dispatch(self):
+        import plan_capabilities as planner
+        for advertised in (None, False, "true"):
+            with self.subTest(advertised=advertised):
+                state = {'formal_ready': True, 'model_batch_count': 1, 'task_view_chunk_count': 1}
+                info = {} if advertised is None else {'supports_batched_session': advertised}
+                with patch.object(planner, '_load_run', return_value=(self.root / 'run.json', state)), \
+                     patch.object(planner, '_recover_interrupted_attempts'), \
+                     patch.object(planner, 'inspect_isolated_runner', return_value=info), \
+                     patch.object(planner, 'run_isolated_model') as model:
+                    with self.assertRaisesRegex(ValueError, 'supports_batched_session=true'):
+                        planner.generate(self.root, run_id='fixture', runner=Path(codex.__file__), timeout_sec=30)
+                    model.assert_not_called()
 
     def test_deterministic_input_error_stops_all_candidate_retries(self):
         import plan_capabilities as planner
