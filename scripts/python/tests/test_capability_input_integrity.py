@@ -143,7 +143,16 @@ class CapabilityInputIntegrityTests(unittest.TestCase):
         self.assertTrue(any('FULL_DESCRIPTION_END' in value for value in task_inputs))
         self.assertTrue(any('MANDATORY_ACCEPTANCE_END' in value for value in task_inputs))
         self.assertIn('task_view_analyses', self.codex_inputs[-1])
-        self.assertIn('"task_intent":"fixture intent"', self.codex_inputs[-1])
+        synthesis = self.codex_inputs[-1]
+        marker = '===== BATCH ANALYSIS: task-views-001 =====\n'
+        analysis = json.loads(synthesis.split(marker, 1)[1].split('\n===== END BATCH ANALYSIS:', 1)[0])
+        table = analysis['task_view_analyses']
+        decoded = [dict(zip(table['columns'], row, strict=True)) for row in table['rows']]
+        self.assertEqual([{'task_view_key': 'task-views/tasks_gameplay.json#7',
+                           'task_intent': 'fixture intent',
+                           'acceptance_signals': ['acceptance analyzed'],
+                           'verification_signals': ['verification analyzed'],
+                           'requirement_refs': []}], decoded)
         self.assertNotIn('FULL_DESCRIPTION_END', self.codex_inputs[-1])
         self.assertEqual(receipt['input_integrity']['batch_count'] + 1,
                          receipt['runner_invocations'])
@@ -323,7 +332,7 @@ class CapabilityInputIntegrityTests(unittest.TestCase):
                       'verification_signals': ['Verified'], 'requirement_refs': ['RQ-1']}
         payload = {'schema_version': 'newrouge.capability-batch-analysis.v1', 'batch_index': 1,
                    'source_block_analyses': [], 'requirement_analyses': [],
-                   'task_view_analyses': [output_row, dict(output_row), {
+                   'task_view_analyses': [output_row, {**output_row, 'task_view_key': f'{path}#8'}, dict(output_row), {
                        **output_row, 'task_view_key': f'{path}#999'}]}
         result = api._validate_batch_analysis(payload,
             {'schema_version': 'newrouge.capability-model-batch.v1', 'batch_index': 1,
@@ -375,7 +384,7 @@ class CapabilityInputIntegrityTests(unittest.TestCase):
         self.assertTrue(reconciled['source_block_analyses'][0]['evidence_quotes'])
         self.assertIn(batch['blocks'][0]['raw_text'][:40], reconciled['source_block_analyses'][0]['evidence_quotes'][0])
 
-    def test_task_analysis_reconciles_missing_rows_from_authoritative_task_view(self):
+    def test_task_analysis_rejects_missing_rows_from_authoritative_task_view(self):
         atomic_json(self.analysis / 'task-views/tasks_gameplay.json', [
             {'taskmaster_id': 7, 'title': 'Task title', 'description': 'Authoritative intent',
              'acceptance': ['Authoritative acceptance'], 'test_refs': ['test_ref.gd'],
@@ -397,12 +406,16 @@ class CapabilityInputIntegrityTests(unittest.TestCase):
         atomic_json(self.analysis / 'task-views/tasks_gameplay.json', [row, row2])
         self.refresh_analysis_index()
         task_rows = integrity.task_view_payload_chunks(self.root)[0]
-        result = api._validate_batch_analysis(payload,
-            {'schema_version': 'newrouge.capability-model-batch.v1', 'batch_index': 1,
-             'blocks': [], 'requirements': []}, task_rows)
-        self.assertEqual(2, len(result['task_view_analyses']))
-        self.assertIn('Second authoritative intent',
-                      json.dumps(result['task_view_analyses'], ensure_ascii=False))
+        batch = {'schema_version': 'newrouge.capability-model-batch.v1', 'batch_index': 1,
+                 'blocks': [], 'requirements': []}
+        with self.assertRaisesRegex(ValueError, 'capability_batch_analysis_task_view_coverage_missing'):
+            api._validate_batch_analysis(payload, batch, task_rows)
+        payload['task_view_analyses'] = []
+        with self.assertRaisesRegex(ValueError, 'capability_batch_analysis_task_view_coverage_missing'):
+            api._validate_batch_analysis(payload, batch, task_rows)
+        import jsonschema
+        schema = api._batch_analysis_schema(batch, task_rows)
+        self.assertTrue(list(jsonschema.Draft202012Validator(schema).iter_errors(payload)))
 
     def test_long_authoritative_task_intent_is_preserved_outside_bounded_summary(self):
         long_description = 'FULL_AUTHORITATIVE_INTENT_' + ('x' * 1400)
@@ -567,7 +580,7 @@ class CapabilityInputIntegrityTests(unittest.TestCase):
         report = load_json(self.root / 'runner-input-integrity.json')
         self.assertEqual('blocked', report['status'])
         self.assertFalse(report['model_invoked'])
-        self.assertIn('complete_request_chars', report['reason'])
+        self.assertIn('complete_request_chars', report['error'])
         self.assertIn('coverage', report)
 
     def test_non_ascii_token_budget_is_checked_before_starting_codex(self):
@@ -811,12 +824,49 @@ class CapabilityInputIntegrityTests(unittest.TestCase):
         self.assertIn('maxLength', requirement_properties['user_outcome'])
 
     def test_synthesis_reservation_respects_actual_batch_response_budget(self):
-        for runner in (api, codex):
-            with self.subTest(runner=runner.__name__):
-                placeholder = runner._bounded_analysis_placeholder('batch-001', 8192)
-                self.assertEqual('batch-001', placeholder[0])
-                self.assertEqual(49152, len(placeholder[1]))
-                self.assertLess(len(placeholder[1]), 8192 * 20)
+        report = api._synthesis_capacity_report('fixed synthesis context',
+            analysis_budgets=[('batch-001', 8192), ('task-views-001', 3072)],
+            max_bytes=8 * 1024 * 1024, max_input_tokens=96000, reserved_tokens=16000)
+        self.assertGreaterEqual(report['input_token_estimate'], 8192 + 3072)
+        self.assertEqual(report['analysis_output_token_allowance'], 8192 + 3072)
+        with self.assertRaisesRegex(ValueError, 'runner_context_budget_exceeded'):
+            api._synthesis_capacity_report('fixed synthesis context',
+                analysis_budgets=[('batch-001', 90000)],
+                max_bytes=8 * 1024 * 1024, max_input_tokens=96000, reserved_tokens=16000)
+
+    def test_synthesis_analysis_tables_preserve_every_field_and_value(self):
+        value = self.batch_fixture_payload(load_json(self.analysis / self.index['batches'][0]['path']))
+        value['source_block_analyses'][0]['additional_evidence'] = {'nested': ['full text', None]}
+        value['task_view_analyses'] = [{'task_view_key': 'views#1', 'task_intent': '全文',
+            'acceptance_signals': ['one', 'two'], 'verification_signals': ['test.cs'],
+            'requirement_refs': ['RQ-1']}]
+        packed = api._pack_analysis_tables(value)
+        for field in ('source_block_analyses', 'requirement_analyses', 'task_view_analyses'):
+            table = packed[field]
+            decoded = [dict(zip(table['columns'], row, strict=True)) for row in table['rows']]
+            self.assertEqual(value[field], decoded)
+        self.assertEqual(value['schema_version'], packed['schema_version'])
+
+    def test_synthesis_base_drops_preparation_only_analysis_index_metadata(self):
+        index = {'analysis_identity_sha256': 'sha256:test', 'files': {'tasks.json': 'sha256:tasks'},
+                 'authority_inputs': {'path': 'preparation-only-marker'},
+                 'blinding_transformations': ['preparation-only-marker']}
+        base = ('===== FILE: analysis-input/analysis-index.json =====\n' + json.dumps(index)
+                + '\n===== END FILE: analysis-input/analysis-index.json =====\n'
+                '===== FILE: analysis-input/readiness-summary.json =====\n{"formal_ready":true,"tasks":[{"task_id":"1","readiness_sha256":"x","readiness_path":"path","future_evidence":"kept"}]}\n'
+                '===== END FILE: analysis-input/readiness-summary.json =====\n'
+                '===== FILE: analysis-input/task-master.json =====\n{"master":{}}\n'
+                '===== END FILE: analysis-input/task-master.json =====\nFULL_READINESS')
+        result = api._synthesis_base(base)
+        self.assertIn('analysis-index.json', result)
+        self.assertIn('sha256:test', result)
+        self.assertIn('sha256:tasks', result)
+        self.assertIn('FULL_READINESS', result)
+        self.assertNotIn('preparation-only-marker', result)
+        self.assertNotIn('readiness_sha256', result)
+        self.assertIn('"master":{}', result)
+        self.assertIn('"future_evidence":"kept"', result)
+        self.assertIn('"readiness_path":"path"', result)
 
     def test_api_happy_path_receipt_covers_batches_and_original_text(self):
         responses = []

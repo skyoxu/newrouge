@@ -12,13 +12,16 @@ PYTHON = ROOT / "scripts" / "python"
 if str(PYTHON) not in sys.path:
     sys.path.insert(0, str(PYTHON))
 
-from _planning_skill_common import scrub_capability_answers, validate_runner_description
+from _planning_skill_common import scrub_capability_answers, validate_runner_description, validate_output_schema
 from plan_capabilities import (
     CANDIDATE_PROMPT,
     REVIEW_PROMPT,
     build_alignment,
     validate_candidate,
     _finish_attempt,
+    _candidate_retry_coverage_details,
+    candidate_output_schema,
+    normalize_candidate_output,
     _manifest_artifact_sha,
 )
 
@@ -91,6 +94,48 @@ class CapabilityPlanningContractTests(unittest.TestCase):
             validate_candidate(value, self.ledger, self.semantics, self.analysis),
         )
 
+    def test_candidate_output_schema_requires_every_source_accounting_row(self) -> None:
+        schema = candidate_output_schema(self.ledger, self.semantics)
+        accounting = schema["properties"]["source_accounting"]
+        self.assertEqual(["0", "1"], accounting["required"])
+        self.assertFalse(accounting["additionalProperties"])
+        self.assertEqual(["RQ-1", "RQ-2"], schema["$defs"]["requirementId"]["enum"])
+        self.assertEqual(["0", "1"], schema["$defs"]["sourceBlockId"]["enum"])
+        self.assertEqual(["requirement_id", "rationale"], schema["properties"]["multi_membership_rationales"]["items"]["required"])
+        with tempfile.TemporaryDirectory() as directory:
+            schema_path = Path(directory) / "schema.json"
+            output_path = Path(directory) / "candidate.json"
+            schema_path.write_text(__import__("json").dumps(schema), encoding="utf-8")
+            transport = self.candidate()
+            transport["capabilities"][0]["source_block_ids"] = ["0"]
+            transport["capabilities"][1]["source_block_ids"] = ["1"]
+            transport["source_accounting"] = {"SB-1": {"disposition": "capability", "capability_ids": [], "rationale": "x"}}
+            transport["multi_membership_rationales"] = [{"requirement_id": "RQ-1", "rationale": "ok"}]
+            output_path.write_text(__import__("json").dumps(transport), encoding="utf-8")
+            with self.assertRaises(ValueError):
+                validate_output_schema(output_path, schema_path)
+
+    def test_candidate_output_schema_rejects_unknown_source_block_reference(self) -> None:
+        schema = candidate_output_schema(self.ledger, self.semantics)
+        value = self.candidate()
+        value["capabilities"][0]["source_block_ids"] = ["9"]
+        with tempfile.TemporaryDirectory() as directory:
+            schema_path = Path(directory) / "schema.json"
+            output_path = Path(directory) / "candidate.json"
+            schema_path.write_text(__import__("json").dumps(schema), encoding="utf-8")
+            output_path.write_text(__import__("json").dumps(value), encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "'9' is not one of"):
+                validate_output_schema(output_path, schema_path)
+
+    def test_candidate_transport_rationale_rows_normalize_to_stable_candidate_map(self) -> None:
+        value = self.candidate()
+        value["capabilities"][0]["source_block_ids"] = ["0"]
+        value["capabilities"][1]["source_block_ids"] = ["1"]
+        value["multi_membership_rationales"] = [{"requirement_id": "RQ-1", "rationale": "Shared outcome"}]
+        normalized = normalize_candidate_output(value, self.ledger)
+        self.assertEqual({"RQ-1": "Shared outcome"}, normalized["multi_membership_rationales"])
+        self.assertEqual(["SB-1"], normalized["capabilities"][0]["source_block_ids"])
+
     def test_candidate_requires_multi_membership_rationale(self) -> None:
         value = self.candidate()
         value["capabilities"][1]["requirement_ids"].append("RQ-1")
@@ -101,6 +146,25 @@ class CapabilityPlanningContractTests(unittest.TestCase):
             "multi_membership_rationale_missing:RQ-1",
             validate_candidate(value, self.ledger, self.semantics, self.analysis),
         )
+
+    def test_retry_coverage_details_name_exact_missing_and_duplicate_sources(self) -> None:
+        value = self.candidate()
+        value["source_accounting"] = [
+            {"block_id": "SB-1", "disposition": "capability", "capability_ids": [], "rationale": "x"},
+            {"block_id": "SB-1", "disposition": "context", "capability_ids": [], "rationale": "duplicate"},
+        ]
+        details = _candidate_retry_coverage_details(
+            ["source_accounting_incomplete_or_duplicate"], self.ledger, value)
+        self.assertTrue(any("SB-2" in row for row in details))
+        self.assertTrue(any("SB-1" in row and "Duplicate" in row for row in details))
+
+    def test_retry_coverage_details_name_rationale_and_unknown_requirement_ids(self) -> None:
+        details = _candidate_retry_coverage_details([
+            "multi_membership_rationale_missing:RQ-1",
+            "unknown_requirement:FR-T0044",
+        ], self.ledger, self.candidate())
+        self.assertTrue(any("RQ-1" in row and "rationales" in row for row in details))
+        self.assertTrue(any("FR-T0044" in row and "authoritative" in row for row in details))
 
     def test_existing_exact_membership_reuses_id_but_changed_membership_blocks(self) -> None:
         candidate = self.candidate()

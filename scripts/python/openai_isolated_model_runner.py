@@ -160,6 +160,8 @@ def batched_workspace_parts(
     total = 0
     for path in _safe_files(root, excluded):
         rel = path.resolve().relative_to(root).as_posix()
+        if path.name == "candidate-schema.json":
+            continue
         if rel.startswith(("batch-schemas/", "batch-analyses/")):
             continue
         if rel.startswith("analysis-input/sources/"):
@@ -260,8 +262,8 @@ def _independent_batch_requests(
             "For each Source Block, capture its concise meaning and concrete boundary/ownership "
             "signals. Do not reproduce source text verbatim; evidence quotes are optional and "
             "will be bound mechanically from the authoritative Source Block. For each Requirement, preserve intent, user-visible outcome, and the exact "
-            "Source Block IDs listed in its row. Analyze every complete Task View row below and "
-            "preserve its identity, task intent, Acceptance/test meaning and exact Requirement refs. "
+            "Source Block IDs listed in its row. Task Views are analyzed in separate requests; "
+            "return task_view_analyses as an empty array for this source-only batch. "
             "This is evidence analysis, not the final grouping.",
             section,
             f"Return JSON only. This is batch {index}/{len(batches)} ({rel}).",
@@ -312,7 +314,7 @@ def _batch_analysis_schema(batch: dict[str, Any],
                     "source_block_ids": {"type": "array", "maxItems": len(source_refs), "items": source_ref_schema},
                 },
             }, "minItems": len(requirement_ids), "maxItems": len(requirement_ids)},
-            "task_view_analyses": {"type": "array", "minItems": 0,
+            "task_view_analyses": {"type": "array", "minItems": len(task_view_rows),
                 "maxItems": len(task_view_rows), "items": {
                     "type": "object", "additionalProperties": False,
                     "required": ["task_view_key", "task_intent", "acceptance_signals",
@@ -405,9 +407,12 @@ def _validate_batch_analysis(
             ignored_duplicate.add(key)
             continue
         normalized[key] = row
+    missing_task_keys = sorted(set(expected_task_views).difference(normalized))
+    if missing_task_keys:
+        raise ValueError("capability_batch_analysis_task_view_coverage_missing:" + ",".join(missing_task_keys))
     reconciled_task_rows: list[dict[str, Any]] = []
     for key, source in expected_task_views.items():
-        row = dict(normalized.get(key) or {})
+        row = dict(normalized[key])
         expected_refs = sorted(_task_view_refs(source))
         row["task_view_key"] = key
         row["requirement_refs"] = expected_refs
@@ -546,6 +551,7 @@ def _coverage_checklist(workspace: Path) -> str:
     return "\n\nMACHINE-GENERATED FINAL COVERAGE CHECKLIST (authoritative IDs):\n" + json.dumps({
         "active_delivery_requirement_ids": requirements,
         "source_block_ids": blocks,
+        "source_accounting_index": {str(index): block_id for index, block_id in enumerate(blocks)},
     }, ensure_ascii=False, separators=(",", ":"))
 
 
@@ -556,10 +562,15 @@ def _synthesis_request(
 ) -> str:
     sections = []
     for label, output in batch_outputs:
+        output = json.dumps(_pack_analysis_tables(json.loads(output)),
+                            ensure_ascii=False, separators=(",", ":"))
         sections.append(f"===== BATCH ANALYSIS: {label} =====\n{output.rstrip()}\n===== END BATCH ANALYSIS: {label} =====")
     return "\n\n".join([
         original_prompt,
-        base,
+        _synthesis_base(base),
+        "Analysis arrays use lossless tables: columns lists the original JSON property names; "
+        "each rows entry contains their values in the same order. Every field and value is "
+        "preserved. Read every row, including full evidence_quotes and Acceptance/test signals.",
         "The following are independent analyses produced from every authoritative source batch.",
         "Synthesize the final Capability candidate now. Preserve every exact Source Block and "
         "active delivery Requirement ID using the machine checklist in the original instruction. "
@@ -581,14 +592,80 @@ def _measured_request_text(prompt: str, schema: dict[str, Any] | None, *,
         envelope, ensure_ascii=False, separators=(",", ":")) + "\n===== END STRUCTURED OUTPUT SCHEMA ====="
 
 
-def _bounded_analysis_placeholder(label: str, token_budget: int) -> tuple[str, str]:
-    if token_budget < 1:
+def _pack_analysis_tables(value: dict[str, Any]) -> dict[str, Any]:
+    """Encode repeated object keys once without dropping any evidence fields."""
+    result = dict(value)
+    for field in ("source_block_analyses", "requirement_analyses", "task_view_analyses"):
+        rows = value.get(field)
+        if not isinstance(rows, list) or not rows or not all(isinstance(row, dict) for row in rows):
+            continue
+        # Only pack homogeneous rows. Heterogeneous/extended rows remain whole
+        # objects so an absent property never becomes an explicit null value.
+        columns = list(rows[0])
+        if not all(set(row) == set(columns) for row in rows):
+            continue
+        result[field] = {"columns": columns, "rows": [[row[key] for key in columns] for row in rows]}
+    return result
+
+
+def _synthesis_base(base: str) -> str:
+    """Project the validated preparation index; all semantic evidence stays full."""
+    marker = "===== FILE: analysis-input/analysis-index.json ====="
+    end = "===== END FILE: analysis-input/analysis-index.json ====="
+    if marker not in base or end not in base:
+        return base
+    start = base.index(marker)
+    finish = base.index(end, start)
+    index = json.loads(base[start + len(marker):finish])
+    # authority_inputs and blinding_transformations are machine provenance,
+    # not Requirement/Task/readiness semantics. The source artifacts remain
+    # bound by identity and files, and validate_batches still checks originals.
+    projected = {key: value for key, value in index.items() if key not in {
+        "authority_inputs", "blinding_transformations", "model_batch_index", "blinded_fields"}}
+    replacement = marker + "\n" + json.dumps(projected, ensure_ascii=False, separators=(",", ":")) + "\n" + end
+    projected_base = base[:start] + replacement + base[finish + len(end):]
+    readiness_marker = "===== FILE: analysis-input/readiness-summary.json ====="
+    readiness_end = "===== END FILE: analysis-input/readiness-summary.json ====="
+    if readiness_marker in projected_base and readiness_end in projected_base:
+        rs = json.loads(projected_base[projected_base.index(readiness_marker) + len(readiness_marker):
+                                      projected_base.index(readiness_end, projected_base.index(readiness_marker))])
+        # Hashes protect the original evidence on disk; the model compares
+        # readiness states, reasons and paths, not random digest characters.
+        # Retain every other field, including unknown future semantic fields.
+        compact = dict(rs)
+        compact['tasks'] = [
+            {key: value for key, value in row.items()
+             if key not in {'readiness_sha256', 'input_fingerprint_sha256'}}
+            if isinstance(row, dict) else row for row in rs.get('tasks', [])]
+        rs_start = projected_base.index(readiness_marker)
+        rs_end = projected_base.index(readiness_end, rs_start)
+        replacement = readiness_marker + "\n" + json.dumps(compact, ensure_ascii=False, separators=(",", ":")) + "\n" + readiness_end
+        projected_base = projected_base[:rs_start] + replacement + projected_base[rs_end + len(readiness_end):]
+    return projected_base
+
+
+def _synthesis_capacity_report(fixed_text: str, *, analysis_budgets: list[tuple[str, int]],
+                               max_bytes: int, max_input_tokens: int,
+                               reserved_tokens: int) -> dict[str, Any]:
+    """Forecast analysis tokens numerically, never by tokenizing repetitive filler.
+
+    This is a planning allowance, not a bound on CLI responses or authority
+    reconciliation. The complete actual synthesis request is measured again
+    before dispatch, including all normalized evidence and wrappers.
+    """
+    if any(tokens < 1 for _label, tokens in analysis_budgets):
         raise ValueError("capability_batch_output_budget_invalid")
-    # Each request enforces max_output_tokens. Reserve a conservative six
-    # characters per output token rather than expanding every schema field to
-    # its theoretical JSON-escape maximum. The latter can be many times larger
-    # than a response the transport allows, blocking valid complete inputs.
-    return label, "x" * (token_budget * 6)
+    allowance = sum(tokens for _label, tokens in analysis_budgets)
+    headroom = (allowance * 11 + 9) // 10
+    report = measure_request(fixed_text, max_bytes=max_bytes, max_input_tokens=max_input_tokens,
+                             reserved_tokens=reserved_tokens + headroom)
+    report.update(fixed_input_token_estimate=report["input_token_estimate"],
+                  input_token_estimate=report["input_token_estimate"] + headroom,
+                  reserved_continuation_tokens=reserved_tokens,
+                  analysis_output_token_allowance=allowance,
+                  analysis_token_allowance_with_headroom=headroom,
+                  capacity_kind="forecast_actual_request_remeasured_before_dispatch")
+    return report
 
 
 def _run_batched_session(
@@ -651,20 +728,18 @@ def _run_batched_session(
         text = "\n\n".join([base,
             "Analyze every complete Task View row below as auxiliary ownership and acceptance evidence. "
             "Preserve task identity, intent, Acceptance/test meaning, and exact Requirement refs. "
-            "Do not infer Capability grouping. Missing rows are mechanically restored from the "
-            "authoritative task view after this response.",
+            "Do not infer Capability grouping or omit any row. This is a task-only batch: "
+            "return source_block_analyses and requirement_analyses as empty arrays.",
             "===== COMPLETE TASK-VIEW ROWS =====\n" + json.dumps(task_rows, ensure_ascii=False, separators=(",", ":"))])
         label = f"task-views-{index:03d}"
         task_schema = _batch_analysis_schema(payload, task_rows)
         request_texts.append((label, text, task_schema, task_output_tokens,
                               "newrouge_capability_batch_analysis", payload, task_rows))
     checklist = _coverage_checklist(workspace)
-    # Reserve against each request's actual max_output_tokens, not the
-    # theoretical schema maximum (which may be far larger than the response
-    # budget and produce an impossible synthesis preflight).
+    analysis_budgets = [(label, tokens) for label, _text, _batch_schema, tokens,
+                        _name, _payload, _task_views in request_texts]
     synthesis_text = _synthesis_request(original_prompt=original_prompt, base=base,
-        batch_outputs=[_bounded_analysis_placeholder(label, tokens)
-        for label, _text, _batch_schema, tokens, _name, _payload, _task_views in request_texts],
+        batch_outputs=[(label, "{}") for label, _tokens in analysis_budgets],
         schema=schema) + checklist
     schema_text = json.dumps({"text": {"format": {"type": "json_schema", "strict": True, "schema": schema}}},
                              ensure_ascii=False) if schema else ""
@@ -680,11 +755,10 @@ def _run_batched_session(
                 task_view_coverage=task_view_coverage, requests=preflight_requests,
                 batch_attempts=batch_attempts, status='blocked', model_invoked=False, error=exc)
             raise
-    # The placeholder already accounts for the bounded intermediate analyses in
-    # the synthesis input. Reserve only the final response continuation here.
     try:
-        preflight_requests.append({"label": "synthesis-capacity", **measure_request(
+        preflight_requests.append({"label": "synthesis-capacity", **_synthesis_capacity_report(
             _measured_request_text(synthesis_text, schema, schema_name="newrouge_capability_candidate"),
+            analysis_budgets=analysis_budgets,
             max_bytes=max_bytes, max_input_tokens=max_input_tokens,
             reserved_tokens=final_output_tokens)})
     except (ValueError, OSError, RuntimeError, TimeoutError, json.JSONDecodeError) as exc:

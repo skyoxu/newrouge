@@ -357,14 +357,15 @@ Required top-level fields:
 - analysis_identity_sha256 (copy from analysis-input/analysis-index.json)
 - capabilities
 - ungrouped_requirements
+- multi_membership_rationales (array of {requirement_id, rationale} objects; include one for each Requirement assigned to multiple capabilities)
 - source_accounting
 - questions
 - generation_notes
 
-Each capability needs temporary capability_id beginning TMP-CAP-, title, description, boundary_rationale, requirement_ids, and source_block_ids.
-Every source block in source-blocks.v1.json must appear exactly once in source_accounting, with block_id, disposition, capability_ids, and rationale.
+Each capability needs temporary capability_id beginning TMP-CAP-, title, description, boundary_rationale, requirement_ids, and source_block_ids. In the structured response, source_block_ids use the zero-based string indexes from SOURCE_ACCOUNTING_INDEX; the local runner restores authoritative Block IDs before validation and publication.
+source_accounting is an object keyed by the zero-based string index in SOURCE_ACCOUNTING_INDEX. Include every index exactly once; its value contains disposition, capability_ids, and rationale. The index maps to the exact authoritative Source Block ID.
 Every active delivery-relevant Requirement must either belong to one or more capabilities or appear in ungrouped_requirements with a reason.
-If a Requirement belongs to multiple capabilities, add multi_membership_rationales at top level mapping that Requirement ID to a non-empty rationale.
+If a Requirement belongs to multiple capabilities, add a multi_membership_rationales row with its exact Requirement ID and a non-empty rationale.
 Do not modify or invent Requirements, Tasks, Acceptance, contracts, or source text. Report upstream gaps in questions instead.
 
 Mandatory completion procedure (do this before writing the final JSON):
@@ -373,6 +374,114 @@ Mandatory completion procedure (do this before writing the final JSON):
 3. Compare the checklist against the union of every capability.requirement_ids and every ungrouped_requirements entry; repeat until the difference is empty.
 4. Perform the same exact-once comparison for source_accounting.block_id against source-blocks.v1.json. The final answer is invalid if either comparison is incomplete or duplicated.
 """
+
+
+def candidate_output_schema(ledger: dict[str, Any], semantics: dict[str, Any]) -> dict[str, Any]:
+    """Build the structural candidate schema from the prepared authority.
+
+    JSON Schema cannot prove cross-capability set equality, so validate_candidate
+    remains authoritative for semantic checks. Required object keys force one
+    accounting entry for every authoritative Source Block ID.
+    """
+    block_ids = sorted({str(row.get("block_id")) for row in ledger.get("blocks", [])
+                       if isinstance(row, dict) and str(row.get("block_id") or "").strip()})
+    requirement_ids = sorted({str(row.get("requirement_id")) for row in semantics.get("requirements", [])
+                              if isinstance(row, dict) and str(row.get("requirement_id") or "").strip()})
+    string_array = {"type": "array", "items": {"type": "string"}}
+    requirement_ref = {"$ref": "#/$defs/requirementId"}
+    block_ref = {"$ref": "#/$defs/sourceBlockId"}
+    capability = {
+        "type": "object", "additionalProperties": False,
+        "required": ["capability_id", "title", "description", "boundary_rationale",
+                      "requirement_ids", "source_block_ids"],
+        "properties": {
+            "capability_id": {"type": "string"},
+            "title": {"type": "string"},
+            "description": {"type": "string"},
+            "boundary_rationale": {"type": "string"},
+            "requirement_ids": {"type": "array", "items": requirement_ref},
+            "source_block_ids": {"type": "array", "items": block_ref},
+        },
+    }
+    accounting_row = {
+        "type": "object", "additionalProperties": False,
+        "required": ["disposition", "capability_ids", "rationale"],
+        "properties": {
+            "disposition": {"type": "string"},
+            "capability_ids": string_array,
+            "rationale": {"type": "string"},
+        },
+    }
+    return {
+        "type": "object", "additionalProperties": False,
+        "required": ["schema_version", "analysis_identity_sha256", "capabilities",
+                      "ungrouped_requirements", "multi_membership_rationales",
+                      "source_accounting", "questions", "generation_notes"],
+        "properties": {
+            "schema_version": {"type": "string", "enum": [CANDIDATE_SCHEMA]},
+            "analysis_identity_sha256": {"type": "string"},
+            "capabilities": {"type": "array", "items": capability},
+            "ungrouped_requirements": {"type": "array", "items": {
+                "type": "object", "additionalProperties": False,
+                "required": ["requirement_id", "reason"],
+                "properties": {"requirement_id": requirement_ref,
+                               "reason": {"type": "string"}},
+            }},
+            "multi_membership_rationales": {"type": "array", "items": {
+                "type": "object", "additionalProperties": False,
+                "required": ["requirement_id", "rationale"],
+                "properties": {"requirement_id": requirement_ref,
+                               "rationale": {"type": "string"}},
+            }},
+            "source_accounting": {"type": "object",
+                "properties": {str(index): {"$ref": "#/$defs/accountingRow"}
+                               for index, _block_id in enumerate(block_ids)},
+                "required": [str(index) for index, _block_id in enumerate(block_ids)],
+                "additionalProperties": False},
+            "questions": string_array,
+            "generation_notes": string_array,
+        },
+        "$defs": {"accountingRow": accounting_row,
+                   "requirementId": {"type": "string", "enum": requirement_ids},
+                   "sourceBlockId": {"type": "string", "enum": [str(index) for index in range(len(block_ids))]}},
+    }
+
+
+def normalize_candidate_output(candidate: dict[str, Any], ledger: dict[str, Any]) -> dict[str, Any]:
+    """Convert strict-schema transport objects into stable candidate fields."""
+    result = deepcopy(candidate)
+    accounting = result.get("source_accounting")
+    block_ids = sorted({str(row.get("block_id")) for row in ledger.get("blocks", [])
+                       if isinstance(row, dict) and str(row.get("block_id") or "").strip()})
+    for capability in result.get("capabilities", []):
+        if not isinstance(capability, dict) or not isinstance(capability.get("source_block_ids"), list):
+            continue
+        source_indexes = capability["source_block_ids"]
+        if any(not str(index).isdigit() or int(index) >= len(block_ids) for index in source_indexes):
+            raise ValueError("capability_source_block_index_invalid")
+        capability["source_block_ids"] = [block_ids[int(index)] for index in source_indexes]
+    if isinstance(accounting, dict):
+        expected_keys = {str(index) for index in range(len(block_ids))}
+        if set(accounting) != expected_keys:
+            raise ValueError("source_accounting_index_coverage_mismatch")
+        result["source_accounting"] = [
+            {"block_id": block_ids[index], **accounting[str(index)]}
+            for index in range(len(block_ids))
+        ]
+    rows = result.get("multi_membership_rationales")
+    if not isinstance(rows, list):
+        return result
+    rationales: dict[str, str] = {}
+    for row in rows:
+        if not isinstance(row, dict):
+            raise ValueError("multi_membership_rationales_invalid_row")
+        requirement_id = str(row.get("requirement_id") or "").strip()
+        rationale = str(row.get("rationale") or "").strip()
+        if not requirement_id or not rationale or requirement_id in rationales:
+            raise ValueError("multi_membership_rationales_invalid_or_duplicate")
+        rationales[requirement_id] = rationale
+    result["multi_membership_rationales"] = rationales
+    return result
 
 
 REVIEW_PROMPT = """You are the independent Capability proposal reviewer.
@@ -512,6 +621,52 @@ def validate_candidate(candidate: dict[str, Any], ledger: dict[str, Any], semant
         if len(values) > 1 and not str(rationales.get(rid) or "").strip():
             errors.append(f"multi_membership_rationale_missing:{rid}")
     return sorted(set(errors))
+
+
+def _candidate_retry_coverage_details(
+    errors: list[str], ledger: dict[str, Any], candidate: dict[str, Any] | None,
+) -> list[str]:
+    """Expand aggregate validation failures into exact repair targets."""
+    if not isinstance(candidate, dict):
+        return []
+    details: list[str] = []
+    if "source_accounting_incomplete_or_duplicate" in errors:
+        expected = {
+            str(row.get("block_id")) for row in ledger.get("blocks", [])
+            if isinstance(row, dict) and str(row.get("block_id") or "").strip()
+        }
+        actual_rows = candidate.get("source_accounting")
+        actual = {
+            str(row.get("block_id")) for row in actual_rows
+            if isinstance(row, dict) and str(row.get("block_id") or "").strip()
+        } if isinstance(actual_rows, list) else set()
+        missing = sorted(expected - actual)
+        duplicates: list[str] = []
+        if isinstance(actual_rows, list):
+            seen: set[str] = set()
+            for row in actual_rows:
+                if not isinstance(row, dict):
+                    continue
+                block_id = str(row.get("block_id") or "").strip()
+                if block_id in seen and block_id:
+                    duplicates.append(block_id)
+                seen.add(block_id)
+        if missing:
+            details.append("Missing source_accounting.block_id values (include each exactly once): "
+                           + ",".join(missing))
+        if duplicates:
+            details.append("Duplicate source_accounting.block_id values (retain one row each): "
+                           + ",".join(sorted(set(duplicates))))
+    for error in errors:
+        if error.startswith("multi_membership_rationale_missing:"):
+            details.append("Add non-empty multi_membership_rationales entries for: "
+                           + error.split(":", 1)[1])
+    unknown = [error.split(":", 1)[1] for error in errors
+               if error.startswith("unknown_requirement:")]
+    if unknown:
+        details.append("Replace unknown requirement IDs with the exact authoritative IDs: "
+                       + ",".join(unknown))
+    return details
 
 
 def _copy_analysis(run_dir: Path, workspace: Path) -> None:
@@ -747,13 +902,17 @@ def _valid_candidate_reusable(
 
 
 def _preflight_model_input(run_path: Path, state: dict, *, runner: Path, runner_info: dict,
-                           workspace: Path, prompt_path: Path, output: Path, stage: str) -> None:
+                           workspace: Path, prompt_path: Path, output: Path, stage: str,
+                           output_schema: Path | None = None) -> None:
     """Deterministic input errors spend no model attempt or activity reservation."""
     if runner_info.get('supports_input_preflight') is not True:
         return
     prefix = [sys.executable, str(runner)] if runner.suffix.lower() == '.py' else [str(runner)]
-    result = subprocess.run([*prefix, '--preflight', '--workspace', str(workspace),
-        '--prompt-file', str(prompt_path), '--output', str(output)],
+    command = [*prefix, '--preflight', '--workspace', str(workspace),
+        '--prompt-file', str(prompt_path), '--output', str(output)]
+    if output_schema is not None:
+        command.extend(['--output-schema', str(output_schema)])
+    result = subprocess.run(command,
         capture_output=True, text=True, encoding='utf-8', timeout=60)
     if result.returncode:
         detail = (result.stdout or result.stderr).strip()
@@ -861,6 +1020,17 @@ def generate(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict
                         if item.startswith("delivery_requirements_unaccounted:")
                     ]
                     missing_requirements = ",".join(missing)
+                    repair_candidate = None
+                    if repair_seed_path is not None and repair_seed_path.is_file():
+                        try:
+                            repair_candidate = load_json(repair_seed_path, None)
+                        except (OSError, UnicodeError, json.JSONDecodeError):
+                            repair_candidate = None
+                    coverage_details = _candidate_retry_coverage_details(
+                        previous,
+                        load_json(run_dir / "analysis-input/source-blocks.v1.json", {}),
+                        repair_candidate,
+                    )
                     if retry_mode == "repair":
                         retry_guidance = (
                             "\n\nRETRY CORRECTION REQUIRED:\n"
@@ -875,6 +1045,9 @@ def generate(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict
                             "Regenerate the complete candidate from analysis-input in this fresh session.\n"
                         )
                     retry_guidance += "\n".join(f"- {item}" for item in previous[:20]) + "\n"
+                    if coverage_details:
+                        retry_guidance += "\nEXACT COVERAGE REPAIR TARGETS:\n"
+                        retry_guidance += "\n".join(f"- {item}" for item in coverage_details) + "\n"
                     if retry_mode == "repair" and repair_seed_path is not None:
                         retry_guidance += (
                             "A parsed copy of the previous candidate is available at "
@@ -896,8 +1069,13 @@ def generate(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict
                         )
             prompt_path.write_text(CANDIDATE_PROMPT + retry_guidance, encoding="utf-8", newline="\n")
             output = workspace / "candidate.json"
+            schema_path = workspace / "candidate-schema.json"
+            ledger = load_json(workspace / "analysis-input/source-blocks.v1.json", {})
+            semantics = load_json(workspace / "analysis-input/semantic-requirements.v1.json", {})
+            atomic_json(schema_path, candidate_output_schema(ledger, semantics))
             _preflight_model_input(run_path, state, runner=runner, runner_info=runner_info,
-                workspace=workspace, prompt_path=prompt_path, output=output, stage='generation')
+                workspace=workspace, prompt_path=prompt_path, output=output, stage='generation',
+                output_schema=schema_path)
             receipt: dict[str, Any] | None = None
             candidate: dict[str, Any] | None = None
             errors: list[str] = []
@@ -915,10 +1093,10 @@ def generate(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict
                     prompt_path=prompt_path,
                     output_path=output,
                     timeout_sec=attempt_timeout,
+                    output_schema=schema_path,
                 )
                 candidate = parse_model_json(output)
-                ledger = load_json(workspace / "analysis-input/source-blocks.v1.json", {})
-                semantics = load_json(workspace / "analysis-input/semantic-requirements.v1.json", {})
+                candidate = normalize_candidate_output(candidate, ledger)
                 errors = validate_candidate(
                     candidate, ledger, semantics, str(state["analysis_identity_sha256"])
                 )
