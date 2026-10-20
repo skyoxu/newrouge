@@ -810,10 +810,10 @@ def build_parser() -> argparse.ArgumentParser:
         help="run post-Chapter-5 Capability prepare/generate/review/alignment/apply stages",
     )
     p_cap.add_argument("--stage", required=True, choices=[
-        "prepare", "generate", "review", "preview-alignment",
+        "prepare", "generate", "review", "preview-alignment", "align",
         "apply", "validate-candidate", "status",
     ])
-    p_cap.add_argument("--repo-root", default=".")
+    p_cap.add_argument("--repo-root", default=str(Path(__file__).resolve().parents[2]))
     p_cap.add_argument("--run-id", required=True)
     p_cap.add_argument("--task-id", action="append", default=[])
     p_cap.add_argument("--allow-unready-draft", action="store_true")
@@ -822,12 +822,12 @@ def build_parser() -> argparse.ArgumentParser:
     p_cap.add_argument("--semantics", default="logs/ci/task-generation/semantic-requirements.v1.json")
     p_cap.add_argument("--model-batch-char-budget", type=int, default=None,
                        help="override the Capability planner's source batch size")
-    p_cap.add_argument("--candidate-retry-limit", type=int, default=1)
+    p_cap.add_argument("--candidate-retry-limit", type=int, default=2)
     p_cap.add_argument("--review-retry-limit", type=int, default=1)
     p_cap.add_argument("--candidate-budget-sec", type=int, default=2700)
     p_cap.add_argument("--total-budget-sec", type=int, default=13500)
     p_cap.add_argument("--request-limit", type=int, default=96)
-    p_cap.add_argument("--runner", default="scripts/python/codex_isolated_model_runner.py")
+    p_cap.add_argument("--runner", default=str(Path(__file__).resolve().with_name("codex_isolated_model_runner.py")))
     p_cap.add_argument("--timeout-sec", type=int, default=2700)
     p_cap.add_argument("--alignment-override", default="")
     p_cap.add_argument("--candidate", default="")

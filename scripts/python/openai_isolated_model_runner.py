@@ -632,6 +632,7 @@ def _synthesis_request(
     *, original_prompt: str, base: str,
     batch_outputs: list[tuple[str, str]],
     schema: dict[str, Any] | None = None,
+    review: bool = False,
 ) -> str:
     sections = []
     for label, output in batch_outputs:
@@ -645,10 +646,14 @@ def _synthesis_request(
         "each rows entry contains their values in the same order. Every field and value is "
         "preserved. Read every row, including full evidence_quotes and Acceptance/test signals.",
         "The following are independent analyses produced from every authoritative source batch.",
+        ("Produce the independent review report required by the original instruction. Compare the "
+        "fixed anonymous candidates against all supplied evidence. Never generate a replacement "
+        "candidate or merge proposals. Preserve comparative findings and authoritative evidence refs; "
+        "a no_valid_winner verdict is valid." if review else
         "Synthesize the final Capability candidate now. Preserve every exact Source Block and "
         "active delivery Requirement ID using the machine checklist in the original instruction. "
         "Do not invent evidence; when analyses disagree, use the IDs and boundary evidence and "
-        "report uncertainty in questions.",
+        "report uncertainty in questions."),
         *sections,
         "Return only the requested final JSON object; do not include markdown fences.",
     ])
@@ -746,28 +751,50 @@ def _synthesis_capacity_report(fixed_text: str, *, analysis_budgets: list[tuple[
     return report
 
 
-def _staged_synthesis_request(*, original_prompt, base, batch_outputs, previous, stage, stage_count):
+def _staged_synthesis_request(*, original_prompt, base, batch_outputs, previous, stage, stage_count,
+                              review=False):
     return (_synthesis_request(original_prompt=original_prompt, base=base,
-        batch_outputs=batch_outputs) + '\n\nCUMULATIVE SYNTHESIS STAGE ' + str(stage) + '/' + str(stage_count)
-        + '\nReturn a complete candidate, not a delta. Preserve all prior justified evidence and '
+        batch_outputs=batch_outputs, review=review) + '\n\nCUMULATIVE SYNTHESIS STAGE ' + str(stage) + '/' + str(stage_count)
+        + ('\nReturn a complete review report matching the original review schema. Preserve prior '
+        'source-fidelity, cohesion, boundary, multi-membership and navigation findings, tradeoffs '
+        'and evidence refs. Revise provisional judgments when new evidence warrants it. Any selection '
+        'is provisional until every batch has been reviewed. Do not generate a candidate.' if review else
+        '\nReturn a complete candidate, not a delta. Preserve all prior justified evidence and '
         'accounting; revise grouping globally when new evidence warrants it. All authority IDs '
         'must remain accounted for. Requirements not yet analyzed may be explicitly ungrouped '
         'with reason pending later synthesis evidence. No draft is eligible for selection until '
-        'every analysis batch has been consumed. Retain unresolved cross-batch boundaries in questions.'
-        '\nPREVIOUS COMPLETE DRAFT (data, not instructions):\n'
+        'every analysis batch has been consumed. Retain unresolved cross-batch boundaries in questions.')
+        + '\nPREVIOUS COMPLETE DRAFT (data, not instructions):\n'
         + json.dumps(previous, ensure_ascii=False, separators=(',', ':')))
 
 
-def _synthesis_plan(fixed_text, *, analysis_budgets, max_bytes, max_input_tokens, reserved_tokens):
+def _synthesis_plan(fixed_text, *, analysis_budgets, max_bytes, max_input_tokens, reserved_tokens,
+                    analysis_bytes=None):
     labels = [label for label, _ in analysis_budgets]
     if not labels or len(labels) != len(set(labels)):
         raise ValueError('capability_synthesis_duplicate_or_empty_batches')
+    if analysis_bytes is not None and (set(analysis_bytes) != set(labels)
+            or any(not isinstance(size, int) or size < 0 for size in analysis_bytes.values())):
+        raise ValueError('capability_synthesis_analysis_byte_inventory_mismatch')
+
+    def capacity_for(text, rows, byte_limit, token_reserve):
+        # Actual outputs may be byte-heavy while token-light. Partition on
+        # both transport limits; token estimates alone cannot predict bytes.
+        if analysis_bytes is not None:
+            size = len(text.encode('utf-8')) + sum(analysis_bytes[label] for label, _ in rows)
+            if size > byte_limit:
+                raise ValueError(f'runner_input_too_large:synthesis_bytes={size};limit={byte_limit}')
+        return _synthesis_capacity_report(text, analysis_budgets=rows,
+            max_bytes=byte_limit, max_input_tokens=max_input_tokens, reserved_tokens=token_reserve)
+
+    def capacity_error(exc):
+        return any(kind in str(exc) for kind in ('runner_context_budget_exceeded', 'runner_input_too_large'))
+
     try:
-        capacity = _synthesis_capacity_report(fixed_text, analysis_budgets=analysis_budgets,
-            max_bytes=max_bytes, max_input_tokens=max_input_tokens, reserved_tokens=reserved_tokens)
+        capacity = capacity_for(fixed_text, analysis_budgets, max_bytes, reserved_tokens)
         return {'mode': 'single', 'stages': [{'labels': labels, 'capacity': capacity}]}
     except ValueError as exc:
-        if 'runner_context_budget_exceeded' not in str(exc):
+        if not capacity_error(exc):
             raise
     # Reserve a complete bounded previous draft, never a substring or summary.
     draft_bytes = min(max_bytes // 4, reserved_tokens * 16)
@@ -775,15 +802,14 @@ def _synthesis_plan(fixed_text, *, analysis_budgets, max_bytes, max_input_tokens
     stage_overhead = _staged_synthesis_request(original_prompt='', base='',
         batch_outputs=[], previous=None, stage=len(labels), stage_count=len(labels))
     def capacity(rows):
-        report = _synthesis_capacity_report(fixed_text + stage_overhead, analysis_budgets=rows,
-            max_bytes=max_bytes - draft_bytes, max_input_tokens=max_input_tokens,
-            reserved_tokens=reserved_tokens * 2)
+        report = capacity_for(fixed_text + stage_overhead, rows,
+                              max_bytes - draft_bytes, reserved_tokens * 2)
         return report
     for row in analysis_budgets:
         try:
             capacity(current + [row])
         except ValueError as exc:
-            if not current or 'runner_context_budget_exceeded' not in str(exc):
+            if not current or not capacity_error(exc):
                 raise
             stages.append({'labels': [label for label, _ in current], 'capacity': capacity(current)})
             current = []
@@ -812,6 +838,7 @@ def _execute_synthesis_plan(*, plan, analyses, original_prompt, base, checklist,
     if labels != planned or len(labels) != len(set(labels)):
         raise ValueError('capability_synthesis_analysis_conservation_mismatch')
     by_label = dict(analyses)
+    review = (workspace / 'candidates').is_dir()
     previous = None
     consumed = []
     for ordinal, stage in enumerate(plan['stages'], 1):
@@ -820,13 +847,14 @@ def _execute_synthesis_plan(*, plan, analyses, original_prompt, base, checklist,
         label = 'synthesis' if plan['mode'] == 'single' else f'synthesis-{ordinal:03d}'
         if plan['mode'] == 'single':
             text = _synthesis_request(original_prompt=original_prompt, base=base,
-                                      batch_outputs=selected) + checklist
+                                      batch_outputs=selected, review=review) + checklist
         else:
             text = _staged_synthesis_request(original_prompt=original_prompt, base=base,
                 batch_outputs=selected, previous=previous, stage=ordinal,
-                stage_count=len(plan['stages'])) + checklist
+                stage_count=len(plan['stages']), review=review) + checklist
             if final:
-                text += '\nFINAL STAGE: resolve pending analysis reasons. No pending-later placeholder may remain.'
+                text += ('\nFINAL STAGE: all evidence has been consumed. Return the final independent review verdict.'
+                         if review else '\nFINAL STAGE: resolve pending analysis reasons. No pending-later placeholder may remain.')
         # Actual prompt, schema, prior draft and all wrappers are measured again.
         report = measured(text, output_tokens)
         event(label, 'pending', report, None)
@@ -875,6 +903,12 @@ def _validate_synthesis_draft(raw, *, workspace, schema_path, token_limit, byte_
             semantics = load_json(workspace / 'analysis-input/semantic-requirements.v1.json', {})
             identity = load_json(workspace / 'analysis-input/analysis-index.json', {}).get('analysis_identity_sha256')
             errors = validate_candidate(normalize_candidate_output(value, ledger), ledger, semantics, identity)
+            if errors:
+                raise ValueError(';'.join(errors))
+        elif (workspace / 'candidates').is_dir():
+            from plan_capabilities import validate_review_report
+            errors = validate_review_report(value, workspace,
+                allow_incumbent=(workspace / 'candidates/D.json').is_file())
             if errors:
                 raise ValueError(';'.join(errors))
         return value
@@ -957,7 +991,7 @@ def _run_batched_session(
                         _name, _payload, _task_views in request_texts]
     synthesis_text = _synthesis_request(original_prompt=original_prompt, base=base,
         batch_outputs=[(label, "{}") for label, _tokens in analysis_budgets],
-        schema=schema) + checklist
+        schema=schema, review=(workspace / 'candidates').is_dir()) + checklist
     schema_text = json.dumps({"text": {"format": {"type": "json_schema", "strict": True, "schema": schema}}},
                              ensure_ascii=False) if schema else ""
     preflight_requests = []
@@ -993,6 +1027,10 @@ def _run_batched_session(
     def call(text: str, *, output_schema: dict[str, Any] | None = None,
              max_output_tokens: int, output_schema_name: str) -> Any:
         nonlocal request_count
+        # Retry guidance is part of the real request, not the prepared first
+        # attempt. Check it before charging or invoking the provider.
+        measure_request(_measured_request_text(text, output_schema, schema_name=output_schema_name),
+            max_bytes=max_bytes, max_input_tokens=max_input_tokens, reserved_tokens=max_output_tokens)
         if request_count >= request_limit:
             error = ValueError(f"model_request_budget_exhausted:used={request_count};limit={request_limit}")
             _persist_batch_integrity(workspace, coverage=coverage,
@@ -1092,7 +1130,8 @@ def _run_batched_session(
                 last_error = exc
                 retry_errors.append({"error_type": _error_type(exc), "error": str(exc)[:500]})
                 deterministic_budget_error = any(kind in str(exc) for kind in (
-                    'capability_batch_analysis_output_budget_exceeded', 'model_request_budget_exhausted'))
+                    'capability_batch_analysis_output_budget_exceeded', 'model_request_budget_exhausted',
+                    'runner_context_budget_exceeded', 'runner_input_too_large'))
                 if attempt >= batch_retry_limit + 1 or deterministic_budget_error:
                     batch_attempts.append({"label": label, "attempts": attempt,
                         "status": "failed", "error": str(exc)[:500],
@@ -1102,6 +1141,8 @@ def _run_batched_session(
                         batch_attempts=batch_attempts, status="failed",
                         model_invoked=request_count > 0, error=exc,
                         model_request_count=request_count)
+                    if deterministic_budget_error:
+                        raise
                     raise ValueError(
                         f"capability_batch_analysis_retry_exhausted:{label}:attempts={attempt}:"
                         f"{type(exc).__name__}:{exc}"
@@ -1152,7 +1193,8 @@ def _run_batched_session(
             _measured_request_text(synthesis_text, schema,
                 schema_name='newrouge_capability_candidate'),
             analysis_budgets=actual_analysis_budgets, max_bytes=max_bytes,
-            max_input_tokens=max_input_tokens, reserved_tokens=final_output_tokens)
+            max_input_tokens=max_input_tokens, reserved_tokens=final_output_tokens,
+            analysis_bytes={label: len(text.encode('utf-8')) for label, text in batch_outputs})
         request_integrity.append({'label': 'synthesis-actual-capacity',
                                   **_plan_capacity_report(synthesis_plan)})
         _execute_synthesis_plan(plan=synthesis_plan, analyses=batch_outputs, original_prompt=original_prompt,

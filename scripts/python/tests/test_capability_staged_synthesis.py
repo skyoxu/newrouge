@@ -15,6 +15,34 @@ from _planning_skill_common import atomic_json
 
 
 class CapabilityStagedSynthesisTests(unittest.TestCase):
+    def test_review_synthesis_keeps_review_contract_instead_of_generating_candidate(self):
+        text = api._staged_synthesis_request(original_prompt=planning.REVIEW_PROMPT,
+            base='anonymous candidates', batch_outputs=[('one', '{}')],
+            previous={'source_fidelity_findings': ['Prior gap']}, stage=2, stage_count=2,
+            review=True)
+        self.assertIn('complete review report', text)
+        self.assertIn('Prior gap', text)
+        self.assertNotIn('Synthesize the final Capability candidate now', text)
+        self.assertNotIn('Return a complete candidate', text)
+
+    def test_review_draft_rejects_candidate_shaped_output(self):
+        with tempfile.TemporaryDirectory() as directory:
+            workspace = Path(directory)
+            (workspace / 'candidates').mkdir()
+            with self.assertRaisesRegex(ValueError, 'invalid_review_schema'):
+                api._validate_synthesis_draft('{"capabilities":[]}', workspace=workspace,
+                    schema_path=None, token_limit=4000, byte_limit=100000)
+
+    def test_byte_heavy_analyses_are_partitioned_even_when_tokens_fit(self):
+        plan = api._synthesis_plan('fixed context',
+            analysis_budgets=[('a', 100), ('b', 100), ('c', 100)],
+            analysis_bytes={'a': 8000, 'b': 8000, 'c': 8000},
+            max_bytes=20000, max_input_tokens=96000, reserved_tokens=100)
+        self.assertEqual('staged', plan['mode'])
+        self.assertEqual(['a', 'b', 'c'],
+            [label for stage in plan['stages'] for label in stage['labels']])
+        self.assertGreater(len(plan['stages']), 1)
+
     def plan(self, budgets):
         return api._synthesis_plan('fixed context', analysis_budgets=budgets,
             max_bytes=1048576, max_input_tokens=20000, reserved_tokens=4000)

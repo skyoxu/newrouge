@@ -210,7 +210,8 @@ def _run_batched_codex(workspace: Path, prompt_path: Path, output_path: Path, *,
                             task_chunks[int(label.rsplit("-", 1)[1]) - 1] if label.startswith("task-views-") else None))
                         for label, _text, batch, _schema_path, _report in batch_specs]
     synth_input = api._synthesis_request(original_prompt=prompt, base=base,
-        batch_outputs=[(label, "{}") for label, _tokens in analysis_budgets]) + coverage_text
+        batch_outputs=[(label, "{}") for label, _tokens in analysis_budgets],
+        review=(workspace / 'candidates').is_dir()) + coverage_text
     synth_reserve = final_tokens
     reports = [{"label": label, **report} for label, _text, _batch, _schema_path, report in batch_specs]
     try:
@@ -275,6 +276,12 @@ def _run_batched_codex(workspace: Path, prompt_path: Path, output_path: Path, *,
                 f"- {last_error}\n"
             )
             try:
+                report = measure_request(measured(request_text, schema_path),
+                    max_bytes=max_bytes, max_input_tokens=max_input_tokens,
+                    reserved_tokens=api._analysis_output_budget(batch,
+                        task_chunks[int(label.rsplit('-', 1)[1]) - 1]
+                        if label.startswith('task-views-') else None))
+                reports.append({'label': label, 'attempt': attempt, **report})
                 reserve_request()
                 _persist_batch_integrity(workspace, coverage=coverage,
                     task_view_coverage=task_view_coverage, requests=reports,
@@ -371,7 +378,8 @@ def _run_batched_codex(workspace: Path, prompt_path: Path, output_path: Path, *,
         synthesis_plan = api._synthesis_plan(
             measured(synth_input, output_schema_path),
             analysis_budgets=actual_analysis_budgets, max_bytes=max_bytes,
-            max_input_tokens=max_input_tokens, reserved_tokens=synth_reserve)
+            max_input_tokens=max_input_tokens, reserved_tokens=synth_reserve,
+            analysis_bytes={label: len(text.encode('utf-8')) for label, text in analyses})
         reports.append({'label': 'synthesis-actual-capacity',
                         **api._plan_capacity_report(synthesis_plan)})
         api._execute_synthesis_plan(plan=synthesis_plan, analyses=analyses, original_prompt=prompt,

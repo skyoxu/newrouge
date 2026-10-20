@@ -79,6 +79,58 @@ class CapabilityInputIntegrityTests(unittest.TestCase):
     def test_codex_transport_limit_matches_cli_character_cap(self):
         self.assertEqual(1 * 1024 * 1024, integrity.CODEX_MAX_TURN_BYTES)
 
+    def test_codex_review_returns_review_report_after_all_evidence_batches(self):
+        import plan_capabilities as planner
+        self.prompt.write_text(planner.REVIEW_PROMPT, encoding='utf-8')
+        for label in ('A', 'B', 'C'):
+            atomic_json(self.root / 'candidates' / f'{label}.json', {'proposal': label})
+        review = {'schema_version': planner.REVIEW_SCHEMA, 'selected': 'A', 'status': 'selected',
+            'source_fidelity_findings': [], 'cohesion_findings': [], 'boundary_findings': [],
+            'multi_membership_findings': [], 'navigation_findings': [],
+            'tradeoffs': ['A preserves the retry outcome more clearly than B/C.'],
+            'evidence_refs': ['SB-1', 'candidates/A.json'], 'corrections': [],
+            'rationale': 'A has the clearest ownership boundary.'}
+        sent = []
+        def dispatch(*args, **kwargs):
+            sent.append(kwargs['prompt'])
+            if kwargs['schema_path'] is not None:
+                index = int(kwargs['output'].stem.rsplit('-', 1)[1]) - 1
+                return json.dumps(self.batch_fixture_payload(load_json(
+                    self.analysis / self.index['batches'][index]['path'])))
+            self.assertIn('independent review report', kwargs['prompt'])
+            self.assertNotIn('Synthesize the final Capability candidate now', kwargs['prompt'])
+            return json.dumps(review)
+        with patch.object(codex, '_run_codex_request', side_effect=dispatch):
+            receipt = codex._run_batched_codex(self.root, self.prompt, self.output,
+                executable='fixture', timeout_sec=30, max_bytes=1048576, max_input_tokens=96000)
+        self.assertEqual(len(self.index['batches']) + 1, receipt['model_request_count'])
+        self.assertEqual(review, load_json(self.output))
+
+    def test_codex_remeasures_retry_before_dispatch_and_budget_reservation(self):
+        with patch.object(codex, '_run_codex_request',
+                          side_effect=ValueError('invalid analysis ' * 10000)) as dispatch:
+            with self.assertRaisesRegex(ValueError, 'runner_input_too_large'):
+                codex._run_batched_codex(self.root, self.prompt, self.output,
+                    executable='fixture', timeout_sec=30, max_bytes=65536,
+                    max_input_tokens=96000)
+        self.assertEqual(1, dispatch.call_count)
+        report = load_json(self.root / integrity.REPORT_NAME, {})
+        self.assertEqual(1, report['model_request_count'])
+        self.assertTrue(report['model_invoked'])
+
+    def test_openai_remeasures_retry_before_dispatch_and_budget_reservation(self):
+        with patch.object(api, '_openai_client', return_value=object()), \
+             patch.object(api, '_response',
+                          side_effect=ValueError('invalid analysis ' * 10000)) as dispatch:
+            with self.assertRaisesRegex(ValueError, 'runner_input_too_large'):
+                api._run_batched_session(workspace=self.root, prompt_path=self.prompt,
+                    output_path=self.output, timeout_sec=30, max_bytes=65536,
+                    max_input_tokens=96000)
+        self.assertEqual(1, dispatch.call_count)
+        report = load_json(self.root / integrity.REPORT_NAME, {})
+        self.assertEqual(1, report['model_request_count'])
+        self.assertTrue(report['model_invoked'])
+
     def retired_source_fixture(self):
         self.ledger['blocks'].append({'block_id': 'SB-OLD', 'block_type': 'table_row',
             'raw_text': '| T117 | Retired outcome | HISTORICAL_BODY_ONLY |'})

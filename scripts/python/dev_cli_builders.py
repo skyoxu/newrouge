@@ -3,6 +3,9 @@
 
 from __future__ import annotations
 
+import sys
+from pathlib import Path
+
 
 DEFAULT_GATE_BUNDLE_TASK_FILES = [
     ".taskmaster/tasks/tasks_back.json",
@@ -630,7 +633,10 @@ def build_serve_project_health_cmd(args) -> list[str]:
 
 
 def build_plan_capabilities_cmd(args) -> list[str]:
-    cmd = ["py", "-3", "scripts/python/plan_capabilities.py", "--repo-root", args.repo_root, args.stage]
+    # A page/launcher can invoke dev_cli by absolute path from another cwd.
+    # Reuse its interpreter and locate the child next to this module.
+    cmd = [sys.executable, str(Path(__file__).resolve().with_name("plan_capabilities.py")),
+           "--repo-root", args.repo_root, args.stage]
     if args.run_id:
         cmd += ["--run-id", args.run_id]
     if args.stage == "prepare":
@@ -648,7 +654,7 @@ def build_plan_capabilities_cmd(args) -> list[str]:
             "--total-budget-sec", str(args.total_budget_sec),
             "--request-limit", str(args.request_limit),
         ]
-    elif args.stage in {"generate", "review"}:
+    elif args.stage in {"generate", "review", "align"}:
         if args.runner:
             cmd += ["--runner", args.runner]
         cmd += ["--timeout-sec", str(args.timeout_sec)]

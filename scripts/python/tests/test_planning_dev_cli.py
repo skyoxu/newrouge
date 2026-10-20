@@ -5,6 +5,8 @@ import sys
 import unittest
 import contextlib
 import io
+import subprocess
+import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
@@ -18,6 +20,25 @@ from dev_cli_builders import build_plan_capabilities_cmd, build_plan_mvg_cmd
 
 
 class PlanningDevCliTests(unittest.TestCase):
+    def test_absolute_entrypoint_works_from_an_unrelated_directory(self):
+        with tempfile.TemporaryDirectory() as directory:
+            proc = subprocess.run([sys.executable, str(PYTHON / 'dev_cli.py'),
+                'plan-capabilities', '--stage', 'status', '--run-id', 'missing-cli-probe'],
+                cwd=directory, capture_output=True, text=True, timeout=30)
+        self.assertEqual(2, proc.returncode, proc.stdout + proc.stderr)
+        self.assertIn('missing-cli-probe', proc.stdout)
+        self.assertNotIn("can't open file", proc.stderr)
+        self.assertIn('"status": "blocked"', proc.stdout)
+
+    def test_capability_align_forwards_runner_and_timeout(self):
+        args = dev_cli.build_parser().parse_args([
+            'plan-capabilities', '--stage', 'align', '--run-id', 'r1',
+            '--runner', 'tools/isolated-runner.exe', '--timeout-sec', '123'])
+        cmd = build_plan_capabilities_cmd(args)
+        self.assertIn('align', cmd)
+        self.assertEqual('tools/isolated-runner.exe', cmd[cmd.index('--runner') + 1])
+        self.assertEqual('123', cmd[cmd.index('--timeout-sec') + 1])
+
     def test_direct_planner_defaults_used_by_web_match_time_budgets(self):
         import plan_capabilities as planner
         for stage in ('prepare', 'generate', 'review', 'align'):
@@ -77,7 +98,8 @@ class PlanningDevCliTests(unittest.TestCase):
             "--task-id", "15", "--task-id", "16",
         ])
         cmd = build_plan_capabilities_cmd(args)
-        self.assertIn("scripts/python/plan_capabilities.py", cmd)
+        self.assertEqual(PYTHON / 'plan_capabilities.py', Path(cmd[1]))
+        self.assertEqual(sys.executable, cmd[0])
         self.assertEqual(2, cmd.count("--task-id"))
         self.assertIn("prepare", cmd)
 
@@ -85,7 +107,7 @@ class PlanningDevCliTests(unittest.TestCase):
         default_args = dev_cli.build_parser().parse_args([
             "plan-capabilities", "--stage", "generate", "--run-id", "r-default",
         ])
-        self.assertEqual("scripts/python/codex_isolated_model_runner.py", default_args.runner)
+        self.assertEqual(PYTHON / 'codex_isolated_model_runner.py', Path(default_args.runner))
 
         args = dev_cli.build_parser().parse_args([
             "plan-capabilities", "--stage", "generate", "--run-id", "r1",
