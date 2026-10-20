@@ -79,6 +79,63 @@ class CapabilityInputIntegrityTests(unittest.TestCase):
     def test_codex_transport_limit_matches_cli_character_cap(self):
         self.assertEqual(1 * 1024 * 1024, integrity.CODEX_MAX_TURN_BYTES)
 
+    def retired_source_fixture(self):
+        self.ledger['blocks'].append({'block_id': 'SB-OLD', 'block_type': 'table_row',
+            'raw_text': '| T117 | Retired outcome | HISTORICAL_BODY_ONLY |'})
+        atomic_json(self.analysis / 'source-blocks.v1.json', self.ledger)
+        atomic_json(self.analysis / 'task-master.json', {'master': {'tasks': [
+            {'id': 117, 'status': 'cancelled'}]}})
+        self.index = _write_model_batches(self.analysis, ledger=self.ledger,
+            semantics=self.requirements, char_budget=1000)
+        self.refresh_analysis_index()
+
+    def test_retired_source_is_excluded_before_dispatch_but_remains_auditable(self):
+        self.retired_source_fixture()
+        _, batches = self.parts()
+        self.assertNotIn('HISTORICAL_BODY_ONLY', '\n'.join(text for _, text in batches))
+        coverage = integrity.validate_batches(self.root, self.index)
+        self.assertEqual(['SB-1', 'SB-2', 'SB-OLD'], coverage['source_block_ids'])
+        self.assertEqual(['SB-1', 'SB-2'], coverage['model_source_block_ids'])
+        self.assertEqual('117', coverage['excluded_source_blocks'][0]['task_id'])
+        self.assertIn('SB-OLD', api._coverage_checklist(self.root))
+
+    def test_active_requirement_prevents_retired_task_source_filtering(self):
+        self.retired_source_fixture()
+        self.requirements['requirements'].append({'requirement_id': 'RQ-3',
+            'status': 'active', 'delivery_relevant': True, 'source_block_ids': ['SB-OLD']})
+        atomic_json(self.analysis / 'semantic-requirements.v1.json', self.requirements)
+        self.index = _write_model_batches(self.analysis, ledger=self.ledger,
+            semantics=self.requirements, char_budget=1000)
+        _, batches = self.parts()
+        self.assertIn('HISTORICAL_BODY_ONLY', '\n'.join(text for _, text in batches))
+
+    def test_retirement_words_without_master_authority_do_not_filter_sources(self):
+        self.retired_source_fixture()
+        atomic_json(self.analysis / 'task-master.json', {'master': {'tasks': [
+            {'id': 117, 'status': 'done'}]}})
+        _, batches = self.parts()
+        self.assertIn('HISTORICAL_BODY_ONLY', '\n'.join(text for _, text in batches))
+
+    def test_projected_schema_and_validation_require_only_active_source_rows(self):
+        self.retired_source_fixture()
+        original = {'batch_index': 1, 'blocks': self.ledger['blocks'],
+                    'requirements': self.requirements['requirements']}
+        batch = integrity.project_source_batch(self.root, original)
+        schema = api._batch_analysis_schema(batch, {})
+        self.assertEqual(2, schema['properties']['source_block_analyses']['minItems'])
+        result = self.batch_fixture_payload(batch)
+        api._validate_batch_analysis(result, batch, {})
+        result['source_block_analyses'].pop()
+        with self.assertRaisesRegex(ValueError, 'source_block_coverage_mismatch'):
+            api._validate_batch_analysis(result, batch, {})
+
+    def test_codex_uses_projected_input_schema_and_validation_together(self):
+        self.retired_source_fixture()
+        sent, receipt = self.invoke()
+        self.assertNotIn('HISTORICAL_BODY_ONLY', sent)
+        self.assertEqual(['SB-1', 'SB-2'], receipt['input_integrity']['model_source_block_ids'])
+        self.assertEqual('SB-OLD', receipt['input_integrity']['excluded_source_blocks'][0]['block_id'])
+
     def invoke(self):
         self.refresh_analysis_index()
         self.codex_inputs = []
@@ -91,6 +148,7 @@ class CapabilityInputIntegrityTests(unittest.TestCase):
                 schema = load_json(Path(command[schema_arg]), {})
                 batch_index = int((schema.get('properties', {}).get('batch_index', {}).get('enum') or [1])[0])
                 batch = load_json(self.analysis / self.index['batches'][batch_index - 1]['path'])
+                batch = integrity.project_source_batch(self.root, batch)
                 payload = self.batch_fixture_payload(batch)
                 is_task_batch = schema.get('properties', {}).get('source_block_analyses', {}).get('minItems') == 0
                 if is_task_batch:
@@ -417,7 +475,7 @@ class CapabilityInputIntegrityTests(unittest.TestCase):
         schema = api._batch_analysis_schema(batch, task_rows)
         self.assertTrue(list(jsonschema.Draft202012Validator(schema).iter_errors(payload)))
 
-    def test_long_authoritative_task_intent_is_preserved_outside_bounded_summary(self):
+    def test_long_authoritative_task_intent_stays_in_input_not_analysis_output(self):
         long_description = 'FULL_AUTHORITATIVE_INTENT_' + ('x' * 1400)
         atomic_json(self.analysis / 'task-views/tasks_gameplay.json', [
             {'taskmaster_id': 7, 'title': 'Short task title',
@@ -435,7 +493,8 @@ class CapabilityInputIntegrityTests(unittest.TestCase):
              'blocks': [], 'requirements': []}, task_rows)
         row = result['task_view_analyses'][0]
         self.assertLessEqual(len(row['task_intent']), 1200)
-        self.assertEqual(long_description, row['task_intent_source'])
+        self.assertNotIn('task_intent_source', row)
+        self.assertEqual(long_description, task_rows[path][0]['description'])
 
     def test_task_row_reconciliation_audit_is_not_forwarded_to_synthesis_payload(self):
         atomic_json(self.analysis / 'task-views/tasks_gameplay.json', [
@@ -704,7 +763,7 @@ class CapabilityInputIntegrityTests(unittest.TestCase):
             for block in batch['blocks']:
                 self.assertNotIn(block['raw_text'], final_prompt)
         task_chunk_count = len(integrity.task_view_payload_chunks(self.root))
-        self.assertEqual(len(batches) + task_chunk_count + 2, len(receipt['input_integrity']))
+        self.assertEqual(len(batches) + task_chunk_count + 3, len(receipt['input_integrity']))
 
     def test_batched_requests_use_independent_contexts_and_bounded_final_input(self):
         """Each source batch is a fresh request; final synthesis receives model outputs only."""
@@ -737,7 +796,7 @@ class CapabilityInputIntegrityTests(unittest.TestCase):
         for batch in batches:
             for block in batch['blocks']:
                 self.assertNotIn(block['raw_text'], responses[-1]['prompt'])
-        self.assertEqual(len(batches) + 2, len(receipt['input_integrity']))
+        self.assertEqual(len(batches) + 3, len(receipt['input_integrity']))
 
     def test_batch_validation_retries_only_failed_batch_and_records_attempts(self):
         """A malformed batch is retried locally; accepted batches are not replayed."""
@@ -823,6 +882,117 @@ class CapabilityInputIntegrityTests(unittest.TestCase):
         self.assertIn('maxLength', requirement_properties['intent'])
         self.assertIn('maxLength', requirement_properties['user_outcome'])
 
+    def test_source_analysis_budget_scales_with_complete_row_count(self):
+        small = {'blocks': [{}], 'requirements': [{}]}
+        large = {'blocks': [{}] * 72, 'requirements': [{}] * 66}
+        self.assertEqual(4096, api._analysis_output_budget(small))
+        self.assertGreaterEqual(api._analysis_output_budget(large), 15212)
+
+    def test_task_analysis_budget_scales_with_complete_row_count(self):
+        tasks = {'task-views/tasks_back.json': [{}] * 36}
+        self.assertGreaterEqual(api._analysis_output_budget(
+            {'blocks': [], 'requirements': []}, tasks), 13071)
+
+    def test_aggregate_task_output_reservations_block_before_codex_dispatch(self):
+        rows = [{'taskmaster_id': index, 'description': 'Full authoritative evidence',
+                 'acceptance': ['Complete acceptance'], 'test_refs': ['test.gd']}
+                for index in range(250)]
+        atomic_json(self.analysis / 'task-views/tasks_back.json', rows)
+        self.refresh_analysis_index()
+        self.args.preflight = True
+        with patch.object(codex, '_codex_executable') as executable:
+            with self.assertRaisesRegex(ValueError, 'runner_context_budget_exceeded'):
+                codex.run(self.args)
+        executable.assert_not_called()
+        report = load_json(self.root / integrity.REPORT_NAME)
+        self.assertFalse(report['model_invoked'])
+
+    def test_codex_true_transport_limit_stops_without_retry(self):
+        with patch.object(api, '_admit_analysis_for_synthesis', side_effect=ValueError(
+                'runner_context_budget_exceeded:complete output')):
+            with self.assertRaisesRegex(ValueError, 'runner_context_budget_exceeded'):
+                self.invoke()
+        report = load_json(self.root / integrity.REPORT_NAME)
+        self.assertEqual(1, report['model_request_count'])
+        self.assertEqual('failed', report['status'])
+        self.assertEqual(1, report['batch_attempts'][0]['attempts'])
+
+    def test_codex_does_not_reject_complete_analysis_using_preflight_estimate(self):
+        with patch.object(api, '_analysis_output_budget', return_value=1):
+            _sent, receipt = self.invoke()
+        self.assertTrue(receipt['input_integrity']['complete'])
+        self.assertEqual('ready', load_json(self.root / integrity.REPORT_NAME)['status'])
+
+    def test_api_does_not_reject_complete_analysis_using_preflight_estimate(self):
+        batches = [load_json(self.analysis / row['path']) for row in self.index['batches']]
+        def model(**kwargs):
+            schema = kwargs.get('output_schema') or {}
+            batch_index = (schema.get('properties', {}).get('batch_index', {}).get('enum') or [None])[0]
+            value = ({'draft': 'complete result'} if batch_index is None else
+                     self.batch_fixture_payload(batches[batch_index - 1]))
+            return SimpleNamespace(id='fixture', output_text=json.dumps(value), status='completed')
+        with (patch.object(api, '_analysis_output_budget', return_value=1),
+              patch.object(api, '_openai_client', return_value=object()),
+              patch.object(api, '_response', side_effect=model)):
+            receipt = api._run_batched_session(workspace=self.root, prompt_path=self.prompt,
+                output_path=self.output, timeout_sec=120, max_bytes=1048576,
+                max_input_tokens=96000)
+        self.assertEqual('ready', load_json(self.root / integrity.REPORT_NAME)['status'])
+        self.assertEqual(len(batches) + receipt['synthesis_stage_count'],
+                         receipt['model_request_count'])
+
+    def prepare_staged_fixture(self):
+        self.ledger['blocks'] = [{'block_id': f'SB-{i}', 'raw_text': f'FULL_SOURCE_{i} ' + 'x' * 650}
+                                 for i in range(8)]
+        self.requirements['requirements'] = [{'requirement_id': f'RQ-{i}',
+            'source_block_ids': [f'SB-{i}'], 'statement': f'OUTCOME_{i}'} for i in range(8)]
+        atomic_json(self.analysis / 'source-blocks.v1.json', self.ledger)
+        atomic_json(self.analysis / 'semantic-requirements.v1.json', self.requirements)
+        self.index = _write_model_batches(self.analysis, ledger=self.ledger,
+            semantics=self.requirements, char_budget=1000)
+        self.refresh_analysis_index()
+        self.args.max_input_tokens = 30000
+
+    def test_codex_staged_transport_consumes_all_batches_and_counts_all_dispatches(self):
+        self.prepare_staged_fixture()
+        sent, receipt = self.invoke()
+        info = receipt['input_integrity']
+        self.assertGreaterEqual(info['synthesis_stage_count'], 1)
+        self.assertEqual(len(self.index['batches']) + info['synthesis_stage_count'],
+                         receipt['runner_invocations'])
+        for index in range(8):
+            self.assertIn(f'FULL_SOURCE_{index}', sent)
+        self.assertEqual({'fixture': True}, load_json(self.output))
+
+    def test_codex_request_budget_stops_before_next_dispatch_and_preserves_count(self):
+        self.args.model_request_budget = 1
+        with patch.object(codex, '_codex_executable', return_value='fixture-codex'), \
+             patch.object(codex.subprocess, 'run', return_value=subprocess.CompletedProcess([], 1, stdout='transport failed')) as executor:
+            with self.assertRaisesRegex(ValueError, 'model_request_budget_exhausted'):
+                codex.run(self.args)
+        self.assertEqual(1, executor.call_count)
+        report = load_json(self.root / integrity.REPORT_NAME)
+        self.assertEqual(1, report['model_request_count'])
+        self.assertTrue(report['request_count_complete'])
+        self.assertEqual('blocked', report['status'])
+
+    def test_api_staged_transport_consumes_all_batches_and_counts_all_dispatches(self):
+        self.prepare_staged_fixture()
+        calls = []
+        def model(**kwargs):
+            calls.append(kwargs)
+            schema = kwargs.get('output_schema') or {}
+            batch_index = (schema.get('properties', {}).get('batch_index', {}).get('enum') or [None])[0]
+            value = ({'draft': 'complete result'} if batch_index is None else
+                     self.batch_fixture_payload(load_json(self.analysis / self.index['batches'][batch_index - 1]['path'])))
+            return SimpleNamespace(id='fixture', output_text=json.dumps(value), status='completed')
+        with patch.object(api, '_openai_client', return_value=object()), patch.object(api, '_response', side_effect=model):
+            receipt = api._run_batched_session(workspace=self.root, prompt_path=self.prompt,
+                output_path=self.output, timeout_sec=120, max_bytes=1048576, max_input_tokens=30000)
+        self.assertGreaterEqual(receipt['synthesis_stage_count'], 1)
+        self.assertEqual(len(self.index['batches']) + receipt['synthesis_stage_count'], len(calls))
+        self.assertEqual(len(calls), receipt['model_request_count'])
+
     def test_synthesis_reservation_respects_actual_batch_response_budget(self):
         report = api._synthesis_capacity_report('fixed synthesis context',
             analysis_budgets=[('batch-001', 8192), ('task-views-001', 3072)],
@@ -833,6 +1003,70 @@ class CapabilityInputIntegrityTests(unittest.TestCase):
             api._synthesis_capacity_report('fixed synthesis context',
                 analysis_budgets=[('batch-001', 90000)],
                 max_bytes=8 * 1024 * 1024, max_input_tokens=96000, reserved_tokens=16000)
+
+    def test_dense_task_chunk_budget_covers_observed_complete_analysis_with_headroom(self):
+        # Real candidate-1 task-views-004 had 20 rows and a packed,
+        # untruncated analysis measuring 11,151 tokens.
+        tasks = {'task-views/tasks_gameplay.json': [
+            {'taskmaster_id': index} for index in range(20)]}
+        budget = api._analysis_output_budget({'blocks': [], 'requirements': []}, tasks)
+        self.assertGreaterEqual(budget, (11151 * 6 + 4) // 5)
+
+    def test_task_chunk_limit_reserves_room_for_dense_analysis_output(self):
+        tasks = [{'taskmaster_id': index, 'description': 'x' * 3000}
+                 for index in range(32)]
+        atomic_json(self.analysis / 'task-views/tasks_gameplay.json', tasks)
+        self.refresh_analysis_index()
+        chunks = integrity.task_view_payload_chunks(self.root)
+        self.assertGreater(len(chunks), 1)
+        self.assertEqual(32, sum(len(rows) for chunk in chunks for rows in chunk.values()))
+
+    def test_analysis_envelope_measures_reconciled_packed_output_without_truncation(self):
+        value = {'schema_version': 'fixture', 'task_view_analyses': [
+            {'task_intent_source': '完整 evidence ' * 5000}]}
+        before = json.dumps(value, ensure_ascii=False)
+        with self.assertRaisesRegex(ValueError, 'capability_batch_analysis_output_budget_exceeded'):
+            api._bounded_analysis_output(value, label='task-views-001', token_limit=3072)
+        self.assertEqual(before, json.dumps(value, ensure_ascii=False))
+
+    def test_synthesis_capacity_reserves_analysis_token_allowance_before_dispatch(self):
+        with self.assertRaisesRegex(ValueError, 'runner_context_budget_exceeded'):
+            api._synthesis_capacity_report('fixed context',
+                analysis_budgets=[('batch-001', 8192)], max_bytes=5000,
+                max_input_tokens=100, reserved_tokens=16000)
+
+    def test_synthesis_capacity_allocates_additive_byte_limits_to_batches(self):
+        report = api._synthesis_capacity_report(
+            'fixed {} {}',
+            analysis_budgets=[('first', 8192), ('second', 3072)],
+            max_bytes=100, max_input_tokens=96000, reserved_tokens=16000)
+        limits = report['analysis_output_byte_limits']
+        self.assertEqual({'first', 'second'}, set(limits))
+        self.assertEqual(100 - len('fixed {} {}'.encode('utf-8')),
+                         sum(limit - len('{}') for limit in limits.values()))
+        self.assertTrue(all(limit >= 2 for limit in limits.values()))
+
+    def test_analysis_envelope_rejects_output_over_allocated_byte_limit(self):
+        value = self.batch_fixture_payload(load_json(self.analysis / self.index['batches'][0]['path']))
+        with self.assertRaisesRegex(ValueError, 'capability_batch_analysis_output_budget_exceeded'):
+            api._bounded_analysis_output(value, label='batch-001',
+                                        token_limit=8192, byte_limit=64)
+
+    def test_codex_late_synthesis_gate_preserves_completed_dispatch_count(self):
+        original = api._synthesis_request
+        def synth(**kwargs):
+            text = original(**kwargs)
+            if any(output != '{}' for _label, output in kwargs['batch_outputs']):
+                return text + 'x' * (integrity.CODEX_MAX_TURN_BYTES + 1)
+            return text
+        with patch.object(api, '_synthesis_request', side_effect=synth):
+            with self.assertRaisesRegex(ValueError, 'runner_input_too_large'):
+                self.invoke()
+        report = load_json(self.root / integrity.REPORT_NAME)
+        self.assertEqual('failed', report['status'])
+        self.assertTrue(report['model_invoked'])
+        self.assertEqual(2, report['model_request_count'])
+        self.assertTrue(report['request_count_complete'])
 
     def test_synthesis_analysis_tables_preserve_every_field_and_value(self):
         value = self.batch_fixture_payload(load_json(self.analysis / self.index['batches'][0]['path']))
@@ -868,6 +1102,88 @@ class CapabilityInputIntegrityTests(unittest.TestCase):
         self.assertIn('"future_evidence":"kept"', result)
         self.assertIn('"readiness_path":"path"', result)
 
+    def test_task_related_evidence_includes_exact_readiness_requirements_and_blocks(self):
+        atomic_json(self.analysis / 'readiness-summary.json', {'tasks': [
+            {'task_id': '7', 'ready': True, 'future_field': 'preserved'},
+            {'task_id': '8', 'ready': False, 'private_other_task': True}]})
+        atomic_json(self.analysis / 'task-views/tasks_gameplay.json', [
+            {'taskmaster_id': 7, 'requirement_ids': ['RQ-1']}])
+        payload = integrity.task_related_evidence_section(self.root, {
+            'task-views/tasks_gameplay.json': [{'taskmaster_id': 7, 'requirement_ids': ['RQ-1']}]
+        })
+        self.assertIn('"task_id":"7"', payload)
+        self.assertIn('"future_field":"preserved"', payload)
+        self.assertNotIn('private_other_task', payload)
+        self.assertIn('"requirement_id":"RQ-1"', payload)
+        self.assertIn('"block_id":"SB-1"', payload)
+        self.assertNotIn('"block_id":"SB-2"', payload)
+
+    def test_task_related_evidence_does_not_guess_and_rejects_dangling_refs(self):
+        rows = {'task-views/tasks_gameplay.json': [{'taskmaster_id': 7}]}
+        payload = integrity.task_related_evidence_section(self.root, rows)
+        self.assertIn('"requirements":[]', payload)
+        self.assertIn('"source_blocks":[]', payload)
+        with self.assertRaisesRegex(ValueError, 'unknown_task_requirement_ref'):
+            integrity.task_related_evidence_section(self.root, {
+                'task-views/tasks_gameplay.json': [{'taskmaster_id': 7, 'requirement_ids': ['RQ-MISSING']}]
+            })
+
+    def test_task_related_evidence_preserves_cross_source_links_and_master_status(self):
+        requirement = self.requirements['requirements'][0]
+        requirement['source_block_ids'] = ['SB-1', 'SB-2']
+        requirement['future_semantics'] = {'must_preserve': True}
+        atomic_json(self.analysis / 'semantic-requirements.v1.json', self.requirements)
+        atomic_json(self.analysis / 'readiness-summary.json', {
+            'formal_ready': True, 'future_scope': 'keep', 'tasks': []})
+        atomic_json(self.analysis / 'task-master.json', {'master': {'tasks': [
+            {'id': 7, 'status': 'done'}, {'id': 8, 'status': 'pending'}]}})
+        rows = {'task-views/tasks_gameplay.json': [{'taskmaster_id': 7, 'semantic_refs': ['RQ-1']}]}
+        text = integrity.task_related_evidence_section(self.root, rows)
+        value = json.loads(text.split('\n')[1])
+        self.assertEqual([requirement], value['requirements'])
+        self.assertEqual(self.ledger['blocks'], value['source_blocks'])
+        self.assertEqual([{'id': 7, 'status': 'done'}], value['master_tasks'])
+        self.assertEqual({'formal_ready': True, 'future_scope': 'keep'}, value['readiness_scope'])
+        requirement['source_block_ids'].append('SB-MISSING')
+        atomic_json(self.analysis / 'semantic-requirements.v1.json', self.requirements)
+        with self.assertRaisesRegex(ValueError, 'missing_task_source_block:SB-MISSING'):
+            integrity.task_related_evidence_section(self.root, rows)
+
+    def test_codex_batch_context_is_local_but_synthesis_keeps_global_evidence(self):
+        atomic_json(self.analysis / 'readiness-summary.json', {'formal_ready': True, 'tasks': [
+            {'task_id': '7', 'ready': True, 'future_evidence': 'TASK_SEVEN_READINESS'},
+            {'task_id': '8', 'ready': True, 'future_evidence': 'TASK_EIGHT_READINESS'}]})
+        atomic_json(self.analysis / 'task-views/tasks_gameplay.json', [
+            {'taskmaster_id': 7, 'requirement_ids': ['RQ-1'], 'description': 'COMPLETE_TASK_SEVEN'}])
+        self.invoke()
+        source_requests = self.codex_inputs[:len(self.index['batches'])]
+        for text in source_requests:
+            self.assertNotIn('TASK_SEVEN_READINESS', text)
+            self.assertNotIn('TASK_EIGHT_READINESS', text)
+            self.assertIn('Analysis bundle identity: sha256:', text)
+        task_request = self.codex_inputs[len(source_requests)]
+        self.assertIn('TASK_SEVEN_READINESS', task_request)
+        self.assertNotIn('TASK_EIGHT_READINESS', task_request)
+        self.assertIn('COMPLETE_TASK_SEVEN', task_request)
+        self.assertIn(self.ledger['blocks'][0]['raw_text'], task_request)
+        self.assertIn('TASK_EIGHT_READINESS', self.codex_inputs[-1])
+
+    def test_analysis_batch_context_omits_repeated_global_metadata(self):
+        base = '\n'.join([
+            '===== FILE: analysis-input/analysis-index.json =====', '{"authority_inputs":"INDEX_PRIVATE"}',
+            '===== END FILE: analysis-input/analysis-index.json =====',
+            '===== FILE: analysis-input/readiness-summary.json =====', 'ALL_READINESS',
+            '===== END FILE: analysis-input/readiness-summary.json =====',
+            '===== FILE: analysis-input/task-master.json =====', 'ALL_TASKS',
+            '===== END FILE: analysis-input/task-master.json =====',
+            '===== FILE: analysis-input/model-batches/batch-index.json =====', 'ALL_BATCHES',
+            '===== END FILE: analysis-input/model-batches/batch-index.json =====',
+            'KEEP_SHARED_CONTEXT'])
+        result = api._batch_context(base)
+        for marker in ('INDEX_PRIVATE', 'ALL_READINESS', 'ALL_TASKS', 'ALL_BATCHES'):
+            self.assertNotIn(marker, result)
+        self.assertIn('KEEP_SHARED_CONTEXT', result)
+
     def test_api_happy_path_receipt_covers_batches_and_original_text(self):
         responses = []
         def model(**kwargs):
@@ -888,8 +1204,91 @@ class CapabilityInputIntegrityTests(unittest.TestCase):
         self.assertEqual(['SB-1', 'SB-2'], receipt['input_coverage']['source_block_ids'])
         self.assertEqual(['RQ-1', 'RQ-2'], receipt['input_coverage']['requirement_ids'])
         self.assertIn(self.ledger['blocks'][0]['raw_text'], responses[0]['prompt'])
-        self.assertEqual(8192, responses[0]['max_output_tokens'])
+        self.assertEqual(4096, responses[0]['max_output_tokens'])
         self.assertEqual(32000, responses[-1]['max_output_tokens'])
+
+    def test_api_task_dispatch_uses_same_complete_related_evidence_as_codex(self):
+        rows = {'task-views/tasks_gameplay.json': [
+            {'taskmaster_id': 7, 'requirement_ids': ['RQ-1'], 'description': 'COMPLETE_TASK_SEVEN'}]}
+        atomic_json(self.analysis / 'task-views/tasks_gameplay.json', rows['task-views/tasks_gameplay.json'])
+        atomic_json(self.analysis / 'readiness-summary.json', {'formal_ready': True, 'tasks': [
+            {'task_id': '7', 'ready': True, 'future_evidence': 'TASK_SEVEN_READINESS'},
+            {'task_id': '8', 'ready': True, 'future_evidence': 'TASK_EIGHT_READINESS'}]})
+        self.refresh_analysis_index()
+        requests = []
+
+        def model(**kwargs):
+            requests.append(kwargs['prompt'])
+            ordinal = len(requests)
+            if ordinal <= len(self.index['batches']):
+                batch = load_json(self.analysis / self.index['batches'][ordinal - 1]['path'])
+                output = self.batch_fixture_payload(batch)
+            elif ordinal == len(self.index['batches']) + 1:
+                output = {'schema_version': 'newrouge.capability-batch-analysis.v1',
+                          'batch_index': 1, 'source_block_analyses': [], 'requirement_analyses': [],
+                          'task_view_analyses': [{'task_view_key': 'task-views/tasks_gameplay.json#7',
+                              'task_intent': 'intent', 'acceptance_signals': ['acceptance analyzed'],
+                              'verification_signals': ['verification analyzed'], 'requirement_refs': ['RQ-1']}]}
+            else:
+                output = {}
+            return SimpleNamespace(id=f'fixture-{ordinal}', status='completed', output_text=json.dumps(output))
+
+        with patch.object(api, '_openai_client', return_value=object()), patch.object(api, '_response', side_effect=model):
+            api._run_batched_session(workspace=self.root, prompt_path=self.prompt,
+                output_path=self.output, timeout_sec=120, max_bytes=8 * 1024 * 1024)
+        task_request = requests[len(self.index['batches'])]
+        self.assertIn(integrity.task_related_evidence_section(self.root, rows), task_request)
+        self.assertNotIn('TASK_EIGHT_READINESS', task_request)
+        self.assertNotIn('TASK_SEVEN_READINESS', requests[0])
+        self.assertIn('TASK_EIGHT_READINESS', requests[-1])
+
+    def test_api_batched_session_stops_before_exceeding_request_budget(self):
+        responses = []
+        batches = [load_json(self.analysis / row['path']) for row in self.index['batches']]
+
+        def model(**kwargs):
+            responses.append(kwargs)
+            return SimpleNamespace(id='fixture-1', status='completed',
+                                   output_text=json.dumps(self.batch_fixture_payload(batches[0])))
+
+        with patch.object(api, '_openai_client', return_value=object()), \
+             patch.object(api, '_response', side_effect=model):
+            self.refresh_analysis_index()
+            with self.assertRaisesRegex(ValueError, 'model_request_budget_exhausted'):
+                api._run_batched_session(workspace=self.root, prompt_path=self.prompt,
+                    output_path=self.output, timeout_sec=120, max_bytes=8 * 1024 * 1024,
+                    model_request_budget=1)
+
+        self.assertEqual(1, len(responses))
+        report = load_json(self.root / integrity.REPORT_NAME)
+        self.assertEqual(1, report['model_request_count'])
+        self.assertEqual('request_budget_exhausted', report['status'])
+
+    def test_api_single_request_rejects_zero_budget_before_dispatch(self):
+        self.args.model_request_budget = 0
+        with patch.object(api, '_batch_index_path', return_value=self.root / 'no-batch-index.json'), \
+             patch.object(api, 'inspect_llm_backend', return_value={'available': True}), \
+             patch.object(api, 'workspace_payload', return_value='prepared input'), \
+             patch.object(api, 'check_workspace_request', return_value={}), \
+             patch.object(api, 'run_llm_exec') as dispatch:
+            with self.assertRaisesRegex(ValueError, 'model_request_budget_exhausted'):
+                api.run(self.args)
+        dispatch.assert_not_called()
+
+    def test_api_single_request_persists_count_before_transport_failure(self):
+        self.args.model_request_budget = 1
+        def fail(**kwargs):
+            report = load_json(self.root / integrity.REPORT_NAME, {})
+            self.assertEqual(1, report.get('model_request_count'))
+            self.assertIs(True, report.get('request_count_complete'))
+            raise TimeoutError('fixture transport timeout')
+        with patch.object(api, '_batch_index_path', return_value=self.root / 'no-batch-index.json'), \
+             patch.object(api, 'inspect_llm_backend', return_value={'available': True}), \
+             patch.object(api, 'workspace_payload', return_value='prepared input'), \
+             patch.object(api, 'check_workspace_request', return_value={}), \
+             patch.object(api, 'run_llm_exec', side_effect=fail):
+            with self.assertRaisesRegex(TimeoutError, 'fixture transport timeout'):
+                api.run(self.args)
 
     def test_multiple_batches_require_explicit_runner_support_before_dispatch(self):
         import plan_capabilities as planner
@@ -906,6 +1305,13 @@ class CapabilityInputIntegrityTests(unittest.TestCase):
                     model.assert_not_called()
 
     def test_deterministic_input_error_stops_all_candidate_retries(self):
+        self._assert_deterministic_error_stops_all_candidate_retries('runner_input_too_large')
+
+    def test_deterministic_output_error_stops_all_candidate_retries(self):
+        self._assert_deterministic_error_stops_all_candidate_retries(
+            'capability_batch_analysis_output_budget_exceeded')
+
+    def _assert_deterministic_error_stops_all_candidate_retries(self, error_type):
         import plan_capabilities as planner
         # Real independent fixture keeps readiness and task scope checks meaningful.
         from planning_acceptance_fixture import build_fixture
@@ -917,16 +1323,16 @@ class CapabilityInputIntegrityTests(unittest.TestCase):
         calls = []
         def rejected(*args, **kwargs):
             calls.append(kwargs['workspace'])
-            raise RuntimeError('runner_input_too_large:fixture')
+            raise RuntimeError(error_type + ':fixture')
         info = {**codex.description(), 'supports_input_preflight': False}
         with patch.object(planner, 'inspect_isolated_runner', return_value=info), \
              patch.object(planner, 'run_isolated_model', side_effect=rejected):
-            with self.assertRaisesRegex(ValueError, 'runner_input_too_large'):
+            with self.assertRaisesRegex(ValueError, error_type):
                 planner.generate(fixture, run_id='repair', runner=runner, timeout_sec=30)
         self.assertEqual(1, len(calls))
         state = load_json(fixture / 'logs/ci/capability-planning/repair/run.json')
         self.assertEqual('generation-blocked', state['phase'])
-        self.assertEqual('runner_input_too_large', state['error_type'])
+        self.assertEqual(error_type, state['error_type'])
 
     def test_actual_planner_preflight_spends_no_model_attempts(self):
         import plan_capabilities as planner

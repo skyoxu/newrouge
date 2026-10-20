@@ -26,12 +26,12 @@ from _llm_backend import (  # noqa: E402
 from _planning_skill_common import atomic_json, load_json, validate_output_schema  # noqa: E402
 from _capability_input_integrity import (  # noqa: E402
     DEFAULT_MAX_INPUT_TOKENS, REPORT_NAME, check_workspace_request, compact_file_section, configured_input_limit, measure_request, schema_max_json_chars, task_view_batch_sections, task_view_payload_chunks, validate_batches,
-    task_view_batch_rows,
+    task_view_batch_rows, task_related_evidence_section, project_source_batch, retired_source_blocks,
 )
 
 SCHEMA = "newrouge.isolated-model-runner.v1"
 DEFAULT_MAX_BYTES = 8 * 1024 * 1024
-TASK_VIEW_CHUNK_CHAR_BUDGET = 150000
+from _capability_input_integrity import TASK_VIEW_CHUNK_CHAR_BUDGET
 
 
 def model_name() -> str:
@@ -56,6 +56,7 @@ def description() -> dict[str, object]:
         "model_tools": [],
         "request_accounting": "exact_per_runner_invocation",
         "supports_batched_session": True,
+        "supports_request_budget": True,
     }
 
 
@@ -162,7 +163,7 @@ def batched_workspace_parts(
         rel = path.resolve().relative_to(root).as_posix()
         if path.name == "candidate-schema.json":
             continue
-        if rel.startswith(("batch-schemas/", "batch-analyses/")):
+        if rel.startswith(("batch-schemas/", "batch-analyses/", "synthesis-stages/")):
             continue
         if rel.startswith("analysis-input/sources/"):
             continue
@@ -196,7 +197,11 @@ def batched_workspace_parts(
             raise ValueError(f"Capability model batch file is missing: {rel}")
         if len(path.read_bytes()) > max_bytes:
             raise ValueError(f"single Capability model batch exceeds max visible bytes: {rel}")
-        section = compact_file_section(root, path)
+        projected = project_source_batch(root, load_json(path, {}))
+        file_rel = path.relative_to(root).as_posix()
+        section = (f'===== FILE: {file_rel} =====\n'
+                   + json.dumps(projected, ensure_ascii=False, separators=(',', ':'))
+                   + f'\n===== END FILE: {file_rel} =====')
         ordered_batches.append((rel, section))
 
     base = "\n\n".join([
@@ -244,6 +249,40 @@ def _response(
         }}
     request_client = client.with_options(timeout=max(1.0, timeout_sec))
     return request_client.responses.create(**kwargs)
+
+
+def _batch_context(base: str) -> str:
+    """Exclude preparation metadata and global task state from local analysis.
+
+    Full authority validation happens before projection. Synthesis still uses
+    the global context; unknown attachments remain visible in both phases.
+    """
+    omitted = {
+        "analysis-input/analysis-index.json",
+        "analysis-input/readiness-summary.json",
+        "analysis-input/task-master.json",
+        "analysis-input/model-batches/batch-index.json",
+    }
+    for rel in omitted:
+        pattern = re.escape(f"===== FILE: {rel} =====") + r".*?" + re.escape(f"===== END FILE: {rel} =====")
+        if rel.endswith("analysis-index.json"):
+            match = re.search(pattern, base, flags=re.DOTALL)
+            if match:
+                content = match.group(0).split("=====\n", 1)[1].rsplit("\n===== END FILE:", 1)[0]
+                try:
+                    index = json.loads(content)
+                except json.JSONDecodeError:
+                    # Invalid authority is rejected by validation; retain it
+                    # here rather than silently projecting malformed content.
+                    continue
+                identity = index.get("analysis_identity_sha256")
+                if identity:
+                    replacement = "Analysis bundle identity: " + str(identity)
+                    base = re.sub(pattern, lambda _: replacement, base, flags=re.DOTALL)
+                    continue
+        base = re.sub(pattern, "", base, flags=re.DOTALL)
+    return base.replace("complete non-source model-visible workspace context",
+                        "shared non-source context for this independent batch")
 
 
 def _independent_batch_requests(
@@ -418,31 +457,15 @@ def _validate_batch_analysis(
         row["requirement_refs"] = expected_refs
         authoritative_intent = str(source.get("description") or source.get("title") or "")
         if not str(row.get("task_intent") or "").strip():
-            # Keep the complete authoritative text in a separate evidence field
-            # when the bounded model-summary field cannot hold it. This avoids
-            # both silent truncation and an invalid intermediate schema.
-            if len(authoritative_intent) > 1200:
-                row["task_intent"] = str(source.get("title") or "")[:1200] or "Authoritative task intent"
-                row["task_intent_source"] = authoritative_intent
-            else:
-                row["task_intent"] = authoritative_intent
-        elif len(str(row.get("task_intent"))) > 1200:
-            row["task_intent_source"] = str(row["task_intent"])
-            row["task_intent"] = str(row["task_intent"])[:1200]
+            # The complete authoritative row remains in the task-view input
+            # request. Never copy it into the bounded analysis output: doing so
+            # bypasses the output schema and makes synthesis capacity
+            # unknowable.
+            row["task_intent"] = str(source.get("title") or "")[:1200] or "Authoritative task intent"
         if not isinstance(row.get("acceptance_signals"), list) or not row["acceptance_signals"]:
-            acceptance = source.get("acceptance", [])
-            row["acceptance_signals"] = (
-                [acceptance] if isinstance(acceptance, str)
-                else list(acceptance) if isinstance(acceptance, list)
-                else []
-            ) or ["Authoritative task acceptance"]
+            raise ValueError("capability_batch_analysis_task_acceptance_missing:" + key)
         if not isinstance(row.get("verification_signals"), list) or not row["verification_signals"]:
-            tests = source.get("test_refs", [])
-            row["verification_signals"] = (
-                [tests] if isinstance(tests, str)
-                else list(tests) if isinstance(tests, list)
-                else []
-            ) or ["Authoritative task verification"]
+            raise ValueError("capability_batch_analysis_task_verification_missing:" + key)
         reconciled_task_rows.append(row)
     value["task_view_analyses"] = reconciled_task_rows
     value["_task_view_reconciliation"] = {
@@ -462,6 +485,52 @@ def _validate_batch_analysis(
                for item in row["acceptance_signals"] + row["verification_signals"]):
             raise ValueError("capability_batch_analysis_task_signal_invalid:" + key)
     return value
+
+
+def _analysis_output_budget(batch: dict[str, Any],
+                            task_views: dict[str, list[dict[str, Any]]] | None = None) -> int:
+    """Plan space for complete source analyses, including reconciled evidence.
+
+    This is a measured-output admission limit, not a claimed CLI output cap.
+    Large row sets must not share the allowance intended for a small batch.
+    The aggregate reservation is checked before any model dispatch.
+    """
+    task_count = sum(len(rows) for rows in (task_views or {}).values())
+    return max(4096 if not task_count else 3072,
+               512 + 96 * len(batch.get("blocks", []))
+               + 144 * len(batch.get("requirements", [])) + 650 * task_count)
+
+
+def _bounded_analysis_output(value: dict[str, Any], *, label: str,
+                             token_limit: int, byte_limit: int | None = None) -> str:
+    """Serialize an accepted analysis only when it fits its declared output budget."""
+    packed = _pack_analysis_tables(value)
+    text = json.dumps(packed, ensure_ascii=False, separators=(",", ":"))
+    try:
+        report = measure_request(text, max_bytes=byte_limit or DEFAULT_MAX_BYTES,
+                                 max_input_tokens=max(1, int(token_limit)))
+    except ValueError as exc:
+        raise ValueError(f"capability_batch_analysis_output_budget_exceeded:{label}:"
+                         f"limit={token_limit}:{exc}") from exc
+    if report["input_token_estimate"] > token_limit:
+        raise ValueError(f"capability_batch_analysis_output_budget_exceeded:{label}:"
+                         f"estimated={report['input_token_estimate']};limit={token_limit}")
+    return text
+
+
+def _admit_analysis_for_synthesis(value: dict[str, Any], *, max_bytes: int,
+                                  max_input_tokens: int) -> tuple[dict[str, Any], int]:
+    """Measure a complete accepted analysis against real transport capacity.
+
+    Row-count estimates are useful for preflight only; they must not become a
+    post-generation rejection threshold. The synthesis plan uses this actual
+    measured size and may create additional stages without losing evidence.
+    """
+    packed = _pack_analysis_tables(value)
+    serialized = json.dumps(packed, ensure_ascii=False, separators=(',', ':'))
+    report = measure_request(serialized, max_bytes=max_bytes,
+                             max_input_tokens=max_input_tokens)
+    return packed, report['input_token_estimate']
 
 
 def _error_type(exc: BaseException) -> str:
@@ -501,6 +570,7 @@ def _persist_batch_integrity(
         # before transport so timeout/connection failures cannot disappear
         # from the audit when no receipt is returned.
         "model_request_count": int(model_request_count),
+        "request_count_complete": True,
         "execution_mode": "independent-evidence-batches-plus-bounded-synthesis",
     }
     if error is not None:
@@ -552,6 +622,9 @@ def _coverage_checklist(workspace: Path) -> str:
         "active_delivery_requirement_ids": requirements,
         "source_block_ids": blocks,
         "source_accounting_index": {str(index): block_id for index, block_id in enumerate(blocks)},
+        "excluded_source_blocks": retired_source_blocks(workspace),
+        "retirement_rule": "Excluded blocks are machine-audited historical sources, not generation evidence. "
+                           "Account for each as retired with empty capability_ids; do not invent analyses or Capabilities for them.",
     }, ensure_ascii=False, separators=(",", ":"))
 
 
@@ -647,25 +720,166 @@ def _synthesis_base(base: str) -> str:
 def _synthesis_capacity_report(fixed_text: str, *, analysis_budgets: list[tuple[str, int]],
                                max_bytes: int, max_input_tokens: int,
                                reserved_tokens: int) -> dict[str, Any]:
-    """Forecast analysis tokens numerically, never by tokenizing repetitive filler.
-
-    This is a planning allowance, not a bound on CLI responses or authority
-    reconciliation. The complete actual synthesis request is measured again
-    before dispatch, including all normalized evidence and wrappers.
-    """
+    """Estimate preflight or reserve measured complete analysis outputs."""
     if any(tokens < 1 for _label, tokens in analysis_budgets):
         raise ValueError("capability_batch_output_budget_invalid")
     allowance = sum(tokens for _label, tokens in analysis_budgets)
     headroom = (allowance * 11 + 9) // 10
     report = measure_request(fixed_text, max_bytes=max_bytes, max_input_tokens=max_input_tokens,
                              reserved_tokens=reserved_tokens + headroom)
+    remaining_bytes = max_bytes - len(fixed_text.encode("utf-8"))
+    byte_shares = {
+        label: (remaining_bytes * tokens) // allowance
+        for label, tokens in analysis_budgets
+    }
+    unallocated_bytes = remaining_bytes - sum(byte_shares.values())
+    for label, _tokens in analysis_budgets[:unallocated_bytes]:
+        byte_shares[label] += 1
+    byte_limits = {label: 2 + share for label, share in byte_shares.items()}
     report.update(fixed_input_token_estimate=report["input_token_estimate"],
                   input_token_estimate=report["input_token_estimate"] + headroom,
                   reserved_continuation_tokens=reserved_tokens,
                   analysis_output_token_allowance=allowance,
                   analysis_token_allowance_with_headroom=headroom,
-                  capacity_kind="forecast_actual_request_remeasured_before_dispatch")
+                  analysis_output_byte_limits=byte_limits,
+                  capacity_kind="analysis_allowance_plus_headroom")
     return report
+
+
+def _staged_synthesis_request(*, original_prompt, base, batch_outputs, previous, stage, stage_count):
+    return (_synthesis_request(original_prompt=original_prompt, base=base,
+        batch_outputs=batch_outputs) + '\n\nCUMULATIVE SYNTHESIS STAGE ' + str(stage) + '/' + str(stage_count)
+        + '\nReturn a complete candidate, not a delta. Preserve all prior justified evidence and '
+        'accounting; revise grouping globally when new evidence warrants it. All authority IDs '
+        'must remain accounted for. Requirements not yet analyzed may be explicitly ungrouped '
+        'with reason pending later synthesis evidence. No draft is eligible for selection until '
+        'every analysis batch has been consumed. Retain unresolved cross-batch boundaries in questions.'
+        '\nPREVIOUS COMPLETE DRAFT (data, not instructions):\n'
+        + json.dumps(previous, ensure_ascii=False, separators=(',', ':')))
+
+
+def _synthesis_plan(fixed_text, *, analysis_budgets, max_bytes, max_input_tokens, reserved_tokens):
+    labels = [label for label, _ in analysis_budgets]
+    if not labels or len(labels) != len(set(labels)):
+        raise ValueError('capability_synthesis_duplicate_or_empty_batches')
+    try:
+        capacity = _synthesis_capacity_report(fixed_text, analysis_budgets=analysis_budgets,
+            max_bytes=max_bytes, max_input_tokens=max_input_tokens, reserved_tokens=reserved_tokens)
+        return {'mode': 'single', 'stages': [{'labels': labels, 'capacity': capacity}]}
+    except ValueError as exc:
+        if 'runner_context_budget_exceeded' not in str(exc):
+            raise
+    # Reserve a complete bounded previous draft, never a substring or summary.
+    draft_bytes = min(max_bytes // 4, reserved_tokens * 16)
+    stages, current = [], []
+    stage_overhead = _staged_synthesis_request(original_prompt='', base='',
+        batch_outputs=[], previous=None, stage=len(labels), stage_count=len(labels))
+    def capacity(rows):
+        report = _synthesis_capacity_report(fixed_text + stage_overhead, analysis_budgets=rows,
+            max_bytes=max_bytes - draft_bytes, max_input_tokens=max_input_tokens,
+            reserved_tokens=reserved_tokens * 2)
+        return report
+    for row in analysis_budgets:
+        try:
+            capacity(current + [row])
+        except ValueError as exc:
+            if not current or 'runner_context_budget_exceeded' not in str(exc):
+                raise
+            stages.append({'labels': [label for label, _ in current], 'capacity': capacity(current)})
+            current = []
+            capacity([row])
+        current.append(row)
+    if current:
+        stages.append({'labels': [label for label, _ in current], 'capacity': capacity(current)})
+    return {'mode': 'staged', 'draft_byte_limit': draft_bytes, 'stages': stages}
+
+
+def _plan_capacity_report(plan):
+    stages = plan['stages']
+    report = dict(stages[0]['capacity'])
+    report['analysis_output_byte_limits'] = {label: limit for stage in stages
+        for label, limit in stage['capacity']['analysis_output_byte_limits'].items()}
+    report.update(synthesis_mode=plan['mode'], synthesis_stage_count=len(stages),
+                  synthesis_stages=stages)
+    return report
+
+
+def _execute_synthesis_plan(*, plan, analyses, original_prompt, base, checklist, workspace,
+                            output_path, schema_path, output_tokens, measured, dispatch, event):
+    """Consume every admitted analysis exactly once; publish only the complete final draft."""
+    labels = [label for label, _ in analyses]
+    planned = [label for stage in plan['stages'] for label in stage['labels']]
+    if labels != planned or len(labels) != len(set(labels)):
+        raise ValueError('capability_synthesis_analysis_conservation_mismatch')
+    by_label = dict(analyses)
+    previous = None
+    consumed = []
+    for ordinal, stage in enumerate(plan['stages'], 1):
+        selected = [(label, by_label[label]) for label in stage['labels']]
+        final = ordinal == len(plan['stages'])
+        label = 'synthesis' if plan['mode'] == 'single' else f'synthesis-{ordinal:03d}'
+        if plan['mode'] == 'single':
+            text = _synthesis_request(original_prompt=original_prompt, base=base,
+                                      batch_outputs=selected) + checklist
+        else:
+            text = _staged_synthesis_request(original_prompt=original_prompt, base=base,
+                batch_outputs=selected, previous=previous, stage=ordinal,
+                stage_count=len(plan['stages'])) + checklist
+            if final:
+                text += '\nFINAL STAGE: resolve pending analysis reasons. No pending-later placeholder may remain.'
+        # Actual prompt, schema, prior draft and all wrappers are measured again.
+        report = measured(text, output_tokens)
+        event(label, 'pending', report, None)
+        target = workspace / 'synthesis-stages' / f'{ordinal:03d}.json'
+        target.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            raw = dispatch(text, target)
+            value = _validate_synthesis_draft(raw, workspace=workspace, schema_path=schema_path,
+                token_limit=output_tokens, byte_limit=plan.get('draft_byte_limit', 1048576))
+            if final and plan['mode'] == 'staged' and any(
+                    'pending later synthesis evidence' in str(row.get('reason', '')).lower()
+                    for row in value.get('ungrouped_requirements', [])):
+                raise ValueError('capability_synthesis_draft_invalid:pending_evidence_at_final_stage')
+            consumed.extend(stage['labels'])
+            atomic_json(workspace / 'synthesis-stages' / f'{ordinal:03d}.receipt.json', {
+                'stage': ordinal, 'input_request_sha256': report['request_sha256'],
+                'analysis_hashes': {key: 'sha256:' + hashlib.sha256(by_label[key].encode('utf-8')).hexdigest()
+                                    for key in stage['labels']},
+                'consumed_labels': list(consumed),
+                'previous_draft_sha256': None if previous is None else 'sha256:' + hashlib.sha256(
+                    json.dumps(previous, ensure_ascii=False, separators=(',', ':')).encode('utf-8')).hexdigest(),
+                'output_sha256': 'sha256:' + hashlib.sha256(raw.encode('utf-8')).hexdigest(),
+                'status': 'accepted', 'eligible_for_selection': final})
+            previous = value
+            event(label, 'accepted', report, None)
+        except Exception as exc:
+            event(label, 'failed', report, exc)
+            raise
+    if consumed != labels:
+        raise ValueError('capability_synthesis_analysis_conservation_mismatch')
+    atomic_json(output_path, previous)
+
+
+def _validate_synthesis_draft(raw, *, workspace, schema_path, token_limit, byte_limit):
+    try:
+        value = json.loads(raw)
+        if not isinstance(value, dict):
+            raise ValueError('draft must be an object')
+        packed = json.dumps(value, ensure_ascii=False, separators=(',', ':'))
+        measure_request(packed, max_bytes=byte_limit, max_input_tokens=token_limit)
+        if schema_path is not None:
+            import jsonschema
+            jsonschema.validate(value, load_json(schema_path, {}))
+            from plan_capabilities import normalize_candidate_output, validate_candidate
+            ledger = load_json(workspace / 'analysis-input/source-blocks.v1.json', {})
+            semantics = load_json(workspace / 'analysis-input/semantic-requirements.v1.json', {})
+            identity = load_json(workspace / 'analysis-input/analysis-index.json', {}).get('analysis_identity_sha256')
+            errors = validate_candidate(normalize_candidate_output(value, ledger), ledger, semantics, identity)
+            if errors:
+                raise ValueError(';'.join(errors))
+        return value
+    except Exception as exc:
+        raise ValueError('capability_synthesis_draft_invalid:' + str(exc)) from exc
 
 
 def _run_batched_session(
@@ -677,6 +891,7 @@ def _run_batched_session(
     max_bytes: int,
     output_schema_path: Path | None = None,
     max_input_tokens: int = DEFAULT_MAX_INPUT_TOKENS,
+    model_request_budget: int | None = None,
 ) -> dict[str, Any]:
     original_prompt = prompt_path.read_text(encoding="utf-8").rstrip()
     base, batches = batched_workspace_parts(
@@ -687,6 +902,9 @@ def _run_batched_session(
     )
     deadline = time.monotonic() + timeout_sec
     request_count = 0
+    request_limit = model_request_budget if model_request_budget is not None else 2**31 - 1
+    if request_limit < 1:
+        raise ValueError("model_request_budget_exhausted:limit=0")
     request_integrity: list[dict[str, Any]] = []
 
     batch_index = load_json(_batch_index_path(workspace), {})
@@ -704,8 +922,8 @@ def _run_batched_session(
     schema = None
     if output_schema_path is not None:
         schema = json.loads(output_schema_path.read_text(encoding="utf-8"))
-    request_specs = _independent_batch_requests(base=base, batches=batches)
-    batch_payloads = [load_json(workspace / "analysis-input" / row["path"], {})
+    request_specs = _independent_batch_requests(base=_batch_context(base), batches=batches)
+    batch_payloads = [project_source_batch(workspace, load_json(workspace / "analysis-input" / row["path"], {}))
                       for row in load_json(_batch_index_path(workspace), {}).get("batches", [])]
     if len(batch_payloads) != len(request_specs):
         raise ValueError("capability_batch_payload_count_mismatch")
@@ -713,27 +931,26 @@ def _run_batched_session(
     # Keep enough output room for complete task-row analysis. Input and output
     # budgets are independent; shrinking this with batch count caused valid
     # task chunks to return incomplete coverage JSON.
-    batch_output_tokens = max(2048, min(8192, max_input_tokens // 10))
-    task_output_tokens = 3072
     final_output_tokens = max(4096, min(16384, max_input_tokens // 6)) if task_chunks else max(256, min(32768, max_input_tokens // 3))
     request_texts: list[tuple[str, str, dict[str, Any] | None, int, str, dict[str, Any], dict[str, list[dict[str, Any]]]]] = []
     for index, ((label, text), payload) in enumerate(zip(request_specs, batch_payloads, strict=True)):
         batch_views = {} if task_chunks else task_view_rows_by_batch[index]
         batch_schema = _batch_analysis_schema(payload, batch_views)
-        request_texts.append((label, text, batch_schema, batch_output_tokens,
+        request_texts.append((label, text, batch_schema, _analysis_output_budget(payload, batch_views),
                               "newrouge_capability_batch_analysis", payload, batch_views))
     for index, task_rows in enumerate(task_chunks, 1):
         payload = {"schema_version": "newrouge.capability-model-batch.v1",
                    "batch_index": index, "blocks": [], "requirements": []}
-        text = "\n\n".join([base,
+        text = "\n\n".join([_batch_context(base),
             "Analyze every complete Task View row below as auxiliary ownership and acceptance evidence. "
             "Preserve task identity, intent, Acceptance/test meaning, and exact Requirement refs. "
             "Do not infer Capability grouping or omit any row. This is a task-only batch: "
             "return source_block_analyses and requirement_analyses as empty arrays.",
-            "===== COMPLETE TASK-VIEW ROWS =====\n" + json.dumps(task_rows, ensure_ascii=False, separators=(",", ":"))])
+            "===== COMPLETE TASK-VIEW ROWS =====\n" + json.dumps(task_rows, ensure_ascii=False, separators=(",", ":")),
+            task_related_evidence_section(workspace, task_rows)])
         label = f"task-views-{index:03d}"
         task_schema = _batch_analysis_schema(payload, task_rows)
-        request_texts.append((label, text, task_schema, task_output_tokens,
+        request_texts.append((label, text, task_schema, _analysis_output_budget(payload, task_rows),
                               "newrouge_capability_batch_analysis", payload, task_rows))
     checklist = _coverage_checklist(workspace)
     analysis_budgets = [(label, tokens) for label, _text, _batch_schema, tokens,
@@ -756,11 +973,12 @@ def _run_batched_session(
                 batch_attempts=batch_attempts, status='blocked', model_invoked=False, error=exc)
             raise
     try:
-        preflight_requests.append({"label": "synthesis-capacity", **_synthesis_capacity_report(
+        synthesis_plan = _synthesis_plan(
             _measured_request_text(synthesis_text, schema, schema_name="newrouge_capability_candidate"),
             analysis_budgets=analysis_budgets,
             max_bytes=max_bytes, max_input_tokens=max_input_tokens,
-            reserved_tokens=final_output_tokens)})
+            reserved_tokens=final_output_tokens)
+        preflight_requests.append({"label": "synthesis-capacity", **_plan_capacity_report(synthesis_plan)})
     except (ValueError, OSError, RuntimeError, TimeoutError, json.JSONDecodeError) as exc:
         _persist_batch_integrity(workspace, coverage=coverage,
             task_view_coverage=task_view_coverage, requests=preflight_requests,
@@ -775,6 +993,14 @@ def _run_batched_session(
     def call(text: str, *, output_schema: dict[str, Any] | None = None,
              max_output_tokens: int, output_schema_name: str) -> Any:
         nonlocal request_count
+        if request_count >= request_limit:
+            error = ValueError(f"model_request_budget_exhausted:used={request_count};limit={request_limit}")
+            _persist_batch_integrity(workspace, coverage=coverage,
+                task_view_coverage=task_view_coverage, requests=request_integrity,
+                batch_attempts=batch_attempts, status="request_budget_exhausted",
+                model_invoked=request_count > 0, error=error,
+                model_request_count=request_count)
+            raise error
         remaining = deadline - time.monotonic()
         if remaining <= 0:
             raise TimeoutError("isolated model active-time budget exhausted")
@@ -798,6 +1024,7 @@ def _run_batched_session(
         return response
 
     batch_outputs: list[tuple[str, str]] = []
+    actual_analysis_budgets: list[tuple[str, int]] = []
     batch_retry_limit = 2
     for index, (label, text, batch_schema, output_tokens, schema_name, payload, task_views) in enumerate(request_texts):
         accepted = False
@@ -824,7 +1051,10 @@ def _run_batched_session(
                     raise ValueError(f"capability_batch_analysis_invalid_json:{label}") from exc
                 parsed = _validate_batch_analysis(parsed, payload, task_views)
                 reconciliation = _take_task_view_reconciliation(parsed)
-                batch_outputs.append((label, json.dumps(parsed, ensure_ascii=False, separators=(",", ":"))))
+                packed, actual_tokens = _admit_analysis_for_synthesis(
+                    parsed, max_bytes=max_bytes, max_input_tokens=max_input_tokens)
+                batch_outputs.append((label, json.dumps(packed, ensure_ascii=False, separators=(',', ':'))))
+                actual_analysis_budgets.append((label, actual_tokens))
                 attempt_record: dict[str, Any] = {"label": label, "attempts": attempt, "status": "accepted"}
                 if retry_errors:
                     attempt_record["retry_errors"] = retry_errors
@@ -837,7 +1067,46 @@ def _run_batched_session(
                     model_request_count=request_count)
                 accepted = True
                 break
-            except (OSError, RuntimeError, TimeoutError, ValueError, json.JSONDecodeError) as exc:
+            except ValueError as exc:
+                if "capability_batch_analysis_output_budget_exceeded" in str(exc):
+                    batch_attempts.append({"label": label, "attempts": attempt,
+                        "status": "failed", "error": str(exc)[:500],
+                        "error_type": _error_type(exc)})
+                    _persist_batch_integrity(workspace, coverage=coverage,
+                        task_view_coverage=task_view_coverage, requests=request_integrity,
+                        batch_attempts=batch_attempts,
+                        status='request_budget_exhausted' if 'model_request_budget_exhausted' in str(exc) else 'failed',
+                        model_invoked=request_count > 0, error=exc,
+                        model_request_count=request_count)
+                    raise
+                if "model_request_budget_exhausted" in str(exc):
+                    batch_attempts.append({"label": label, "attempts": attempt,
+                        "status": "budget_exhausted", "error": str(exc)[:500],
+                        "error_type": "request_budget_exhausted"})
+                    _persist_batch_integrity(workspace, coverage=coverage,
+                        task_view_coverage=task_view_coverage, requests=request_integrity,
+                        batch_attempts=batch_attempts, status="request_budget_exhausted",
+                        model_invoked=request_count > 0, error=exc,
+                        model_request_count=request_count)
+                    raise
+                last_error = exc
+                retry_errors.append({"error_type": _error_type(exc), "error": str(exc)[:500]})
+                deterministic_budget_error = any(kind in str(exc) for kind in (
+                    'capability_batch_analysis_output_budget_exceeded', 'model_request_budget_exhausted'))
+                if attempt >= batch_retry_limit + 1 or deterministic_budget_error:
+                    batch_attempts.append({"label": label, "attempts": attempt,
+                        "status": "failed", "error": str(exc)[:500],
+                        "error_type": _error_type(exc)})
+                    _persist_batch_integrity(workspace, coverage=coverage,
+                        task_view_coverage=task_view_coverage, requests=request_integrity,
+                        batch_attempts=batch_attempts, status="failed",
+                        model_invoked=request_count > 0, error=exc,
+                        model_request_count=request_count)
+                    raise ValueError(
+                        f"capability_batch_analysis_retry_exhausted:{label}:attempts={attempt}:"
+                        f"{type(exc).__name__}:{exc}"
+                    ) from exc
+            except (OSError, RuntimeError, TimeoutError, json.JSONDecodeError) as exc:
                 last_error = exc
                 retry_errors.append({"error_type": _error_type(exc), "error": str(exc)[:500]})
                 if attempt >= batch_retry_limit + 1:
@@ -856,46 +1125,44 @@ def _run_batched_session(
         if not accepted:
             raise ValueError(f"capability_batch_analysis_retry_exhausted:{label}")
 
-    final_text = _synthesis_request(original_prompt=original_prompt, base=base,
-                                    batch_outputs=batch_outputs, schema=schema) + checklist
-    final_report = measure_request(
-        _measured_request_text(final_text, schema, schema_name="newrouge_capability_candidate"),
-        max_bytes=max_bytes,
-        max_input_tokens=max_input_tokens,
-        reserved_tokens=final_output_tokens,
-    )
-    request_integrity.append({"label": "synthesis", **final_report})
-    # Synthesis has not been transported yet.  Keep the durable receipt
-    # explicitly pending so a crash cannot be audited as a complete result.
-    _persist_batch_integrity(workspace, coverage=coverage,
-        task_view_coverage=task_view_coverage, requests=request_integrity,
-        batch_attempts=batch_attempts, status='synthesis_pending', model_invoked=request_count > 0,
-        model_request_count=request_count)
+    final = None
+    def dispatch_synthesis(text, target):
+        nonlocal final
+        final = call(text, output_schema=schema, max_output_tokens=final_output_tokens,
+                     output_schema_name='newrouge_capability_candidate')
+        raw = _extract_response_output_text(final)
+        if not raw:
+            raise RuntimeError('OpenAI batched session returned empty final output')
+        target.write_text(raw, encoding='utf-8')
+        return raw
+
+    def synthesis_event(label, status, report, error):
+        if status == 'pending':
+            request_integrity.append({'label': label, **report})
+        else:
+            batch_attempts.append({'label': label, 'attempts': 1, 'status': status,
+                **({'error': str(error)[:500], 'error_type': _error_type(error)} if error else {})})
+        _persist_batch_integrity(workspace, coverage=coverage,
+            task_view_coverage=task_view_coverage, requests=request_integrity,
+            batch_attempts=batch_attempts, status='failed' if error else 'synthesis_pending',
+            model_invoked=request_count > 0, error=error, model_request_count=request_count)
+
     try:
-        final = call(final_text, output_schema=schema, max_output_tokens=final_output_tokens,
-                     output_schema_name="newrouge_capability_candidate")
+        synthesis_plan = _synthesis_plan(
+            _measured_request_text(synthesis_text, schema,
+                schema_name='newrouge_capability_candidate'),
+            analysis_budgets=actual_analysis_budgets, max_bytes=max_bytes,
+            max_input_tokens=max_input_tokens, reserved_tokens=final_output_tokens)
+        request_integrity.append({'label': 'synthesis-actual-capacity',
+                                  **_plan_capacity_report(synthesis_plan)})
+        _execute_synthesis_plan(plan=synthesis_plan, analyses=batch_outputs, original_prompt=original_prompt,
+            base=base, checklist=checklist, workspace=workspace, output_path=output_path,
+            schema_path=output_schema_path, output_tokens=final_output_tokens,
+            measured=lambda text, reserve: measure_request(_measured_request_text(text, schema,
+                schema_name='newrouge_capability_candidate'), max_bytes=max_bytes,
+                max_input_tokens=max_input_tokens, reserved_tokens=reserve),
+            dispatch=dispatch_synthesis, event=synthesis_event)
     except (OSError, RuntimeError, TimeoutError, ValueError, json.JSONDecodeError) as exc:
-        _persist_batch_integrity(workspace, coverage=coverage,
-            task_view_coverage=task_view_coverage, requests=request_integrity,
-            batch_attempts=batch_attempts + [{"label": "synthesis", "attempts": 1,
-                "status": "failed", "error": str(exc)[:500], "error_type": _error_type(exc)}],
-            status='failed', model_invoked=request_count > 0, error=exc,
-            model_request_count=request_count)
-        raise
-    output_text = _extract_response_output_text(final)
-    if not output_text:
-        exc = RuntimeError("OpenAI batched session returned empty final output")
-        _persist_batch_integrity(workspace, coverage=coverage,
-            task_view_coverage=task_view_coverage, requests=request_integrity,
-            batch_attempts=batch_attempts + [{"label": "synthesis", "attempts": 1,
-                "status": "failed", "error": str(exc), "error_type": _error_type(exc)}],
-            status='failed', model_invoked=request_count > 0, error=exc,
-            model_request_count=request_count)
-        raise exc
-    try:
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        output_path.write_text(output_text.rstrip() + "\n", encoding="utf-8", newline="\n")
-    except (OSError, UnicodeError) as exc:
         _persist_batch_integrity(workspace, coverage=coverage,
             task_view_coverage=task_view_coverage, requests=request_integrity,
             batch_attempts=batch_attempts + [{"label": "synthesis", "attempts": 1,
@@ -903,9 +1170,10 @@ def _run_batched_session(
             status='failed', model_invoked=True, error=exc,
             model_request_count=request_count)
         raise
+    output_text = output_path.read_text(encoding='utf-8')
     _persist_batch_integrity(workspace, coverage=coverage,
         task_view_coverage=task_view_coverage, requests=request_integrity,
-        batch_attempts=batch_attempts + [{"label": "synthesis", "attempts": 1, "status": "accepted"}],
+        batch_attempts=batch_attempts,
         status='ready', model_invoked=True, model_request_count=request_count)
     return {
         "schema_version": "newrouge.isolated-model-runner-receipt.v1",
@@ -915,6 +1183,7 @@ def _run_batched_session(
         "output_chars": len(output_text),
         "model_tools": [],
         "model_request_count": request_count,
+        "synthesis_stage_count": len(synthesis_plan['stages']),
         "request_count_observable": True,
         "batch_count": len(batches),
         "batch_analysis_sha256": {
@@ -954,6 +1223,7 @@ def run(args: argparse.Namespace) -> int:
             max_bytes=args.max_bytes,
             output_schema_path=schema_path,
             max_input_tokens=args.max_input_tokens,
+            model_request_budget=args.model_request_budget,
         )
         print(json.dumps(receipt, ensure_ascii=False))
         return 0
@@ -970,15 +1240,30 @@ def run(args: argparse.Namespace) -> int:
             "strict": True, "schema": load_json(schema_path)}}}, ensure_ascii=False)
     integrity = check_workspace_request(workspace, visible, max_bytes=args.max_bytes,
         max_input_tokens=getattr(args, "max_input_tokens", configured_input_limit()))
-    rc, trace_text, command = run_llm_exec(
-        backend="openai-api",
-        root=workspace,
-        prompt=payload,
-        output_last_message=output_path,
-        timeout_sec=args.timeout_sec,
-        codex_configs=["model_reasoning_effort=high"],
-        output_schema=schema_path,
-    )
+    request_budget = getattr(args, "model_request_budget", None)
+    if request_budget is not None and request_budget < 1:
+        integrity.update(status="request_budget_exhausted", model_invoked=False,
+            model_request_count=0, request_count_complete=True,
+            error="model_request_budget_exhausted:limit=0")
+        atomic_json(workspace / REPORT_NAME, integrity)
+        raise ValueError("model_request_budget_exhausted:limit=0")
+    integrity.update(status="running", model_invoked=True,
+        model_request_count=1, request_count_complete=True)
+    atomic_json(workspace / REPORT_NAME, integrity)
+    try:
+        rc, trace_text, command = run_llm_exec(
+            backend="openai-api",
+            root=workspace,
+            prompt=payload,
+            output_last_message=output_path,
+            timeout_sec=args.timeout_sec,
+            codex_configs=["model_reasoning_effort=high"],
+            output_schema=schema_path,
+        )
+    except BaseException as exc:
+        integrity.update(status="failed", error=f"{type(exc).__name__}:{exc}"[:1000])
+        atomic_json(workspace / REPORT_NAME, integrity)
+        raise
     if rc != 0:
         print(trace_text.rstrip())
         return rc
@@ -999,6 +1284,8 @@ def run(args: argparse.Namespace) -> int:
         "command": command,
         "input_integrity": integrity,
     }
+    integrity.update(status="completed", model_request_count=1, request_count_complete=True)
+    atomic_json(workspace / REPORT_NAME, integrity)
     print(json.dumps(receipt, ensure_ascii=False))
     return 0
 
@@ -1012,6 +1299,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--timeout-sec", type=int, default=1800)
     parser.add_argument("--max-bytes", type=int, default=DEFAULT_MAX_BYTES)
     parser.add_argument("--max-input-tokens", type=int, default=configured_input_limit())
+    parser.add_argument("--model-request-budget", type=int, default=None)
     parser.add_argument("--output-schema", default="")
     args = parser.parse_args(argv)
     if args.describe:

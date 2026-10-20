@@ -165,17 +165,24 @@ class PlanningReviewRecoveryTests(unittest.TestCase):
 
     def test_alignment_attempts_are_persisted_and_resumed_after_budgeted_rejection(self):
         run = selected_cap(self.root)
+        runner_info = {"model": "fixture-reviewer", "request_accounting": "exact_per_runner_invocation",
+            "supports_batched_session": True, "supports_request_budget": True}
+        state = load_json(run / "run.json")
+        state["runner"] = runner_info
+        atomic_json(run / "run.json", state)
         base = cap.preview_alignment(self.root, run_id="repair")
         valid = {"decisions": [dict(row) for row in base["decisions"]]}
         calls = 0
+        budgets = []
 
         def invoke(*args, **kwargs):
             nonlocal calls
             calls += 1
+            budgets.append(kwargs.get("model_request_budget"))
             atomic_json(kwargs["output_path"], {"decisions": []} if calls <= 2 else valid)
-            return {"model": "fixture-reviewer", "model_tools": []}
+            return {"model": "fixture-reviewer", "model_tools": [],
+                "model_request_count": 1, "request_count_observable": True}
 
-        runner_info = {"model": "fixture-reviewer"}
         with patch.object(cap, "inspect_isolated_runner", return_value=runner_info), \
              patch.object(cap, "run_isolated_model", side_effect=invoke):
             with self.assertRaisesRegex(ValueError, "alignment"):
@@ -193,6 +200,8 @@ class PlanningReviewRecoveryTests(unittest.TestCase):
 
         self.assertTrue(result["resolved"])
         self.assertEqual(3, calls)
+        self.assertEqual([1, 1, 1], budgets)
+        self.assertEqual(3, load_json(run / "run.json")["budget"]["model_requests_observed"])
         self.assertEqual(3, len(load_json(run / "run.json")["alignment_attempts"]))
         self.assertTrue((run / "alignment.meta.json").is_file())
 
@@ -229,7 +238,7 @@ class PlanningReviewRecoveryTests(unittest.TestCase):
             accepted = not completed_attempt or any(a.get("status") == "completed" for a in payload.get("review_attempts", []))
             if path == run / boundary and accepted and (checkpoint_status is None or payload.get("status") == checkpoint_status):
                 raise KeyboardInterrupt("loss after committed publication write")
-        with patch.object(cap, "inspect_isolated_runner", return_value={"model": "fixture-model"}), \
+        with patch.object(cap, "inspect_isolated_runner", return_value={"model": "fixture-model", "supports_batched_session": True}), \
              patch.object(cap, "run_isolated_model", side_effect=invoke) as model:
             with patch.object(cap, "atomic_json", side_effect=interrupt):
                 with self.assertRaises(KeyboardInterrupt):

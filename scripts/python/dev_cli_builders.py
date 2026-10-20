@@ -639,8 +639,9 @@ def build_plan_capabilities_cmd(args) -> list[str]:
         if args.allow_unready_draft:
             cmd.append("--allow-unready-draft")
         cmd += ["--source-manifest", args.source_manifest, "--ledger", args.ledger, "--semantics", args.semantics]
+        if args.model_batch_char_budget is not None:
+            cmd += ["--model-batch-char-budget", str(args.model_batch_char_budget)]
         cmd += [
-            "--model-batch-char-budget", str(args.model_batch_char_budget),
             "--candidate-retry-limit", str(args.candidate_retry_limit),
             "--review-retry-limit", str(args.review_retry_limit),
             "--candidate-budget-sec", str(args.candidate_budget_sec),

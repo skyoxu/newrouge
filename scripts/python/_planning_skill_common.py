@@ -565,6 +565,7 @@ def run_isolated_model(
     output_path: Path,
     timeout_sec: int,
     output_schema: Path | None = None,
+    model_request_budget: int | None = None,
 ) -> dict[str, Any]:
     cmd = [
         *_runner_prefix(executable),
@@ -575,6 +576,8 @@ def run_isolated_model(
     ]
     if output_schema is not None:
         cmd.extend(["--output-schema", str(output_schema)])
+    if model_request_budget is not None:
+        cmd.extend(["--model-request-budget", str(max(0, int(model_request_budget)))])
     kwargs: dict[str, Any] = {
         "text": True,
         "encoding": "utf-8",

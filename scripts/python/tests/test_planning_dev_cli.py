@@ -3,7 +3,10 @@ from __future__ import annotations
 
 import sys
 import unittest
+import contextlib
+import io
 from pathlib import Path
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[3]
 PYTHON = ROOT / "scripts" / "python"
@@ -15,6 +18,46 @@ from dev_cli_builders import build_plan_capabilities_cmd, build_plan_mvg_cmd
 
 
 class PlanningDevCliTests(unittest.TestCase):
+    def test_direct_planner_defaults_used_by_web_match_time_budgets(self):
+        import plan_capabilities as planner
+        for stage in ('prepare', 'generate', 'review', 'align'):
+            function = {'prepare': 'prepare', 'generate': 'generate',
+                        'review': 'review', 'align': 'align_with_llm'}[stage]
+            argv = [stage, '--run-id', 'time-budget']
+            if stage != 'prepare':
+                argv += ['--runner', 'scripts/python/codex_isolated_model_runner.py']
+            with patch.object(planner, function, return_value={}) as action, contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(0, planner.main(argv))
+            if stage == 'prepare':
+                self.assertEqual(2700, action.call_args.kwargs['candidate_budget_sec'])
+                self.assertEqual(13500, action.call_args.kwargs['total_budget_sec'])
+            else:
+                self.assertEqual(2700, action.call_args.kwargs['timeout_sec'])
+
+    def test_capability_time_budgets_allow_three_candidates_review_and_alignment(self):
+        for stage in ('prepare', 'generate', 'review'):
+            args = dev_cli.build_parser().parse_args([
+                'plan-capabilities', '--stage', stage, '--run-id', 'time-budget'])
+            cmd = build_plan_capabilities_cmd(args)
+            if stage == 'prepare':
+                self.assertEqual('2700', cmd[cmd.index('--candidate-budget-sec') + 1])
+                self.assertEqual('13500', cmd[cmd.index('--total-budget-sec') + 1])
+            else:
+                self.assertEqual('2700', cmd[cmd.index('--timeout-sec') + 1])
+
+    def test_capability_batch_default_is_owned_by_planner(self):
+        for limit in (None, 40000):
+            values = ["plan-capabilities", "--stage", "prepare", "--run-id", "batch-default"]
+            if limit is not None:
+                values += ["--model-batch-char-budget", str(limit)]
+            args = dev_cli.build_parser().parse_args(values)
+            cmd = build_plan_capabilities_cmd(args)
+            self.assertEqual(limit, args.model_batch_char_budget)
+            if limit is None:
+                self.assertNotIn("--model-batch-char-budget", cmd)
+            else:
+                self.assertEqual(str(limit), cmd[cmd.index("--model-batch-char-budget") + 1])
+
     def test_mvg_prepare_budget_preserves_default_or_explicit_source(self):
         for limit in (None, 7):
             values = ["plan-mvg", "--stage", "prepare", "--run-id", "budget"]
@@ -39,6 +82,11 @@ class PlanningDevCliTests(unittest.TestCase):
         self.assertIn("prepare", cmd)
 
     def test_capability_generate_forwards_isolated_runner(self) -> None:
+        default_args = dev_cli.build_parser().parse_args([
+            "plan-capabilities", "--stage", "generate", "--run-id", "r-default",
+        ])
+        self.assertEqual("scripts/python/codex_isolated_model_runner.py", default_args.runner)
+
         args = dev_cli.build_parser().parse_args([
             "plan-capabilities", "--stage", "generate", "--run-id", "r1",
             "--runner", "tools/isolated-runner.exe",

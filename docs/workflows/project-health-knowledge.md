@@ -33,7 +33,7 @@ Capability input preflight is lossless: source/Requirement batch bodies must mat
 
 `/knowledge/scenes` 的 `GDD versions and MVG` 视图提供 `Generate MVG from Capability`。它消费同一 main 提交已生成的 Capability；没有该结果时消费 main 中已提交的 `capabilities.v1.json`，不会隐式生成 Capability。目标为当前选定的 MVG scope，首次没有 manifest 时为 `docs/testing/mvg/m1-full.json`。执行既有 prepare → generate → review → validate → apply，保留累计 flow/test/owner 及显式退役门控；成功刷新 MVG scope，成功和失败结果均写顶部 `scene-status`。
 
-服务进程需要 `OPENAI_API_KEY` 和 OpenAI SDK，或已认证的 Copilot CLI。Capability 候选和独立评审自动选择对应 isolated runner；MVG 生成默认跟随这些凭据，可用 `SC_KNOWLEDGE_MVG_BACKEND=openai-api|copilot-cli|codex-cli` 显式选择。`SC_KNOWLEDGE_PLANNING_RUNNER` 可指定符合现有 isolated-runner 契约的评审/Capability runner。浏览器不接受任意 runner、命令、输入版本或输出路径。
+Capability 候选和独立评审固定使用 `scripts/python/codex_isolated_model_runner.py`，也就是已认证 Codex CLI 的环境默认模型配置；网页和 CLI 共用该默认方式。Codex CLI 不可用时流程明确失败，不自动切换到 Copilot 或 OpenAI API。MVG 的 backend 选择保持独立，可用 `SC_KNOWLEDGE_MVG_BACKEND=openai-api|copilot-cli|codex-cli` 显式选择。浏览器不接受任意 runner、命令、输入版本或输出路径；仅命令行 `--runner` 可用于受控覆盖。
 
 Capability 和 MVG 的 Generate 按钮每次点击都创建新的 job、独立 checkout 和三个新的候选上下文；即使提交号、来源内容和哈希完全相同，也不复用旧候选、评审或已完成结果。当前有效版本仍可作为比较基线，MVG 仍消费当前选定的 Capability，这不属于复用本次生成证据。页面断开连接不会取消已启动任务，通过原 job ID 轮询只读取该任务，不启动新生成。服务操作锁覆盖生成、扫描、查询及运行验证。证据和逐阶段日志保留在 `logs/ci/knowledge-planning/planning-<id>/`，生成文件位于该 job 的隔离 checkout。
 

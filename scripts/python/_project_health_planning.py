@@ -722,7 +722,15 @@ def _refresh_capability_knowledge(root: Path, checkout: Path, job: dict) -> dict
     }
 
 
+def capability_runner_path() -> Path:
+    import shutil
+    if not (shutil.which('codex') or shutil.which('codex.cmd') or os.environ.get('CODEX_MANAGED_PACKAGE_ROOT')):
+        raise ValueError('Codex CLI is required for Capability planning; authenticate Codex CLI or configure it on PATH')
+    return Path(__file__).with_name('codex_isolated_model_runner.py')
+
+
 def runner_path() -> Path:
+    """Resolve the configurable runner used by non-Capability planning jobs."""
     configured = os.environ.get('SC_KNOWLEDGE_PLANNING_RUNNER')
     if configured:
         return Path(configured).resolve()
@@ -1090,7 +1098,7 @@ def run_job(root: Path, job: dict) -> dict:
                               'analysis-index.json')
             if prepared_index.is_file():
                 validate_mvg_capability_binding(root, checkout, job)
-        runner = runner_path()
+        runner = capability_runner_path() if action == 'capability' else runner_path()
         task_args = [value for tid in task_scope(checkout) for value in ('--task-id', tid)]
         script = 'plan_capabilities.py' if action == 'capability' else 'plan_mvg.py'
         stages = ['prepare', 'generate', 'review', 'align', 'apply'] if action == 'capability' else ['prepare', 'generate', 'review', 'validate', 'apply']

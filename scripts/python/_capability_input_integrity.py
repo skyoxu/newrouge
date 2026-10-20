@@ -4,12 +4,14 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 from pathlib import Path
 from typing import Any
 
 from _planning_skill_common import atomic_json, canonical_sha, file_sha, load_json, repo_path
 
 DEFAULT_MAX_INPUT_TOKENS = 96000
+TASK_VIEW_CHUNK_CHAR_BUDGET = 65000
 # Codex CLI rejects stdin above 1,048,576 characters. Keep the byte check too;
 # it is conservative for non-ASCII evidence and prevents encoding surprises.
 CODEX_MAX_TURN_BYTES = 1 * 1024 * 1024
@@ -64,6 +66,49 @@ def _rows_by_id(rows: Any, key: str) -> dict[str, dict]:
             raise ValueError('capability_input_integrity_duplicate_authority_id:' + row[key])
         result[row[key]] = row
     return result
+
+
+def retired_source_blocks(workspace: Path) -> list[dict[str, Any]]:
+    """Exclude only unreferenced task rows with authoritative retired owners.
+
+    Structured task_ids are preferred. The frozen task-baseline GDD also has
+    a strict table-row identity (the first cell is exactly T<id>); prose and
+    references elsewhere in a row are never interpreted as ownership.
+    """
+    statuses = _load_master_task_statuses(workspace)
+    if statuses is None:
+        return []
+    analysis = workspace / 'analysis-input'
+    requirements = load_json(analysis / 'semantic-requirements.v1.json', {}).get('requirements', [])
+    protected = {str(ref) for row in requirements
+                 if row.get('status', 'active') not in {'cancelled', 'retired', 'superseded'}
+                 for ref in row.get('source_block_ids', [])}
+    result = []
+    for block in load_json(analysis / 'source-blocks.v1.json', {}).get('blocks', []):
+        if block['block_id'] in protected:
+            continue
+        task_ids = block.get('task_ids')
+        basis = 'structured_task_ids'
+        if task_ids is None:
+            match = (re.match(r'^\s*\|\s*T([0-9]+)\s*\|', block.get('raw_text', ''))
+                     if block.get('block_type') == 'table_row' else None)
+            task_ids = [match.group(1)] if match else []
+            basis = 'task_baseline_table_identity'
+        if not isinstance(task_ids, list) or not task_ids:
+            continue
+        ids = [str(value) for value in task_ids]
+        if all(statuses.get(value) in {'cancelled', 'retired', 'superseded'} for value in ids):
+            result.append({'block_id': block['block_id'], 'task_id': ids[0],
+                'task_ids': ids, 'master_statuses': {key: statuses[key] for key in ids},
+                'identity_basis': basis, 'reason': 'retired_task_without_active_requirement',
+                'content_sha256': canonical_sha(block)})
+    return result
+
+
+def project_source_batch(workspace: Path, batch: dict) -> dict:
+    excluded = {row['block_id'] for row in retired_source_blocks(workspace)}
+    return {**batch, 'blocks': [row for row in batch.get('blocks', [])
+                               if row['block_id'] not in excluded]}
 
 
 def validate_batches(workspace: Path, index: dict) -> dict:
@@ -127,7 +172,11 @@ def validate_batches(workspace: Path, index: dict) -> dict:
             path = repo_path(analysis, rel)
             if not path.is_file() or file_sha(path) != expected:
                 raise ValueError('capability_input_integrity_prepared_file_mismatch:' + rel)
+    excluded = retired_source_blocks(workspace)
+    excluded_ids = {row['block_id'] for row in excluded}
     return {'complete': True, 'source_block_ids': sorted(seen_blocks),
+            'model_source_block_ids': sorted(seen_blocks - excluded_ids),
+            'excluded_source_blocks': excluded,
             'requirement_ids': sorted(seen_requirements), 'batch_count': len(rows),
             'batch_index_sha256': file_sha(analysis / 'model-batches/batch-index.json'),
             'analysis_identity_sha256': prepared.get('analysis_identity_sha256')}
@@ -140,6 +189,64 @@ def compact_file_section(workspace: Path, path: Path) -> str:
     if path.suffix.lower() == '.json':
         text = json.dumps(json.loads(text), ensure_ascii=False, separators=(',', ':'))
     return f'===== FILE: {rel} =====\n{text}\n===== END FILE: {rel} ====='
+
+
+def task_related_evidence_section(workspace: Path, rows_by_path: dict[str, list[dict[str, Any]]]) -> str:
+    """Project complete evidence related to a task chunk without guessing refs.
+
+    Task rows remain the primary payload. When they declare Requirement refs,
+    include the exact Requirement objects and their Source Blocks so the model
+    receives the same authoritative bodies without replaying the whole ledger.
+    A task with no refs deliberately receives no inferred evidence.
+    """
+    analysis = workspace / "analysis-input"
+    readiness = load_json(analysis / "readiness-summary.json", {})
+    semantics = load_json(analysis / "semantic-requirements.v1.json", {})
+    ledger = load_json(analysis / "source-blocks.v1.json", {})
+    readiness_rows = readiness.get("tasks", []) if isinstance(readiness, dict) else []
+    requirements = semantics.get("requirements", []) if isinstance(semantics, dict) else []
+    blocks = ledger.get("blocks", []) if isinstance(ledger, dict) else []
+    task_ids = {
+        str(row.get("taskmaster_id", row.get("id")))
+        for rows in rows_by_path.values() for row in rows
+    }
+    refs = {
+        ref for rows in rows_by_path.values() for row in rows
+        for ref in _task_view_requirement_refs(row)
+    }
+    selected_requirements = [row for row in requirements
+                             if isinstance(row, dict) and str(row.get("requirement_id")) in refs]
+    selected_ids = {str(row.get("requirement_id")) for row in selected_requirements}
+    unknown = refs - selected_ids
+    if unknown:
+        raise ValueError("capability_input_integrity_unknown_task_requirement_ref:" + ",".join(sorted(unknown)))
+    block_ids: set[str] = set()
+    for requirement in selected_requirements:
+        source_refs = requirement.get("source_block_ids", [])
+        if not isinstance(source_refs, list) or any(not isinstance(value, str) for value in source_refs):
+            raise ValueError("capability_input_integrity_invalid_requirement_source_refs")
+        block_ids.update(source_refs)
+    selected_blocks = [row for row in blocks
+                       if isinstance(row, dict) and str(row.get("block_id")) in block_ids]
+    if block_ids != {str(row.get("block_id")) for row in selected_blocks}:
+        missing = block_ids - {str(row.get("block_id")) for row in selected_blocks}
+        raise ValueError("capability_input_integrity_missing_task_source_block:" + ",".join(sorted(missing)))
+    selected_readiness = [row for row in readiness_rows
+                          if isinstance(row, dict) and str(row.get("task_id")) in task_ids]
+    master_path = analysis / "task-master.json"
+    selected_master = ([row for row in task_master_rows(load_json(master_path, {}))
+                        if task_master_identity(row) in task_ids]
+                       if master_path.is_file() else [])
+    payload = {
+        "task_ids": sorted(task_ids),
+        "master_tasks": selected_master,
+        "readiness_scope": {key: value for key, value in readiness.items() if key != "tasks"},
+        "readiness": selected_readiness,
+        "requirements": selected_requirements,
+        "source_blocks": selected_blocks,
+    }
+    return "===== COMPLETE RELATED TASK EVIDENCE =====\n" + json.dumps(
+        payload, ensure_ascii=False, separators=(",", ":")) + "\n===== END COMPLETE RELATED TASK EVIDENCE ====="
 
 
 def _task_view_requirement_refs(row: dict[str, Any]) -> set[str]:
@@ -304,7 +411,7 @@ def task_view_batch_sections(workspace: Path, batch_index: dict[str, Any]) -> tu
     return sections, coverage
 
 
-def task_view_payload_chunks(workspace: Path, *, char_budget: int = 100000) -> list[dict[str, list[dict[str, Any]]]]:
+def task_view_payload_chunks(workspace: Path, *, char_budget: int = TASK_VIEW_CHUNK_CHAR_BUDGET) -> list[dict[str, list[dict[str, Any]]]]:
     """Split complete task-view rows into size-bounded, independently addressable chunks."""
     if char_budget < 1000:
         raise ValueError("Capability task-view chunk char budget must be at least 1000")

@@ -22,6 +22,7 @@ from _capability_alignment import (
     build_alignment, slug, validate_alignment, validate_formal_projection,
     normalize_alignment_override,
 )
+from _capability_input_integrity import REPORT_NAME
 from _planning_skill_common import (
     atomic_json,
     build_blinded_analysis_bundle,
@@ -306,7 +307,7 @@ def prepare(
     from _capability_input_integrity import task_view_payload_chunks
     # Keep prepare accounting byte-for-byte aligned with the isolated runners.
     # A different default here can reserve phantom requests at chunk boundaries.
-    task_view_chunk_count = len(task_view_payload_chunks(run_dir, char_budget=150000))
+    task_view_chunk_count = len(task_view_payload_chunks(run_dir))
     state = {
         "schema_version": RUN_SCHEMA,
         "run_id": run_id,
@@ -347,7 +348,7 @@ def prepare(
 
 CANDIDATE_PROMPT = """You are producing one independent cumulative Capability proposal for a game repository.
 
-Use the complete prepared analysis-input. The runner sends authoritative Source Block raw text and reviewed Requirements in ordered batches from analysis-input/model-batches. Each batch analysis is an independent fresh request; no batch may rely on a previous response and no block may be truncated. A separate synthesis request receives the bounded batch analyses plus the complete non-source workspace context. Sanitized task views and readiness context are also part of the allowed input. Do not infer or search for any prior Capability answer. Preserve any capability/module organization written in the authoritative GDD itself; that source organization is evidence, not a derived answer to hide.
+Use the complete prepared analysis-input. The runner sends authoritative Source Block raw text and reviewed Requirements in ordered batches from analysis-input/model-batches. Each batch analysis is an independent fresh request; no batch may rely on a previous response and no block may be truncated. Synthesis receives bounded batch analyses in one request or ordered cumulative stages, each with the complete prior draft and non-source workspace context. Sanitized task views and readiness context are also part of the allowed input. Do not infer or search for any prior Capability answer. Preserve any capability/module organization written in the authoritative GDD itself; that source organization is evidence, not a derived answer to hide.
 
 The prepared workspace may include capability-reference.v1.json. It is an optional cross-project diagnostic only, never a template, authority, target shape, or ID source. Do not copy its count, titles, membership, or boundaries. Start from current user-visible outcomes and end-to-end journey handoffs, then use current Source Blocks and Requirements as authoritative. Split when there is a distinct user outcome, owner, lifecycle, or independently reviewable journey handoff; merge when several requirements are only implementation steps of one outcome. Do not optimize for a fixed Capability count, historical count, Requirement count, or symmetry. Avoid oversized buckets that combine unrelated lifecycle, runtime, persistence, UI, or governance responsibilities, and avoid one-Requirement atoms unless that Requirement has a genuinely independent outcome or boundary. A Capability should normally represent one cohesive responsibility that a human can understand and that MVG can use as a meaningful journey stage or handoff. Explain any use of the diagnostic and all major split/merge decisions in generation_notes.
 
@@ -744,16 +745,40 @@ def _latest_candidate_attempt_path(run_dir: Path, label: str, attempts: list[dic
 def _estimated_requests(state: dict[str, Any], runner_info: dict[str, Any], *, label: str | None = None) -> int | None:
     if runner_info.get("request_accounting") != "exact_per_runner_invocation":
         return None
-    # Review/alignment are single requests; only candidate generation uses
-    # the source and task-view batch session.
-    if label is None:
-        return 1
-    if runner_info.get("supports_batched_session") is True:
-        batches = (int(state.get("model_batch_count") or 0)
-                   + int(state.get("task_view_chunk_count") or 0))
-        retries = int(_budget(state).get("candidate_batch_retry_limit") or 2)
-        return batches * (retries + 1) + 1
+    # One invocation-level reservation. Batched runners receive the remaining
+    # allowance and enforce it immediately before every transport dispatch.
     return 1
+
+
+def _attempt_request_allowance(
+    state: dict[str, Any], runner_info: dict[str, Any], *, max_requests: int | None = None,
+) -> int | None:
+    if runner_info.get("request_accounting") != "exact_per_runner_invocation":
+        return None
+    # A runner without the per-dispatch budget contract cannot safely spend
+    # the whole remaining allowance. Reserve one invocation conservatively;
+    # an unknown outcome remains reserved after interruption.
+    if runner_info.get("supports_request_budget") is not True:
+        budget = _budget(state)
+        remaining = int(budget["request_limit"]) - int(budget.get("model_requests_observed") or 0) \
+            - int(budget.get("model_requests_reserved") or 0)
+        if remaining < 1:
+            raise ValueError(
+                f"Capability planning model request budget exhausted: "
+                f"{budget.get('model_requests_observed', 0)}+{budget.get('model_requests_reserved', 0)}"
+                f">={budget['request_limit']}"
+            )
+        return 1
+    budget = _budget(state)
+    remaining = int(budget["request_limit"]) - int(budget.get("model_requests_observed") or 0) \
+        - int(budget.get("model_requests_reserved") or 0)
+    if remaining < 1:
+        raise ValueError(
+            f"Capability planning model request budget exhausted: "
+            f"{budget.get('model_requests_observed', 0)}+{budget.get('model_requests_reserved', 0)}"
+            f">={budget['request_limit']}"
+        )
+    return min(remaining, max_requests) if max_requests is not None else remaining
 
 
 def _remaining_attempt_budget(
@@ -776,14 +801,7 @@ def _remaining_attempt_budget(
         if candidate_remaining <= 0:
             raise ValueError(f"{label} active-time budget exhausted")
         remaining = min(remaining, candidate_remaining)
-    estimated = _estimated_requests(state, runner_info, label=label)
-    if estimated is not None:
-        observed = int(budget.get("model_requests_observed") or 0) + int(budget.get("model_requests_reserved") or 0)
-        if observed + estimated > int(budget["request_limit"]):
-            raise ValueError(
-                f"Capability planning model request budget exhausted: "
-                f"{observed}+{estimated}>{budget['request_limit']}"
-            )
+    _attempt_request_allowance(state, runner_info)
     if int(remaining) < 1 or int(timeout_sec) < 1:
         raise ValueError("Capability planning active-time budget cannot fund another invocation")
     return min(int(timeout_sec), int(remaining))
@@ -796,6 +814,7 @@ def _record_runner_activity(
     elapsed_sec: float,
     receipt: dict[str, Any] | None,
     activity_key: str | None = None,
+    request_count: int | None = None,
 ) -> None:
     budget = _budget(state)
     budget["activity_sec"] = float(budget.get("activity_sec") or 0.0) + float(elapsed_sec)
@@ -805,7 +824,9 @@ def _record_runner_activity(
     else:
         key = f"{activity_key or 'review'}_activity_sec"
         budget[key] = float(budget.get(key) or 0.0) + float(elapsed_sec)
-    if isinstance(receipt, dict) and receipt.get("request_count_observable") is True:
+    if request_count is not None:
+        budget["model_requests_observed"] = int(budget.get("model_requests_observed") or 0) + max(0, request_count)
+    elif isinstance(receipt, dict) and receipt.get("request_count_observable") is True:
         budget["model_requests_observed"] = (
             int(budget.get("model_requests_observed") or 0)
             + int(receipt.get("model_request_count") or 0)
@@ -817,10 +838,11 @@ def _record_runner_activity(
 def _begin_attempt(run_path: Path, state: dict[str, Any], attempts: list[dict[str, Any]],
                    *, label: str | None, timeout_sec: int, runner_info: dict[str, Any],
                    metadata: dict[str, Any] | None = None,
-                   activity_key: str | None = None) -> dict[str, Any]:
+                   activity_key: str | None = None,
+                   request_reservation: int | None = None) -> dict[str, Any]:
     """Reserve before starting: process loss cannot erase an invocation or its cap."""
     reserved = float(timeout_sec)
-    requests = _estimated_requests(state, runner_info, label=label)
+    requests = request_reservation if request_reservation is not None else _estimated_requests(state, runner_info, label=label)
     row = {"attempt": len(attempts) + 1, "status": "running", "started_at_utc": now(),
         "reserved_active_sec": reserved, "reserved_requests": requests,
         "candidate": label, "runner_contract_model": runner_info.get("model")}
@@ -840,7 +862,7 @@ def _begin_attempt(run_path: Path, state: dict[str, Any], attempts: list[dict[st
 
 
 def _finish_attempt(state: dict[str, Any], row: dict[str, Any], *, elapsed_sec: float,
-                    receipt: dict[str, Any] | None) -> None:
+                    receipt: dict[str, Any] | None, request_count: int | None = None) -> None:
     budget = _budget(state)
     reserved = float(row["reserved_active_sec"])
     budget["activity_reserved_sec"] = max(0.0, float(budget.get("activity_reserved_sec") or 0.0) - reserved)
@@ -848,7 +870,7 @@ def _finish_attempt(state: dict[str, Any], row: dict[str, Any], *, elapsed_sec: 
     if label is not None:
         by_candidate = budget.setdefault("candidate_reserved_sec", {})
         by_candidate[label] = max(0.0, float(by_candidate.get(label) or 0.0) - reserved)
-    if isinstance(receipt, dict) and receipt.get("request_count_observable") is True:
+    if request_count is not None or (isinstance(receipt, dict) and receipt.get("request_count_observable") is True):
         budget["model_requests_reserved"] = max(0, int(budget.get("model_requests_reserved") or 0) - int(row.get("reserved_requests") or 0))
     else:
         # No receipt means the child may have dispatched one or more requests.
@@ -860,8 +882,24 @@ def _finish_attempt(state: dict[str, Any], row: dict[str, Any], *, elapsed_sec: 
     # persisted active-time budget; the reservation is the authoritative cap.
     accounted = min(max(0.0, float(elapsed_sec)), reserved)
     _record_runner_activity(state, label=label, elapsed_sec=accounted, receipt=receipt,
-                            activity_key=row.get("activity_key"))
+                            activity_key=row.get("activity_key"), request_count=request_count)
     row.update(finished_at_utc=now(), elapsed_active_sec=accounted, reservation_settled=True)
+
+
+def _runner_request_count(workspace: Path, receipt: dict[str, Any] | None,
+                          runner_info: dict[str, Any],
+                          request_budget: int | None = None) -> int | None:
+    if runner_info.get("supports_request_budget") is True:
+        report = load_json(workspace / REPORT_NAME, None)
+        if (isinstance(report, dict)
+                and report.get("request_count_complete") is True
+                and isinstance(report.get("model_request_count"), int)):
+            count = int(report["model_request_count"])
+            if count >= 0 and (request_budget is None or count <= request_budget):
+                return count
+    if isinstance(receipt, dict) and receipt.get("request_count_observable") is True:
+        return max(0, int(receipt.get("model_request_count") or 0))
+    return None
 
 
 def _recover_interrupted_attempts(run_path: Path, state: dict[str, Any]) -> None:
@@ -871,9 +909,29 @@ def _recover_interrupted_attempts(run_path: Path, state: dict[str, Any]) -> None
     changed = False
     for row in attempts:
         if row.get("status") == "running":
+            runner = state.get("runner") if isinstance(state.get("runner"), dict) else {}
+            workspace = row.get("request_budget_report_workspace")
+            if runner.get("supports_request_budget") is True and workspace:
+                report = load_json(Path(workspace) / "runner-input-integrity.json", None)
+                if isinstance(report, dict) and report.get("request_count_complete") is True:
+                    count = int(report.get("model_request_count") or 0)
+                    reserved = int(row.get("reserved_requests") or 0)
+                    if 0 <= count <= reserved:
+                        budget = _budget(state)
+                        budget["model_requests_reserved"] = max(0,
+                            int(budget.get("model_requests_reserved") or 0) - reserved)
+                        budget["model_requests_observed"] = int(
+                            budget.get("model_requests_observed") or 0) + count
+                        row["settled_request_count"] = count
+                        row["request_count_recovered_from_runner_report"] = True
+                    else:
+                        _budget(state)["request_count_complete"] = False
+                else:
+                    _budget(state)["request_count_complete"] = False
+            else:
+                _budget(state)["request_count_complete"] = False
             row.update(status="interrupted", error="process_lost_before_settlement",
                 reservation_note="Unknown active time remains reserved; it is not observed cost or paused wall time.")
-            _budget(state)["request_count_complete"] = False
             changed = True
     if changed:
         atomic_json(run_path, state)
@@ -943,30 +1001,7 @@ def generate(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict
     outputs = []
     blocked: list[str] = []
     max_attempts = 1 + int(_budget(state).get("candidate_retry_limit") or 0)
-    estimated = _estimated_requests(state, runner_info, label="candidate-1")
     budget = _budget(state)
-    if estimated is not None:
-        remaining_initial = sum(
-            1
-            for index in range(1, 4)
-            if not _valid_candidate_reusable(
-                run_dir,
-                state,
-                f"candidate-{index}",
-                prompt_sha=prompt_sha,
-                runner_info=runner_info,
-            )
-        )
-        observed = int(budget.get("model_requests_observed") or 0) + int(budget.get("model_requests_reserved") or 0)
-        required = remaining_initial * estimated
-        if observed + required > int(budget["request_limit"]):
-            state["phase"] = "generation-blocked"
-            state["stop_reason"] = (
-                f"initial candidate request estimate exceeds budget: "
-                f"{observed}+{required}>{budget['request_limit']}"
-            )
-            atomic_json(run_path, state)
-            raise ValueError(state["stop_reason"])
     for index in range(1, 4):
         label = f"candidate-{index}"
         if _valid_candidate_reusable(
@@ -1079,12 +1114,14 @@ def generate(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict
             receipt: dict[str, Any] | None = None
             candidate: dict[str, Any] | None = None
             errors: list[str] = []
+            request_allowance = _attempt_request_allowance(state, runner_info)
             attempt_record = _begin_attempt(run_path, state, attempts, label=label,
                 timeout_sec=attempt_timeout, runner_info=runner_info, metadata={
                     "retry_mode": retry_mode,
                     "repair_seed_path": relative(root, repair_seed_path) if repair_seed_path is not None else None,
                     "repair_seed_sha256": repair_seed_sha256,
-                })
+                    "request_budget_report_workspace": str(workspace),
+                }, request_reservation=request_allowance)
             started = time.monotonic()
             try:
                 receipt = run_isolated_model(
@@ -1094,6 +1131,7 @@ def generate(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict
                     output_path=output,
                     timeout_sec=attempt_timeout,
                     output_schema=schema_path,
+                    model_request_budget=request_allowance if runner_info.get("supports_request_budget") is True else None,
                 )
                 candidate = parse_model_json(output)
                 candidate = normalize_candidate_output(candidate, ledger)
@@ -1103,12 +1141,16 @@ def generate(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict
             except (OSError, RuntimeError, TimeoutError, ValueError, json.JSONDecodeError) as exc:
                 errors = [f"runner_or_output_failure:{exc}"]
             except BaseException as exc:
-                _finish_attempt(state, attempt_record, elapsed_sec=time.monotonic() - started, receipt=receipt)
+                request_count = _runner_request_count(workspace, receipt, runner_info, request_allowance)
+                _finish_attempt(state, attempt_record, elapsed_sec=time.monotonic() - started, receipt=receipt,
+                                request_count=request_count)
                 attempt_record.update(status="interrupted", error=type(exc).__name__)
                 atomic_json(run_path, state)
                 raise
             elapsed = time.monotonic() - started
-            _finish_attempt(state, attempt_record, elapsed_sec=elapsed, receipt=receipt)
+            request_count = _runner_request_count(workspace, receipt, runner_info, request_allowance)
+            _finish_attempt(state, attempt_record, elapsed_sec=elapsed, receipt=receipt,
+                            request_count=request_count)
             actual_model = str((receipt or {}).get("model") or "").strip()
             if actual_model.lower() in {"auto", "automatic"}:
                 actual_model = ""
@@ -1171,11 +1213,21 @@ def generate(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict
                 last_errors = errors
             atomic_json(run_path, state)
             input_error = next((kind for kind in (
-                'runner_input_too_large', 'runner_context_budget_exceeded', 'capability_input_integrity_'
+                'runner_input_too_large', 'runner_context_budget_exceeded', 'capability_input_integrity_',
+                'capability_batch_analysis_output_budget_exceeded',
+                'capability_synthesis_draft_invalid',
+                'capability_synthesis_analysis_conservation_mismatch',
+                'model_request_budget_exhausted',
             ) if any(kind in error for error in errors)), None)
             if input_error:
-                state.update(phase='generation-blocked', error_type=input_error,
-                    stop_reason='Capability input rejected before generation: ' + ';'.join(errors))
+                reason_prefix = ('Capability model request budget exhausted: '
+                    if input_error == 'model_request_budget_exhausted'
+                    else 'Capability analysis output rejected: '
+                    if input_error == 'capability_batch_analysis_output_budget_exceeded'
+                    else 'Capability input rejected before generation: ')
+                state.update(phase='generation-blocked', error_type=(
+                        'request_budget_exhausted' if input_error == 'model_request_budget_exhausted' else input_error),
+                    stop_reason=reason_prefix + ';'.join(errors))
                 atomic_json(run_path, state)
                 raise ValueError(state['stop_reason'])
         outputs.append({
@@ -1579,13 +1631,17 @@ def review(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict[s
         receipt: dict[str, Any] | None = None
         result: dict[str, Any] | None = None
         errors: list[str] = []
+        request_allowance = _attempt_request_allowance(state, runner_info)
         attempt_record = _begin_attempt(run_path, state, attempts, label=None,
-            timeout_sec=attempt_timeout, runner_info=runner_info)
+            timeout_sec=attempt_timeout, runner_info=runner_info,
+            metadata={"request_budget_report_workspace": str(workspace)},
+            request_reservation=request_allowance)
         started = time.monotonic()
         try:
             receipt = run_isolated_model(
                 runner, workspace=workspace, prompt_path=prompt_path,
                 output_path=output, timeout_sec=attempt_timeout,
+                model_request_budget=request_allowance if runner_info.get("supports_request_budget") is True else None,
             )
             result = parse_model_json(output)
             errors.extend(validate_review_report(result, run_dir, allow_incumbent=state.get("incumbent_present") is True))
@@ -1612,12 +1668,16 @@ def review(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict[s
         except (OSError, RuntimeError, TimeoutError, ValueError, json.JSONDecodeError) as exc:
             errors = [f"review_runner_or_output_failure:{exc}"]
         except BaseException as exc:
-            _finish_attempt(state, attempt_record, elapsed_sec=time.monotonic() - started, receipt=receipt)
+            request_count = _runner_request_count(workspace, receipt, runner_info, request_allowance)
+            _finish_attempt(state, attempt_record, elapsed_sec=time.monotonic() - started, receipt=receipt,
+                            request_count=request_count)
             attempt_record.update(status="interrupted", error=type(exc).__name__)
             atomic_json(run_path, state)
             raise
         elapsed = time.monotonic() - started
-        _finish_attempt(state, attempt_record, elapsed_sec=elapsed, receipt=receipt)
+        request_count = _runner_request_count(workspace, receipt, runner_info, request_allowance)
+        _finish_attempt(state, attempt_record, elapsed_sec=elapsed, receipt=receipt,
+                        request_count=request_count)
         actual_model = str((receipt or {}).get("model") or "").strip()
         if (receipt is not None and not actual_model) or (
                 receipt is not None and actual_model.lower() in {"auto", "automatic"}
@@ -1876,12 +1936,16 @@ def align_with_llm(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -
         attempt_record = _begin_attempt(
             run_path, state, attempts, label=None, timeout_sec=attempt_timeout,
             runner_info=runner_info, activity_key="alignment",
+            metadata={"request_budget_report_workspace": str(workspace)},
+            request_reservation=_attempt_request_allowance(state, runner_info, max_requests=1),
         )
+        request_allowance = int(attempt_record["reserved_requests"] or 0)
         started = time.monotonic()
         try:
             receipt = run_isolated_model(
                 runner, workspace=workspace, prompt_path=workspace / "prompt.txt",
                 output_path=output, timeout_sec=attempt_timeout,
+                model_request_budget=request_allowance if runner_info.get("supports_request_budget") is True else None,
             )
             override = parse_model_json(output)
             normalized_base, normalized_override, normalization = normalize_alignment_override(
@@ -1893,12 +1957,16 @@ def align_with_llm(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -
             errors = [f"alignment_runner_or_output_failure:{exc}"]
             last_error = exc
         except BaseException as exc:
-            _finish_attempt(state, attempt_record, elapsed_sec=time.monotonic() - started, receipt=receipt)
+            request_count = _runner_request_count(workspace, receipt, runner_info, request_allowance)
+            _finish_attempt(state, attempt_record, elapsed_sec=time.monotonic() - started, receipt=receipt,
+                            request_count=request_count)
             attempt_record.update(status="interrupted", error=type(exc).__name__)
             atomic_json(run_path, state)
             raise
         elapsed = time.monotonic() - started
-        _finish_attempt(state, attempt_record, elapsed_sec=elapsed, receipt=receipt)
+        request_count = _runner_request_count(workspace, receipt, runner_info, request_allowance)
+        _finish_attempt(state, attempt_record, elapsed_sec=elapsed, receipt=receipt,
+                        request_count=request_count)
         actual_model = str((receipt or {}).get("model") or "").strip()
         if actual_model.lower() in {"auto", "automatic"}:
             actual_model = ""
@@ -2324,15 +2392,15 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--model-batch-char-budget", type=int, default=80000)
     p.add_argument("--candidate-retry-limit", type=int, default=2)
     p.add_argument("--review-retry-limit", type=int, default=1)
-    p.add_argument("--candidate-budget-sec", type=int, default=1800)
-    p.add_argument("--total-budget-sec", type=int, default=7200)
-    p.add_argument("--request-limit", type=int, default=50)
+    p.add_argument("--candidate-budget-sec", type=int, default=2700)
+    p.add_argument("--total-budget-sec", type=int, default=13500)
+    p.add_argument("--request-limit", type=int, default=96)
 
     for name in ("generate", "review"):
         p_stage = sub.add_parser(name)
         p_stage.add_argument("--run-id", required=True)
         p_stage.add_argument("--runner", required=True)
-        p_stage.add_argument("--timeout-sec", type=int, default=1800)
+        p_stage.add_argument("--timeout-sec", type=int, default=2700)
 
     p_preview = sub.add_parser("preview-alignment")
     p_preview.add_argument("--run-id", required=True)
@@ -2340,7 +2408,7 @@ def main(argv: list[str] | None = None) -> int:
     p_align = sub.add_parser("align")
     p_align.add_argument("--run-id", required=True)
     p_align.add_argument("--runner", required=True)
-    p_align.add_argument("--timeout-sec", type=int, default=1800)
+    p_align.add_argument("--timeout-sec", type=int, default=2700)
 
     p_apply = sub.add_parser("apply")
     p_apply.add_argument("--run-id", required=True)

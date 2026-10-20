@@ -141,7 +141,7 @@ class ProjectHealthPlanningTests(unittest.TestCase):
     def test_missing_chapter5_blocks_before_any_model_invocation(self):
         (self.root / 'logs/ci/chapter5/readiness/task-7.json').unlink()
         job = planning.create_job(self.root, 'capability')
-        with patch.object(planning, 'runner_path', return_value=Path('fixture')):
+        with patch.object(planning, 'capability_runner_path', return_value=Path('fixture')):
             result = planning.run_job(self.root, job)
         self.assertEqual('failed', result['status'])
         self.assertIn('Chapter 5', result['message'])
@@ -450,7 +450,7 @@ class ProjectHealthPlanningTests(unittest.TestCase):
         git(self.root, 'commit', '--allow-empty', '-m', 'fixture: new main')
         invoke, _ = self._production_consumers()
         with patch.object(planning, 'invoke', side_effect=invoke), \
-             patch.object(planning, 'runner_path', return_value=Path('fixture')):
+             patch.object(planning, 'capability_runner_path', return_value=Path('fixture')):
             result = planning.run_job(self.root, job)
         self.assertEqual('completed', result['status'])
         self.assertIsNotNone(planning.generated_view(self.root, 'capability'))
@@ -753,6 +753,17 @@ class ProjectHealthPlanningTests(unittest.TestCase):
                            'source_accounting': [{'block_id': b['block_id'], 'disposition': 'capability' if any(b['block_id'] in n['source_block_ids'] for n in nodes) else 'context',
                              'capability_ids': [n['capability_id'] for n in nodes if b['block_id'] in n['source_block_ids']],
                              'rationale': 'Source obligation or heading'} for b in blocks]}
+                # Model transport uses the exact indexed Source Block schema;
+                # the planner restores stable IDs before semantic validation.
+                block_indexes = {block_id: str(i) for i, block_id in enumerate(
+                    sorted({str(block['block_id']) for block in blocks}))}
+                for node in payload['capabilities']:
+                    node['source_block_ids'] = [block_indexes[block_id]
+                                                for block_id in node['source_block_ids']]
+                payload['source_accounting'] = {
+                    block_indexes[row['block_id']]: {key: value for key, value in row.items()
+                                                     if key != 'block_id'}
+                    for row in payload['source_accounting']}
             atomic_json(kwargs['output_path'], payload)
             return {'model': RUNNER['model'], 'model_tools': [],
                     'output_sha256': planning.file_sha(kwargs['output_path'])}
@@ -844,10 +855,13 @@ class ProjectHealthPlanningTests(unittest.TestCase):
     def test_capability_apply_preserves_logical_source_manifest_binding(self):
         invoke, _invocations = self._production_consumers()
         with patch.object(planning, 'invoke', side_effect=invoke), \
-             patch.object(planning, 'runner_path', return_value=Path('fixture')):
+             patch.object(planning, 'capability_runner_path', return_value=Path('fixture')):
             job = planning.create_job(self.root, 'capability')
             result = planning.run_job(self.root, job)
         self.assertEqual('completed', result['status'], result)
+        refresh = planning.read_job(self.root, job['job_id']).get('knowledge_refresh') or {}
+        self.assertEqual('refreshed', refresh.get('status'))
+        self.assertTrue(refresh.get('closure_passed'))
         source_manifest = load_json(self.root / 'logs/ci/task-generation/source-manifest.v1.json')
         topology_manifest = load_json(self.root / 'docs/planning/semantic-topology/topology-manifest.v1.json')
         self.assertEqual(source_manifest['manifest_sha256'], topology_manifest['source_manifest_sha256'])
@@ -868,6 +882,7 @@ class ProjectHealthPlanningTests(unittest.TestCase):
         invoke, invocations = self._production_consumers()
         before = git(self.root, 'status', '--porcelain')
         with patch.object(planning, 'invoke', side_effect=invoke), \
+             patch.object(planning, 'capability_runner_path', return_value=Path('fixture')), \
              patch.object(planning, 'runner_path', return_value=Path('fixture')), \
              patch.dict(os.environ, {'SC_KNOWLEDGE_MVG_BACKEND': 'openai-api'}):
             cap_job = planning.create_job(self.root, 'capability')
@@ -1009,7 +1024,7 @@ class ProjectHealthPlanningTests(unittest.TestCase):
             return result
 
         with patch.object(planning, 'invoke', side_effect=disconnect), \
-             patch.object(planning, 'runner_path', return_value=Path('fixture')):
+             patch.object(planning, 'capability_runner_path', return_value=Path('fixture')):
             job = planning.create_job(self.root, 'capability')
             first = planning.run_job(self.root, job)
             self.assertEqual('recoverable', first['status'])
@@ -1035,7 +1050,7 @@ class ProjectHealthPlanningTests(unittest.TestCase):
             return invoke(checkout, script, args, log)
 
         with patch.object(planning, 'invoke', side_effect=alignment_interrupt), \
-             patch.object(planning, 'runner_path', return_value=Path('fixture')):
+             patch.object(planning, 'capability_runner_path', return_value=Path('fixture')):
             job = planning.create_job(self.root, 'capability')
             first = planning.run_job(self.root, job)
             self.assertEqual('recoverable', first['status'], first)
@@ -1066,7 +1081,7 @@ class ProjectHealthPlanningTests(unittest.TestCase):
             return invoke(checkout, script, args, log)
 
         with patch.object(planning, 'invoke', side_effect=apply_interrupt), \
-             patch.object(planning, 'runner_path', return_value=Path('fixture')):
+             patch.object(planning, 'capability_runner_path', return_value=Path('fixture')):
             job = planning.create_job(self.root, 'capability')
             first = planning.run_job(self.root, job)
             self.assertEqual('recoverable', first['status'], first)
@@ -1100,7 +1115,7 @@ class ProjectHealthPlanningTests(unittest.TestCase):
             return invoke(checkout, script, args, log)
 
         with patch.object(planning, 'invoke', side_effect=apply_interrupt), \
-             patch.object(planning, 'runner_path', return_value=Path('fixture')):
+             patch.object(planning, 'capability_runner_path', return_value=Path('fixture')):
             current_job = planning.create_job(self.root, 'capability')
             first = planning.run_job(self.root, current_job)
             self.assertEqual('recoverable', first['status'], first)
@@ -1127,7 +1142,7 @@ class ProjectHealthPlanningTests(unittest.TestCase):
             return invoke(checkout, script, args, log)
 
         with patch.object(planning, 'invoke', side_effect=review_interrupt), \
-             patch.object(planning, 'runner_path', return_value=Path('fixture')):
+             patch.object(planning, 'capability_runner_path', return_value=Path('fixture')):
             job = planning.create_job(self.root, 'capability')
             first = planning.run_job(self.root, job)
             self.assertEqual('recoverable', first['status'], first)
@@ -1144,7 +1159,7 @@ class ProjectHealthPlanningTests(unittest.TestCase):
 
     def test_error_is_compact_and_unstarted_prepare_attempt_can_be_retried(self):
         job = planning.create_job(self.root, 'capability')
-        with patch.object(planning, 'runner_path', side_effect=ValueError('Useful reason\n' + 'x' * 2000)):
+        with patch.object(planning, 'capability_runner_path', side_effect=ValueError('Useful reason\n' + 'x' * 2000)):
             result = planning.run_job(self.root, job)
         self.assertLessEqual(len(result['message']), 370)
         retried = planning.create_job(self.root, 'capability')
@@ -1169,6 +1184,27 @@ class ProjectHealthPlanningTests(unittest.TestCase):
         with patch.dict(os.environ, {'SC_KNOWLEDGE_MVG_BACKEND': 'shell'}, clear=True):
             with self.assertRaisesRegex(ValueError, 'Unsupported'):
                 planning.mvg_backend()
+
+    def test_capability_runner_is_codex_default_and_never_auto_falls_back(self):
+        expected = Path(planning.__file__).with_name('codex_isolated_model_runner.py')
+        with patch.dict(os.environ, {
+                'SC_KNOWLEDGE_PLANNING_RUNNER': 'scripts/python/openai_isolated_model_runner.py',
+                'OPENAI_API_KEY': 'fixture-only'}, clear=True), \
+             patch('shutil.which', side_effect=lambda name: 'codex.cmd' if name == 'codex.cmd' else None):
+            self.assertEqual(expected, planning.capability_runner_path())
+
+        with patch.dict(os.environ, {'OPENAI_API_KEY': 'fixture-only'}, clear=True), \
+             patch('shutil.which', return_value=None):
+            with self.assertRaisesRegex(ValueError, 'Codex CLI'):
+                planning.capability_runner_path()
+
+    def test_non_capability_runner_override_remains_available(self):
+        with patch.dict(os.environ, {
+                'SC_KNOWLEDGE_PLANNING_RUNNER': 'scripts/python/openai_isolated_model_runner.py'}, clear=True):
+            self.assertEqual(
+                (ROOT / 'scripts/python/openai_isolated_model_runner.py').resolve(),
+                planning.runner_path(),
+            )
 
     def test_failed_cli_json_reports_only_the_specific_reason(self):
         self.assertEqual('Readiness expired', planning.compact_error('{"status":"blocked","reason":"Readiness expired"}'))

@@ -36,9 +36,72 @@ class PlanningMainAuditFixesTests(unittest.TestCase):
         self.root = (Path(self.temp.name) / "fixture").resolve()
         build_fixture(self.root)
 
+    def test_candidate_generation_does_not_preblock_on_worst_case_batch_estimate(self):
+        """A 50-request cap must allow dispatch and let the runner meter batches."""
+        prepare_cap(self.root)
+        run = self.root / "logs/ci/capability-planning/repair"
+        state = load_json(run / "run.json")
+        state["model_batch_count"] = 3
+        state["task_view_chunk_count"] = 6
+        state["budget"]["request_limit"] = 50
+        state["formal_ready"] = True
+        atomic_json(run / "run.json", state)
+        runner = {"model": "fixture", "request_accounting": "exact_per_runner_invocation",
+                  "supports_batched_session": True}
+        with patch.object(cap, "inspect_isolated_runner", return_value=runner), \
+             patch.object(cap, "run_isolated_model", side_effect=KeyboardInterrupt) as invoke:
+            with self.assertRaises(KeyboardInterrupt):
+                cap.generate(self.root, run_id="repair", runner=Path("fixture"), timeout_sec=10)
+        invoke.assert_called_once()
+
+    def test_unbudgeted_runner_reserves_only_one_request(self):
+        prepare_cap(self.root)
+        run = self.root / "logs/ci/capability-planning/repair"
+        runner = {"model": "fixture", "request_accounting": "exact_per_runner_invocation",
+                  "supports_batched_session": True}
+        with patch.object(cap, "inspect_isolated_runner", return_value=runner), \
+             patch.object(cap, "run_isolated_model", side_effect=KeyboardInterrupt):
+            with self.assertRaises(KeyboardInterrupt):
+                cap.generate(self.root, run_id="repair", runner=Path("fixture"), timeout_sec=10)
+        state = load_json(run / "run.json")
+        self.assertEqual(1, state["budget"]["model_requests_reserved"])
+        self.assertEqual(1, state["candidate_attempts"]["candidate-1"]["attempts"][0]["reserved_requests"])
+
+    def test_incomplete_or_out_of_range_runner_report_keeps_reservation(self):
+        prepare_cap(self.root)
+        run = self.root / "logs/ci/capability-planning/repair"
+        runner = {"model": "fixture", "request_accounting": "exact_per_runner_invocation",
+                  "supports_batched_session": True, "supports_request_budget": True}
+        for report in ({"model_request_count": 1},
+                       {"request_count_complete": True, "model_request_count": 51}):
+            with self.subTest(report=report):
+                state = load_json(run / "run.json")
+                state["candidate_attempts"] = {}
+                state["budget"]["model_requests_reserved"] = 0
+                state["budget"]["model_requests_observed"] = 0
+                atomic_json(run / "run.json", state)
+                def invoke(*args, **kwargs):
+                    atomic_json(kwargs["workspace"] / "runner-input-integrity.json", report)
+                    raise KeyboardInterrupt()
+                with patch.object(cap, "inspect_isolated_runner", return_value=runner), \
+                     patch.object(cap, "run_isolated_model", side_effect=invoke):
+                    with self.assertRaises(KeyboardInterrupt):
+                        cap.generate(self.root, run_id="repair", runner=Path("fixture"), timeout_sec=10)
+                budget = load_json(run / "run.json")["budget"]
+                self.assertEqual(50, budget["model_requests_reserved"])
+                self.assertEqual(0, budget["model_requests_observed"])
+
     def candidates(self):
         run = selected_cap(self.root)
         candidate = load_json(run / "candidates/candidate-1.json")
+        ledger = load_json(run / "analysis-input/source-blocks.v1.json")
+        block_indexes = {row["block_id"]: str(index) for index, row in enumerate(ledger["blocks"])}
+        for row in candidate["capabilities"]:
+            row["source_block_ids"] = [block_indexes[block_id] for block_id in row["source_block_ids"]]
+        candidate["source_accounting"] = {
+            str(index): {key: value for key, value in row.items() if key != "block_id"}
+            for index, row in enumerate(candidate["source_accounting"])
+        }
         shutil.rmtree(run / "review")
         state = load_json(run / "run.json")
         state.update(phase="prepared", review_status=None, selected_candidate=None, final_candidate_path=None)
@@ -47,7 +110,7 @@ class PlanningMainAuditFixesTests(unittest.TestCase):
         def invoke(*args, **kwargs):
             atomic_json(kwargs["output_path"], candidate)
             return {"model": "fixture-model", "model_tools": []}
-        with patch.object(cap, "inspect_isolated_runner", return_value={"model": "fixture-model"}), \
+        with patch.object(cap, "inspect_isolated_runner", return_value={"model": "fixture-model", "supports_batched_session": True}), \
              patch.object(cap, "run_isolated_model", side_effect=invoke):
             cap.generate(self.root, run_id="repair", runner=Path("fixture"), timeout_sec=10)
         return run
@@ -104,7 +167,7 @@ class PlanningMainAuditFixesTests(unittest.TestCase):
             self.assertGreater(state["budget"]["activity_reserved_sec"], 0)
             observed.append(record["attempt"])
             raise KeyboardInterrupt("operator interrupt")
-        with patch.object(cap, "inspect_isolated_runner", return_value={"model": "fixture"}), \
+        with patch.object(cap, "inspect_isolated_runner", return_value={"model": "fixture", "supports_batched_session": True}), \
              patch.object(cap, "run_isolated_model", side_effect=invoke):
             for _ in range(2):
                 with self.assertRaises(KeyboardInterrupt):
@@ -153,13 +216,13 @@ class PlanningMainAuditFixesTests(unittest.TestCase):
             attempts = (payload.get("candidate_attempts") or {}).get("candidate-1", {}).get("attempts", [])
             if path == run / "run.json" and attempts and attempts[-1].get("status") == "running":
                 raise SystemExit("lost immediately after durable reservation")
-        with patch.object(cap, "inspect_isolated_runner", return_value={"model": "fixture"}), \
+        with patch.object(cap, "inspect_isolated_runner", return_value={"model": "fixture", "supports_batched_session": True}), \
              patch.object(cap, "atomic_json", side_effect=lose_process), patch.object(cap, "run_isolated_model") as invoke:
             with self.assertRaises(SystemExit):
                 cap.generate(self.root, run_id="repair", runner=Path("fixture"), timeout_sec=10)
             invoke.assert_not_called()
         first = load_json(run / "run.json")
-        with patch.object(cap, "inspect_isolated_runner", return_value={"model": "fixture"}), \
+        with patch.object(cap, "inspect_isolated_runner", return_value={"model": "fixture", "supports_batched_session": True}), \
              patch.object(cap, "run_isolated_model", side_effect=KeyboardInterrupt):
             with self.assertRaises(KeyboardInterrupt):
                 cap.generate(self.root, run_id="repair", runner=Path("fixture"), timeout_sec=10)
@@ -173,14 +236,15 @@ class PlanningMainAuditFixesTests(unittest.TestCase):
         prepare_cap(self.root)
         run = self.root / "logs/ci/capability-planning/repair"
         state = load_json(run / "run.json")
-        state["budget"]["request_limit"] = 3
+        state["budget"]["request_limit"] = 1
         atomic_json(run / "run.json", state)
-        runner = {"model": "fixture", "request_accounting": "exact_per_runner_invocation"}
+        runner = {"model": "fixture", "request_accounting": "exact_per_runner_invocation",
+                  "supports_batched_session": True}
         with patch.object(cap, "inspect_isolated_runner", return_value=runner), \
              patch.object(cap, "run_isolated_model", side_effect=KeyboardInterrupt) as invoke:
             with self.assertRaises(KeyboardInterrupt):
                 cap.generate(self.root, run_id="repair", runner=Path("fixture"), timeout_sec=10)
-            with self.assertRaisesRegex(ValueError, "request estimate exceeds budget"):
+            with self.assertRaisesRegex(ValueError, "model request budget exhausted"):
                 cap.generate(self.root, run_id="repair", runner=Path("fixture"), timeout_sec=10)
             self.assertEqual(1, invoke.call_count)
         budget = load_json(run / "run.json")["budget"]
@@ -193,7 +257,7 @@ class PlanningMainAuditFixesTests(unittest.TestCase):
         def invoke(*args, **kwargs):
             atomic_json(kwargs["output_path"], review_report(run))
             return {"model": "fixture-model", "model_tools": []}
-        with patch.object(cap, "inspect_isolated_runner", return_value={"model": "fixture-model"}), \
+        with patch.object(cap, "inspect_isolated_runner", return_value={"model": "fixture-model", "supports_batched_session": True}), \
              patch.object(cap, "run_isolated_model", side_effect=invoke) as invocation:
             first = cap.review(self.root, run_id="repair", runner=Path("fixture"), timeout_sec=10)
             before = load_json(run / "run.json")["budget"]
@@ -208,7 +272,7 @@ class PlanningMainAuditFixesTests(unittest.TestCase):
         def invoke(*args, **kwargs):
             atomic_json(kwargs["output_path"], review_report(run))
             return {"model": "fixture-model", "model_tools": []}
-        with patch.object(cap, "inspect_isolated_runner", return_value={"model": "fixture-model"}), \
+        with patch.object(cap, "inspect_isolated_runner", return_value={"model": "fixture-model", "supports_batched_session": True}), \
              patch.object(cap, "run_isolated_model", side_effect=invoke) as model:
             cap.review(self.root, run_id="repair", runner=Path("fixture"), timeout_sec=10)
             files = [run / "review/review.json", run / "candidates/candidate-2.json",
@@ -246,7 +310,7 @@ class PlanningMainAuditFixesTests(unittest.TestCase):
                 "evidence_refs": ["analysis-input/source-blocks.v1.json"]}]
             atomic_json(kwargs["output_path"], report)
             return {"model": "fixture-model", "model_tools": []}
-        with patch.object(cap, "inspect_isolated_runner", return_value={"model": "fixture-model"}), \
+        with patch.object(cap, "inspect_isolated_runner", return_value={"model": "fixture-model", "supports_batched_session": True}), \
              patch.object(cap, "run_isolated_model", side_effect=invoke) as model:
             cap.review(self.root, run_id="repair", runner=Path("fixture"), timeout_sec=10)
             self.assertTrue(cap.review(self.root, run_id="repair", runner=Path("fixture"), timeout_sec=10)["reused"])
@@ -272,7 +336,7 @@ class PlanningMainAuditFixesTests(unittest.TestCase):
             report.update(status="no_valid_winner", selected=None)
             atomic_json(kwargs["output_path"], report)
             return {"model": "fixture-model", "model_tools": []}
-        with patch.object(cap, "inspect_isolated_runner", return_value={"model": "fixture-model"}), \
+        with patch.object(cap, "inspect_isolated_runner", return_value={"model": "fixture-model", "supports_batched_session": True}), \
              patch.object(cap, "run_isolated_model", side_effect=invoke) as model:
             cap.review(self.root, run_id="repair", runner=Path("fixture"), timeout_sec=10)
             result = cap.review(self.root, run_id="repair", runner=Path("fixture"), timeout_sec=10)
@@ -293,13 +357,13 @@ class PlanningMainAuditFixesTests(unittest.TestCase):
             attempts = payload.get("review_attempts") or []
             if path == run / "run.json" and attempts and attempts[-1].get("status") == "running":
                 raise SystemExit("lost after durable review reservation")
-        with patch.object(cap, "inspect_isolated_runner", return_value={"model": "fixture-model"}), \
+        with patch.object(cap, "inspect_isolated_runner", return_value={"model": "fixture-model", "supports_batched_session": True}), \
              patch.object(cap, "atomic_json", side_effect=lose_process), patch.object(cap, "run_isolated_model") as model:
             with self.assertRaises(SystemExit):
                 cap.review(self.root, run_id="repair", runner=Path("fixture"), timeout_sec=10)
             model.assert_not_called()
         first = load_json(run / "run.json")
-        with patch.object(cap, "inspect_isolated_runner", return_value={"model": "fixture-model"}), \
+        with patch.object(cap, "inspect_isolated_runner", return_value={"model": "fixture-model", "supports_batched_session": True}), \
              patch.object(cap, "run_isolated_model") as model:
             with self.assertRaisesRegex(ValueError, "active-time budget"):
                 cap.review(self.root, run_id="repair", runner=Path("fixture"), timeout_sec=10)
@@ -332,7 +396,7 @@ class PlanningMainAuditFixesTests(unittest.TestCase):
         def invoke(*args, **kwargs):
             atomic_json(kwargs["output_path"], values.pop(0))
             return {"model": "fixture-model", "model_tools": []}
-        with patch.object(cap, "inspect_isolated_runner", return_value={"model": "fixture-model"}), \
+        with patch.object(cap, "inspect_isolated_runner", return_value={"model": "fixture-model", "supports_batched_session": True}), \
              patch.object(cap, "run_isolated_model", side_effect=invoke):
             with self.assertRaisesRegex(ValueError, "review_|evidence"):
                 cap.review(self.root, run_id="repair", runner=Path("fixture"), timeout_sec=10)
@@ -351,7 +415,7 @@ class PlanningMainAuditFixesTests(unittest.TestCase):
             atomic_json(kwargs["output_path"], invalid if calls <= 2 else valid)
             return {"model": "fixture-model", "model_tools": []}
 
-        with patch.object(cap, "inspect_isolated_runner", return_value={"model": "fixture-model"}), \
+        with patch.object(cap, "inspect_isolated_runner", return_value={"model": "fixture-model", "supports_batched_session": True}), \
              patch.object(cap, "run_isolated_model", side_effect=invoke):
             with self.assertRaisesRegex(ValueError, "evidence"):
                 cap.review(self.root, run_id="repair", runner=Path("fixture"), timeout_sec=10)
@@ -374,7 +438,7 @@ class PlanningMainAuditFixesTests(unittest.TestCase):
         def invoke(*args, **kwargs):
             atomic_json(kwargs["output_path"], report)
             return {"model": "fixture-model", "model_tools": []}
-        with patch.object(cap, "inspect_isolated_runner", return_value={"model": "fixture-model"}), \
+        with patch.object(cap, "inspect_isolated_runner", return_value={"model": "fixture-model", "supports_batched_session": True}), \
              patch.object(cap, "run_isolated_model", side_effect=invoke) as model:
             self.assertEqual("selected", cap.review(self.root, run_id="repair", runner=Path("fixture"), timeout_sec=10)["status"])
             self.assertTrue(cap.review(self.root, run_id="repair", runner=Path("fixture"), timeout_sec=10)["reused"])
@@ -397,7 +461,7 @@ class PlanningMainAuditFixesTests(unittest.TestCase):
         def invoke(*args, **kwargs):
             atomic_json(kwargs["output_path"], report)
             return {"model": "fixture-model", "model_tools": []}
-        with patch.object(cap, "inspect_isolated_runner", return_value={"model": "fixture-model"}), \
+        with patch.object(cap, "inspect_isolated_runner", return_value={"model": "fixture-model", "supports_batched_session": True}), \
              patch.object(cap, "run_isolated_model", side_effect=invoke):
             result = cap.review(self.root, run_id="repair", runner=Path("fixture"), timeout_sec=10)
         self.assertEqual("selected", result["status"])
@@ -411,18 +475,26 @@ class PlanningMainAuditFixesTests(unittest.TestCase):
 
     def test_review_interruption_is_recorded_and_cannot_reset_budget(self):
         run = self.candidates()
-        with patch.object(cap, "inspect_isolated_runner", return_value={"model": "fixture-model"}), \
-             patch.object(cap, "run_isolated_model", side_effect=KeyboardInterrupt) as invoke:
-            for _ in range(2):
-                with self.assertRaises(KeyboardInterrupt):
-                    cap.review(self.root, run_id="repair", runner=Path("fixture"), timeout_sec=10)
+        state = load_json(run / "run.json")
+        state["runner"]["supports_request_budget"] = True
+        state["runner"]["request_accounting"] = "exact_per_runner_invocation"
+        atomic_json(run / "run.json", state)
+        budgets = []
+        def interrupt(*args, **kwargs):
+            budgets.append(kwargs.get("model_request_budget"))
+            raise KeyboardInterrupt
+        with patch.object(cap, "inspect_isolated_runner", return_value=state["runner"]), \
+             patch.object(cap, "run_isolated_model", side_effect=interrupt) as invoke:
+            with self.assertRaises(KeyboardInterrupt):
+                cap.review(self.root, run_id="repair", runner=Path("fixture"), timeout_sec=10)
             try:
                 with self.assertRaisesRegex(ValueError, "budget"):
                     cap.review(self.root, run_id="repair", runner=Path("fixture"), timeout_sec=10)
             except KeyboardInterrupt:
                 self.fail("review restarted an exhausted interrupted attempt")
-        self.assertEqual(2, invoke.call_count)
-        self.assertEqual(2, len(load_json(run / "run.json")["review_attempts"]))
+        self.assertEqual(1, invoke.call_count)
+        self.assertEqual([50], budgets)
+        self.assertEqual(1, len(load_json(run / "run.json")["review_attempts"]))
 
     def test_manifest_and_milestone_checkout_eol_keep_binding_but_real_edit_blocks(self):
         _, proposal, destination = prepared_mvg(self.root)
