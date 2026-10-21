@@ -186,7 +186,8 @@ def validate_partition(original: list[str], retained: list[str], excluded: list[
 def assert_blinded(value: Any, path: str = "") -> None:
     """Validate structured historical answers, not words in authored GDD text."""
     if isinstance(value, dict):
-        if value.get("schema_version") in {"newrouge.capabilities.v1", "newrouge.capability-reference.v1"}:
+        schema = value.get("schema_version")
+        if isinstance(schema, str) and schema in {"newrouge.capabilities.v1", "newrouge.capability-reference.v1"}:
             raise ValueError("capability_input_integrity_historical_capability_payload:" + path)
         for key, child in value.items():
             if key in SENSITIVE_CAPABILITY_KEYS:

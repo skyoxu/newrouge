@@ -1,0 +1,19 @@
+{
+  "scope": "canonical_authority_declared_links_only",
+  "formal_ready": false,
+  "model_invoked": false,
+  "requirements": 127,
+  "source_blocks": 139,
+  "master_tasks": 133,
+  "declared_link_count": 1132,
+  "roundtrip_equal": true,
+  "input_sha256": "sha256:e32d30cdbb96d47792ad33869d1753ada9bc92c4461b3eb36d818e451a95e96d",
+  "packet_sha256": "sha256:b0bb48eab0de854372944e066dee3f8ad33ea794e89b1510caae79b11c34817c",
+  "all_external_refs_resolve": true,
+  "formal_gates_not_checked": [
+    "local source manifest",
+    "current Chapter 5 readiness",
+    "runner isolation",
+    "real model acceptance"
+  ]
+}

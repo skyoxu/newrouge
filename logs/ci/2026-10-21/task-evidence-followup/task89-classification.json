@@ -1,0 +1,20 @@
+[
+  {
+    "file": ".taskmaster/tasks/tasks_back.json",
+    "taskmaster_id": 89,
+    "change": "Remove log-template duplicate from test_refs; retain original evidence_refs unchanged",
+    "removed_test_ref": "logs/ci/<date>/single-task-light-lane-t88-t89/shards/shard-001-t88-89/summary.json",
+    "all_other_parsed_values_unchanged": true,
+    "before_sha256": "36fb5457485f368c252346e3b4481416bdd24bfd6dced169977d159b34420621",
+    "after_sha256": "fadfb7d6650baf5b598ffb1bb568a7d70ff5b14989ee67505473a8c6235f82b8"
+  },
+  {
+    "file": ".taskmaster/tasks/tasks_gameplay.json",
+    "taskmaster_id": 89,
+    "change": "Remove log-template duplicate from test_refs; retain original evidence_refs unchanged",
+    "removed_test_ref": "logs/ci/<date>/single-task-light-lane-t88-t89/shards/shard-001-t88-89/summary.json",
+    "all_other_parsed_values_unchanged": true,
+    "before_sha256": "fc143a71b2cdfb21adabe80fa32fe3974ea882f1d40bb02e3a537e358c83de8e",
+    "after_sha256": "17b08134c51ebcfdb09303bdf7b320cd629d924ca8e796948993e55bb09f505f"
+  }
+]

@@ -1,0 +1,27 @@
+{
+  "task_id": "89",
+  "require_non_empty": true,
+  "status": "ok",
+  "errors": [],
+  "warnings": [],
+  "back": {
+    "mapped": true,
+    "test_refs": [
+      "Game.Core.Tests/Tasks/Task0089AcceptanceTests.cs",
+      "Game.Core.Tests/Tasks/Task0089WorkflowSelectionEvidenceTests.cs",
+      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "Game.Core.Tests/Tasks/Task0040AcceptanceTests.cs",
+      "Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd"
+    ]
+  },
+  "gameplay": {
+    "mapped": true,
+    "test_refs": [
+      "Game.Core.Tests/Tasks/Task0089AcceptanceTests.cs",
+      "Game.Core.Tests/Tasks/Task0089WorkflowSelectionEvidenceTests.cs",
+      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "Game.Core.Tests/Tasks/Task0040AcceptanceTests.cs",
+      "Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd"
+    ]
+  }
+}

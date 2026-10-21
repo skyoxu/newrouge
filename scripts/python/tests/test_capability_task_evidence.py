@@ -133,6 +133,21 @@ class TaskEvidenceCodecTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "declared_target_missing"):
             codec.declared_relations(payload, {})
 
+    def test_unknown_schema_version_values_survive_recursive_blinding(self):
+        for value in (None, [], {}, {"nested": [1, "1", True]}, ["future", 2]):
+            with self.subTest(value=value):
+                payload = self.payload()
+                for rows in payload["task_views"].values():
+                    rows[0]["extension"] = {"schema_version": value}
+                packet = codec.compress(payload)
+                links, pointers = codec.declared_relations(payload, {})
+                packet["relation_index"]["declared_links"] = links
+                packet["source_pointers"] = pointers
+                codec.validate_packet(payload, packet, {})
+                self.assertEqual(codec.json_value(payload), codec.json_value(codec.expand(packet)))
+        with self.assertRaisesRegex(ValueError, "unblinded_field"):
+            codec.assert_blinded({"schema_version": {"capability_refs": ["CAP-OLD"]}})
+
     def test_external_refs_are_resolved_by_exact_declared_id_or_path(self):
         with tempfile.TemporaryDirectory() as name:
             root = Path(name)
@@ -228,6 +243,45 @@ class TaskEvidenceAdmissionTests(unittest.TestCase):
             self.assertEqual("raw", codec.workspace_encoding(self.workspace))
             self.assertIn("COMPLETE TASK-VIEW ROWS", self.build())
         self.assertFalse((self.workspace / codec.AUDIT_DIR).exists())
+
+    def test_multiple_chunks_reconstruct_original_view_order_and_all_values(self):
+        # Views deliberately disagree on task order; a task also exists in only
+        # one view. Recombination must use source positions, not dispatch order.
+        orders = {"task-views/back.json": [19, 17, 18, 20],
+                  "task-views/gameplay.json": [20, 18, 19, 17, 21]}
+        self.rows = {rel: [{"id": rel + "#" + str(key), "taskmaster_id": key,
+            "description": "Shared description with full functional meaning. " * 40,
+            "acceptance": [rel, str(key)], "requirement_ids": ["FR-17"],
+            "extension": {"schema_version": {}, "ordered": [None, "", False, 0, 0.0]}}
+            for key in order] for rel, order in orders.items()}
+        for rel, rows in self.rows.items():
+            atomic_json(self.analysis / rel, rows)
+        atomic_json(self.analysis / "task-master.json", {"master": {"tasks": [{"id": key} for key in range(17, 22)]}})
+        self.refresh()
+        chunks = integrity.task_view_payload_chunks(self.workspace, char_budget=4500)
+        self.assertGreater(len(chunks), 1)
+        dispatch_by_task, reconstructed = {}, {rel: {} for rel in self.rows}
+        for ordinal, rows in enumerate(chunks, 1):
+            label = f"task-views-{ordinal:03d}"
+            codec.build_task_request(self.workspace, base="shared context", rows=rows, label=label,
+                                     measure_text=lambda text: text)
+            audit = self.workspace / codec.AUDIT_DIR / label
+            packet, original, mapping = [load_json(audit / name) for name in
+                                        ("packet.json", "authoritative-input.json", "expansion-map.json")]
+            codec.validate_expansion_map(original, packet, mapping, workspace=self.workspace)
+            expanded = codec.expand(packet)
+            for rel, items in expanded["task_views"].items():
+                for index, row in enumerate(items):
+                    key = codec.identity(row)
+                    self.assertEqual(ordinal, dispatch_by_task.setdefault(key, ordinal))
+                    input_pointer = f"/task_views/{codec.pointer_part(rel)}/{index}/taskmaster_id"
+                    source = next(entry["source"] for entry in mapping["fields"]
+                                  if entry["input_pointer"] == input_pointer)
+                    position = int(source["original_json_pointer"].split("/")[1])
+                    self.assertNotIn(position, reconstructed[rel])
+                    reconstructed[rel][position] = row
+        actual = {rel: [items[position] for position in sorted(items)] for rel, items in reconstructed.items()}
+        self.assertEqual(codec.json_value(self.rows), codec.json_value(actual))
 
     def test_missing_ref_blocks_both_runners_before_any_dispatch(self):
         self.rows["task-views/back.json"][0]["test_refs"] = ["missing.cs"]

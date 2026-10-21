@@ -7299,8 +7299,7 @@
       "Game.Core.Tests/Tasks/Task0089WorkflowSelectionEvidenceTests.cs",
       "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
       "Game.Core.Tests/Tasks/Task0040AcceptanceTests.cs",
-      "Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
-      "logs/ci/<date>/single-task-light-lane-t88-t89/shards/shard-001-t88-89/summary.json"
+      "Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd"
     ],
     "test_strategy": [
       "Add or extend enemy data and combat runtime tests to cover data-backed enemy instantiation in the live combat path."
