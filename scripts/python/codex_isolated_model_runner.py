@@ -192,16 +192,11 @@ def _run_batched_codex(workspace: Path, prompt_path: Path, output_path: Path, *,
     for index, task_rows in enumerate(task_chunks, 1):
         payload = {"schema_version": "newrouge.capability-model-batch.v1",
                    "batch_index": index, "blocks": [], "requirements": []}
-        text = "\n\n".join([api._batch_context(base),
-            "Analyze every complete Task View row below as auxiliary ownership and acceptance evidence. "
-            "Preserve task identity, intent, Acceptance/test meaning, and exact Requirement refs. "
-            "Do not infer Capability grouping or omit any row. This is a task-only batch: "
-            "return source_block_analyses and requirement_analyses as empty arrays.",
-            "===== COMPLETE TASK-VIEW ROWS =====\n" + json.dumps(task_rows, ensure_ascii=False, separators=(",", ":")),
-            api.task_related_evidence_section(workspace, task_rows)])
         schema_path = workspace / "batch-schemas" / f"task-views-{index:03d}.json"
         schema = api._batch_analysis_schema(payload, task_rows)
         atomic_json(schema_path, schema)
+        text = api.build_task_request(workspace, base=api._batch_context(base), rows=task_rows,
+            label=f"task-views-{index:03d}", measure_text=lambda value: measured(value, schema_path))
         batch_specs.append((f"task-views-{index:03d}", text, payload, schema_path,
             preflight_request(f"task-views-{index:03d}", measured(text, schema_path),
                               reserved_tokens=api._analysis_output_budget(payload, task_rows))))

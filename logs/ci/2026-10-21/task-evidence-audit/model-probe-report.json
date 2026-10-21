@@ -1,0 +1,62 @@
+{
+  "status": "blocked",
+  "runner_invocations": 0,
+  "fixture_sha256": "sha256:d699c88239abe09c972a17a041e49532dbd4b975bdf48ac03fe7b9d56b3e3acf",
+  "expected_sha256": "sha256:aed1781945d187dfce918d5b31bfd4d1a0b88d16057168992b7202bce32f07fe",
+  "measurements": {
+    "selected_encoding": "raw",
+    "measurements": {
+      "raw": {
+        "request_sha256": "sha256:104a243076d7e25d10f66b9cc4e442e27ae803c2733466af5e9bfa6ed2328a29",
+        "request_chars": 2477,
+        "request_bytes": 2477,
+        "input_token_estimate": 629,
+        "token_counts": {
+          "o200k_base": 571,
+          "cl100k_base": 565
+        },
+        "token_counter": "max(o200k_base,cl100k_base)+10_percent",
+        "max_bytes": 9223372036854775807,
+        "max_input_tokens": 9223372036854775807,
+        "reserved_continuation_tokens": 0,
+        "truncation_allowed": false
+      },
+      "encoded": {
+        "request_sha256": "sha256:c5a749d3301e180ce270be8b95c4407332fa3c2e11b370121e55fb0f7eefe1ea",
+        "request_chars": 3681,
+        "request_bytes": 3681,
+        "input_token_estimate": 990,
+        "token_counts": {
+          "o200k_base": 900,
+          "cl100k_base": 893
+        },
+        "token_counter": "max(o200k_base,cl100k_base)+10_percent",
+        "max_bytes": 9223372036854775807,
+        "max_input_tokens": 9223372036854775807,
+        "reserved_continuation_tokens": 0,
+        "truncation_allowed": false
+      }
+    },
+    "byte_savings_ratio": -0.48607186112232537,
+    "token_savings_ratio": -0.5739268680445151,
+    "reason": "no_complete_request_savings"
+  },
+  "scope": "fixed_probe_only_not_full_capability_acceptance",
+  "attempt_directory": "model-probes/23479ff19487462a9b939c4fb1f78713",
+  "runner": {
+    "schema_version": "newrouge.isolated-model-runner.v1",
+    "filesystem_scope": "workspace_only",
+    "fresh_session_per_invocation": true,
+    "can_read_outside_workspace": false,
+    "model": "codex-cli-default",
+    "transport": "codex-cli-text-only",
+    "model_tools": [],
+    "request_accounting": "exact_per_runner_invocation",
+    "request_count_semantics": "codex-cli-dispatches-not-provider-billing",
+    "supports_batched_session": true,
+    "supports_input_preflight": true,
+    "supports_request_budget": true
+  },
+  "model_identity_basis": "runner_report_only",
+  "error": "Codex CLI is unavailable; set CODEX_MANAGED_PACKAGE_ROOT or add codex to PATH"
+}

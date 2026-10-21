@@ -433,6 +433,18 @@ def build_blinded_analysis_bundle(
         path = repo_path(root, rel_path)
         if path.is_file():
             authority_inputs[rel_path] = normalized_file_sha(path)
+    from _capability_task_evidence import CATALOG, encoding_mode, freeze_reference_catalog
+    task_encoding = encoding_mode()
+    if task_encoding == "lossless-v1":
+        reference_rows = [row for path in task_view_paths for row in load_json(out_dir / "task-views" / path.name, [])]
+        reference_rows.extend(load_json(out_dir / "semantic-requirements.v1.json", {}).get("requirements", []))
+        catalog = freeze_reference_catalog(root.resolve(), reference_rows)
+        atomic_json(out_dir / CATALOG, catalog)
+        files[CATALOG] = file_sha(out_dir / CATALOG)
+        for entries in catalog.values():
+            for target in entries.values():
+                if target["status"] == "valid":
+                    authority_inputs[target["path"]] = normalized_file_sha(repo_path(root, target["path"]))
     index = {
         "schema_version": "newrouge.planning-analysis-input.v1",
         "source_revision": ledger.get("source_revision") or manifest.get("source_revision"),
@@ -448,6 +460,8 @@ def build_blinded_analysis_bundle(
         "model_batch_index": batch_index,
         "source_declared_classification": classification,
     }
+    if task_encoding != "raw":
+        index["task_view_encoding"] = task_encoding
     identity_content = dict(index)
     identity_content.pop("repository_identity", None)
     index["analysis_identity_sha256"] = canonical_sha(identity_content)

@@ -771,6 +771,8 @@ Required sequence:
 
 Owning Skill: `.agents/skills/plan-capabilities/SKILL.md`.
 
+The default task-view transport is unchanged. The optional, prepare-time-frozen `lossless-v1` trial, exact expansion/coverage checks, whole-request size fallback, and isolated comprehension probe are documented in `docs/workflows/capability-task-evidence.md`. Do not promote the trial based on corpus byte savings or model-free tests alone.
+
 Default Capability isolation runner: `scripts/python/codex_isolated_model_runner.py`; it uses the authenticated Codex CLI session's environment-default model and sends only prepared workspace text with no model tools. Capability planning fails closed if Codex CLI is unavailable; it does not automatically switch to Copilot or the OpenAI API. This is the shared default for the web workflow and `dev_cli plan-capabilities`. An explicit `--runner` is reserved for controlled tests or operator-directed overrides.
 
 New Capability runs allow 2,700 active seconds per candidate and per invocation, with a shared 13,500-second ceiling covering three candidates, review and alignment. Existing run accounting is not reset. Source/task analysis uses a stable bundle identity without replaying preparation inventories or unrelated task state. Task chunks receive complete related task/readiness/Requirement/Source Block objects by declared references; global machine integrity checks and synthesis context remain complete. See the owning Skill for projection and context-limit rules.

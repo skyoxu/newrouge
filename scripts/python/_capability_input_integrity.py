@@ -146,11 +146,11 @@ def validate_batches(workspace: Path, index: dict) -> dict:
         for block_id, body in batch_blocks.items():
             if block_id in seen_blocks:
                 raise ValueError('capability_input_integrity_duplicate_source_block:' + block_id)
-            if blocks.get(block_id) != body:
+            if canonical_sha(blocks.get(block_id)) != canonical_sha(body):
                 raise ValueError('capability_input_integrity_source_block_body_mismatch:' + block_id)
             seen_blocks.add(block_id)
         for requirement_id, body in batch_requirements.items():
-            if requirements.get(requirement_id) != body:
+            if canonical_sha(requirements.get(requirement_id)) != canonical_sha(body):
                 raise ValueError('capability_input_integrity_requirement_body_mismatch:' + requirement_id)
             seen_requirements.add(requirement_id)
     if seen_blocks != set(blocks) or index.get('block_count') != len(blocks):
@@ -191,7 +191,7 @@ def compact_file_section(workspace: Path, path: Path) -> str:
     return f'===== FILE: {rel} =====\n{text}\n===== END FILE: {rel} ====='
 
 
-def task_related_evidence_section(workspace: Path, rows_by_path: dict[str, list[dict[str, Any]]]) -> str:
+def task_related_evidence(workspace: Path, rows_by_path: dict[str, list[dict[str, Any]]]) -> dict:
     """Project complete evidence related to a task chunk without guessing refs.
 
     Task rows remain the primary payload. When they declare Requirement refs,
@@ -245,8 +245,13 @@ def task_related_evidence_section(workspace: Path, rows_by_path: dict[str, list[
         "requirements": selected_requirements,
         "source_blocks": selected_blocks,
     }
+    return payload
+
+
+def task_related_evidence_section(workspace: Path, rows_by_path: dict[str, list[dict[str, Any]]]) -> str:
     return "===== COMPLETE RELATED TASK EVIDENCE =====\n" + json.dumps(
-        payload, ensure_ascii=False, separators=(",", ":")) + "\n===== END COMPLETE RELATED TASK EVIDENCE ====="
+        task_related_evidence(workspace, rows_by_path), ensure_ascii=False,
+        separators=(",", ":")) + "\n===== END COMPLETE RELATED TASK EVIDENCE ====="
 
 
 def _task_view_requirement_refs(row: dict[str, Any]) -> set[str]:
@@ -385,6 +390,19 @@ def task_view_batch_rows(workspace: Path, batch_index: dict[str, Any]) -> tuple[
                          for item in payload if _task_view_is_active(item, master_statuses)],
             "assigned_batch_indexes": assignments,
         }
+        from _capability_task_evidence import validate_partition
+        excluded = []
+        for ordinal, item in enumerate(payload):
+            if _task_view_is_active(item, master_statuses):
+                continue
+            key = str(item.get("taskmaster_id", item.get("id")))
+            status = master_statuses.get(key, "orphaned") if master_statuses is not None else item.get("status", "active")
+            excluded.append({"id": f"{path.name}#{key}", "status": status,
+                "exclusion_reason": "orphaned_view" if status == "orphaned" else "inactive_master_task",
+                "json_pointer": "/" + str(ordinal), "sha256": canonical_sha(item)})
+        validate_partition([f"{path.name}#{item.get('taskmaster_id', item.get('id'))}" for item in payload],
+                           coverage["views"][rel]["row_keys"], [row["id"] for row in excluded])
+        coverage["views"][rel]["excluded_rows"] = excluded
     return selected, coverage
 
 
@@ -427,23 +445,39 @@ def task_view_payload_chunks(workspace: Path, *, char_budget: int = TASK_VIEW_CH
         rel = f"task-views/{path.name}"
         rows.extend((rel, item) for item in payload
                     if _task_view_is_active(item, master_statuses))
+    from _capability_task_evidence import workspace_encoding
+    grouped = workspace_encoding(workspace) == "lossless-v1"
+    if grouped:
+        # Keep views of one master task together. Each row retains its original
+        # file/array position in the expansion map; coverage uses original IDs.
+        groups: dict[str, list[tuple[str, dict[str, Any]]]] = {}
+        for rel, row in rows:
+            groups.setdefault(str(row.get("taskmaster_id", row.get("id"))), []).append((rel, row))
+        units = list(groups.values())
+    else:
+        units = [[item] for item in rows]
     chunks: list[dict[str, list[dict[str, Any]]]] = []
     current: dict[str, list[dict[str, Any]]] = {}
     current_chars = 0
     seen: set[str] = set()
-    for rel, row in rows:
-        identity = f"{rel}#{row.get('taskmaster_id', row.get('id', ''))}"
-        if identity in seen:
-            raise ValueError("capability_input_integrity_duplicate_task_view_id:" + identity)
-        seen.add(identity)
-        row_chars = len(json.dumps(row, ensure_ascii=False, separators=(",", ":")))
-        if current and current_chars + row_chars > char_budget:
+    for unit in units:
+        unit_chars = sum(len(json.dumps(row, ensure_ascii=False, separators=(",", ":"))) for _, row in unit)
+        if current and current_chars + unit_chars > char_budget:
             chunks.append(current)
             current, current_chars = {}, 0
-        current.setdefault(rel, []).append(row)
-        current_chars += row_chars
+        for rel, row in unit:
+            identity = f"{rel}#{row.get('taskmaster_id', row.get('id', ''))}"
+            if identity in seen:
+                raise ValueError("capability_input_integrity_duplicate_task_view_id:" + identity)
+            seen.add(identity)
+            current.setdefault(rel, []).append(row)
+        current_chars += unit_chars
     if current:
         chunks.append(current)
+    positions = {(rel, str(row.get("taskmaster_id", row.get("id")))): ordinal for ordinal, (rel, row) in enumerate(rows)}
+    for chunk in chunks:
+        for rel, items in chunk.items():
+            items.sort(key=lambda row: positions[(rel, str(row.get("taskmaster_id", row.get("id"))))])
     expected = {
         f"{rel}#{row.get('taskmaster_id', row.get('id', ''))}"
         for rel, row in rows

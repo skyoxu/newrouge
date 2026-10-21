@@ -24,6 +24,7 @@ from _llm_backend import (  # noqa: E402
     run_llm_exec,
 )
 from _planning_skill_common import atomic_json, load_json, validate_output_schema  # noqa: E402
+from _capability_task_evidence import AUDIT_DIR, CATALOG, build_task_request  # noqa: E402
 from _capability_input_integrity import (  # noqa: E402
     DEFAULT_MAX_INPUT_TOKENS, REPORT_NAME, check_workspace_request, compact_file_section, configured_input_limit, measure_request, schema_max_json_chars, task_view_batch_sections, task_view_payload_chunks, validate_batches,
     task_view_batch_rows, task_related_evidence_section, project_source_batch, retired_source_blocks,
@@ -70,6 +71,9 @@ def _safe_files(workspace: Path, excluded: set[Path]) -> list[Path]:
         if path.is_symlink() or not resolved.is_relative_to(root):
             raise ValueError(f"workspace contains an unsafe file link: {path}")
         if resolved in excluded:
+            continue
+        rel = resolved.relative_to(root).as_posix()
+        if rel.startswith(AUDIT_DIR + "/") or rel == "analysis-input/" + CATALOG:
             continue
         result.append(path)
     return result
@@ -975,15 +979,10 @@ def _run_batched_session(
     for index, task_rows in enumerate(task_chunks, 1):
         payload = {"schema_version": "newrouge.capability-model-batch.v1",
                    "batch_index": index, "blocks": [], "requirements": []}
-        text = "\n\n".join([_batch_context(base),
-            "Analyze every complete Task View row below as auxiliary ownership and acceptance evidence. "
-            "Preserve task identity, intent, Acceptance/test meaning, and exact Requirement refs. "
-            "Do not infer Capability grouping or omit any row. This is a task-only batch: "
-            "return source_block_analyses and requirement_analyses as empty arrays.",
-            "===== COMPLETE TASK-VIEW ROWS =====\n" + json.dumps(task_rows, ensure_ascii=False, separators=(",", ":")),
-            task_related_evidence_section(workspace, task_rows)])
         label = f"task-views-{index:03d}"
         task_schema = _batch_analysis_schema(payload, task_rows)
+        text = build_task_request(workspace, base=_batch_context(base), rows=task_rows, label=label,
+                                  measure_text=lambda value: _measured_request_text(value, task_schema))
         request_texts.append((label, text, task_schema, _analysis_output_budget(payload, task_rows),
                               "newrouge_capability_batch_analysis", payload, task_rows))
     checklist = _coverage_checklist(workspace)
