@@ -1299,6 +1299,13 @@ def _validate_correction_path(tokens: list[str]) -> None:
         raise ValueError(f"unsupported correction root: {tokens[0]}")
 
 
+def normalize_candidate_for_validation(candidate: dict[str, Any], ledger: dict[str, Any]) -> dict[str, Any]:
+    """Accept canonical candidates or decode the strict-schema transport once."""
+    if isinstance(candidate.get("source_accounting"), dict):
+        return normalize_candidate_output(candidate, ledger)
+    return deepcopy(candidate)
+
+
 def apply_review_corrections(
     candidate: dict[str, Any],
     corrections: Any,
@@ -1531,6 +1538,7 @@ def _read_valid_review(run_dir: Path, state: dict[str, Any]) -> tuple[dict[str, 
     selected = anonymous.get(str(result.get("selected")))
     if selected and result.get("corrections"):
         expected = apply_review_corrections(load_json(run_dir / "candidates" / f"{selected}.json", {}), result["corrections"])
+        expected = normalize_candidate_for_validation(expected, load_json(run_dir / "analysis-input/source-blocks.v1.json", {}))
         if canonical_sha(load_json(run_dir / "review/corrected-candidate.json", {})) != canonical_sha(expected):
             raise ValueError("persisted corrected Capability candidate identity changed")
     return result, selected
@@ -1602,6 +1610,8 @@ def review(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict[s
         if final_result.get("status") == "selected":
             corrected_candidate = apply_review_corrections(load_json(run_dir / "candidates" /
                 f"{anonymous[str(final_result['selected'])]}.json", {}), final_result.get("corrections", []))
+            corrected_candidate = normalize_candidate_for_validation(corrected_candidate,
+                load_json(run_dir / "analysis-input/source-blocks.v1.json", {}))
             errors = validate_candidate(corrected_candidate,
                 load_json(run_dir / "analysis-input/source-blocks.v1.json", {}),
                 load_json(run_dir / "analysis-input/semantic-requirements.v1.json", {}), state["analysis_identity_sha256"])
@@ -1655,6 +1665,7 @@ def review(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict[s
                 )
                 ledger = load_json(run_dir / "analysis-input/source-blocks.v1.json", {})
                 semantics = load_json(run_dir / "analysis-input/semantic-requirements.v1.json", {})
+                corrected_candidate = normalize_candidate_for_validation(corrected_candidate, ledger)
                 correction_errors = validate_candidate(
                     corrected_candidate,
                     ledger,
@@ -1769,8 +1780,11 @@ def _selected_candidate(run_dir: Path, state: dict[str, Any]) -> dict[str, Any]:
         path = (run_dir / final_path).resolve()
         if not path.is_relative_to(run_dir.resolve()) or not path.is_file():
             raise ValueError("corrected final candidate path is invalid")
-        return load_json(path, {})
-    return load_json(run_dir / "candidates" / f"{label}.json", {})
+        candidate = load_json(path, {})
+    else:
+        candidate = load_json(run_dir / "candidates" / f"{label}.json", {})
+    return normalize_candidate_for_validation(candidate,
+        load_json(run_dir / "analysis-input/source-blocks.v1.json", {}))
 
 
 def _validate_snapshot_freshness(root: Path, run_dir: Path) -> dict[str, Any]:
@@ -2455,10 +2469,13 @@ def main(argv: list[str] | None = None) -> int:
         elif args.command == "validate-candidate":
             _path, state = _load_run(root, args.run_id)
             run_dir = _run_dir(root, args.run_id)
-            candidate = load_json(repo_path(root, args.candidate), {})
+            ledger = load_json(run_dir / "analysis-input/source-blocks.v1.json", {})
+            candidate = normalize_candidate_for_validation(
+                load_json(repo_path(root, args.candidate), {}), ledger
+            )
             errors = validate_candidate(
                 candidate,
-                load_json(run_dir / "analysis-input/source-blocks.v1.json", {}),
+                ledger,
                 load_json(run_dir / "analysis-input/semantic-requirements.v1.json", {}),
                 str(state["analysis_identity_sha256"]),
             )

@@ -22,6 +22,7 @@ from plan_capabilities import (
     _candidate_retry_coverage_details,
     candidate_output_schema,
     normalize_candidate_output,
+    normalize_candidate_for_validation,
     _manifest_artifact_sha,
 )
 
@@ -135,6 +136,29 @@ class CapabilityPlanningContractTests(unittest.TestCase):
         normalized = normalize_candidate_output(value, self.ledger)
         self.assertEqual({"RQ-1": "Shared outcome"}, normalized["multi_membership_rationales"])
         self.assertEqual(["SB-1"], normalized["capabilities"][0]["source_block_ids"])
+
+    def test_review_candidate_transport_is_normalized_before_machine_validation(self) -> None:
+        value = self.candidate()
+        value["capabilities"][0]["source_block_ids"] = ["0"]
+        value["capabilities"][1]["source_block_ids"] = ["1"]
+        value["source_accounting"] = {
+            "0": {"disposition": "assigned", "capability_ids": ["TMP-CAP-ONE"], "rationale": "x"},
+            "1": {"disposition": "assigned", "capability_ids": ["TMP-CAP-TWO"], "rationale": "y"},
+        }
+
+        normalized = normalize_candidate_for_validation(value, self.ledger)
+
+        self.assertEqual(["SB-1"], normalized["capabilities"][0]["source_block_ids"])
+        self.assertEqual(["SB-1", "SB-2"], [row["block_id"] for row in normalized["source_accounting"]])
+        self.assertEqual([], validate_candidate(normalized, self.ledger, self.semantics, self.analysis))
+
+    def test_canonical_candidate_is_not_normalized_twice(self) -> None:
+        value = self.candidate()
+
+        normalized = normalize_candidate_for_validation(value, self.ledger)
+
+        self.assertEqual(value, normalized)
+        self.assertEqual([], validate_candidate(normalized, self.ledger, self.semantics, self.analysis))
 
     def test_candidate_requires_multi_membership_rationale(self) -> None:
         value = self.candidate()
