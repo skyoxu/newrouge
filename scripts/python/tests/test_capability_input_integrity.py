@@ -79,6 +79,38 @@ class CapabilityInputIntegrityTests(unittest.TestCase):
     def test_codex_transport_limit_matches_cli_character_cap(self):
         self.assertEqual(1 * 1024 * 1024, integrity.CODEX_MAX_TURN_BYTES)
 
+    def test_codex_synthesis_gets_fresh_budget_and_resume_skips_evidence_calls(self):
+        self.refresh_analysis_index()
+        clock = [0.0]
+        calls = []
+        def dispatch(executable, workspace, **kwargs):
+            calls.append(kwargs)
+            target = kwargs['output']
+            if target.parent.name == 'batch-analyses':
+                ordinal = int(target.stem.rsplit('-', 1)[1]) - 1
+                payload = self.batch_fixture_payload(load_json(
+                    self.analysis / self.index['batches'][ordinal]['path']))
+                clock[0] += 10
+            else:
+                self.assertGreaterEqual(kwargs['timeout_sec'], 599)
+                payload = {}
+            raw = json.dumps(payload)
+            atomic_json(target, payload)
+            return raw
+        with patch.object(codex.time, 'monotonic', side_effect=lambda: clock[0]), \
+             patch.object(codex, '_run_codex_request', side_effect=dispatch):
+            result = codex._run_batched_codex(self.root, self.prompt, self.output,
+                executable='fixture', timeout_sec=30, synthesis_timeout_sec=600,
+                max_bytes=1048576, max_input_tokens=96000)
+            self.assertEqual(3, result['model_request_count'])
+            calls.clear()
+            result = codex._run_batched_codex(self.root, self.prompt, self.output,
+                executable='fixture', timeout_sec=30, synthesis_timeout_sec=600,
+                resume_evidence=True, max_bytes=1048576, max_input_tokens=96000)
+        self.assertEqual(1, result['model_request_count'])
+        self.assertEqual(1, len(calls))
+        self.assertTrue(all(row['status'] == 'reused' for row in result['batch_attempts'][:2]))
+
     def test_codex_review_returns_review_report_after_all_evidence_batches(self):
         import plan_capabilities as planner
         self.prompt.write_text(planner.REVIEW_PROMPT, encoding='utf-8')
@@ -226,9 +258,21 @@ class CapabilityInputIntegrityTests(unittest.TestCase):
                 atomic_json(output_path, payload)
             else:
                 atomic_json(output_path, {'fixture': True})
-            return subprocess.CompletedProcess(command, 0, stdout='')
+            thread_id = '00000000-0000-4000-8000-000000000001'
+            session_dir = self.root / 'codex-home' / 'sessions' / '2026' / '10' / '21'
+            session_dir.mkdir(parents=True, exist_ok=True)
+            session = session_dir / f'rollout-2026-10-21T00-00-00-{thread_id}.jsonl'
+            session.write_text('\n'.join([
+                json.dumps({'type': 'session_meta', 'payload': {
+                    'id': thread_id, 'session_id': thread_id, 'cwd': str(kwargs['cwd']),
+                    'model_provider': 'fixture-provider'}}),
+                json.dumps({'type': 'turn_context', 'payload': {'model': 'fixture-model'}}),
+            ]), encoding='utf-8')
+            return subprocess.CompletedProcess(command, 0, stdout=json.dumps({
+                'type': 'thread.started', 'thread_id': thread_id}))
         with patch.object(codex, '_codex_executable', return_value='fixture-codex'), \
              patch.object(codex.subprocess, 'run', side_effect=fake_exec) as executor, \
+             patch.dict(os.environ, {'CODEX_HOME': str(self.root / 'codex-home')}), \
              contextlib.redirect_stdout(io.StringIO()) as stdout:
             codex.run(self.args)
         sent = "\n\n".join(call.kwargs['input'] for call in executor.call_args_list)

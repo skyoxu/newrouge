@@ -205,8 +205,86 @@ class CapabilityStagedSynthesisTests(unittest.TestCase):
                 return 'invalid JSON'
             with self.assertRaisesRegex(ValueError, 'synthesis_draft_invalid'):
                 self.execute(directory, dispatch)
-            self.assertEqual(1, len(calls))
+            self.assertEqual(4, len(calls))
             self.assertEqual({'old': 'preserved'}, json.loads(output.read_text()))
+
+    def test_invalid_draft_is_repaired_with_full_input_and_draft_before_next_stage(self):
+        sent = []
+        with tempfile.TemporaryDirectory() as directory:
+            def dispatch(text, target):
+                sent.append(text)
+                if len(sent) == 1:
+                    return '{"preserved":"FULL_DRAFT", "broken":'
+                if len(sent) == 2:
+                    self.assertIn('FULL_DRAFT', text)
+                    self.assertIn('FULL_EVIDENCE_0', text)
+                    self.assertIn('original', text)
+                    self.assertIn('capability_synthesis_draft_invalid:', text)
+                return json.dumps({'result': 'repaired'})
+            plan, output = self.execute(directory, dispatch)
+            self.assertEqual(len(plan['stages']) + 1, len(sent))
+            self.assertEqual({'result': 'repaired'}, json.loads(output.read_text()))
+            attempts = list((Path(directory) / 'synthesis-stages').glob('*.attempt-*.json'))
+            self.assertEqual(len(sent), len(attempts))
+
+    def test_synthesis_transport_timeout_does_not_start_repair(self):
+        with tempfile.TemporaryDirectory() as directory:
+            dispatch = unittest.mock.Mock(side_effect=TimeoutError('synthesis-time budget exhausted'))
+            with self.assertRaises(TimeoutError):
+                self.execute(directory, dispatch)
+            self.assertEqual(1, dispatch.call_count)
+
+    def test_missing_requirement_is_corrected_under_real_candidate_validation(self):
+        with tempfile.TemporaryDirectory() as directory:
+            workspace = Path(directory)
+            ledger = {'blocks': [{'block_id': 'SB-1'}]}
+            semantics = {'requirements': [{'requirement_id': 'RQ-1',
+                'status': 'active', 'delivery_relevant': True}]}
+            atomic_json(workspace / 'analysis-input/source-blocks.v1.json', ledger)
+            atomic_json(workspace / 'analysis-input/semantic-requirements.v1.json', semantics)
+            atomic_json(workspace / 'analysis-input/analysis-index.json',
+                {'analysis_identity_sha256': 'sha256:fixture'})
+            schema = workspace / 'candidate-schema.json'
+            atomic_json(schema, planning.candidate_output_schema(ledger, semantics))
+            candidate = {'schema_version': planning.CANDIDATE_SCHEMA,
+                'analysis_identity_sha256': 'sha256:fixture', 'capabilities': [],
+                'ungrouped_requirements': [], 'multi_membership_rationales': [],
+                'source_accounting': {'0': {'disposition': 'included',
+                    'capability_ids': [], 'rationale': 'source preserved'}},
+                'questions': [], 'generation_notes': []}
+            calls = []
+            def dispatch(text, target):
+                calls.append(text)
+                if len(calls) == 2:
+                    self.assertIn('delivery_requirements_unaccounted:RQ-1', text)
+                    candidate['capabilities'] = [{'capability_id': 'TMP-CAP-1',
+                        'title': 'Outcome', 'description': 'Complete outcome',
+                        'boundary_rationale': 'Independent responsibility',
+                        'requirement_ids': ['RQ-1'], 'source_block_ids': ['0']}]
+                    candidate['source_accounting']['0']['capability_ids'] = ['TMP-CAP-1']
+                return json.dumps(candidate)
+            output = workspace / 'candidate.json'
+            api._execute_synthesis_plan(plan={'mode': 'single', 'stages': [{'labels': ['one']}]},
+                analyses=[('one', '{"requirement":"RQ-1"}')], original_prompt='original',
+                base='', checklist='RQ-1', workspace=workspace, output_path=output,
+                schema_path=schema, output_tokens=4000,
+                measured=lambda text, reserve: measure_request(text, max_bytes=1048576,
+                    max_input_tokens=20000, reserved_tokens=reserve), dispatch=dispatch,
+                event=lambda *args: None)
+            self.assertEqual(2, len(calls))
+            result = json.loads(output.read_text(encoding='utf-8'))
+            self.assertEqual([], planning.validate_candidate(
+                planning.normalize_candidate_output(result, ledger), ledger, semantics, 'sha256:fixture'))
+
+    def test_repair_context_overflow_stops_without_truncating_or_dispatching(self):
+        with tempfile.TemporaryDirectory() as directory:
+            calls = []
+            def dispatch(text, target):
+                calls.append(text)
+                return 'not-json ' * 100000
+            with self.assertRaisesRegex(ValueError, 'runner_input_too_large|runner_context_budget_exceeded'):
+                self.execute(directory, dispatch)
+            self.assertEqual(1, len(calls))
 
     def test_actual_late_request_overflow_blocks_before_dispatch(self):
         with tempfile.TemporaryDirectory() as directory:

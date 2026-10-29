@@ -279,6 +279,7 @@ def prepare(
     candidate_retry_limit: int,
     review_retry_limit: int,
     candidate_budget_sec: int,
+    synthesis_budget_sec: int = 1200,
     total_budget_sec: int,
     request_limit: int,
 ) -> dict[str, Any]:
@@ -328,6 +329,7 @@ def prepare(
             "review_retry_limit": int(review_retry_limit),
             "alignment_retry_limit": 1,
             "candidate_budget_sec": int(candidate_budget_sec),
+            "synthesis_budget_sec": int(synthesis_budget_sec),
             "total_budget_sec": int(total_budget_sec),
             "request_limit": int(request_limit),
             "activity_sec": 0.0,
@@ -714,6 +716,8 @@ def _candidate_retry_mode(errors: list[str]) -> str:
 def _classify_runner_error(errors: list[str]) -> str | None:
     """Return a stable machine category without replacing human diagnostics."""
     text = " ".join(str(value) for value in errors).casefold()
+    if 'synthesis-time budget exhausted' in text:
+        return 'runner_synthesis_timeout'
     if "runner_input_too_large" in text:
         return "runner_input_too_large"
     if "runner_context_budget_exceeded" in text:
@@ -787,6 +791,7 @@ def _remaining_attempt_budget(
     label: str | None,
     timeout_sec: int,
     runner_info: dict[str, Any],
+    synthesis_timeout_sec: int = 0,
 ) -> int:
     budget = _budget(state)
     total_remaining = (float(budget["total_budget_sec"]) - float(budget.get("activity_sec") or 0.0)
@@ -796,7 +801,7 @@ def _remaining_attempt_budget(
     remaining = total_remaining
     if label is not None:
         by_candidate = budget.setdefault("candidate_activity_sec", {})
-        candidate_remaining = (float(budget["candidate_budget_sec"]) - float(by_candidate.get(label) or 0.0)
+        candidate_remaining = (float(budget["candidate_budget_sec"]) + float(synthesis_timeout_sec) - float(by_candidate.get(label) or 0.0)
             - float((budget.get("candidate_reserved_sec") or {}).get(label) or 0.0))
         if candidate_remaining <= 0:
             raise ValueError(f"{label} active-time budget exhausted")
@@ -804,7 +809,7 @@ def _remaining_attempt_budget(
     _attempt_request_allowance(state, runner_info)
     if int(remaining) < 1 or int(timeout_sec) < 1:
         raise ValueError("Capability planning active-time budget cannot fund another invocation")
-    return min(int(timeout_sec), int(remaining))
+    return min(int(timeout_sec) + int(synthesis_timeout_sec), int(remaining))
 
 
 def _record_runner_activity(
@@ -1016,12 +1021,16 @@ def generate(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict
         while len(attempts) < max_attempts and not valid:
             attempt_no = len(attempts) + 1
             try:
+                synthesis_budget_sec = (int(_budget(state).get("synthesis_budget_sec") or 1200)
+                    if runner_info.get('supports_synthesis_budget') is True else 0)
                 attempt_timeout = _remaining_attempt_budget(
                     state,
                     label=label,
                     timeout_sec=timeout_sec,
                     runner_info=runner_info,
+                    synthesis_timeout_sec=synthesis_budget_sec,
                 )
+                synthesis_budget_sec = min(synthesis_budget_sec, max(0, attempt_timeout - 1))
             except ValueError as exc:
                 last_errors = [str(exc)]
                 break
@@ -1116,7 +1125,8 @@ def generate(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict
             errors: list[str] = []
             request_allowance = _attempt_request_allowance(state, runner_info)
             attempt_record = _begin_attempt(run_path, state, attempts, label=label,
-                timeout_sec=attempt_timeout, runner_info=runner_info, metadata={
+                    timeout_sec=attempt_timeout, runner_info=runner_info, metadata={
+                    "synthesis_budget_sec": synthesis_budget_sec,
                     "retry_mode": retry_mode,
                     "repair_seed_path": relative(root, repair_seed_path) if repair_seed_path is not None else None,
                     "repair_seed_sha256": repair_seed_sha256,
@@ -1129,9 +1139,10 @@ def generate(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict
                     workspace=workspace,
                     prompt_path=prompt_path,
                     output_path=output,
-                    timeout_sec=attempt_timeout,
+                    timeout_sec=attempt_timeout - synthesis_budget_sec,
                     output_schema=schema_path,
                     model_request_budget=request_allowance if runner_info.get("supports_request_budget") is True else None,
+                    synthesis_timeout_sec=synthesis_budget_sec or None,
                 )
                 candidate = parse_model_json(output)
                 candidate = normalize_candidate_output(candidate, ledger)
@@ -1166,7 +1177,11 @@ def generate(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict
                 errors.append(
                     f"actual_model_mismatch:{actual_model}!={expected_actual_model}"
                 )
-            elif actual_model and not errors:
+            elif actual_model:
+                # Bind the run to the first observed runtime model even when
+                # this attempt has a candidate/structure error.  A failed
+                # candidate must not leave the run unbound so that a later
+                # retry can silently switch models.
                 state["actual_model"] = actual_model
             meta = {
                 "candidate": label,
@@ -2407,6 +2422,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--candidate-retry-limit", type=int, default=2)
     p.add_argument("--review-retry-limit", type=int, default=1)
     p.add_argument("--candidate-budget-sec", type=int, default=2700)
+    p.add_argument("--synthesis-budget-sec", type=int, default=1200)
     p.add_argument("--total-budget-sec", type=int, default=13500)
     p.add_argument("--request-limit", type=int, default=96)
 
@@ -2452,6 +2468,7 @@ def main(argv: list[str] | None = None) -> int:
                 candidate_retry_limit=args.candidate_retry_limit,
                 review_retry_limit=args.review_retry_limit,
                 candidate_budget_sec=args.candidate_budget_sec,
+                synthesis_budget_sec=args.synthesis_budget_sec,
                 total_budget_sec=args.total_budget_sec,
                 request_limit=args.request_limit,
             )

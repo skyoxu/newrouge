@@ -825,6 +825,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_cap.add_argument("--candidate-retry-limit", type=int, default=2)
     p_cap.add_argument("--review-retry-limit", type=int, default=1)
     p_cap.add_argument("--candidate-budget-sec", type=int, default=2700)
+    p_cap.add_argument("--synthesis-budget-sec", type=int, default=1200)
     p_cap.add_argument("--total-budget-sec", type=int, default=13500)
     p_cap.add_argument("--request-limit", type=int, default=96)
     p_cap.add_argument("--runner", default=str(Path(__file__).resolve().with_name("codex_isolated_model_runner.py")))

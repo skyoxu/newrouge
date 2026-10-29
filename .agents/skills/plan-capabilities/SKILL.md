@@ -24,7 +24,7 @@ Create the derived Capability organization after the relevant Chapter 3-5 scope 
 - Authoritative inputs are the cumulative source set, full Source Block Ledger, reviewed Requirements, task/Acceptance/contract semantics, and explicit Chapter 5 readiness scope.
 - Source transport must be lossless. JSON whitespace minification is allowed; dropping task descriptions, Acceptance, tests, Source Block text or Requirement fields to fit a request is forbidden. Before invoking a model, validate prepared file hashes, exact batch bodies/IDs and aggregate serialized input limits. ID coverage alone is not evidence that full source content was supplied.
 - The three initial candidates must use fresh sessions, the same model, the same prompt bytes, and the same blinded analysis bundle.
-- Formal generation requires an isolation runner that reports workspace-only reads and no outside-workspace access. If no such runner exists, stop after prepare/validation; never emulate independence in one chat.
+- Formal generation requires an isolation runner that reports workspace-only reads or strictly prompt-only input, and no outside-workspace access. If no such runner exists, stop after prepare/validation; never emulate independence in one chat.
 - Old formal Capability answers and task `capability_refs` are excluded from the candidate analysis view. Capability/module organization that is present in the authoritative GDD remains visible. An explicitly supplied diagnostic reference may be used only to explain migration differences; it must not anchor a new project's grouping.
 - The review is a fourth fresh isolated session. It sees anonymous A/B/C candidates in a reproducible shuffled order and never sees the private mapping. If a valid current formal Capability file exists, prepare freezes it as `candidates/D.json` for the review only; D is explicitly the incumbent and may be selected. The incumbent is never copied into candidate-generation analysis input. If no valid incumbent exists, the review remains the original A/B/C flow and cannot select D.
 - Do not merge the three by default. A valid outcome may be `no_valid_winner`.
@@ -54,23 +54,27 @@ Default verified runner: `scripts/python/codex_isolated_model_runner.py`. It use
 
 A custom runner may be supplied, but it must answer `--describe` with schema `newrouge.isolated-model-runner.v1`, including:
 
-- `filesystem_scope = workspace_only`
+- `filesystem_scope = workspace_only` or the narrower `prompt_only`
 - `fresh_session_per_invocation = true`
 - `can_read_outside_workspace = false`
 - `model_tools = []`
-- exact `model`
+- non-empty `model` contract label; each successful invocation receipt must additionally contain the exact runtime model identity and its invocation-thread evidence
 
 Invocation contract:
 
 `<runner> --workspace <dir> --prompt-file <file> --output <file> --timeout-sec <seconds>`
 
-The runner may use Codex, an OpenAI-hosted sandbox, WSL/container isolation, or another approved executor, but the Skill never upgrades a native read-anywhere sandbox to “isolated” by assertion.
+The runner may use Codex, an OpenAI-hosted sandbox, WSL/container isolation, or another approved executor, but the Skill never upgrades a native read-anywhere sandbox to “isolated” by assertion. The Codex runner disables model tools, MCP servers and tool-capable feature flags explicitly. Because current `codex exec --json` output does not include the model name, it binds the returned thread ID to that invocation's rollout record and reads the model from its `turn_context`; missing, stale, or workspace-mismatched evidence fails closed. A configured alias or static `codex-cli-default` label is never accepted as runtime identity.
 
 ## Recovery and cost
 
 ### Input integrity and context limits
 
-New runs default to a 2,700-second cumulative active-time allowance per candidate and a 2,700-second invocation timeout. The shared active-time allowance is 13,500 seconds for three candidates, independent review and alignment; it is a ceiling, not an expected duration or billed cost. Explicit CLI overrides remain supported. Existing run budgets are preserved.
+New runs default to a 2,700-second evidence-analysis allowance and an independent 1,200-second synthesis allowance (`prepare --synthesis-budget-sec 1200`). Synthesis starts its own deadline after evidence analysis; staged synthesis shares that one allowance rather than receiving 1,200 seconds per stage. The parent process includes both allowances in its wait limit, and the shared 13,500-second active-time ceiling still applies. Existing runs without the new field use 1,200 seconds for synthesis; other existing budget values are preserved. Explicit CLI overrides remain supported.
+
+Operator-directed synthesis recovery may invoke the Codex runner with `--resume-evidence` against the original attempt workspace. This validates the complete prepared input, prior accepted batch request identities, and every saved batch response before reuse. Missing, changed or invalid evidence blocks recovery. The flag is off by default: normal page generation never silently reuses historical evidence. A synthesis validation failure preserves the evidence and draft without publishing a selectable candidate.
+
+Each synthesis stage admits one initial draft and at most three targeted correction requests for deterministic draft validation errors. Corrections retain the complete stage input, complete rejected draft and validation history; no valid evidence is regenerated. All corrections and stages share the same synthesis deadline and request allowance. Input capacity is measured again before each correction; overflow, transport failures and budget exhaustion stop without a repair call or truncation. Archive every returned draft and validation result under `synthesis-stages/*.attempt-*.json`. Only a fully validated final stage publishes a selectable candidate; intermediate omissions must be corrected or explicitly accounted for, never silently ignored.
 
 Independent source/task analysis requests omit the full preparation index, batch inventory and unrelated task state. A stable bundle identity and shared attachments remain visible. Each task chunk retains complete task-view rows and receives complete related master/readiness rows, Requirement objects and linked Source Blocks, selected strictly by declared IDs. Missing declared references block dispatch; absent references are not guessed. Global authority hashes and complete coverage are still checked by machine, and final synthesis retains global context and validated analyses. Context limits are measured after this projection; no source text is truncated.
 

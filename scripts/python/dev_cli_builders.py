@@ -651,6 +651,7 @@ def build_plan_capabilities_cmd(args) -> list[str]:
             "--candidate-retry-limit", str(args.candidate_retry_limit),
             "--review-retry-limit", str(args.review_retry_limit),
             "--candidate-budget-sec", str(args.candidate_budget_sec),
+            "--synthesis-budget-sec", str(args.synthesis_budget_sec),
             "--total-budget-sec", str(args.total_budget_sec),
             "--request-limit", str(args.request_limit),
         ]

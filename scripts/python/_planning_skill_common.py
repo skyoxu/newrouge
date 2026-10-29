@@ -534,8 +534,8 @@ def inspect_isolated_runner(executable: Path) -> dict[str, Any]:
 def validate_runner_description(payload: dict[str, Any]) -> None:
     if payload.get("schema_version") != RUNNER_SCHEMA:
         raise ValueError("unsupported isolation runner schema")
-    if payload.get("filesystem_scope") != "workspace_only":
-        raise ValueError("formal Capability generation requires workspace-only filesystem reads")
+    if payload.get("filesystem_scope") not in {"workspace_only", "prompt_only"}:
+        raise ValueError("formal Capability generation requires workspace-only or prompt-only input")
     if payload.get("fresh_session_per_invocation") is not True:
         raise ValueError("formal Capability generation requires a fresh model session per invocation")
     if payload.get("can_read_outside_workspace") is not False:
@@ -578,6 +578,7 @@ def run_isolated_model(
     prompt_path: Path,
     output_path: Path,
     timeout_sec: int,
+    synthesis_timeout_sec: int | None = None,
     output_schema: Path | None = None,
     model_request_budget: int | None = None,
 ) -> dict[str, Any]:
@@ -588,6 +589,8 @@ def run_isolated_model(
         "--output", str(output_path),
         "--timeout-sec", str(timeout_sec),
     ]
+    if synthesis_timeout_sec is not None:
+        cmd.extend(["--synthesis-timeout-sec", str(max(1, int(synthesis_timeout_sec)))])
     if output_schema is not None:
         cmd.extend(["--output-schema", str(output_schema)])
     if model_request_budget is not None:
@@ -605,12 +608,13 @@ def run_isolated_model(
         kwargs["start_new_session"] = True
     proc = subprocess.Popen(cmd, **kwargs)
     try:
-        stdout, _stderr = proc.communicate(timeout=max(timeout_sec + 30, 60))
+        wall_timeout_sec = timeout_sec + max(0, synthesis_timeout_sec or 0)
+        stdout, _stderr = proc.communicate(timeout=max(wall_timeout_sec + 30, 60))
     except subprocess.TimeoutExpired as exc:
         _terminate_process_tree(proc)
         stdout, _stderr = proc.communicate()
         raise TimeoutError(
-            f"isolated model runner timed out after {timeout_sec}s: {stdout[-2000:]}"
+            f"isolated model runner timed out after {wall_timeout_sec}s: {stdout[-2000:]}"
         ) from exc
     except BaseException:
         _terminate_process_tree(proc)

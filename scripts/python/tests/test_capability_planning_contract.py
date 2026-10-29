@@ -28,6 +28,23 @@ from plan_capabilities import (
 
 
 class CapabilityPlanningContractTests(unittest.TestCase):
+    def test_synthesis_allowance_is_separate_and_total_budget_still_caps_attempt(self):
+        from plan_capabilities import _remaining_attempt_budget
+        state = {'budget': {'candidate_budget_sec': 2700, 'synthesis_budget_sec': 600,
+            'total_budget_sec': 13500, 'activity_sec': 0, 'request_limit': 100}}
+        self.assertEqual(3300, _remaining_attempt_budget(state, label='candidate-1',
+            timeout_sec=2700, runner_info={}, synthesis_timeout_sec=600))
+        state['budget']['activity_sec'] = 13400
+        self.assertEqual(100, _remaining_attempt_budget(state, label='candidate-1',
+            timeout_sec=2700, runner_info={}, synthesis_timeout_sec=600))
+
+    def test_synthesis_timeout_has_distinct_error_category(self):
+        from plan_capabilities import _classify_runner_error
+        from openai_isolated_model_runner import _error_type
+        error = TimeoutError('isolated model synthesis-time budget exhausted')
+        self.assertEqual('runner_synthesis_timeout', _error_type(error))
+        self.assertEqual('runner_synthesis_timeout', _classify_runner_error([str(error)]))
+
     def test_attempt_activity_is_capped_at_reserved_budget(self):
         state = {"budget": {"activity_sec": 0.0, "activity_reserved_sec": 30.0,
                              "candidate_reserved_sec": {"candidate-1": 30.0},

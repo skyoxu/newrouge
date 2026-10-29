@@ -9,6 +9,7 @@ import json
 import shutil
 import subprocess
 import os
+import tempfile
 import time
 import uuid
 from pathlib import Path
@@ -28,6 +29,155 @@ from _capability_input_integrity import (
 )
 
 SCHEMA = "newrouge.isolated-model-runner.v1"
+
+# These are CLI feature switches, not claims about the sandbox.  In
+# particular, Codex's read-only sandbox still permits reads outside the
+# workspace; a no-tools invocation is the boundary we can actually verify.
+CODEX_DISABLED_FEATURES = (
+    "--disable", "shell_tool",
+    "--disable", "apps",
+    "--disable", "browser_use",
+    "--disable", "browser_use_external",
+    "--disable", "computer_use",
+    "--disable", "image_generation",
+    "--disable", "in_app_browser",
+    "--disable", "multi_agent",
+    "--disable", "multi_agent_v2",
+    "--disable", "code_mode_host",
+    "--disable", "plugins",
+    "--disable", "remote_plugin",
+    "--disable", "in_app_local_automation",
+    "--disable", "in_app_chat",
+    "--disable", "in_app_dictation",
+    "--disable", "in_app_updates",
+    "--disable", "realtime_conversation",
+    "--disable", "auth_elicitation",
+    "--disable", "view_image",
+    "--disable", "sleep_tool",
+    "--disable", "tool_suggest",
+    "--disable", "unified_exec",
+    "--disable", "unified_exec_tty",
+)
+
+_LAST_MODEL_IDENTITY: str | None = None
+_LAST_MODEL_PROVIDER: str | None = None
+_MODEL_IDENTITY_EVIDENCE: list[dict[str, str]] = []
+
+
+def _parse_codex_json_events(raw: str, *, require_model: bool = True) -> tuple[str, list[str]]:
+    """Extract an effective model and observed tool names from JSONL output.
+
+    ``codex exec --json`` does not currently emit a model event on every CLI
+    version.  We therefore fail closed instead of converting a configured
+    alias into a false claim about the executed model.
+    """
+    model = ""
+    tools: list[str] = []
+    for line in raw.splitlines():
+        try:
+            event = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(event, dict):
+            continue
+        if event.get("type") in {"session_configured", "turn_context"}:
+            value = event.get("model")
+            if isinstance(value, str) and value.strip():
+                model = value.strip()
+        item = event.get("item")
+        if isinstance(item, dict):
+            item_type = str(item.get("type") or "")
+            if item_type not in {
+                "agent_message", "reasoning", "error", "plan_update",
+                "todo_list", "context_compaction",
+            }:
+                name = str(item.get("name") or item_type)
+                if name not in tools:
+                    tools.append(name)
+    if tools:
+        raise ValueError("model_tools_observed:" + ",".join(tools))
+    if not model and require_model:
+        raise ValueError("actual_model_identity_missing")
+    return model, tools
+
+
+def _runtime_model_from_rollout(raw: str, *, started_at: float,
+                                workspace: Path) -> tuple[str, dict[str, str]]:
+    """Read the model from this invocation's own Codex rollout, if available.
+
+    ``exec --json`` currently omits the session model event.  The non-ephemeral
+    rollout contains the authoritative ``turn_context.model`` for the exact
+    thread id returned by this invocation.  We never use the most recent
+    unrelated session and we never fall back to a configured alias.
+    """
+    thread_id = ""
+    for line in raw.splitlines():
+        try:
+            event = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(event, dict) and event.get("type") == "thread.started":
+            thread_id = str(event.get("thread_id") or "").strip()
+            if thread_id:
+                break
+    if not thread_id:
+        return "", {}
+    codex_home = Path(os.environ.get("CODEX_HOME") or (Path.home() / ".codex"))
+    sessions = codex_home / "sessions"
+    if not sessions.is_dir():
+        return "", {}
+    # Only inspect rollout files created by this invocation.  The thread id is
+    # still required, so a stale file can never satisfy the lookup.
+    workspace_mismatch = False
+    for path in sessions.rglob(f"rollout-*-{thread_id}.jsonl"):
+        try:
+            if path.stat().st_mtime + 2 < started_at:
+                continue
+            session_cwd = ""
+            model = ""
+            provider = ""
+            session_id = ""
+            with path.open("r", encoding="utf-8") as handle:
+                for line in handle:
+                    event = json.loads(line)
+                    payload = event.get("payload") if isinstance(event, dict) else None
+                    if not isinstance(payload, dict):
+                        continue
+                    if event.get("type") == "session_meta" and payload.get("id") == thread_id:
+                        session_id = str(payload.get("session_id") or payload.get("id") or "")
+                        session_cwd = str(payload.get("cwd") or "")
+                        provider = str(payload.get("model_provider") or "").strip()
+                    if event.get("type") == "turn_context" and payload.get("model"):
+                        model = str(payload["model"]).strip()
+                if session_id == thread_id and session_cwd and Path(session_cwd).resolve() == workspace.resolve():
+                    digest = hashlib.sha256(path.read_bytes()).hexdigest()
+                    if model:
+                        return model, {
+                            "thread_id": thread_id,
+                            "rollout_sha256": "sha256:" + digest,
+                            "workspace": str(workspace.resolve()),
+                            "source": "codex-rollout-turn-context",
+                            "model_provider": provider,
+                        }
+                if session_id == thread_id and session_cwd:
+                    workspace_mismatch = True
+        except (OSError, UnicodeError, json.JSONDecodeError):
+            continue
+    if workspace_mismatch:
+        raise ValueError("model_session_workspace_mismatch")
+    return "", {}
+
+
+def _codex_command(executable: str, workspace: Path, output: Path,
+                   schema_path: Path | None) -> list[str]:
+    command = [executable, "exec", "-s", "read-only", "-C", str(workspace),
+               "--skip-git-repo-check",
+               "--json", "--ignore-rules", *CODEX_DISABLED_FEATURES,
+               "-c", "mcp_servers={}", "--output-last-message", str(output)]
+    if schema_path is not None:
+        command.extend(["--output-schema", str(schema_path)])
+    command.append("-")
+    return command
 
 
 def _codex_executable() -> str:
@@ -91,6 +241,9 @@ def _coverage_checklist(workspace: Path) -> str:
 
 def _run_codex_request(executable: str, workspace: Path, *, prompt: str, output: Path,
                        schema_path: Path | None, timeout_sec: int) -> str:
+    global _LAST_MODEL_IDENTITY
+    global _LAST_MODEL_PROVIDER
+    global _MODEL_IDENTITY_EVIDENCE
     if len(prompt) > CODEX_MAX_TURN_BYTES:
         raise ValueError(
             f"runner_input_too_large:complete_request_chars={len(prompt)};"
@@ -101,17 +254,58 @@ def _run_codex_request(executable: str, workspace: Path, *, prompt: str, output:
     # the CLI exits successfully and the file is readable.
     output.parent.mkdir(parents=True, exist_ok=True)
     temporary_output = output.with_name(f"{output.name}.{os.getpid()}.{uuid.uuid4().hex}.tmp")
-    command = [executable, "exec", "-s", "read-only", "-C", str(workspace),
-               "--output-last-message", str(temporary_output)]
-    if schema_path is not None:
-        command.extend(["--output-schema", str(schema_path)])
-    command.append("-")
-    proc = subprocess.run(command, cwd=workspace, input=prompt, text=True,
-        encoding="utf-8", errors="replace", stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT, timeout=max(1, timeout_sec))
     try:
-        if proc.returncode != 0:
-            raise RuntimeError(f"Codex CLI failed rc={proc.returncode}: {(proc.stdout or '')[-4000:]}")
+        with tempfile.TemporaryDirectory(prefix="newrouge-codex-no-tools-") as isolated_cwd_text:
+            isolated_cwd = Path(isolated_cwd_text).resolve()
+            command = _codex_command(executable, isolated_cwd, temporary_output, schema_path)
+            started_at = time.time()
+            proc = subprocess.run(command, cwd=isolated_cwd, input=prompt, text=True,
+                encoding="utf-8", errors="replace", stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT, timeout=max(1, timeout_sec))
+            if proc.returncode != 0:
+                raise RuntimeError(f"Codex CLI failed rc={proc.returncode}: {(proc.stdout or '')[-4000:]}")
+        # Real JSON mode output is authoritative. Test doubles and older
+        # wrappers sometimes return only their output payload; keep those
+        # fixtures usable while never accepting a real JSON stream without a
+        # model identity.
+        json_lines = [line for line in (proc.stdout or "").splitlines()
+                      if line.lstrip().startswith("{")]
+        has_codex_event = False
+        for line in json_lines:
+            try:
+                event = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if isinstance(event, dict) and event.get("type") in {
+                "thread.started", "turn.started", "turn.completed",
+                "item.started", "item.completed", "session_configured",
+                "turn_context",
+            }:
+                has_codex_event = True
+                break
+        if not has_codex_event:
+            raise ValueError("actual_model_identity_missing:codex_json_events_absent")
+        model, tools = _parse_codex_json_events(proc.stdout or "", require_model=False)
+        evidence: dict[str, str] = {"source": "codex-json-session-event"} if model else {}
+        if not model:
+            model, evidence = _runtime_model_from_rollout(proc.stdout or "", started_at=started_at,
+                                                          workspace=isolated_cwd)
+        if not model:
+            raise ValueError("actual_model_identity_missing")
+        if tools:
+            raise ValueError("model_tools_observed:" + ",".join(tools))
+        if _LAST_MODEL_IDENTITY is not None and _LAST_MODEL_IDENTITY != model:
+            raise ValueError(
+                f"model_identity_changed:{_LAST_MODEL_IDENTITY}->{model}"
+            )
+        provider = evidence.get("model_provider", "")
+        if _LAST_MODEL_PROVIDER is not None and provider and _LAST_MODEL_PROVIDER != provider:
+            raise ValueError(f"model_provider_changed:{_LAST_MODEL_PROVIDER}->{provider}")
+        if provider:
+            _LAST_MODEL_PROVIDER = provider
+        _LAST_MODEL_IDENTITY = model
+        _MODEL_IDENTITY_EVIDENCE.append({"model": model,
+            **({"model_provider": provider} if provider else {}), **evidence})
         if not temporary_output.is_file():
             raise RuntimeError("Codex CLI produced no output")
         raw = temporary_output.read_text(encoding="utf-8")
@@ -125,7 +319,14 @@ def _run_batched_codex(workspace: Path, prompt_path: Path, output_path: Path, *,
                        executable: str | None, timeout_sec: int, max_bytes: int,
                        max_input_tokens: int, output_schema_path: Path | None = None,
                        preflight: bool = False,
-                       model_request_budget: int | None = None) -> dict[str, object]:
+                       model_request_budget: int | None = None,
+                       synthesis_timeout_sec: int = 1200,
+                       resume_evidence: bool = False) -> dict[str, object]:
+    previous_integrity = load_json(workspace / REPORT_NAME, {}) if resume_evidence else {}
+    previous_requests = {row.get('label'): row.get('request_sha256')
+        for row in previous_integrity.get('requests', []) if row.get('request_sha256')}
+    previous_accepted = {row.get('label') for row in previous_integrity.get('batch_attempts', [])
+        if row.get('status') in {'accepted', 'reused'}}
     base, batches = batched_workspace_parts(workspace, prompt_path=prompt_path,
         output_path=output_path, max_bytes=max_bytes)
     index_path = workspace / "analysis-input/model-batches/batch-index.json"
@@ -256,7 +457,35 @@ def _run_batched_codex(workspace: Path, prompt_path: Path, output_path: Path, *,
             raise TimeoutError("isolated model active-time budget exhausted")
         target = workspace / "batch-analyses" / f"{label}.json"
         target.parent.mkdir(parents=True, exist_ok=True)
+        # A completed, locally validated batch is durable evidence.  Reuse it
+        # when resuming synthesis; never spend another model request for the
+        # same authoritative input.
         accepted = False
+        if resume_evidence:
+            if (not target.is_file() or label not in previous_accepted
+                    or previous_requests.get(label) != _report.get('request_sha256')):
+                raise ValueError(f'capability_evidence_resume_identity_mismatch:{label}')
+            try:
+                cached = json.loads(target.read_text(encoding="utf-8"))
+                if label.startswith("task-views-"):
+                    task_number = int(label.rsplit("-", 1)[1]) - 1
+                    cached = api._validate_batch_analysis(cached, batch, task_chunks[task_number])
+                else:
+                    batch_number = int(label.rsplit("-", 1)[1]) - 1
+                    cached = api._validate_batch_analysis(cached, batch,
+                        {} if task_chunks else task_view_rows_by_batch[batch_number])
+                reconciliation = _take_task_view_reconciliation(cached)
+                packed, actual_tokens = api._admit_analysis_for_synthesis(
+                    cached, max_bytes=max_bytes, max_input_tokens=max_input_tokens)
+                normalized = json.dumps(packed, ensure_ascii=False, separators=(",", ":"))
+                analyses.append((label, normalized))
+                actual_analysis_budgets.append((label, actual_tokens))
+                batch_attempts.append({"label": label, "attempts": 0, "status": "reused"})
+                accepted = True
+            except (OSError, ValueError, TypeError, json.JSONDecodeError) as exc:
+                raise ValueError(f'capability_evidence_resume_invalid:{label}:{exc}') from exc
+        if accepted:
+            continue
         last_error = None
         retry_errors: list[dict[str, str]] = []
         for attempt in range(1, batch_retry_limit + 2):
@@ -343,18 +572,22 @@ def _run_batched_codex(workspace: Path, prompt_path: Path, output_path: Path, *,
         if not accepted:
             raise ValueError(f"capability_batch_analysis_retry_exhausted:{label}")
 
+    synthesis_deadline = time.monotonic() + max(1, int(synthesis_timeout_sec))
     def dispatch_synthesis(text, target):
         nonlocal model_request_count
-        remaining = int(deadline - time.monotonic())
+        remaining = int(synthesis_deadline - time.monotonic())
         if remaining <= 0:
-            raise TimeoutError('isolated model active-time budget exhausted')
+            raise TimeoutError('isolated model synthesis-time budget exhausted')
         reserve_request()
         _persist_batch_integrity(workspace, coverage=coverage,
             task_view_coverage=task_view_coverage, requests=reports,
             batch_attempts=batch_attempts, status='running', model_invoked=True,
             model_request_count=model_request_count)
-        return _run_codex_request(executable, workspace, prompt=text, output=target,
-            schema_path=output_schema_path, timeout_sec=remaining)
+        try:
+            return _run_codex_request(executable, workspace, prompt=text, output=target,
+                schema_path=output_schema_path, timeout_sec=remaining)
+        except subprocess.TimeoutExpired as exc:
+            raise TimeoutError('isolated model synthesis-time budget exhausted') from exc
 
     def synthesis_event(label, status, report, error):
         if status == 'pending':
@@ -413,10 +646,13 @@ def _run_batched_codex(workspace: Path, prompt_path: Path, output_path: Path, *,
 def description() -> dict[str, object]:
     return {
         "schema_version": SCHEMA,
-        "filesystem_scope": "workspace_only",
+        "filesystem_scope": "prompt_only",
         "fresh_session_per_invocation": True,
         "can_read_outside_workspace": False,
-        "model": "codex-cli-default",
+        "model": "environment-default",
+        "model_identity_source": "invocation-thread-rollout",
+        "model_identity_required": True,
+        "tool_access_scope": "none",
         "transport": "codex-cli-text-only",
         "model_tools": [],
         "request_accounting": "exact_per_runner_invocation",
@@ -424,10 +660,17 @@ def description() -> dict[str, object]:
         "supports_batched_session": True,
         "supports_input_preflight": True,
         "supports_request_budget": True,
+        "supports_synthesis_budget": True,
     }
 
 
 def run(args: argparse.Namespace) -> int:
+    global _LAST_MODEL_IDENTITY
+    global _LAST_MODEL_PROVIDER
+    global _MODEL_IDENTITY_EVIDENCE
+    _LAST_MODEL_IDENTITY = None
+    _LAST_MODEL_PROVIDER = None
+    _MODEL_IDENTITY_EVIDENCE = []
     workspace = Path(args.workspace).resolve()
     prompt_path = Path(args.prompt_file).resolve()
     output_path = Path(args.output).resolve()
@@ -447,7 +690,9 @@ def run(args: argparse.Namespace) -> int:
                 max_bytes=min(args.max_bytes, CODEX_MAX_TURN_BYTES),
                 max_input_tokens=getattr(args, 'max_input_tokens', DEFAULT_MAX_INPUT_TOKENS),
                 output_schema_path=schema_path, preflight=getattr(args, 'preflight', False),
-                model_request_budget=getattr(args, 'model_request_budget', None))
+                model_request_budget=getattr(args, 'model_request_budget', None),
+                synthesis_timeout_sec=getattr(args, 'synthesis_timeout_sec', 1200),
+                resume_evidence=getattr(args, 'resume_evidence', False))
             if getattr(args, 'preflight', False):
                 print(json.dumps({'status': 'ready', 'model_invoked': False,
                                   'input_integrity': integrity}, ensure_ascii=False))
@@ -464,7 +709,13 @@ def run(args: argparse.Namespace) -> int:
             raise
         print(json.dumps({
             "schema_version": "newrouge.isolated-model-runner-receipt.v1",
-            "model": "codex-cli-default", "transport": "codex-cli-text-only-batched",
+            "model": _LAST_MODEL_IDENTITY, "transport": "codex-cli-text-only-batched",
+            "model_provider": _LAST_MODEL_PROVIDER,
+            "model_identity": (f"{_LAST_MODEL_PROVIDER}/{_LAST_MODEL_IDENTITY}"
+                               if _LAST_MODEL_PROVIDER else _LAST_MODEL_IDENTITY),
+            "model_identity_source": "invocation-thread-rollout",
+            "model_identity_verified": True,
+            "model_identity_evidence": list(_MODEL_IDENTITY_EVIDENCE),
             "model_tools": [], "runner_invocations": int(integrity.get("runner_invocations") or
                 (len(integrity.get("batch_analysis_sha256", {})) + 1)),
             "request_count_observable": True, "model_request_count": int(integrity['model_request_count']),
@@ -493,28 +744,8 @@ def run(args: argparse.Namespace) -> int:
     atomic_json(workspace / REPORT_NAME, {'status': 'running', 'model_invoked': True,
         'model_request_count': 1, 'request_count_complete': True})
     executable = _codex_executable()
-    command = [
-        executable,
-        "exec",
-        "-s", "read-only",
-        "-C", str(workspace),
-        "--output-last-message", str(output_path),
-        *( ["--output-schema", str(schema_path)] if schema_path is not None else [] ),
-        "-",
-    ]
-    proc = subprocess.run(
-        command,
-        cwd=workspace,
-        input=payload,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        timeout=max(1, int(args.timeout_sec)),
-    )
-    if proc.returncode != 0:
-        raise RuntimeError(f"Codex CLI failed rc={proc.returncode}: {(proc.stdout or '')[-4000:]}")
+    _run_codex_request(executable, workspace, prompt=payload, output=output_path,
+                       schema_path=schema_path, timeout_sec=max(1, int(args.timeout_sec)))
     if not output_path.is_file():
         raise RuntimeError("Codex CLI produced no output")
     if schema_path is not None:
@@ -523,7 +754,13 @@ def run(args: argparse.Namespace) -> int:
         'model_request_count': 1, 'request_count_complete': True})
     print(json.dumps({
         "schema_version": "newrouge.isolated-model-runner-receipt.v1",
-        "model": "codex-cli-default",
+        "model": _LAST_MODEL_IDENTITY,
+        "model_provider": _LAST_MODEL_PROVIDER,
+        "model_identity": (f"{_LAST_MODEL_PROVIDER}/{_LAST_MODEL_IDENTITY}"
+                           if _LAST_MODEL_PROVIDER else _LAST_MODEL_IDENTITY),
+        "model_identity_source": "invocation-thread-rollout",
+        "model_identity_verified": True,
+        "model_identity_evidence": list(_MODEL_IDENTITY_EVIDENCE),
         "transport": "codex-cli-text-only",
         "model_tools": [],
         "runner_invocations": 1,
@@ -547,6 +784,9 @@ def main() -> int:
     parser.add_argument('--max-input-tokens', type=int, default=configured_input_limit())
     parser.add_argument('--preflight', action='store_true', help='Validate Capability input without invoking Codex')
     parser.add_argument('--model-request-budget', type=int, default=None)
+    parser.add_argument('--synthesis-timeout-sec', type=int, default=1200)
+    parser.add_argument('--resume-evidence', action='store_true',
+        help='Explicitly resume synthesis from this workspace accepted evidence batches')
     parser.add_argument("--output-schema", default="")
     args = parser.parse_args()
     if args.describe:

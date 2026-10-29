@@ -51,6 +51,7 @@ class PlanningDevCliTests(unittest.TestCase):
                 self.assertEqual(0, planner.main(argv))
             if stage == 'prepare':
                 self.assertEqual(2700, action.call_args.kwargs['candidate_budget_sec'])
+                self.assertEqual(1200, action.call_args.kwargs['synthesis_budget_sec'])
                 self.assertEqual(13500, action.call_args.kwargs['total_budget_sec'])
             else:
                 self.assertEqual(2700, action.call_args.kwargs['timeout_sec'])
@@ -62,6 +63,7 @@ class PlanningDevCliTests(unittest.TestCase):
             cmd = build_plan_capabilities_cmd(args)
             if stage == 'prepare':
                 self.assertEqual('2700', cmd[cmd.index('--candidate-budget-sec') + 1])
+                self.assertEqual('1200', cmd[cmd.index('--synthesis-budget-sec') + 1])
                 self.assertEqual('13500', cmd[cmd.index('--total-budget-sec') + 1])
             else:
                 self.assertEqual('2700', cmd[cmd.index('--timeout-sec') + 1])
