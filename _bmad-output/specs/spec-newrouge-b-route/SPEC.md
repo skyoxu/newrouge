@@ -9,6 +9,8 @@ companions:
   - migration-and-pilot.md
   - ../../planning-artifacts/prds/prd-newrouge-b-route-2026-11-03/addendum.md
   - ../../planning-artifacts/prds/prd-newrouge-b-route-2026-11-03/baseline-update.md
+  - ../../planning-artifacts/architecture/architecture-newrouge-b-route-2026-11-03/ARCHITECTURE-SPINE.md
+  - ../../planning-artifacts/architecture/architecture-newrouge-b-route-2026-11-03/planning-records.md
 sources:
   - ../../planning-artifacts/prds/prd-newrouge-b-route-2026-11-03/prd.md
 ---
@@ -57,7 +59,8 @@ sources:
 
 ## Constraints
 
-- 下游必须读取所有 companions；阶段、四部分、门禁见 `workflow-contract.md`，验证与复用见 `verification-contract.md`，迁移及试点见 `migration-and-pilot.md`，固定技术／ADR／消费者及23个原始验收场景见采纳的 PRD addendum，当前工作分支及 ADR-0039 对齐见 baseline-update。
+- 下游必须读取所有 companions；阶段、四部分、门禁见 `workflow-contract.md`，验证与复用见 `verification-contract.md`，迁移及试点见 `migration-and-pilot.md`，固定技术／ADR／消费者及23个原始验收场景见采纳的 PRD addendum，当前工作分支及 ADR-0039 对齐见 baseline-update。架构主干及 planning-records 是必读实现约束，原作者保留其写入权威。
+- 采用已确认的版本化文件流水线、分阶段绑定、journal 恢复与统一消费者门禁，Knowledge 保持派生，不新增规划数据库；共享记录、身份、提交／锁、来源分类与执行范围遵守架构伴随合同。
 - 沿用 Windows-only、Godot4.5.1、C#／net8.0 和当前有效 ADR。Core／Contracts 保持 BCL-only，原生场景可编辑；适配不复制领域裁决。
 - 原始来源管语义，采纳决定从属于来源，Taskmaster 三联保留唯一任务状态权威，契约源码管程序契约，manifest 管累计验证义务，原始运行报告证明执行，Knowledge 仅派生定位。
 - Requirement 保留唯一权威验证处置／覆盖 owner；允许多 Flow 路线成员关系及去重共享证据，不重复计完成。Flow 可跨 Capability、Task 与 Flow 可多对多；四部分不强制机械拆任务。集成 owner 不增加自身完成前置。
