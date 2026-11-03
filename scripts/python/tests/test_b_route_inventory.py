@@ -527,14 +527,17 @@ class InventoryTests(unittest.TestCase):
         doc.update(active_patterns=["sources/**/*"], active_sources=["sources/input.md"])
         self.dump(inventory.SOURCE_SET, doc)
         walk = inventory.os.walk
+        denied_hits = []
         def denied_walk(path, *args, **kwargs):
-            if Path(path) == self.root / "sources":
+            if Path(path).resolve() == (self.root / "sources").resolve():
+                denied_hits.append(str(path))
                 if kwargs.get("onerror"):
                     kwargs["onerror"](PermissionError(13, "Denied source subtree", str(self.root / "sources/denied")))
                 return
             yield from walk(path, *args, **kwargs)
         with patch.object(inventory.os, "walk", denied_walk), patch.object(inventory, "resolve_sources", side_effect=AssertionError("Resolver must not run")):
             report = self.collect()
+        self.assertTrue(denied_hits, "The source traversal fault injection must execute")
         self.assert_invalid(report, "invalid-source-set")
         self.assertTrue(any("Source traversal failed" in d["message"] for d in report["diagnostics"]))
 
@@ -657,18 +660,23 @@ class InventoryTests(unittest.TestCase):
         self.manifest["tests"][0].update(state="planned", path=path)
         self.dump("docs/testing/mvg/fixture.json", self.manifest)
         target = self.root / path
+        hits = {"no_reparse": 0, "read_bytes": 0}
         no_reparse, read_bytes = inventory.no_reparse, Path.read_bytes
         def reparse(candidate):
-            if candidate == target:
+            if candidate.resolve() == target.resolve():
+                hits["no_reparse"] += 1
                 raise ValueError("Reparse point fixture")
             return no_reparse(candidate)
         def denied(candidate):
-            if candidate == target:
+            if candidate.resolve() == target.resolve():
+                hits["read_bytes"] += 1
                 raise PermissionError(13, "Denied planned test", str(candidate))
             return read_bytes(candidate)
-        for guard in (patch.object(inventory, "no_reparse", reparse), patch.object(Path, "read_bytes", denied)):
+        for name, guard in (("no_reparse", patch.object(inventory, "no_reparse", reparse)),
+                            ("read_bytes", patch.object(Path, "read_bytes", denied))):
             with guard:
                 report = self.collect()
+            self.assertGreater(hits[name], 0, "The planned input fault injection must execute")
             self.assert_invalid(report, "unsafe-or-unreadable-input")
             self.assertTrue(any(d["code"] == "unsafe-or-unreadable-input" and d["severity"] == "error" and d["location"] == path
                                 for d in report["diagnostics"]))
