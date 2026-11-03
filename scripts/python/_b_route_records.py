@@ -425,6 +425,7 @@ class _Bytes:
         self.original_paths = {}
         self.observed = {}
         self.aliases = {}
+        self.addresses = {}
         for path, data in records.items():
             key = self.lookup(path)
             if type(data) is not bytes:
@@ -462,17 +463,21 @@ class _Bytes:
         return data
 
     def lookup(self, path: str) -> str:
-        key = _path(path)
+        original = _path(path)
+        key = original
         self._contained(path)
         if self.root is not None:
             base = self.root.resolve(strict=True)
             resolved = (base / path).resolve(strict=False)
             if not resolved.is_relative_to(base):
                 _fail(codec.ReasonCode.UNSAFE_PATH, path=path, expected="root-contained lookup", actual="external target")
-            actual = resolved.relative_to(base).as_posix()
-            if actual != key:
-                self.aliases[path] = actual
-                key = actual
+            key = resolved.relative_to(base).as_posix()
+        # Path equality follows the native host's path comparison rules, even
+        # when the candidate file does not exist. Keep the first spelling as the
+        # address; entity IDs, managed logical paths and bytes retain their case.
+        key = self.addresses.setdefault(Path(key), key)
+        if key != original:
+            self.aliases[path] = key
         return key
 
     def stable(self) -> None:
@@ -485,14 +490,14 @@ class _Bytes:
 
     def contracts(self) -> dict[str, bytes]:
         prefix = "Game.Core/Contracts/"
-        physical_prefix = self.lookup(prefix.rstrip("/")) + "/"
+        physical_directory = Path(self.lookup(prefix.rstrip("/")))
         names = set()
         for address, original in self.original_paths.items():
             logical = _path(original)
             if logical.startswith(prefix) and logical.endswith(".cs"):
                 names.add(logical)
-            elif address.startswith(physical_prefix) and address.endswith(".cs"):
-                names.add(prefix + address.removeprefix(physical_prefix))
+            elif Path(address).is_relative_to(physical_directory) and address.endswith(".cs"):
+                names.add(prefix + Path(address).relative_to(physical_directory).as_posix())
         if self.root is not None:
             directory = self.root / "Game.Core/Contracts"
             if directory.exists() or directory.is_symlink():
@@ -723,6 +728,7 @@ class _Bundle:
     def receipt(self, receipt: dict, path: str, active: set[str]) -> None:
         targets = _unique(receipt["targets"], path=path, pointer="/targets", key=lambda row: self.bytes.lookup(row["path"]))
         authority = _unique(receipt["authority"], path=path, pointer="/authority", key=lambda row: self.bytes.lookup(row["path"]))
+        projection_targets = None
         result_paths = receipt["result"]["target_paths"]
         _unique(result_paths, path=path, pointer="/result/target_paths", key=self.bytes.lookup)
         for result_path in map(self.bytes.lookup, result_paths):
@@ -735,6 +741,20 @@ class _Bundle:
                 _fail(codec.ReasonCode.DIGEST_CYCLE, path=path, expected="target excluding receipt/catalog", actual=target_path)
             if target_path in authority and any(target[field] != authority[target_path][field] for field in ("before_digest", "after_digest")):
                 _fail(codec.ReasonCode.MAPPING_MISMATCH, path=path, expected="same target/authority images", actual=target_path)
+            if target["verification_mode"] == "task_definition_projection":
+                if projection_targets is None:
+                    projection_targets = {self.bytes.lookup(target) for target in (
+                        ".taskmaster/tasks/tasks.json", ".taskmaster/tasks/tasks_back.json",
+                        ".taskmaster/tasks/tasks_gameplay.json")}
+                if (target_path not in projection_targets or target_path in self.records
+                        or _managed_candidate(_path(target["path"]))
+                        or any(Path(target_path) == Path(self.bytes.lookup(BASE + name))
+                               for name in ("policy.v1.json", "task-origins.v1.json", "catalog.v1.json"))
+                        or any(Path(target_path).is_relative_to(Path(self.bytes.lookup(BASE + name)))
+                               for name in ("plans", "bindings", "commits"))):
+                    _fail(codec.ReasonCode.INVALID_REFERENCE, path=path, pointer="/targets",
+                          expected="Taskmaster or business-view triplet projection target",
+                          actual=target["path"])
             if target["verification_mode"] == "immutable_bytes":
                 if target["projection_digest"] != target["after_digest"]:
                     _fail(codec.ReasonCode.DIGEST_MISMATCH, path=path, expected=target["after_digest"], actual=target["projection_digest"])
@@ -902,7 +922,7 @@ def validate_bundle(records: Mapping[str, bytes], *, root: Path | None = None,
         bundle = _Bundle(records, root, catalog_path, baseline, task_join)
         # Validate every supplied B record before resolving the candidate closure.
         for path, data in bundle.bytes.candidates.items():
-            managed = _managed_candidate(path)
+            managed = _managed_candidate(_path(bundle.bytes.original_paths[path]))
             is_record = False
             if path.endswith(".json"):
                 try:

@@ -103,7 +103,7 @@ plan/binding 受管存储地址中的 revision 必须等于无前导零十进制
 
 - authority = [{path:S,before_digest:D|null,after_digest:D|null}]；显式 null 表示没有该前/后像，不能省字段。后续服务验证实际 authority，本 Story 只核对已提供身份关系。
 - targets = [{path:S,before_digest:D|null,after_digest:D,verification_mode:immutable_bytes|task_definition_projection,codec_version:S|null,projection_digest:D}]。
-- immutable_bytes 使用 raw bytes，codec_version:null，projection_digest 必须等于 after_digest。task_definition_projection 显式要求新 projection codec ID（冻结为 newrouge.b-route-task-definition.v1），不能借 canonical codec 名暗称已实现投影；本 Story 只冻结字段/枚举，投影计算由后续 owning resolver 实现。
+- immutable_bytes 使用 raw bytes，codec_version:null，projection_digest 必须等于 after_digest。不可变 B 记录继续使用 immutable_bytes，不能以投影模式绕过缺失或错误的目标 bytes。task_definition_projection 仅用于现有三联目标 `.taskmaster/tasks/tasks.json`、`.taskmaster/tasks/tasks_back.json`、`.taskmaster/tasks/tasks_gameplay.json` 及其根内实际别名身份，显式要求新 projection codec ID（冻结为 newrouge.b-route-task-definition.v1）；不能用于其他路径，也不能借 canonical codec 名暗称已实现投影。本 Story 对合法三联投影目标只冻结字段/枚举，不新增文件存在性或当前 raw after 像相等检查，投影计算及可变状态后的验证由后续 owning resolver 实现；target_projection_verified 仍为 false。
 - 此 target.verification_mode 与 PublicRecordRef.verification_mode 是两个不同封闭 schema；绝不把 immutable_bytes 传给 TypedReference，亦不把 canonical 当 Task 定义投影。
 - scopes:[S]、plan_refs/binding_refs:[PublicRecordRef]；resolved_definitions:[DefinitionOwner] 冻结该 receipt 操作相关逻辑边的 owner 解析闭包，防止同 plan bytes 被另一 catalog 静默重解释。
 - result = {target_paths:[S],scope_ids:[S]}；只概述正式目标身份/作用范围，不存 Task/Flow/游戏运行通过。

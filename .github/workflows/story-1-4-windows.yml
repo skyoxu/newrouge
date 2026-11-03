@@ -137,8 +137,11 @@ jobs:
                       'test_contract_directory_alias_keeps_candidate_only_dto_in_the_closure': 'OwnedReferenceTests',
                       'test_contract_closure_rejects_root_external_directory_link': 'OwnedReferenceTests',
                       'test_owned_locator_alias_binds_canonical_candidate_bytes_without_disk_shadow': 'OwnedReferenceTests',
+                      'test_windows_candidate_case_alias_collision_without_disk_file_is_rejected': 'CandidateBundleTests',
+                      'test_windows_uppercase_plan_identity_and_internal_junction_remain_valid': 'CandidateBundleTests',
+                      'test_windows_case_alias_candidate_bytes_override_disk': 'CandidateBundleTests',
                   }
-                  required = {name: re.search(r'^' + re.escape(name) + r' \(test_b_route_records\.' + re.escape(owner) + r'\.' + re.escape(name) + r'\) \.\.\. ok$', stderr, re.MULTILINE) is not None for name, owner in required_records.items()}
+                  required = {name: re.search(r'^' + re.escape(name) + r' \(test_b_route_records\.' + re.escape(owner) + r'\.' + re.escape(name) + r'\)(?:\r?\n[^\r\n]*)? \.\.\. ok$', stderr, re.MULTILINE) is not None for name, owner in required_records.items()}
                   summary['required_records_windows_tests_passed'] = required
                   if not all(required.values()):
                       summary['exit_code'] = 1

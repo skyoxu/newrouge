@@ -736,6 +736,70 @@ class CandidateBundleTests(RecordAssertions):
             directory_link(root / (PREFIX + "plans/alias"), target)
             self.assert_valid(records.validate_bundle(output, root=root))
 
+    @unittest.skipUnless(os.name == "nt", "Windows path identity requires a real Windows filesystem")
+    def test_windows_candidate_case_alias_collision_without_disk_file_is_rejected(self):
+        fixture = MatrixFixture()
+        alias = fixture.add_plan("P", 2)
+        output = fixture.render()
+        for path in (plan_path(), alias):
+            self.assert_valid(records.validate_record(output[path], path=path), "record_structure_only")
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.assertFalse((root / plan_path()).exists())
+            self.assertFalse((root / alias).exists())
+            self.assert_invalid(records.validate_bundle(output, root=root), "conflict")
+
+    @unittest.skipUnless(os.name == "nt", "Windows path identity requires a real Windows filesystem")
+    def test_windows_uppercase_plan_identity_and_internal_junction_remain_valid(self):
+        fixture = MatrixFixture()
+        fixture.models.clear()
+        fixture.current_plans.clear()
+        uppercase = fixture.add_plan("UPPER-PLAN", 2)
+        alias = PREFIX + "plans/linked/2.json"
+        fixture.ref_changes[uppercase] = {"path": alias}
+        output = fixture.render()
+        before = dict(output)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            target = root / (PREFIX + "plans/UPPER-PLAN")
+            target.mkdir(parents=True)
+            stale = b'{"stale":"disk bytes must not replace the uppercase candidate"}'
+            (target / "2.json").write_bytes(stale)
+            link = root / (PREFIX + "plans/linked")
+            directory_link(link, target)
+            self.assertTrue(link.samefile(target))
+            self.assert_valid(records.validate_bundle(output, root=root))
+            self.assertEqual((target / "2.json").read_bytes(), stale)
+        self.assertEqual(output, before)
+        self.assertEqual(json.loads(output[uppercase])["plan_id"], "UPPER-PLAN")
+        reference = json.loads(output[CATALOG])["scope_heads"][0]["plan_refs"][0]
+        self.assertEqual(reference["entity_id"], "UPPER-PLAN")
+        self.assertEqual(reference["path"], alias)
+
+    @unittest.skipUnless(os.name == "nt", "Windows path identity requires a real Windows filesystem")
+    def test_windows_case_alias_candidate_bytes_override_disk(self):
+        fixture = MatrixFixture()
+        output = fixture.render()
+        canonical_path = "evidence/admission.json"
+        candidate_path = "EVIDENCE/ADMISSION.JSON"
+        candidate_bytes = output.pop(canonical_path)
+        output[candidate_path] = candidate_bytes
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            target = root / canonical_path
+            self.assertFalse(target.exists())
+            self.assert_valid(records.validate_bundle(output, root=root))
+            target.parent.mkdir()
+            stale = b'{"stale":"case aliases must use candidate bytes"}'
+            target.write_bytes(stale)
+            self.assert_valid(records.validate_bundle(output, root=root))
+            self.assertEqual(target.read_bytes(), stale)
+            target.write_bytes(candidate_bytes)
+            changed = dict(output)
+            changed[candidate_path] = candidate_bytes + b" "
+            self.assert_invalid(records.validate_bundle(changed, root=root), "digest_mismatch")
+            self.assertEqual(target.read_bytes(), candidate_bytes)
+
     def test_bundle_api_reads_disk_without_changing_bytes_mtimes_or_candidate_map(self):
         fixture = MatrixFixture()
         output = fixture.render()
@@ -754,6 +818,33 @@ class CandidateBundleTests(RecordAssertions):
                      for path in root.rglob("*") if path.is_file()}
             self.assertEqual(after, before)
             self.assertEqual(candidate, output)
+
+    def test_cached_ledger_bytes_drift_before_final_stability_is_rejected(self):
+        fixture = MatrixFixture()
+        candidate = fixture.render()
+        ledger_path = "sources/ledger.json"
+        original_ledger = candidate.pop(ledger_path)
+        original_baseline_check = records._Bundle.baseline_check
+        observations = []
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            ledger = root / ledger_path
+            ledger.parent.mkdir()
+            ledger.write_bytes(original_ledger)
+
+            def change_after_cached_source_check(bundle):
+                original_baseline_check(bundle)
+                key = bundle.bytes.lookup(ledger_path)
+                self.assertIn(key, bundle.bytes.observed)
+                self.assertEqual(bundle.bytes.observed[key], original_ledger)
+                observations.append(key)
+                ledger.write_bytes(original_ledger + b" ")
+
+            with patch.object(records._Bundle, "baseline_check", change_after_cached_source_check):
+                result = records.validate_bundle(candidate, root=root)
+            self.assertEqual(len(observations), 1)
+            self.assert_invalid(result, "file_changed")
+            self.assertEqual(ledger.read_bytes(), original_ledger + b" ")
 
     def test_bundle_reader_accepts_internal_directory_link(self):
         fixture = MatrixFixture()
@@ -983,19 +1074,161 @@ class CandidateBundleTests(RecordAssertions):
         self.assert_invalid(records.validate_bundle(fixture.render()), "digest_cycle")
 
     def test_target_modes_are_distinct_and_projection_is_never_claimed(self):
-        fixture = MatrixFixture()
         cpath = PREFIX + "commits/operation-1.json"
-        def projection(value):
-            target = value["targets"][0]
-            target.update(verification_mode="task_definition_projection",
-                          codec_version="newrouge.b-route-task-definition.v1",
-                          projection_digest=digest(b"not computed by this story"))
-        fixture.hooks[cpath] = projection
-        result = records.validate_bundle(fixture.render())
-        self.assert_valid(result)
-        self.assertFalse(result.target_projection_verified)
+        task_files = {
+            ".taskmaster/tasks/tasks.json": {"master": {"tasks": [{"id": 11, "status": "pending"}]}},
+            ".taskmaster/tasks/tasks_back.json": [{"id": "BACK-11", "taskmaster_id": 11}],
+            ".taskmaster/tasks/tasks_gameplay.json": [{"id": "GAME-11", "taskmaster_id": 11}],
+        }
+        for path, document in task_files.items():
+            with self.subTest(path=path):
+                fixture = MatrixFixture()
+                fixture.artifacts[path] = encoded(document)
+                def projection(value, target_path=path, data=fixture.artifacts[path]):
+                    value["targets"].append({
+                        "path": target_path, "before_digest": None, "after_digest": digest(data),
+                        "verification_mode": "task_definition_projection",
+                        "codec_version": "newrouge.b-route-task-definition.v1",
+                        "projection_digest": digest(b"not computed by this story")})
+                    value["result"]["target_paths"].append(target_path)
+                fixture.hooks[cpath] = projection
+                result = records.validate_bundle(fixture.render())
+                self.assert_valid(result)
+                self.assertFalse(result.target_projection_verified)
         fixture.hooks[cpath] = lambda value: value["targets"][0].update(verification_mode="canonical")
         self.assert_invalid(records.validate_bundle(fixture.render()), "invalid_enum", "schema_validation_failed")
+
+    def test_task_definition_projection_rejects_arbitrary_and_b_record_targets(self):
+        cpath = PREFIX + "commits/operation-1.json"
+        for target_path in ("evidence/task-projection.json", POLICY, plan_path()):
+            with self.subTest(path=target_path):
+                fixture = MatrixFixture()
+                if target_path.startswith("evidence/"):
+                    fixture.artifacts[target_path] = encoded({"master": {"tasks": []}})
+                def projection(value, path=target_path):
+                    target = next((row for row in value["targets"] if row["path"] == path), None)
+                    if target is None:
+                        target = {"path": path, "before_digest": None,
+                                  "after_digest": digest(fixture.artifacts[path])}
+                        value["targets"].append(target)
+                        value["result"]["target_paths"].append(path)
+                    target.update(verification_mode="task_definition_projection",
+                                  codec_version="newrouge.b-route-task-definition.v1",
+                                  projection_digest=digest(b"unsupported target projection"))
+                fixture.hooks[cpath] = projection
+                self.assert_invalid(records.validate_bundle(fixture.render()),
+                                    "invalid_reference")
+
+    def test_task_definition_projection_cannot_hide_missing_or_wrong_immutable_b_target_bytes(self):
+        cpath = PREFIX + "commits/operation-1.json"
+        for variant in ("missing", "wrong_bytes"):
+            with self.subTest(variant=variant):
+                fixture = MatrixFixture()
+                immutable_path = fixture.add_plan("historical", 1)
+                fixture.current_plans.remove(immutable_path)
+                expected_bytes = encoded(fixture.models[immutable_path])
+                def projection(value):
+                    value["targets"].append({
+                        "path": immutable_path, "before_digest": None, "after_digest": digest(expected_bytes),
+                        "verification_mode": "task_definition_projection",
+                        "codec_version": "newrouge.b-route-task-definition.v1",
+                        "projection_digest": digest(b"not computed by this story")})
+                    value["result"]["target_paths"].append(immutable_path)
+                fixture.hooks[cpath] = projection
+                output = fixture.render()
+                if variant == "missing":
+                    del output[immutable_path]
+                else:
+                    output[immutable_path] += b" "
+                self.assert_invalid(records.validate_bundle(output), "invalid_reference")
+
+    def _bundle_with_task_projection_alias(self, target_path, *, replacing_target=None):
+        fixture = MatrixFixture()
+        def projection(value):
+            if replacing_target is not None:
+                value["targets"] = [row for row in value["targets"] if row["path"] != replacing_target]
+                value["result"]["target_paths"] = [path for path in value["result"]["target_paths"]
+                                                    if path != replacing_target]
+            value["targets"].append({
+                "path": target_path, "before_digest": None, "after_digest": digest(b"deferred after image"),
+                "verification_mode": "task_definition_projection",
+                "codec_version": "newrouge.b-route-task-definition.v1",
+                "projection_digest": digest(b"not computed by this story")})
+            value["result"]["target_paths"].append(target_path)
+        fixture.hooks[PREFIX + "commits/operation-1.json"] = projection
+        return fixture.render()
+
+    def test_task_projection_file_aliases_cannot_target_managed_b_files(self):
+        task_path = ".taskmaster/tasks/tasks.json"
+        for managed_path in (POLICY, ORIGINS, CATALOG, PREFIX + "plans/ghost/1.json"):
+            with self.subTest(managed_path=managed_path), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                storage = root / "storage/b-route"
+                storage.mkdir(parents=True)
+                managed_directory = root / PREFIX.rstrip("/")
+                managed_directory.parent.mkdir(parents=True)
+                directory_link(managed_directory, storage)
+                managed_file = root / managed_path
+                managed_file.parent.mkdir(parents=True, exist_ok=True)
+                task_file = root / task_path
+                task_file.parent.mkdir(parents=True)
+                task_file.symlink_to(managed_file)
+                self.assertTrue(task_file.is_symlink())
+                self.assertFalse(task_file.exists())
+                self.assertEqual(task_file.resolve(strict=False), managed_file.resolve(strict=False))
+                output = self._bundle_with_task_projection_alias(task_path, replacing_target=managed_path)
+                before = dict(output)
+                result = records.validate_bundle(output, root=root)
+                self.assert_invalid(result, "digest_cycle" if managed_path == CATALOG else "invalid_reference")
+                self.assertFalse(managed_file.exists())
+                self.assertEqual(output, before)
+
+    def test_task_projection_directory_aliases_cannot_enter_actual_managed_b_namespaces(self):
+        task_path = ".taskmaster/tasks/tasks.json"
+        for namespace in ("plans", "bindings", "commits"):
+            for aliased_namespace in (False, True):
+                with self.subTest(namespace=namespace, aliased=aliased_namespace), tempfile.TemporaryDirectory() as directory:
+                    root = Path(directory)
+                    managed_directory = root / (PREFIX + namespace)
+                    if aliased_namespace:
+                        actual_directory = root / ("storage/" + namespace)
+                        actual_directory.mkdir(parents=True)
+                        managed_directory.parent.mkdir(parents=True)
+                        directory_link(managed_directory, actual_directory)
+                    else:
+                        managed_directory.mkdir(parents=True)
+                    ghost_directory = managed_directory / "ghost"
+                    ghost_directory.mkdir()
+                    task_directory = root / ".taskmaster/tasks"
+                    task_directory.parent.mkdir()
+                    directory_link(task_directory, ghost_directory)
+                    self.assertTrue(task_directory.samefile(ghost_directory))
+                    self.assertFalse((root / task_path).exists())
+                    output = self._bundle_with_task_projection_alias(task_path)
+                    before = dict(output)
+                    self.assert_invalid(records.validate_bundle(output, root=root), "invalid_reference")
+                    self.assertFalse((ghost_directory / "tasks.json").exists())
+                    self.assertEqual(output, before)
+
+    def test_task_projection_alias_to_missing_non_b_target_remains_deferred(self):
+        task_path = ".taskmaster/tasks/tasks.json"
+        for actual_directory in ("task-state", PREFIX + "plans-other"):
+            with self.subTest(actual_directory=actual_directory), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                destination = root / actual_directory
+                destination.mkdir(parents=True)
+                task_directory = root / ".taskmaster/tasks"
+                task_directory.parent.mkdir()
+                directory_link(task_directory, destination)
+                self.assertTrue(task_directory.samefile(destination))
+                self.assertFalse((root / task_path).exists())
+                output = self._bundle_with_task_projection_alias(task_path)
+                before = dict(output)
+                result = records.validate_bundle(output, root=root)
+                self.assert_valid(result)
+                self.assertFalse(result.target_projection_verified)
+                self.assertFalse((destination / "tasks.json").exists())
+                self.assertEqual(output, before)
 
     def test_target_bytes_result_paths_and_scope_relationships_are_checked(self):
         cpath = PREFIX + "commits/operation-1.json"
@@ -1487,6 +1720,48 @@ class CommandLineReadOnlyTests(RecordAssertions):
             partial_payload = json.loads(partial.stdout)
             self.assertFalse(partial_payload["ok"])
             self.assertEqual(self.tree(root), before)
+
+    def test_complete_task_join_cli_matches_api_and_rejects_wrong_business_mapping_without_writes(self):
+        fixture = MatrixFixture()
+        fixture.add_binding()
+        output = fixture.render()
+        candidate_before = dict(output)
+        task_paths = {
+            "master": ".taskmaster/tasks/tasks.json",
+            "back": ".taskmaster/tasks/tasks_back.json",
+            "gameplay": ".taskmaster/tasks/tasks_gameplay.json",
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.write_inputs(root, output)
+            for variant in ("matching", "wrong_business_mapping"):
+                with self.subTest(variant=variant):
+                    original = fixture.join()
+                    context = {name: deepcopy(getattr(original, name)) for name in task_paths}
+                    if variant == "wrong_business_mapping":
+                        context["back"][0]["id"] = "BACK-OTHER"
+                    raw_context = {name: encoded(value) for name, value in context.items()}
+                    for name, path in task_paths.items():
+                        target = root / path
+                        target.parent.mkdir(parents=True, exist_ok=True)
+                        target.write_bytes(raw_context[name])
+                    before = self.tree(root)
+                    expected = records.validate_bundle(output, root=root,
+                        task_join=records.TaskJoinContext(**raw_context))
+                    if variant == "matching":
+                        self.assert_valid(expected)
+                    else:
+                        self.assert_invalid(expected, "mapping_mismatch")
+                    completed = self.run_cli(root, "bundle", "--input", "carrier.json",
+                        "--catalog-path", CATALOG,
+                        "--task-master", task_paths["master"],
+                        "--task-back", task_paths["back"],
+                        "--task-gameplay", task_paths["gameplay"])
+                    self.assertEqual(completed.returncode, 0 if expected.ok else 1,
+                                     completed.stdout + completed.stderr)
+                    self.assertEqual(json.loads(completed.stdout), expected.to_dict())
+                    self.assertEqual(self.tree(root), before)
+                    self.assertEqual(output, candidate_before)
 
     def test_carrier_rejects_duplicate_unknown_fields_and_root_escape(self):
         fixture = MatrixFixture()
