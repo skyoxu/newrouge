@@ -1208,6 +1208,51 @@ class TaskJoinTests(RecordAssertions):
                     [{"id": "GAME-11", "taskmaster_id": 11}])
                 self.assert_invalid(records.validate_bundle(output, task_join=join))
 
+    def test_invalid_join_id_types_report_original_context_and_exact_pointer(self):
+        fixture = self.fixture()
+        output = fixture.render()
+        cases = (
+            ("master", "id", True, "/task_join/master/master/tasks/0/id", "positive integer", "bool"),
+            ("back", "taskmaster_id", "11", "/task_join/back/0/taskmaster_id", "positive integer", "str"),
+            ("gameplay", "id", 11, "/task_join/gameplay/0/id", "nonempty string", "int"),
+        )
+        for context, field, invalid, pointer, expected_type, actual_type in cases:
+            with self.subTest(context=context, field=field):
+                original = fixture.join()
+                values = {name: deepcopy(getattr(original, name)) for name in ("master", "back", "gameplay")}
+                rows = values[context]["master"]["tasks"] if context == "master" else values[context]
+                rows[0][field] = invalid
+                result = records.validate_bundle(output, task_join=records.TaskJoinContext(**values))
+                self.assert_invalid(result, "invalid_type")
+                diagnostic = result.diagnostic.to_dict()
+                self.assertEqual(diagnostic["stage"], "content")
+                for side, detail in (("expected", expected_type), ("actual", actual_type)):
+                    self.assertEqual(diagnostic[side], {"context": "task_join." + context,
+                                                       "json_pointer": pointer, "value": detail})
+                    self.assertNotIn("path", diagnostic[side])
+                self.assertIsNone(diagnostic["entity_id"])
+                self.assertIsNone(diagnostic["resume_ref"])
+
+    def test_join_decode_failures_identify_the_logical_context_without_file_paths(self):
+        fixture = self.fixture()
+        output = fixture.render()
+        for context, invalid, code in (("master", b"{", "invalid_json"),
+                                       ("back", b"\xff", "invalid_utf8"),
+                                       ("gameplay", b'[{"id":"first","id":"duplicate"}]', "duplicate_key")):
+            with self.subTest(context=context):
+                original = fixture.join()
+                values = {name: getattr(original, name) for name in ("master", "back", "gameplay")}
+                values[context] = invalid
+                result = records.validate_bundle(output, task_join=records.TaskJoinContext(**values))
+                self.assert_invalid(result, code)
+                diagnostic = result.diagnostic.to_dict()
+                self.assertEqual(diagnostic["stage"], "decode")
+                for side in ("expected", "actual"):
+                    self.assertEqual(diagnostic[side]["context"], "task_join." + context)
+                    self.assertEqual(diagnostic[side]["json_pointer"], "/task_join/" + context)
+                    self.assertEqual(set(diagnostic[side]), {"context", "json_pointer", "value"})
+                self.assertIsNone(diagnostic["resume_ref"])
+
 
 class OwnedReferenceTests(RecordAssertions):
     def test_owned_locator_alias_binds_canonical_candidate_bytes_without_disk_shadow(self):

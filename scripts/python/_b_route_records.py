@@ -347,36 +347,67 @@ class TaskJoinContext:
     gameplay: Any
 
     def indexes(self) -> tuple[dict, dict]:
+        def located(diagnostic: codec.Diagnostic, context: str, pointer: str) -> None:
+            location = {"context": "task_join." + context, "json_pointer": pointer}
+            raise codec.CodecError(codec.Diagnostic(
+                diagnostic.reason_code, diagnostic.stage, diagnostic.entity_id,
+                dict(location, value=diagnostic.expected), dict(location, value=diagnostic.actual),
+                diagnostic.resume_ref))
+
+        def checked(function, value: Any, context: str, pointer: str):
+            try:
+                return function(value)
+            except codec.CodecError as error:
+                located(error.diagnostic, context, pointer)
+
+        def invalid(code: codec.ReasonCode, context: str, pointer: str,
+                    expected: Any, actual: Any) -> None:
+            located(codec.Diagnostic(code, codec.Stage.BUNDLE, expected=expected, actual=actual),
+                    context, pointer)
+
         values = []
-        for value in (self.master, self.back, self.gameplay):
+        for name, value in (("master", self.master), ("back", self.back), ("gameplay", self.gameplay)):
             if type(value) in (bytes, str):
-                value = codec.strict_json_loads(value)
-            codec.validate_json_value(value)
+                value = checked(codec.strict_json_loads, value, name, "/task_join/" + name)
+            checked(codec.validate_json_value, value, name, "/task_join/" + name)
             values.append(value)
         master, back, gameplay = values
         if type(master) is not dict or type(master.get("master")) is not dict or type(master["master"].get("tasks")) is not list:
-            _fail(codec.ReasonCode.INVALID_TYPE, expected="master.tasks array", actual="invalid Taskmaster shape")
+            pointer = "/task_join/master"
+            if type(master) is dict:
+                pointer += "/master"
+                if type(master.get("master")) is dict:
+                    pointer += "/tasks"
+            invalid(codec.ReasonCode.INVALID_TYPE, "master", pointer,
+                    "master.tasks array", "invalid Taskmaster shape")
         tasks = {}
-        for row in master["master"]["tasks"]:
+        for row_index, row in enumerate(master["master"]["tasks"]):
+            pointer = f"/task_join/master/master/tasks/{row_index}"
             if type(row) is not dict:
-                _fail(codec.ReasonCode.INVALID_TYPE, expected="master Task object", actual=type(row).__name__)
-            task_id = codec.validate_task_id(row.get("id"))
+                invalid(codec.ReasonCode.INVALID_TYPE, "master", pointer,
+                        "master Task object", type(row).__name__)
+            task_id = checked(codec.validate_task_id, row.get("id"), "master", pointer + "/id")
             if task_id in tasks:
-                _fail(codec.ReasonCode.MAPPING_MISMATCH, expected="unique master Task IDs", actual=task_id)
+                invalid(codec.ReasonCode.MAPPING_MISMATCH, "master", pointer + "/id",
+                        "unique master Task IDs", task_id)
             tasks[task_id] = row
         views = {}
         for name, rows in (("back", back), ("gameplay", gameplay)):
             if type(rows) is not list:
-                _fail(codec.ReasonCode.INVALID_TYPE, expected="business-view array", actual=name)
+                invalid(codec.ReasonCode.INVALID_TYPE, name, "/task_join/" + name,
+                        "business-view array", name)
             index = {}
             task_seen = set()
-            for row in rows:
+            for row_index, row in enumerate(rows):
+                pointer = f"/task_join/{name}/{row_index}"
                 if type(row) is not dict:
-                    _fail(codec.ReasonCode.INVALID_TYPE, expected="business Task object", actual=type(row).__name__)
-                business_id = codec.validate_business_id(row.get("id"))
-                task_id = codec.validate_task_id(row.get("taskmaster_id"))
+                    invalid(codec.ReasonCode.INVALID_TYPE, name, pointer,
+                            "business Task object", type(row).__name__)
+                business_id = checked(codec.validate_business_id, row.get("id"), name, pointer + "/id")
+                task_id = checked(codec.validate_task_id, row.get("taskmaster_id"), name, pointer + "/taskmaster_id")
                 if business_id in index or task_id in task_seen or task_id not in tasks:
-                    _fail(codec.ReasonCode.MAPPING_MISMATCH, expected="unique view/master join", actual=[name, business_id, task_id])
+                    invalid(codec.ReasonCode.MAPPING_MISMATCH, name, pointer,
+                            "unique view/master join", [name, business_id, task_id])
                 index[business_id] = task_id
                 task_seen.add(task_id)
             views[name] = index
