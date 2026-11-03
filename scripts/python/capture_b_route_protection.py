@@ -52,11 +52,12 @@ def main(argv: list[str] | None = None) -> int:
             raise _ArgumentError("Repository root must be an existing directory")
         inventory.validate_git_root(root)
         output = protection.create_run_directory(root, args.run_id)
+        output_relative = protection._output_relative_path(root, output)
         if args.command == "capture":
             capture = protection.collect_protection(root, args.epics, historical_inventory=args.historical_inventory)
             protection.write_capture(output, capture)
             result = {"ok": capture.snapshot["capture_complete"], "command": args.command,
-                "output": output.relative_to(root).as_posix(), "snapshot_digest": capture.snapshot["snapshot_digest"],
+                "output": output_relative, "snapshot_digest": capture.snapshot["snapshot_digest"],
                 "capture_complete": capture.snapshot["capture_complete"], "stable": capture.snapshot["stable"],
                 "inventory_diagnostics": capture.snapshot["inventory"]["diagnostics"],
                 "diagnostics": capture.snapshot["diagnostics"], "authorization": dict(protection.AUTHORIZATION)}
@@ -72,10 +73,10 @@ def main(argv: list[str] | None = None) -> int:
                 historical_inventory=args.historical_inventory)
             protection.write_capture(output, compared.current)
             _write(output, "comparison.json", compared.report)
-            result = {**compared.report, "command": args.command, "output": output.relative_to(root).as_posix()}
+            result = {**compared.report, "command": args.command, "output": output_relative}
         else:
             result = {**protection.verify_protection(root, args.snapshot), "command": args.command,
-                "output": output.relative_to(root).as_posix()}
+                "output": output_relative}
             _write(output, "verification.json", result)
         _write(output, "result.json", result)
         print(json.dumps(result, ensure_ascii=False))

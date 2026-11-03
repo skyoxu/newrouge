@@ -190,7 +190,8 @@ def _inventory_identity(report: dict) -> None:
 
 
 class _ArchivedReferences:
-    """Reuse Story 1.1's locator rules with archive bytes and no disk fallback."""
+    """Reuse Story 1.1's Task/locator rules with archive bytes and no disk fallback."""
+    json = inventory.Snapshot.json
     reference = inventory.Snapshot.reference
 
     def __init__(self, raw_files: dict[str, bytes]):
@@ -293,12 +294,14 @@ def _materials(report: dict, raw_files: dict[str, bytes]) -> tuple[dict, list, l
         cumulative.append({"path": path, "raw_digest": codec.raw_digest(raw_files[path]),
             "canonical_digest": codec.canonical_digest(document), "document": document,
             "execution_claim": "not-run; retained obligations do not prove acceptance"})
-    if documents != report.get("tasks", {}).get("documents"):
-        _fail(codec.ReasonCode.DIGEST_MISMATCH, None, "inventory triplet objects", "different original raw documents")
+    task_summary = inventory.Snapshot.tasks(_ArchivedReferences(raw_files))
+    if codec.canonical_digest(report.get("tasks")) != codec.canonical_digest(task_summary):
+        _fail(codec.ReasonCode.DIGEST_MISMATCH, None, "Task summary rebuilt by Story 1.1 from archived triplet bytes",
+              "different inventory Task documents, counts, status authority or status differences")
     triplet = {"documents": documents, "definition": projected, "definition_digest": codec.canonical_digest(projected),
         "state_digest": codec.canonical_digest([row["state"] for row in task_entries]),
-        "counts": {"master": len(tasks), "back": len(documents["back"]), "gameplay": len(documents["gameplay"])},
-        "status_differences": copy.deepcopy(report["tasks"].get("status_differences", []))}
+        "counts": copy.deepcopy(task_summary["counts"]),
+        "status_differences": copy.deepcopy(task_summary["status_differences"])}
     frozen = {"task_set": "populated" if tasks else "verified-empty", "candidate_count": len(candidates),
               "candidates": candidates, "classification_authorized": False}
     return triplet, task_entries, cumulative, frozen
@@ -487,18 +490,36 @@ def create_run_directory(root: Path, run_id: str) -> Path:
               relative, "new contained logs directory without links or aliases", type(error).__name__)
 
 
-def write_capture(output: Path, capture: ProtectionCapture) -> None:
-    """Write only an already-created empty run; never overwrite any evidence."""
-    output = Path(output).absolute()
+def _output_relative_path(root: Path, output: Path) -> str:
+    """Compare existing physical identities without discarding original links."""
+    root, output = Path(root).absolute(), Path(output).absolute()
     try:
-        relative = output.relative_to(capture.root).as_posix()
+        for original in (root, output):
+            for ancestor in reversed((original, *original.parents)):
+                inventory.no_reparse(ancestor)
+        for anchor in (output, *output.parents):
+            if anchor.samefile(root):
+                relative = output.relative_to(anchor).as_posix()
+                break
+        else:
+            raise ValueError("Output has no physical repository root ancestor")
         if not relative.startswith("logs/ci/"):
             _fail(codec.ReasonCode.UNSAFE_PATH, relative, "new logs/ci run directory", relative)
-        inventory.safe_input(capture.root, relative, allow_logs=True)
+        target = inventory.safe_input(root, relative, allow_logs=True)
+        physical_relative = target.resolve(strict=True).relative_to(root.resolve(strict=True)).as_posix()
+        if physical_relative != relative or not target.samefile(output):
+            raise ValueError("Output physical identity or descendant spelling differs")
+        return relative
     except codec.CodecError:
         raise
     except (OSError, ValueError) as error:
         _fail(codec.ReasonCode.UNSAFE_PATH, str(output), "contained logs output without link ancestors", type(error).__name__)
+
+
+def write_capture(output: Path, capture: ProtectionCapture) -> None:
+    """Write only an already-created empty run; never overwrite any evidence."""
+    output = Path(output).absolute()
+    _output_relative_path(capture.root, output)
     if not output.is_dir() or any(output.iterdir()):
         _fail(codec.ReasonCode.CONFLICT, str(output), "empty new run directory", "missing or nonempty directory")
     (output / "raw").mkdir(exist_ok=False)

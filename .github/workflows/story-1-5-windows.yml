@@ -113,6 +113,9 @@ jobs:
               'test_b_route_protection.py': {
                   'test_resigned_missing_inventory_envelope_cannot_claim_complete': 'ProtectionTests',
                   'test_historical_report_envelope_and_original_metadata_are_rebuilt': 'ProtectionTests',
+                  'test_existing_root_alias_preserves_physical_output_identity': 'ProtectionTests',
+                  'test_late_snapshot_inventory_or_raw_edit_cannot_mix_baseline_observations': 'ProtectionTests',
+                  'test_unreadable_reference_is_reported_and_never_replaced_by_parsed_summary': 'ProtectionTests',
                   'test_real_directory_links_cannot_redirect_snapshot_reads_or_output': 'ProtectionTests',
                   'test_direct_writer_refuses_external_non_log_and_link_ancestor_directories': 'ProtectionTests',
                   'test_cli_capture_verify_compare_and_repeated_run_preserve_old_inputs': 'ProtectionTests',
@@ -134,9 +137,33 @@ jobs:
                   'test_windows_case_alias_candidate_bytes_override_disk': 'CandidateBundleTests',
               },
           }
+          timed_runner = r'''
+          import json
+          import sys
+          import time
+          import unittest
+          sys.dont_write_bytecode = True
+          class TimedResult(unittest.TextTestResult):
+              def startTest(self, test):
+                  super().startTest(test)
+                  self.started = time.monotonic()
+                  print(json.dumps({'test_started': test.id()}), flush=True)
+              def stopTest(self, test):
+                  print(json.dumps({'test_finished': test.id(), 'elapsed_seconds': time.monotonic() - self.started}), flush=True)
+                  super().stopTest(test)
+          suite = unittest.defaultTestLoader.discover('scripts/python/tests', pattern=sys.argv[1])
+          result = unittest.TextTestRunner(verbosity=2, resultclass=TimedResult).run(suite)
+          raise SystemExit(0 if result.wasSuccessful() else 1)
+          '''
           for pattern, methods in required.items():
               module = pattern.removesuffix('.py')
-              code, _, stderr = run(module, [sys.executable, '-B', '-m', 'unittest', 'discover', '-s', 'scripts/python/tests', '-p', pattern, '-v'])
+              if pattern == 'test_b_route_protection.py':
+                  command = [sys.executable, '-B', '-c', timed_runner, pattern]
+                  budget = 240
+              else:
+                  command = [sys.executable, '-B', '-m', 'unittest', 'discover', '-s', 'scripts/python/tests', '-p', pattern, '-v']
+                  budget = 180
+              code, _, stderr = run(module, command, budget)
               count = re.search(r'^Ran ([1-9][0-9]*) tests? in ', stderr, re.MULTILINE)
               checks = {name: re.search(r'^' + re.escape(name) + r' \(' + re.escape(module + '.' + owner + '.' + name) + r'\)(?:\r?\n[^\r\n]*)? \.\.\. ok$', stderr, re.MULTILINE) is not None for name, owner in methods.items()}
               expected_count = sum(isinstance(node, ast.FunctionDef) and node.name.startswith('test_') for node in ast.walk(ast.parse((root / 'scripts/python/tests' / pattern).read_text(encoding='utf-8'))))

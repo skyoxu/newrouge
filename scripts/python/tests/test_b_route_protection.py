@@ -244,6 +244,58 @@ class ProtectionTests(unittest.TestCase):
         self.assertEqual(current, (self.root / inventory.TRIPLET["master"]).read_bytes())
         self.assert_no_authorization(compared.report)
 
+    def test_legitimate_master_view_state_differences_are_preserved_without_writes(self):
+        before = self.all_bytes()
+        capture = self.collect()
+        expected = [
+            {"master_id": 1, "view": "back", "view_id": "BACK-9", "master_status": "done", "view_status": "pending",
+             "master_pointer": "/master/tasks/0/status", "view_pointer": "/0/status",
+             "authority": inventory.TRIPLET["master"], "action": "report-only"},
+            {"master_id": 1, "view": "gameplay", "view_id": "GAME-1", "master_status": "done", "view_status": "review",
+             "master_pointer": "/master/tasks/0/status", "view_pointer": "/0/status",
+             "authority": inventory.TRIPLET["master"], "action": "report-only"},
+        ]
+        self.assertEqual(before, self.all_bytes())
+        self.assertEqual(capture.snapshot["triplet"]["status_differences"], expected)
+        self.assertEqual(capture.inventory["tasks"]["status_differences"], expected)
+        self.assertEqual(capture.inventory["tasks"]["counts"], {"master": 2, "back": 2, "gameplay": 2})
+        self.assertEqual(capture.inventory["tasks"]["status_authority"], inventory.TRIPLET["master"])
+        output = self.archive(capture)
+        verified = protection.verify_protection(self.root, self.snapshot_path(output))
+        self.assertTrue(verified["ok"], verified["diagnostics"])
+        self.assert_no_authorization(verified)
+
+    def test_resigned_task_summary_cannot_hide_or_forge_current_states(self):
+        capture = self.collect()
+        self.assertTrue(capture.inventory["tasks"]["status_differences"])
+        output = self.archive(capture)
+        snapshot_path = self.snapshot_path(output)
+        original_tasks = {path: (self.root / path).read_bytes() for path in inventory.TRIPLET.values()}
+        mutations = (
+            ("hidden-differences", lambda value: value.update(status_differences=[])),
+            ("forged-state", lambda value: value["status_differences"][0].update(master_status="pending")),
+            ("forged-count", lambda value: value["counts"].update(master=0)),
+            ("wrong-count-type", lambda value: value["counts"].update(master=2.0)),
+            ("forged-authority", lambda value: value.update(status_authority=inventory.TRIPLET["back"])),
+        )
+        for label, mutate in mutations:
+            with self.subTest(case=label):
+                report, snapshot = copy.deepcopy(capture.inventory), copy.deepcopy(capture.snapshot)
+                mutate(report["tasks"])
+                identity = codec.canonical_digest({key: value for key, value in report.items() if key not in protection._INVENTORY_ENVELOPE})
+                report.update(content_identity=identity, second_pass_identity=identity)
+                raw = (json.dumps(report, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
+                (output / "inventory.json").write_bytes(raw)
+                snapshot["inventory"].update(raw_digest=codec.raw_digest(raw), content_identity=identity)
+                snapshot["triplet"]["status_differences"] = copy.deepcopy(report["tasks"]["status_differences"])
+                snapshot["snapshot_digest"] = codec.canonical_digest({key: value for key, value in snapshot.items() if key != "snapshot_digest"})
+                self.dump(snapshot_path, snapshot)
+                verified = protection.verify_protection(self.root, snapshot_path)
+                self.assertFalse(verified["ok"], "Re-signed task summaries must still match the archived triplet bytes")
+                self.assert_public_diagnostics(verified)
+                self.assert_no_authorization(verified)
+        self.assertEqual({path: (self.root / path).read_bytes() for path in inventory.TRIPLET.values()}, original_tasks)
+
     def test_definition_change_does_not_invalidate_an_unrelated_task(self):
         baseline = self.archive()
         self.fixture.edit_task("back", lambda rows: rows[0].update(acceptance=["New obligation"], unknown={"status": "meaning"}))
@@ -469,11 +521,11 @@ class ProtectionTests(unittest.TestCase):
         self.assert_no_authorization(capture.snapshot)
 
     def test_unreadable_reference_is_reported_and_never_replaced_by_parsed_summary(self):
-        target = self.root / "docs/source.md"
+        target = (self.root / "docs/source.md").resolve()
         original = Path.read_bytes
         calls = []
         def denied(path):
-            if path == target:
+            if path.resolve() == target:
                 calls.append(path)
                 raise PermissionError(13, "Synthetic read denied", str(path))
             return original(path)
@@ -535,7 +587,8 @@ class ProtectionTests(unittest.TestCase):
         snapshot_path = self.snapshot_path(baseline)
         snapshot = self.load(snapshot_path)
         inventory_path = (baseline / "inventory.json").relative_to(self.root).as_posix()
-        artifact_paths = [str(baseline.relative_to(self.root)) + "/" + row["artifact"]
+        baseline_prefix = baseline.relative_to(self.root).as_posix() + "/"
+        artifact_paths = [baseline_prefix + row["artifact"]
                           for row in snapshot["raw_files"] if row["exists"]]
         unique_artifacts = list(dict.fromkeys(artifact_paths))
         raw_path = next(path for path in unique_artifacts[:-1] if artifact_paths.count(path) == 1)
@@ -547,7 +600,7 @@ class ProtectionTests(unittest.TestCase):
                     seen, mutations = set(), []
                     def change_after_another_artifact(root, path):
                         data = real_read(root, path)
-                        should_change = target in seen and path != target and path.startswith(str(baseline.relative_to(self.root)) + "/")
+                        should_change = target in seen and path != target and path.startswith(baseline_prefix)
                         if kind == "snapshot":
                             should_change = should_change and path == inventory_path
                         else:
@@ -616,23 +669,56 @@ class ProtectionTests(unittest.TestCase):
                 with self.subTest(output=str(output)), self.assertRaises(codec.CodecError):
                     protection.write_capture(output, capture)
                 self.assertEqual(list(output.iterdir()), [])
-            alias = self.root / "logs/ci/writer-link"
-            actual_output = external_root / "redirected"
-            actual_output.mkdir()
-            if os.name == "nt":
-                result = subprocess.run(["cmd", "/d", "/c", "mklink", "/J", str(alias), str(external_root)], capture_output=True, text=True)
-                self.assertEqual(result.returncode, 0, "Required real Windows junction setup failed: " + result.stderr)
-            else:
-                alias.symlink_to(external_root, target_is_directory=True)
-            try:
-                with self.assertRaises(codec.CodecError):
-                    protection.write_capture(alias / "redirected", capture)
-                self.assertEqual(list(actual_output.iterdir()), [], "A plain output leaf cannot conceal a linked ancestor")
-            finally:
+            internal_root = self.root / "logs/ci/internal-writer-target"
+            internal_root.mkdir()
+            for label, target in (("internal", internal_root), ("external", external_root)):
+                alias = self.root / ("logs/ci/writer-link-" + label)
+                actual_output = target / "redirected"
+                actual_output.mkdir()
                 if os.name == "nt":
-                    alias.rmdir()
+                    result = subprocess.run(["cmd", "/d", "/c", "mklink", "/J", str(alias), str(target)], capture_output=True, text=True)
+                    self.assertEqual(result.returncode, 0, "Required real Windows junction setup failed: " + result.stderr)
                 else:
-                    alias.unlink()
+                    alias.symlink_to(target, target_is_directory=True)
+                try:
+                    with self.assertRaises(codec.CodecError):
+                        protection.write_capture(alias / "redirected", capture)
+                    self.assertEqual(list(actual_output.iterdir()), [], "A plain output leaf cannot conceal a linked ancestor")
+                finally:
+                    if os.name == "nt":
+                        alias.rmdir()
+                    else:
+                        alias.unlink()
+
+    def test_existing_root_alias_preserves_physical_output_identity(self):
+        if os.name == "nt":
+            import ctypes
+            short_path = ctypes.WinDLL("kernel32", use_last_error=True).GetShortPathNameW
+            short_path.argtypes = [ctypes.c_wchar_p, ctypes.c_wchar_p, ctypes.c_uint]
+            short_path.restype = ctypes.c_uint
+            size = short_path(str(self.root), None, 0)
+            self.assertGreater(size, 0, "Required real Windows short-path lookup failed")
+            buffer = ctypes.create_unicode_buffer(size)
+            written = short_path(str(self.root), buffer, size)
+            self.assertTrue(0 < written < size, "Required real Windows short-path lookup failed")
+            alias_root = Path(buffer.value)
+            self.assertNotEqual(str(alias_root), str(self.root.resolve()), "The real Windows root alias must be exercised")
+        else:
+            # A real, existing alternate spelling exercises the physical anchor
+            # on POSIX; Windows keeps its distinct native 8.3 fixture above.
+            (self.root / "root-spelling").mkdir()
+            alias_root = self.root / "root-spelling" / ".."
+        self.assertTrue(alias_root.samefile(self.root))
+        capture = protection.collect_protection(alias_root, self.epics)
+        self.assertEqual(str(capture.root), str(alias_root.absolute()), "Do not normalize the fixture root to conceal an alias")
+        output = protection.create_run_directory(alias_root, "physical-root-alias")
+        protection.write_capture(output, capture)
+        expected = output.resolve().relative_to(self.root.resolve()).as_posix()
+        self.assertEqual(protection._output_relative_path(alias_root, output), expected)
+        code, stdout = self.run_cli("verify", "--root", str(alias_root), "--run-id", "physical-root-alias-verify",
+                                    "--snapshot", expected + "/snapshot.json")
+        self.assertEqual(code, 0, stdout)
+        self.assertTrue(json.loads(stdout)["output"].startswith("logs/ci/"))
 
     def test_corrupt_baseline_compare_still_collects_current_state_without_writes(self):
         baseline = self.archive()

@@ -55,7 +55,7 @@ verified = verify_protection(root, snapshot_path)
 compared = compare_protection(root, snapshot_path, epics_path, historical_inventory=None)
 ```
 
-`collect_protection` 返回 `ProtectionCapture(snapshot, inventory, raw_files, root)`；`raw_files` 是原仓库路径到真实 bytes 的映射，`root: Path` 仅是运行时写入边界，不写入 snapshot。可选 `between_reads` 是测试漂移注入 seam。`compare_protection` 返回 `ProtectionComparison(current, report)`，其中 `current` 仍是一次独立当前采集。`verify_protection` 返回结构化 dict。纯投影 API 接 Task 对象或 `{master, back, gameplay}` 三联对象，返回副本；错误抛出带公共 Diagnostic 的 `CodecError`。`write_capture` 强制输出位于该 capture 同一 root 下的 `logs/ci/`，核对全部祖先无 reparse／链接，只接受已新建的空目录，独占创建各文件。
+`collect_protection` 返回 `ProtectionCapture(snapshot, inventory, raw_files, root)`；`raw_files` 是原仓库路径到真实 bytes 的映射，`root: Path` 仅是运行时写入边界，不写入 snapshot。可选 `between_reads` 是测试漂移注入 seam。`compare_protection` 返回 `ProtectionComparison(current, report)`，其中 `current` 仍是一次独立当前采集。`verify_protection` 返回结构化 dict。纯投影 API 接 Task 对象或 `{master, back, gameplay}` 三联对象，返回副本；错误抛出带公共 Diagnostic 的 `CodecError`。`write_capture` 强制输出位于该 capture 同一 root 下的 `logs/ci/`，核对全部祖先无 reparse／链接，只接受已新建的空目录，独占创建各文件。 根目录既存的 8.3／long 名别名按 `samefile` 证明物理身份；先检查原 root／output 全部祖先，再保留根下原拼写校验，不先 resolve 隐藏链接，也不放宽相对输入的拼写规则。
 
 CLI 输出固定在 `logs/ci/<UTC-date>/b-route-protection/<run-id>/`：
 
@@ -99,4 +99,4 @@ py -3.12 -B -m unittest discover -s scripts/python/tests -p test_b_route_codec.p
 py -3.12 -B -m unittest discover -s scripts/python/tests -p test_b_route_records.py -v
 ```
 
-每套预算 180 秒；CLI 验证覆盖正负参数、重复 run、重采／比较和输入 raw 不变。Linux 结果与真实 Windows 结果分别留证，必需平台项 skip 不算通过。Windows 专项由 root 按 spec 管理独立 test 分支与 10 分钟 job，检出事件 SHA、仅 `contents: read`，只上传合成 fixture 证据；本说明不声明其已执行或通过。内部原始日志留本地，不随文档发布。
+Linux 每套预算 180 秒；Windows 保护 suite 240 秒并逐方法记录实测时间，codec／records 各 180 秒，整 job 10 分钟／内部 480 秒不变。CLI 验证覆盖正负参数、重复 run、重采／比较和输入 raw 不变。Linux 结果与真实 Windows 结果分别留证，必需平台项 skip 不算通过。Windows 专项由 root 按 spec 管理独立 test 分支与 10 分钟 job，检出事件 SHA、仅 `contents: read`，只上传合成 fixture 证据；本说明不声明其已执行或通过。内部原始日志留本地，不随文档发布。
