@@ -614,6 +614,12 @@ class ResultAndCliTests(CodecFixtures):
         self.dump("raw-reference.json", self.reference(mode="raw"))
         self.dump("bad-reference.json", self.reference(digest="sha256:" + "0" * 64))
         self.write("duplicate.json", b'{"schema_version":"x","schema_version":"y"}')
+        expected_identity = {
+            "raw_digest": "sha256:" + hashlib.sha256((self.root / self.path).read_bytes()).hexdigest(),
+            "canonical_digest": canonical_sha(self.record),
+            "codec_version": codec.CODEC_VERSION,
+        }
+        self.assertNotEqual(expected_identity["raw_digest"], expected_identity["canonical_digest"])
         before = self.snapshot(self.workspace)
         commands = [("content", "--path", self.path, True, "content", "ok"),
                     ("reference", "--reference", "canonical-reference.json", True, "reference", "ok"),
@@ -628,9 +634,38 @@ class ResultAndCliTests(CodecFixtures):
                 self.assertEqual(value["ok"], expected_ok)
                 self.assertEqual(value["verification_kind"], kind)
                 self.assertEqual(value["diagnostic"]["reason_code"], reason)
+                if expected_ok:
+                    self.assertEqual(value["content_identity"], expected_identity)
+                if mode == "reference":
+                    self.assertEqual(value["path"], self.path)
         self.assertEqual(self.snapshot(self.workspace), before)
         self.assertEqual(list(self.workspace.rglob("__pycache__")), [])
         self.assertEqual(list(self.workspace.rglob("*.pyc")), [])
+
+    def test_cli_reference_file_failures_keep_input_path_without_replacing_target_path(self):
+        script = self.prepare_cli()
+        self.write("AGENTS.md", b"# Repository Guide\nSECRET fixture text\n")
+        self.write("invalid-utf8-reference.json", b"\xff")
+        self.dump("missing-target-reference.json", self.reference(path="missing-target.json"))
+        self.dump("unsafe-target-reference.json", self.reference(path="../target.json"))
+        before = self.snapshot(self.workspace)
+        cases = [("missing-reference.json", "file_not_found", "missing-reference.json"),
+                 ("../reference.json", "unsafe_path", "../reference.json"),
+                 ("AGENTS.md", "invalid_json", "AGENTS.md"),
+                 ("invalid-utf8-reference.json", "invalid_utf8", "invalid-utf8-reference.json"),
+                 ("missing-target-reference.json", "file_not_found", "missing-target.json"),
+                 ("unsafe-target-reference.json", "unsafe_path", "../target.json")]
+        for reference_path, reason, expected_path in cases:
+            with self.subTest(reference_path=reference_path):
+                completed, value = self.run_cli(script, "reference", "--repo-root", str(self.root),
+                                                "--reference", reference_path)
+                self.assertNotEqual(completed.returncode, 0)
+                self.assertFalse(value["ok"])
+                self.assertEqual(value["verification_kind"], "reference")
+                self.assertEqual(value["diagnostic"]["reason_code"], reason)
+                self.assertEqual(value["path"], expected_path)
+                self.assertNotIn("SECRET", json.dumps(value))
+        self.assertEqual(self.snapshot(self.workspace), before)
 
     def test_cli_argument_failures_are_json_and_no_write_option_exists(self):
         script = self.prepare_cli()

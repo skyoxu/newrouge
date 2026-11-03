@@ -26,6 +26,8 @@ Story 1.3 提供 [`_b_route_codec.py`](../../scripts/python/_b_route_codec.py) �
 
 低层检查失败抛出 `CodecError`，其 `diagnostic` 使用同一 `Diagnostic` 类型；`verify_*` 将已识别的核验失败转为 `ok: false` 结果。`VerificationResult.to_dict()` 输出可序列化对象，包含 `verification_kind`、`claim`、`target_verified`、`schema_validated`、`diagnostic`、`content_identity`、已证明的实体／修订及 `path`。文件或引用结果的 `path` 定位原输入路径；内存内容或无法取得路径时为 `null`。仅 reference 成功时 `target_verified` 为 `true`；content 成功仍为 `false`。
 
+CLI `reference` 模式优先在 `path` 中保留引用内已取得的目标路径，即使目标核验失败也不覆盖；若引用文件读取或解析失败而无法取得目标路径，则回填调用者明确提供的 `--reference` 文件路径，便于定位损坏或不安全的原引用。此路径只用于诊断，不表示文件存在或核验通过，不增加公共字段。
+
 `ContentIdentity` 分别保存 `raw_digest`、`canonical_digest` 和 `codec_version`。当前版本常量为 `newrouge.b-route-json.v1`，算法继续使用 `ensure_ascii=False`、对象键排序和紧凑分隔符。对象键顺序与 JSON 排版变化不改变 canonical digest；数组顺序、JSON 类型、Unicode 原值和字符串内容空白均保留差异。不做 Unicode 规范化、集合排序或字符串裁剪。旧 `canonical_sha`、原始 proof 字节和原 codec 版本不因新核验结果而改写。
 
 ## 唯一身份 registry 与引用形状

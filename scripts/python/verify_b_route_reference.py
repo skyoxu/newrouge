@@ -7,6 +7,7 @@ sys.dont_write_bytecode = True
 
 import argparse
 import json
+from dataclasses import replace
 from pathlib import Path
 
 from _b_route_codec import (
@@ -24,6 +25,7 @@ class _Parser(argparse.ArgumentParser):
 def main(argv=None):
     arguments = list(sys.argv[1:] if argv is None else argv)
     kind = arguments[0] if arguments and arguments[0] in ("content", "reference") else None
+    reference_path = None
     try:
         parser = _Parser(description=__doc__)
         commands = parser.add_subparsers(dest="mode", required=True, parser_class=_Parser)
@@ -38,9 +40,12 @@ def main(argv=None):
         if kind == "content":
             result = verify_content_file(args.repo_root, args.path)
         else:
+            reference_path = args.reference
             result = verify_reference(args.repo_root, read_reference_bytes(args.repo_root, args.reference))
     except CodecError as error:
         result = failure_result(kind, error.diagnostic)
+    if result.path is None and reference_path is not None:
+        result = replace(result, path=reference_path)
     print(json.dumps(result.to_dict(), ensure_ascii=True, allow_nan=False, separators=(",", ":")))
     return 0 if result.ok else 1
 
