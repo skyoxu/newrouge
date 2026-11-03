@@ -23,6 +23,7 @@ from _planning_skill_common import canonical_sha
 
 CODEC_VERSION = "newrouge.b-route-json.v1"
 PLAN_SCHEMA = "newrouge.b-route-plan.v1"
+_WINDOWS = os.name == "nt"
 
 
 class ReasonCode(str, Enum):
@@ -301,6 +302,20 @@ def _stat_identity(info: os.stat_result) -> tuple[int, int, int, int, int]:
     return info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns, info.st_ctime_ns
 
 
+def _cross_stat_identity(info: os.stat_result) -> tuple[int, int, int, int, int]:
+    """Compare path and descriptor observations using matching field semantics."""
+    if not _WINDOWS:
+        return _stat_identity(info)
+    # CPython 3.12 Windows path stat uses creation time for ctime, while fstat
+    # can expose ChangeTime. Keep ctime in same-source checks and compare the
+    # explicit birthtime across sources; never infer missing birthtime from it.
+    birthtime = getattr(info, "st_birthtime_ns", None)
+    if type(birthtime) is not int:
+        _fail(ReasonCode.PATH_UNPROVABLE, Stage.PATH,
+              expected="Windows birthtime identity", actual="birthtime unavailable")
+    return info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns, birthtime
+
+
 def read_reference_bytes(root: Path, path: str) -> bytes:
     """Read a contained regular file and detect observed replacement/read drift.
 
@@ -316,11 +331,15 @@ def read_reference_bytes(root: Path, path: str) -> bytes:
             opened = os.fstat(stream.fileno())
             data = stream.read()
             after = os.fstat(stream.fileno())
-        current = resolve_reference_path(root, path)
-        if (current != resolved or _stat_identity(before) != _stat_identity(opened)
-                or _stat_identity(opened) != _stat_identity(after)
-                or _stat_identity(after) != _stat_identity(current.stat())):
-            _fail(ReasonCode.FILE_CHANGED, Stage.PATH, expected="stable observed file identity", actual="file changed during read")
+            current = resolve_reference_path(root, path)
+            current_info = current.stat()
+            final = os.fstat(stream.fileno())
+            if (current != resolved or _stat_identity(before) != _stat_identity(current_info)
+                    or _stat_identity(opened) != _stat_identity(after)
+                    or _stat_identity(after) != _stat_identity(final)
+                    or _cross_stat_identity(before) != _cross_stat_identity(opened)
+                    or _cross_stat_identity(final) != _cross_stat_identity(current_info)):
+                _fail(ReasonCode.FILE_CHANGED, Stage.PATH, expected="stable observed file identity", actual="file changed during read")
         return data
     except CodecError:
         raise

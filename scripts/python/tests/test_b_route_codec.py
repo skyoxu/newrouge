@@ -13,6 +13,7 @@ import tempfile
 import unittest
 from dataclasses import FrozenInstanceError
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -384,6 +385,168 @@ class PathTests(CodecFixtures):
         with patch.object(codec.os, "fstat", side_effect=observe):
             result = codec.verify_reference(self.root, self.reference())
         self.assert_reason(result, codec.ReasonCode.FILE_CHANGED)
+
+
+class ReadIdentityRegressionTests(CodecFixtures):
+    def verify_sampled_identity(self, *, windows=True, path_changes=None, fd_changes=None):
+        """Exercise the reader with the distinct Windows timestamp semantics."""
+        target = (self.root / self.path).resolve(strict=True)
+        original_stat = Path.stat
+        info = original_stat(target)
+        common = {field: getattr(info, field) for field in
+                  ("st_dev", "st_ino", "st_mode", "st_size", "st_mtime_ns")}
+        path_samples = [dict(common, st_ctime_ns=100, st_birthtime_ns=100) for _ in range(2)]
+        fd_samples = [dict(common, st_ctime_ns=200, st_birthtime_ns=100) for _ in range(3)]
+        for samples, changes in ((path_samples, path_changes), (fd_samples, fd_changes)):
+            for index, fields in (changes or {}).items():
+                samples[index].update(fields)
+                for field in tuple(samples[index]):
+                    if samples[index][field] == "missing":
+                        del samples[index][field]
+        path_calls = fd_calls = 0
+
+        def observe_path(path, *args, **kwargs):
+            nonlocal path_calls
+            if path != target:
+                return original_stat(path, *args, **kwargs)
+            sample = path_samples[min(path_calls, len(path_samples) - 1)]
+            path_calls += 1
+            return SimpleNamespace(**sample)
+
+        def observe_fd(_descriptor):
+            nonlocal fd_calls
+            sample = fd_samples[min(fd_calls, len(fd_samples) - 1)]
+            fd_calls += 1
+            return SimpleNamespace(**sample)
+
+        with patch.object(codec, "_WINDOWS", windows), patch.object(Path, "stat", observe_path), \
+                patch.object(codec.os, "fstat", side_effect=observe_fd):
+            result = codec.verify_content_file(self.root, self.path)
+        self.assertEqual(path_calls, 2, "Path stat injection must cover both observations")
+        self.assertEqual(fd_calls, 3, "Descriptor stat injection must cover all three observations")
+        return result
+
+    def test_stable_windows_creation_and_change_times_are_compared_by_source(self):
+        self.assertTrue(self.verify_sampled_identity().ok)
+
+    def test_stable_rewrites_remain_readable_without_changing_birth_identity(self):
+        target = self.root / self.path
+        birthtime = getattr(target.stat(), "st_birthtime_ns", None)
+        for attempt in range(12):
+            record = dict(self.record, rewrite=attempt)
+            self.dump(self.path, record)
+            result = codec.verify_content_file(self.root, self.path)
+            with self.subTest(attempt=attempt):
+                self.assertTrue(result.ok, result.diagnostic.to_dict())
+                self.assertEqual(result.content_identity.canonical_digest, codec.canonical_digest(record))
+                self.assertEqual(getattr(target.stat(), "st_birthtime_ns", None), birthtime)
+
+    def test_windows_cross_source_identity_rejects_each_comparable_field_difference(self):
+        info = (self.root / self.path).stat()
+        for field in ("st_dev", "st_ino", "st_size", "st_mtime_ns", "st_birthtime_ns"):
+            changed = (100 if field == "st_birthtime_ns" else getattr(info, field)) + 1
+            with self.subTest(field=field):
+                result = self.verify_sampled_identity(fd_changes={index: {field: changed} for index in range(3)})
+                self.assert_reason(result, codec.ReasonCode.FILE_CHANGED)
+
+    def test_same_source_identity_keeps_every_original_field_including_ctime(self):
+        info = (self.root / self.path).stat()
+        for source in ("path", "fd"):
+            for field in ("st_dev", "st_ino", "st_size", "st_mtime_ns", "st_ctime_ns"):
+                original = (100 if source == "path" else 200) if field == "st_ctime_ns" else getattr(info, field)
+                changes = {1: {field: original + 1}}
+                with self.subTest(source=source, field=field):
+                    result = self.verify_sampled_identity(**{source + "_changes": changes})
+                    self.assert_reason(result, codec.ReasonCode.FILE_CHANGED)
+
+    def test_final_descriptor_observation_rejects_late_ctime_changes(self):
+        self.assert_reason(self.verify_sampled_identity(fd_changes={2: {"st_ctime_ns": 201}}),
+                           codec.ReasonCode.FILE_CHANGED)
+
+    def test_missing_or_invalid_windows_birthtime_cannot_claim_proven_identity(self):
+        for source, indexes in (("path", range(2)), ("fd", range(3))):
+            for value in ("missing", None, True, 100.0, "100"):
+                changes = {index: {"st_birthtime_ns": value} for index in indexes}
+                with self.subTest(source=source, value=value):
+                    result = self.verify_sampled_identity(**{source + "_changes": changes})
+                    self.assert_reason(result, codec.ReasonCode.PATH_UNPROVABLE)
+
+    def test_posix_cross_source_comparison_still_rejects_ctime_difference(self):
+        self.assert_reason(self.verify_sampled_identity(windows=False), codec.ReasonCode.FILE_CHANGED)
+
+    def change_bytes_preserving_size_and_mtime(self):
+        target = self.root / self.path
+        before = target.stat()
+        original = target.read_bytes()
+        changed = original.replace(b"PLAN-7", b"PLAN-8")
+        self.assertNotEqual(original, changed)
+        self.assertEqual(len(original), len(changed))
+        target.write_bytes(changed)
+        os.utime(target, ns=(before.st_atime_ns, before.st_mtime_ns))
+        self.assertEqual(target.stat().st_size, before.st_size)
+        self.assertEqual(target.stat().st_mtime_ns, before.st_mtime_ns)
+
+    def test_same_size_in_place_overwrite_with_restored_mtime_is_rejected(self):
+        original_fstat = os.fstat
+        observations = []
+
+        def observe(descriptor):
+            if len(observations) == 1:
+                self.change_bytes_preserving_size_and_mtime()
+            info = original_fstat(descriptor)
+            observations.append(info)
+            return info
+
+        with patch.object(codec.os, "fstat", side_effect=observe):
+            result = codec.verify_content_file(self.root, self.path)
+        self.assert_reason(result, codec.ReasonCode.FILE_CHANGED)
+        self.assertEqual(observations[0].st_mtime_ns, observations[1].st_mtime_ns)
+        self.assertNotEqual(observations[0].st_ctime_ns, observations[1].st_ctime_ns)
+
+    def test_same_size_overwrite_during_final_path_resolution_is_rejected(self):
+        original_resolve = codec.resolve_reference_path
+        calls = 0
+
+        def resolve(root, path):
+            nonlocal calls
+            calls += 1
+            if calls == 2:
+                self.change_bytes_preserving_size_and_mtime()
+            return original_resolve(root, path)
+
+        with patch.object(codec, "resolve_reference_path", side_effect=resolve):
+            result = codec.verify_content_file(self.root, self.path)
+        self.assert_reason(result, codec.ReasonCode.FILE_CHANGED)
+
+    def test_same_size_replacement_with_restored_mtime_cannot_pass(self):
+        original_resolve = codec.resolve_reference_path
+        target = self.root / self.path
+        original_bytes = target.read_bytes()
+        calls = 0
+        replaced = False
+
+        def resolve(root, path):
+            nonlocal calls, replaced
+            calls += 1
+            if calls == 2:
+                before = target.stat()
+                replacement = target.with_name("replacement.json")
+                replacement.write_bytes(original_bytes.replace(b"PLAN-7", b"PLAN-8"))
+                os.utime(replacement, ns=(before.st_atime_ns, before.st_mtime_ns))
+                self.assertEqual(replacement.stat().st_size, before.st_size)
+                self.assertEqual(replacement.stat().st_mtime_ns, before.st_mtime_ns)
+                os.replace(replacement, target)
+                replaced = True
+            return original_resolve(root, path)
+
+        with patch.object(codec, "resolve_reference_path", side_effect=resolve):
+            result = codec.verify_content_file(self.root, self.path)
+        if replaced:
+            self.assert_reason(result, codec.ReasonCode.FILE_CHANGED)
+        else:
+            # Windows may deny replacement while the read handle is still open.
+            self.assert_reason(result, codec.ReasonCode.READ_ERROR)
+            self.assertEqual(target.read_bytes(), original_bytes)
 
 
 class ResultAndCliTests(CodecFixtures):

@@ -50,6 +50,8 @@ raw 模式核对原字节 digest；canonical 模式核对按指定 codec 得到�
 
 路径检查拒绝绝对路径、驱动器路径、UNC、反斜杠、URL、ADS、Windows 设备／别名路径及根逃逸。合法的 `sub/../plan.json` 和可证明目标位于根内的 symlink／junction 允许通过；根外链接拒绝，无法解析或证明 containment 则失败。外部来源仍由既有 source 登记与冻结机制管理。读取失败、非普通文件或已观察的读取漂移也返回公共诊断。读取前后检查不构成针对任意并发外部写者的事务隔离保证。
 
+文件身份检查区分采样来源：路径前后、文件描述符前后均保留 `dev`／`ino`／`size`／`mtime_ns`／`ctime_ns` 的完整比较。真实 Windows CPython 3.12.10 trace 证实，路径 `stat` 的 `ctime_ns` 表示创建时间，而 `fstat` 的同名字段可表示变更时间；Windows 跨来源因此使用 `dev`／`ino`／`size`／`mtime_ns`／明确的 `birthtime_ns`，缺少或无法取得该能力时返回 `path_unprovable`，不猜测或用空值通过。POSIX 跨来源仍保留原五字段检查。重解析路径和最后一次描述符采样在读取句柄仍有效期间完成，以检查末次路径观察期间的漂移；不会全局忽略 `ctime`、放宽时间容差或以重试掩盖变化。修复后的真实 Windows 矩阵仍须重新执行，旧失败／诊断 trace 不作为通过证据。
+
 ## Windows 命令与隔离示例
 
 从仓库根执行：
