@@ -493,21 +493,36 @@ class ReadIdentityRegressionTests(CodecFixtures):
         self.assertEqual(target.stat().st_mtime_ns, before.st_mtime_ns)
 
     def test_same_size_in_place_overwrite_with_restored_mtime_is_rejected(self):
+        """Reject real byte drift without assuming every write changes ctime."""
+        target = self.root / self.path
+        before = target.stat()
+        original = target.read_bytes()
         original_fstat = os.fstat
         observations = []
+        mutations = 0
 
         def observe(descriptor):
+            nonlocal mutations
             if len(observations) == 1:
                 self.change_bytes_preserving_size_and_mtime()
+                mutations += 1
             info = original_fstat(descriptor)
             observations.append(info)
             return info
 
         with patch.object(codec.os, "fstat", side_effect=observe):
             result = codec.verify_content_file(self.root, self.path)
+        changed = target.read_bytes()
         self.assert_reason(result, codec.ReasonCode.FILE_CHANGED)
         self.assertEqual(observations[0].st_mtime_ns, observations[1].st_mtime_ns)
-        self.assertNotEqual(observations[0].st_ctime_ns, observations[1].st_ctime_ns)
+        self.assertEqual(mutations, 1)
+        self.assertEqual(len(observations), 3)
+        self.assertNotEqual(original, changed)
+        self.assertEqual(len(original), len(changed))
+        self.assertEqual(json.loads(original)["plan_id"], "PLAN-7")
+        self.assertEqual(json.loads(changed)["plan_id"], "PLAN-8")
+        self.assertEqual([info.st_size for info in observations], [len(original)] * 3)
+        self.assertEqual([info.st_mtime_ns for info in observations], [before.st_mtime_ns] * 3)
 
     def test_same_size_overwrite_during_final_path_resolution_is_rejected(self):
         original_resolve = codec.resolve_reference_path
