@@ -340,14 +340,17 @@ def read_reference_bytes(root: Path, path: str) -> bytes:
         if not stat.S_ISREG(before.st_mode):
             _fail(ReasonCode.READ_ERROR, Stage.PATH, expected="regular file", actual="nonregular target")
         flags = os.O_RDONLY | getattr(os, "O_BINARY", 0) | getattr(os, "O_NONBLOCK", 0) | getattr(os, "O_NOFOLLOW", 0)
-        with os.fdopen(os.open(resolved, flags), "rb") as stream:
+        with os.fdopen(os.open(resolved, flags), "rb", buffering=0) as stream:
             opened = os.fstat(stream.fileno())
             data = stream.read()
             after = os.fstat(stream.fileno())
             current = resolve_reference_path(root, path)
             current_info = current.stat()
+            # Metadata can remain equal after a write; read the raw handle again.
+            stream.seek(0)
+            confirmed = stream.read()
             final = os.fstat(stream.fileno())
-            if (current != resolved or _stat_identity(before) != _stat_identity(current_info)
+            if (confirmed != data or current != resolved or _stat_identity(before) != _stat_identity(current_info)
                     or _stat_identity(opened) != _stat_identity(after)
                     or _stat_identity(after) != _stat_identity(final)
                     or _cross_stat_identity(before) != _cross_stat_identity(opened)

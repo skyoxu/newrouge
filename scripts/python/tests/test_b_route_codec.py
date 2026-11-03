@@ -524,6 +524,49 @@ class ReadIdentityRegressionTests(CodecFixtures):
             result = codec.verify_content_file(self.root, self.path)
         self.assert_reason(result, codec.ReasonCode.FILE_CHANGED)
 
+    def test_same_size_overwrite_with_identical_metadata_samples_is_rejected(self):
+        """Real byte changes must fail even when metadata cannot distinguish them."""
+        target = (self.root / self.path).resolve(strict=True)
+        original_stat = Path.stat
+        original_resolve = codec.resolve_reference_path
+        before = original_stat(target)
+        original = target.read_bytes()
+        changed = original.replace(b"PLAN-7", b"PLAN-8")
+        self.assertNotEqual(original, changed)
+        self.assertEqual(len(original), len(changed))
+        fields = {name: getattr(before, name) for name in
+                  ("st_dev", "st_ino", "st_mode", "st_size", "st_mtime_ns", "st_ctime_ns")}
+        fields["st_birthtime_ns"] = getattr(before, "st_birthtime_ns", 100)
+        sample = SimpleNamespace(**fields)
+        calls = {"resolve": 0, "path": 0, "fd": 0, "mutation": 0}
+
+        def observe_path(path, *args, **kwargs):
+            if path != target:
+                return original_stat(path, *args, **kwargs)
+            calls["path"] += 1
+            return sample
+
+        def observe_fd(_descriptor):
+            calls["fd"] += 1
+            return sample
+
+        def resolve(root, path):
+            calls["resolve"] += 1
+            if calls["resolve"] == 2:
+                target.write_bytes(changed)
+                os.utime(target, ns=(before.st_atime_ns, before.st_mtime_ns))
+                calls["mutation"] += 1
+            return original_resolve(root, path)
+
+        with patch.object(Path, "stat", observe_path), \
+                patch.object(codec.os, "fstat", side_effect=observe_fd), \
+                patch.object(codec, "resolve_reference_path", side_effect=resolve):
+            result = codec.verify_content_file(self.root, self.path)
+        self.assertEqual(calls, {"resolve": 2, "path": 2, "fd": 3, "mutation": 1})
+        self.assertEqual(target.read_bytes(), changed)
+        self.assertEqual(original_stat(target).st_mtime_ns, before.st_mtime_ns)
+        self.assert_reason(result, codec.ReasonCode.FILE_CHANGED)
+
     def test_same_size_replacement_with_restored_mtime_cannot_pass(self):
         original_resolve = codec.resolve_reference_path
         target = self.root / self.path
