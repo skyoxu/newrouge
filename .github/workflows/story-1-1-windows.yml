@@ -40,6 +40,7 @@ jobs:
           import subprocess
           import sys
           import traceback
+          import time
           import uuid
 
           root = pathlib.Path.cwd()
@@ -54,19 +55,28 @@ jobs:
           def save(name, data):
               (evidence / name).write_text(json.dumps(data, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
 
-          def command(label, args, cwd=root):
-              metadata = {'argv': [str(x) for x in args], 'cwd': str(cwd), 'status': 'started'}
+          def command(label, args, cwd=root, *, timeout_seconds=240, tolerate_timeout=False):
+              started = time.perf_counter()
+              metadata = {'argv': [str(x) for x in args], 'cwd': str(cwd), 'status': 'started',
+                          'timeout_seconds': timeout_seconds}
               save(label + '.command.json', metadata)
+              print('COMMAND START ' + json.dumps(metadata), flush=True)
               try:
-                  result = subprocess.run(metadata['argv'], cwd=cwd, capture_output=True, timeout=240)
+                  result = subprocess.run(metadata['argv'], cwd=cwd, capture_output=True, timeout=timeout_seconds)
               except subprocess.TimeoutExpired as exc:
-                  (evidence / (label + '.stdout')).write_bytes(exc.stdout or b'')
-                  (evidence / (label + '.stderr')).write_bytes(exc.stderr or b'')
-                  save(label + '.command.json', dict(metadata, status='timeout', timeout_seconds=240))
-                  raise
+                  result = subprocess.CompletedProcess(metadata['argv'], 124, exc.stdout or b'', exc.stderr or b'')
+                  metadata['status'] = 'timeout'
+              else:
+                  metadata['status'] = 'completed'
+              metadata.update(exit=result.returncode, elapsed_seconds=round(time.perf_counter() - started, 3))
               (evidence / (label + '.stdout')).write_bytes(result.stdout)
               (evidence / (label + '.stderr')).write_bytes(result.stderr)
-              save(label + '.command.json', dict(metadata, status='completed', exit=result.returncode))
+              save(label + '.command.json', metadata)
+              print('COMMAND RESULT ' + label + ' ' + json.dumps(metadata), flush=True)
+              print('STDOUT ' + label + '\n' + result.stdout.decode('utf-8', errors='replace'), flush=True)
+              print('STDERR ' + label + '\n' + result.stderr.decode('utf-8', errors='replace'), flush=True)
+              if metadata['status'] == 'timeout' and not tolerate_timeout:
+                  raise TimeoutError(label + ' timed out after ' + str(timeout_seconds) + ' seconds')
               return result
 
           def git(*args):
@@ -123,13 +133,41 @@ jobs:
               original_status = git('status', '--porcelain=v1', '-uall')
               before = protected()
               save('protected-before.json', before)
-              result = command('unit', [sys.executable, '-m', 'unittest', 'discover', '-s',
-                                       'scripts/python/tests', '-p', 'test_b_route_inventory.py', '-v'])
-              unit_text = result.stderr.decode('utf-8', errors='replace')
-              count = re.search(r'Ran (\d+) tests?', unit_text)
-              assert result.returncode == 0 and count and int(count[1]) == 59
-              state['checks']['unit'] = {'exit': result.returncode, 'count': int(count[1]),
-                                        'skipped_lines': [x for x in unit_text.splitlines() if 'skipped ' in x]}
+              targets = [
+                  'test_optional_planned_reference_reparse_and_permission_failures_block',
+                  'test_source_pattern_permission_error_is_visible_before_resolver',
+                  'test_untracked_manifest_only_source_bytes_trigger_drift_without_git_change',
+              ]
+              isolated = []
+              for index, name in enumerate(targets, 1):
+                  label = 'isolated-' + str(index)
+                  result = command(label, [sys.executable, '-m', 'unittest',
+                                   'test_b_route_inventory.InventoryTests.' + name, '-v'],
+                                   cwd=root / 'scripts/python/tests', timeout_seconds=120, tolerate_timeout=True)
+                  text = result.stderr.decode('utf-8', errors='replace')
+                  count = re.search(r'Ran (\d+) tests?', text)
+                  metadata = json.loads((evidence / (label + '.command.json')).read_text(encoding='utf-8'))
+                  item = {'test': name, 'exit': result.returncode, 'count': int(count[1]) if count else None,
+                          'elapsed_seconds': metadata['elapsed_seconds'], 'command_status': metadata['status'],
+                          'passed': result.returncode == 0 and bool(count) and int(count[1]) == 1,
+                          'skipped_lines': [line for line in text.splitlines() if 'skipped ' in line]}
+                  isolated.append(item)
+                  save('isolated-tests.json', isolated)
+                  print('ISOLATED TEST RESULT ' + json.dumps(item), flush=True)
+              state['checks']['isolated_tests'] = isolated
+              if all(item['passed'] and not item['skipped_lines'] for item in isolated):
+                  result = command('unit', [sys.executable, '-m', 'unittest', 'discover', '-s',
+                                           'scripts/python/tests', '-p', 'test_b_route_inventory.py', '-v'],
+                                           timeout_seconds=600, tolerate_timeout=True)
+                  unit_text = result.stderr.decode('utf-8', errors='replace')
+                  count = re.search(r'Ran (\d+) tests?', unit_text)
+                  state['checks']['unit'] = {'exit': result.returncode, 'count': int(count[1]) if count else None,
+                                            'passed': result.returncode == 0 and bool(count) and int(count[1]) == 59,
+                                            'skipped_lines': [line for line in unit_text.splitlines() if 'skipped ' in line]}
+              else:
+                  state['checks']['unit'] = {'passed': False, 'status': 'not-run',
+                                            'reason': 'An isolated target failed or skipped; do not repeat the unchanged full suite.'}
+              print('UNIT SUITE RESULT ' + json.dumps(state['checks']['unit']), flush=True)
               reports = []
               for label in ('capture-a', 'capture-b'):
                   result, identity = cli(label)
@@ -182,11 +220,13 @@ jobs:
                       junction('output-junction-create', parent / 'b-route-baseline-inventory', target)
                       result, identity = cli('output-junction', repo=case.root, epics=case.epics)
                       assert result.returncode == 2 and b'reparse' in result.stdout.lower()
-                      assert not list(target.iterdir())
+                      target_entries = [entry.name for entry in target.iterdir()]
+                      save('output-junction-target-after.json', {'entries': target_entries})
+                      assert not target_entries
                   for path, value in fixture_before.items():
                       assert digest(case.root / path) == value, path
                   state['checks'][kind + '_real_junction'] = True
-              state['status'] = 'passed'
+              state['status'] = 'passed' if state['checks']['unit']['passed'] else 'failed-or-blocked'
           except Exception:
               state['status'] = 'failed-or-blocked'
               state['error'] = traceback.format_exc()
@@ -201,6 +241,7 @@ jobs:
                       if not unchanged:
                           state['status'] = 'failed-or-blocked'
                   save('summary.json', state)
+                  print('FINAL SAFE SUMMARY ' + json.dumps(state), flush=True)
               finally:
                   for case in cases:
                       if hasattr(case, 'temporary'):
@@ -211,6 +252,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: story-1-1-windows-${{ github.run_id }}-${{ github.run_attempt }}
-          path: source/logs/ci/**
+          path: |
+            source/logs/ci/*/story-1-1-windows-validation/**
+            source/logs/ci/*/b-route-baseline-inventory/win-*/**
           if-no-files-found: error
           retention-days: 14
