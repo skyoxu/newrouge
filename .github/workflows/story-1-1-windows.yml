@@ -138,11 +138,14 @@ jobs:
                   'test_source_pattern_permission_error_is_visible_before_resolver',
                   'test_untracked_manifest_only_source_bytes_trigger_drift_without_git_change',
               ]
+              diagnostic_program = 'import json\nimport sys\nimport unittest\nfrom pathlib import Path\n\nroot = Path(sys.argv[2])\nsys.path.insert(0, str(root / "scripts/python/tests"))\nimport test_b_route_inventory\n\nstats = {}\nphases = []\ndef trace(frame, event, arg):\n    code = frame.f_code\n    if not code.co_filename.endswith("test_b_route_inventory.py"):\n        return None\n    if event == "line" and code.co_name in {"reparse", "denied", "denied_walk"} and frame.f_lineno == code.co_firstlineno + 1:\n        values = frame.f_locals\n        candidate = values.get("candidate", values.get("path"))\n        target = values.get("target")\n        if target is None and "self" in values:\n            target = values["self"].root / "sources"\n        if candidate is not None and target is not None:\n            candidate, target = Path(candidate), Path(target)\n            item = stats.setdefault(code.co_name, {"calls": 0, "lexical_hits": 0, "resolved_hits": 0, "examples": []})\n            item["calls"] += 1\n            lexical = candidate == target\n            resolved = candidate.resolve() == target.resolve()\n            item["lexical_hits"] += int(lexical)\n            item["resolved_hits"] += int(resolved)\n            if len(item["examples"]) < 5 or (resolved and not lexical and len(item["examples"]) < 10):\n                item["examples"].append({"candidate": str(candidate), "target": str(target),\n                    "candidate_resolved": str(candidate.resolve()), "target_resolved": str(target.resolve()),\n                    "lexical_equal": lexical, "resolved_equal": resolved})\n    if event == "line" and code.co_name == "test_optional_planned_reference_reparse_and_permission_failures_block":\n        values = frame.f_locals\n        if "report" in values and "guard" in values and "self.assert_invalid" in __import__("linecache").getline(code.co_filename, frame.f_lineno):\n            phases.append({"guard": getattr(values["guard"], "attribute", None), "adoptable": values["report"]["adoptable"],\n                           "diagnostic_codes": sorted({d["code"] for d in values["report"]["diagnostics"]})})\n    return trace\n\nsys.settrace(trace)\ntry:\n    result = unittest.TextTestRunner(verbosity=2).run(unittest.defaultTestLoader.loadTestsFromName(sys.argv[1]))\nfinally:\n    sys.settrace(None)\n    print("FAULT INJECTION PATH DIAGNOSTICS " + json.dumps({"guards": stats, "phases": phases}), flush=True)\nsys.exit(0 if result.wasSuccessful() else 1)\n'
+              diagnostic_runner = evidence / 'diagnostic-runner.py'
+              diagnostic_runner.write_text(diagnostic_program, encoding='utf-8', newline='\n')
               isolated = []
               for index, name in enumerate(targets, 1):
                   label = 'isolated-' + str(index)
-                  result = command(label, [sys.executable, '-m', 'unittest',
-                                   'test_b_route_inventory.InventoryTests.' + name, '-v'],
+                  result = command(label, [sys.executable, diagnostic_runner,
+                                   'test_b_route_inventory.InventoryTests.' + name, root],
                                    cwd=root / 'scripts/python/tests', timeout_seconds=120, tolerate_timeout=True)
                   text = result.stderr.decode('utf-8', errors='replace')
                   count = re.search(r'Ran (\d+) tests?', text)
@@ -190,8 +193,21 @@ jobs:
               state['checks']['repeat_no_overwrite'] = True
               result, identity = cli('missing-epics', epics='planning/missing.md')
               assert result.returncode == 1
-              assert (inventory_output(root, identity) / 'failure.json').is_file()
-              state['checks']['missing_epics_no_fallback'] = True
+              missing_output = inventory_output(root, identity)
+              report_files = [path for path in (missing_output / 'inventory.json', missing_output / 'failure.json') if path.is_file()]
+              assert len(report_files) == 1
+              missing_report = json.loads(report_files[0].read_text(encoding='utf-8'))
+              assert missing_report['adoptable'] is False
+              missing_diagnostics = missing_report.get('diagnostics', [])
+              assert any(d.get('severity') == 'error' and
+                         ((d.get('location') == 'planning/missing.md' and d.get('code') in ('missing-input', 'invalid-epics')) or
+                          (d.get('code') == 'inventory-failed' and 'planning/missing.md' in d.get('message', '')))
+                         for d in missing_diagnostics)
+              if report_files[0].name == 'inventory.json':
+                  assert (missing_output / 'inventory.md').stat().st_size > 0
+              state['checks']['missing_epics_no_fallback'] = {'exit': result.returncode, 'report': report_files[0].name,
+                  'diagnostics': [{'code': d.get('code'), 'location': d.get('location')} for d in missing_diagnostics]}
+              print('MISSING EPICS DIAGNOSTIC CHECK ' + json.dumps(state['checks']['missing_epics_no_fallback']), flush=True)
 
               sys.path.insert(0, str(root / 'scripts/python/tests'))
               from test_b_route_inventory import InventoryTests
