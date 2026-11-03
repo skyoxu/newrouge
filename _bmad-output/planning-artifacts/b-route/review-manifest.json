@@ -1,0 +1,460 @@
+{
+  "purpose": "Independent review input handoff only; no independent review verdict.",
+  "branch": "review/b-route-planning-2026-11-03",
+  "source_head": "aa821824d1d2700e79cc615de34698dda12363d3",
+  "source_remote_before": "cd925bdcae4b61992320773497f7edb729aac244",
+  "main_before": "8f93557d7f5f07b7931e3f4966a2dce04e458344",
+  "total_delivery_paths": 53,
+  "sha256_basis": "Raw UTF-8 file bytes, verified against staged Git blobs before push.",
+  "self_path": "_bmad-output/planning-artifacts/b-route/review-manifest.json",
+  "self_hash_excluded": true,
+  "exact_delivery_paths": [
+    "_bmad-output/implementation-artifacts/b-route/SPRINT-SCOPE.md",
+    "_bmad-output/implementation-artifacts/b-route/sprint-status.yaml",
+    "_bmad-output/planning-artifacts/architecture/architecture-newrouge-b-route-2026-11-03/.memlog.md",
+    "_bmad-output/planning-artifacts/architecture/architecture-newrouge-b-route-2026-11-03/ARCHITECTURE-SPINE.md",
+    "_bmad-output/planning-artifacts/architecture/architecture-newrouge-b-route-2026-11-03/planning-records.md",
+    "_bmad-output/planning-artifacts/architecture/architecture-newrouge-b-route-2026-11-03/result.json",
+    "_bmad-output/planning-artifacts/architecture/architecture-newrouge-b-route-2026-11-03/reviews/lint-final.json",
+    "_bmad-output/planning-artifacts/architecture/architecture-newrouge-b-route-2026-11-03/reviews/reconcile-baseline.md",
+    "_bmad-output/planning-artifacts/architecture/architecture-newrouge-b-route-2026-11-03/reviews/reconcile-spec.md",
+    "_bmad-output/planning-artifacts/architecture/architecture-newrouge-b-route-2026-11-03/reviews/review-adversarial.md",
+    "_bmad-output/planning-artifacts/architecture/architecture-newrouge-b-route-2026-11-03/reviews/review-editorial.md",
+    "_bmad-output/planning-artifacts/architecture/architecture-newrouge-b-route-2026-11-03/reviews/review-reality.md",
+    "_bmad-output/planning-artifacts/architecture/architecture-newrouge-b-route-2026-11-03/reviews/review-rubric.md",
+    "_bmad-output/planning-artifacts/b-route/REVIEW-HANDOFF.md",
+    "_bmad-output/planning-artifacts/b-route/epics.md",
+    "_bmad-output/planning-artifacts/b-route/review-manifest.json",
+    "_bmad-output/planning-artifacts/newrouge-b-route-workspace.md",
+    "_bmad-output/planning-artifacts/prds/prd-newrouge-b-route-2026-11-03/.memlog.md",
+    "_bmad-output/planning-artifacts/prds/prd-newrouge-b-route-2026-11-03/addendum.md",
+    "_bmad-output/planning-artifacts/prds/prd-newrouge-b-route-2026-11-03/baseline-update.md",
+    "_bmad-output/planning-artifacts/prds/prd-newrouge-b-route-2026-11-03/prd.md",
+    "_bmad-output/planning-artifacts/prds/prd-newrouge-b-route-2026-11-03/reconcile-original-requirements.md",
+    "_bmad-output/planning-artifacts/prds/prd-newrouge-b-route-2026-11-03/result.json",
+    "_bmad-output/planning-artifacts/prds/prd-newrouge-b-route-2026-11-03/review-baseline-update.md",
+    "_bmad-output/planning-artifacts/prds/prd-newrouge-b-route-2026-11-03/review-editorial.md",
+    "_bmad-output/planning-artifacts/prds/prd-newrouge-b-route-2026-11-03/review-rubric.md",
+    "_bmad-output/planning-artifacts/sources/newrouge-b-route-original-requirements.md",
+    "_bmad-output/specs/spec-newrouge-b-route/.memlog.md",
+    "_bmad-output/specs/spec-newrouge-b-route/SPEC.md",
+    "_bmad-output/specs/spec-newrouge-b-route/migration-and-pilot.md",
+    "_bmad-output/specs/spec-newrouge-b-route/result.json",
+    "_bmad-output/specs/spec-newrouge-b-route/verification-contract.md",
+    "_bmad-output/specs/spec-newrouge-b-route/workflow-contract.md",
+    "logs/ci/2026-11-03/b-route-epics/epic-1-approval.json",
+    "logs/ci/2026-11-03/b-route-epics/epic-2-approval.json",
+    "logs/ci/2026-11-03/b-route-epics/epic-3-approval.json",
+    "logs/ci/2026-11-03/b-route-epics/epic-4-approval.json",
+    "logs/ci/2026-11-03/b-route-epics/epic-5-approval.json",
+    "logs/ci/2026-11-03/b-route-epics/epic-5-cutover-boundary-proposal.md",
+    "logs/ci/2026-11-03/b-route-epics/epic-5-dual-path-input-evidence-proposal.md",
+    "logs/ci/2026-11-03/b-route-epics/epic-5-party-discussion.json",
+    "logs/ci/2026-11-03/b-route-epics/existing-epics-hash.json",
+    "logs/ci/2026-11-03/b-route-epics/final-validation.json",
+    "logs/ci/2026-11-03/b-route-epics/final-validation.md",
+    "logs/ci/2026-11-03/b-route-epics/requirements-extraction.json",
+    "logs/ci/2026-11-03/b-route-sprint-planning/generate.json",
+    "logs/ci/2026-11-03/b-route-sprint-planning/preview.json",
+    "logs/ci/2026-11-03/b-route-sprint-planning/readiness.json",
+    "logs/ci/2026-11-03/b-route-sprint-planning/readiness.md",
+    "logs/ci/2026-11-03/b-route-sprint-planning/refresh-preview.json",
+    "logs/ci/2026-11-03/b-route-sprint-planning/taskmaster-snapshot.json",
+    "logs/ci/2026-11-03/b-route-sprint-planning/validate.json",
+    "logs/ci/2026-11-03/bmad-b-route-migration/new-baseline-evidence.md"
+  ],
+  "main_artifact_paths": [
+    "_bmad-output/planning-artifacts/sources/newrouge-b-route-original-requirements.md",
+    "_bmad-output/planning-artifacts/prds/prd-newrouge-b-route-2026-11-03/prd.md",
+    "_bmad-output/planning-artifacts/prds/prd-newrouge-b-route-2026-11-03/addendum.md",
+    "_bmad-output/planning-artifacts/prds/prd-newrouge-b-route-2026-11-03/baseline-update.md",
+    "_bmad-output/specs/spec-newrouge-b-route/SPEC.md",
+    "_bmad-output/specs/spec-newrouge-b-route/workflow-contract.md",
+    "_bmad-output/specs/spec-newrouge-b-route/verification-contract.md",
+    "_bmad-output/specs/spec-newrouge-b-route/migration-and-pilot.md",
+    "_bmad-output/planning-artifacts/architecture/architecture-newrouge-b-route-2026-11-03/ARCHITECTURE-SPINE.md",
+    "_bmad-output/planning-artifacts/architecture/architecture-newrouge-b-route-2026-11-03/planning-records.md",
+    "_bmad-output/planning-artifacts/b-route/epics.md",
+    "_bmad-output/implementation-artifacts/b-route/sprint-status.yaml",
+    "_bmad-output/implementation-artifacts/b-route/SPRINT-SCOPE.md"
+  ],
+  "files": [
+    {
+      "path": "_bmad-output/implementation-artifacts/b-route/SPRINT-SCOPE.md",
+      "sha256": "933c4d2fd88e91e4395a7af6473a342349e2be447b15645141431bfcccf1c977",
+      "bytes": 6727,
+      "role": "main-artifact",
+      "source_bytes_preserved": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/b-route/sprint-status.yaml",
+      "sha256": "9b0ec107bcb4b086e50a0a994da081ef8059c60abd44318e987b4569ad4b5a38",
+      "bytes": 7011,
+      "role": "main-artifact",
+      "source_bytes_preserved": true
+    },
+    {
+      "path": "_bmad-output/planning-artifacts/architecture/architecture-newrouge-b-route-2026-11-03/.memlog.md",
+      "sha256": "afa2d1e43c2c4651a39e1a25511d1ca4dc1ecdfb8bfc24c35f5be2bc38ec8510",
+      "bytes": 14863,
+      "role": "companion-or-historical-context",
+      "source_bytes_preserved": true
+    },
+    {
+      "path": "_bmad-output/planning-artifacts/architecture/architecture-newrouge-b-route-2026-11-03/ARCHITECTURE-SPINE.md",
+      "sha256": "8bc0c4522184c610331c0414ca5e571a8bfb8fdc72fffe61fcff976abfbea513",
+      "bytes": 17090,
+      "role": "main-artifact",
+      "source_bytes_preserved": true
+    },
+    {
+      "path": "_bmad-output/planning-artifacts/architecture/architecture-newrouge-b-route-2026-11-03/planning-records.md",
+      "sha256": "41b7129021b55d127149236271513c33a54e133b5577154f8a157c1b1e0f2df8",
+      "bytes": 15418,
+      "role": "main-artifact",
+      "source_bytes_preserved": true
+    },
+    {
+      "path": "_bmad-output/planning-artifacts/architecture/architecture-newrouge-b-route-2026-11-03/result.json",
+      "sha256": "cbad760aa15e8cff84fce4a788bf34622d3db544ecd39eb9392eb5245a2664a2",
+      "bytes": 708,
+      "role": "companion-or-historical-context",
+      "source_bytes_preserved": true
+    },
+    {
+      "path": "_bmad-output/planning-artifacts/architecture/architecture-newrouge-b-route-2026-11-03/reviews/lint-final.json",
+      "sha256": "6ac7195fbc80ca922b30fcbe85145e25a94b596502e86e4815f6d08536f024ac",
+      "bytes": 115,
+      "role": "companion-or-historical-context",
+      "source_bytes_preserved": true
+    },
+    {
+      "path": "_bmad-output/planning-artifacts/architecture/architecture-newrouge-b-route-2026-11-03/reviews/reconcile-baseline.md",
+      "sha256": "5793a24799665148070457ab0628c0894344f73e00149b67cc916701d1084cf0",
+      "bytes": 6478,
+      "role": "companion-or-historical-context",
+      "source_bytes_preserved": true
+    },
+    {
+      "path": "_bmad-output/planning-artifacts/architecture/architecture-newrouge-b-route-2026-11-03/reviews/reconcile-spec.md",
+      "sha256": "7c9d0ec99e81418922640da8437aadea1b41fb34179e15193099bd9e421c40fe",
+      "bytes": 7587,
+      "role": "companion-or-historical-context",
+      "source_bytes_preserved": true
+    },
+    {
+      "path": "_bmad-output/planning-artifacts/architecture/architecture-newrouge-b-route-2026-11-03/reviews/review-adversarial.md",
+      "sha256": "59505483cfff32c93370c948b6cae45b0e9eaefa085609999388755ecc524113",
+      "bytes": 4723,
+      "role": "companion-or-historical-context",
+      "source_bytes_preserved": true
+    },
+    {
+      "path": "_bmad-output/planning-artifacts/architecture/architecture-newrouge-b-route-2026-11-03/reviews/review-editorial.md",
+      "sha256": "e8b338562ab9336be98c1666025ebe86eb6943b5ca8615a4f6bd986faea75d7b",
+      "bytes": 456,
+      "role": "companion-or-historical-context",
+      "source_bytes_preserved": true
+    },
+    {
+      "path": "_bmad-output/planning-artifacts/architecture/architecture-newrouge-b-route-2026-11-03/reviews/review-reality.md",
+      "sha256": "3ca24aa3066842fd2b618f5d1fbfa3b57ac78edb1527128766efa41e3c9bf118",
+      "bytes": 3883,
+      "role": "companion-or-historical-context",
+      "source_bytes_preserved": true
+    },
+    {
+      "path": "_bmad-output/planning-artifacts/architecture/architecture-newrouge-b-route-2026-11-03/reviews/review-rubric.md",
+      "sha256": "74efd92aa45d1dda3031414336c4091fedc130f3c672e83314ec32c2a365579a",
+      "bytes": 9330,
+      "role": "companion-or-historical-context",
+      "source_bytes_preserved": true
+    },
+    {
+      "path": "_bmad-output/planning-artifacts/b-route/REVIEW-HANDOFF.md",
+      "sha256": "a48d8810584ba497368b45b32359746f1f3fbacf988fdde23b34794c7d1f1fe3",
+      "bytes": 10367,
+      "role": "delivery-handoff",
+      "source_bytes_preserved": false
+    },
+    {
+      "path": "_bmad-output/planning-artifacts/b-route/epics.md",
+      "sha256": "6564ee5a816311171f942477bc34ca07b6178aeafda5c4eab2de7d2fff76cceb",
+      "bytes": 198193,
+      "role": "main-artifact",
+      "source_bytes_preserved": true
+    },
+    {
+      "path": "_bmad-output/planning-artifacts/newrouge-b-route-workspace.md",
+      "sha256": "91c7daf680e3541859504c46d860f6a7876cdaacf6ffc9fd16bb6dede5121fce",
+      "bytes": 7638,
+      "role": "companion-or-historical-context",
+      "source_bytes_preserved": true
+    },
+    {
+      "path": "_bmad-output/planning-artifacts/prds/prd-newrouge-b-route-2026-11-03/.memlog.md",
+      "sha256": "96685ee214bac25fdc40568d380dd5e5529fe589e0649b9848dde4ef2527a1df",
+      "bytes": 10315,
+      "role": "companion-or-historical-context",
+      "source_bytes_preserved": true
+    },
+    {
+      "path": "_bmad-output/planning-artifacts/prds/prd-newrouge-b-route-2026-11-03/addendum.md",
+      "sha256": "8d04dea6ae482d6a0419bd385c4ffcc1864881663f97dbfd10442d9c8a69caef",
+      "bytes": 15011,
+      "role": "main-artifact",
+      "source_bytes_preserved": true
+    },
+    {
+      "path": "_bmad-output/planning-artifacts/prds/prd-newrouge-b-route-2026-11-03/baseline-update.md",
+      "sha256": "54bdfab6c0b87044471ec046ae5e322501ab5f1b81a784ee22b33269ee9ae294",
+      "bytes": 6277,
+      "role": "main-artifact",
+      "source_bytes_preserved": true
+    },
+    {
+      "path": "_bmad-output/planning-artifacts/prds/prd-newrouge-b-route-2026-11-03/prd.md",
+      "sha256": "c180829323229068d080f6f073144c5691f8f7a4290228e1529f0151e4eccf3b",
+      "bytes": 25320,
+      "role": "main-artifact",
+      "source_bytes_preserved": true
+    },
+    {
+      "path": "_bmad-output/planning-artifacts/prds/prd-newrouge-b-route-2026-11-03/reconcile-original-requirements.md",
+      "sha256": "12f2adeb9cd519d0b8ab752571b4751ccc7b47e6cd49fe64964c4e576d53679d",
+      "bytes": 13133,
+      "role": "companion-or-historical-context",
+      "source_bytes_preserved": true
+    },
+    {
+      "path": "_bmad-output/planning-artifacts/prds/prd-newrouge-b-route-2026-11-03/result.json",
+      "sha256": "8b34faea4fd6fdd47d9b677743b516fd8fb73d7ac9266de25518811aabffdbfd",
+      "bytes": 451,
+      "role": "companion-or-historical-context",
+      "source_bytes_preserved": true
+    },
+    {
+      "path": "_bmad-output/planning-artifacts/prds/prd-newrouge-b-route-2026-11-03/review-baseline-update.md",
+      "sha256": "c9fa4efe6024c7dc9bd41bd2e1ffe9b3c3eae585d3b62a657a50c04c0d7a1371",
+      "bytes": 5945,
+      "role": "companion-or-historical-context",
+      "source_bytes_preserved": true
+    },
+    {
+      "path": "_bmad-output/planning-artifacts/prds/prd-newrouge-b-route-2026-11-03/review-editorial.md",
+      "sha256": "58efd5c9923f947cc96a9c8a3d348242aa66339dd545867cb78be1c1ebcbdabc",
+      "bytes": 443,
+      "role": "companion-or-historical-context",
+      "source_bytes_preserved": true
+    },
+    {
+      "path": "_bmad-output/planning-artifacts/prds/prd-newrouge-b-route-2026-11-03/review-rubric.md",
+      "sha256": "6f2188cc524bd02c5b3967c374618bb41af7a8ce2cb1aedbafeb15f99a27c82e",
+      "bytes": 6566,
+      "role": "companion-or-historical-context",
+      "source_bytes_preserved": true
+    },
+    {
+      "path": "_bmad-output/planning-artifacts/sources/newrouge-b-route-original-requirements.md",
+      "sha256": "61127cd155c243ce3102fd1004e1d147b6beeb65183a1b8d24a560f09f1fbeb2",
+      "bytes": 51189,
+      "role": "main-artifact",
+      "source_bytes_preserved": true
+    },
+    {
+      "path": "_bmad-output/specs/spec-newrouge-b-route/.memlog.md",
+      "sha256": "1ab35a3af1c2cbf37c9fa96278558aadad540c180144fbbe9fc32595b88fe05a",
+      "bytes": 9806,
+      "role": "companion-or-historical-context",
+      "source_bytes_preserved": true
+    },
+    {
+      "path": "_bmad-output/specs/spec-newrouge-b-route/SPEC.md",
+      "sha256": "4d800350edcd7f68eb4db2e371a072dc6cf0d09975f28dc04dcc0faf391e8450",
+      "bytes": 7719,
+      "role": "main-artifact",
+      "source_bytes_preserved": true
+    },
+    {
+      "path": "_bmad-output/specs/spec-newrouge-b-route/migration-and-pilot.md",
+      "sha256": "c41e8e1e5c807a07f550c1db51c4fce15d37196378bacca57adc1ecff5492dd3",
+      "bytes": 5495,
+      "role": "main-artifact",
+      "source_bytes_preserved": true
+    },
+    {
+      "path": "_bmad-output/specs/spec-newrouge-b-route/result.json",
+      "sha256": "178cd838e6f16fcf9271c0991bc99d70b1d75f63b802c90a04fdef0de7f7bf34",
+      "bytes": 461,
+      "role": "companion-or-historical-context",
+      "source_bytes_preserved": true
+    },
+    {
+      "path": "_bmad-output/specs/spec-newrouge-b-route/verification-contract.md",
+      "sha256": "d0f24b3e306b1c11e768811498cefae1385cb7cfcfd8c00d56565110294030c5",
+      "bytes": 6236,
+      "role": "main-artifact",
+      "source_bytes_preserved": true
+    },
+    {
+      "path": "_bmad-output/specs/spec-newrouge-b-route/workflow-contract.md",
+      "sha256": "60c16a289fbed006143831a2b9f03aed7c16252692d8ae35e55b38cf1ffb52ba",
+      "bytes": 7837,
+      "role": "main-artifact",
+      "source_bytes_preserved": true
+    },
+    {
+      "path": "logs/ci/2026-11-03/b-route-epics/epic-1-approval.json",
+      "sha256": "e14d175d7351ce71feaf8f22bf9cf4dbe139727eb5a32c930077ba3eb0774f4b",
+      "bytes": 563,
+      "role": "selected-evidence",
+      "source_bytes_preserved": true
+    },
+    {
+      "path": "logs/ci/2026-11-03/b-route-epics/epic-2-approval.json",
+      "sha256": "614e02b97c81e6b759bc0100ec907f399ac9970f8de1470043c186e534a90c50",
+      "bytes": 487,
+      "role": "selected-evidence",
+      "source_bytes_preserved": true
+    },
+    {
+      "path": "logs/ci/2026-11-03/b-route-epics/epic-3-approval.json",
+      "sha256": "f4583075f22a013ea641dad779c824c4c56f3f6a0e93b856c9208b6c44d34576",
+      "bytes": 564,
+      "role": "selected-evidence",
+      "source_bytes_preserved": true
+    },
+    {
+      "path": "logs/ci/2026-11-03/b-route-epics/epic-4-approval.json",
+      "sha256": "d28843324fd6f260b029177a1126216964d6eb418c961588d472526c6c2cc941",
+      "bytes": 540,
+      "role": "selected-evidence",
+      "source_bytes_preserved": true
+    },
+    {
+      "path": "logs/ci/2026-11-03/b-route-epics/epic-5-approval.json",
+      "sha256": "698b2178f84d1536dfa754a0ac82b02dfaffb47d60d10f73be96f95166621412",
+      "bytes": 584,
+      "role": "selected-evidence",
+      "source_bytes_preserved": true
+    },
+    {
+      "path": "logs/ci/2026-11-03/b-route-epics/epic-5-cutover-boundary-proposal.md",
+      "sha256": "1a63cd3d68d44c8c31cd2d8a009e02a4ba971053c7f4f994e44896d60d38ef6a",
+      "bytes": 4578,
+      "role": "selected-evidence",
+      "source_bytes_preserved": true
+    },
+    {
+      "path": "logs/ci/2026-11-03/b-route-epics/epic-5-dual-path-input-evidence-proposal.md",
+      "sha256": "e22af5c95ce42af806840cc90094b65866b3f8c2f3ad7f4b98cc584d0c54e0ae",
+      "bytes": 3974,
+      "role": "selected-evidence",
+      "source_bytes_preserved": true
+    },
+    {
+      "path": "logs/ci/2026-11-03/b-route-epics/epic-5-party-discussion.json",
+      "sha256": "dd6b4b3e5f7b178b1e85a0554f69a6f0c6a9670638c72ff1758f1e316a924afb",
+      "bytes": 7042,
+      "role": "selected-evidence",
+      "source_bytes_preserved": true
+    },
+    {
+      "path": "logs/ci/2026-11-03/b-route-epics/existing-epics-hash.json",
+      "sha256": "58a4bb50746e2e3a2a81d02f28257d5af9df6f0ccf9aeab07542b342d196b10a",
+      "bytes": 137,
+      "role": "selected-evidence",
+      "source_bytes_preserved": true
+    },
+    {
+      "path": "logs/ci/2026-11-03/b-route-epics/final-validation.json",
+      "sha256": "854460f2490b98263269fff0a4b4b3508b3fadc9eec3782c0fd465381801ed84",
+      "bytes": 394432,
+      "role": "selected-evidence",
+      "source_bytes_preserved": true
+    },
+    {
+      "path": "logs/ci/2026-11-03/b-route-epics/final-validation.md",
+      "sha256": "9ab4f790552bee990314c78f89a1667cf869824ca88de5e6f7df3053571a4369",
+      "bytes": 30792,
+      "role": "selected-evidence",
+      "source_bytes_preserved": true
+    },
+    {
+      "path": "logs/ci/2026-11-03/b-route-epics/requirements-extraction.json",
+      "sha256": "6d6fc9cd8d140d2db9eb30733be1edb95cb497687ee642e6299fbf8f114937bd",
+      "bytes": 37745,
+      "role": "selected-evidence",
+      "source_bytes_preserved": true
+    },
+    {
+      "path": "logs/ci/2026-11-03/b-route-sprint-planning/generate.json",
+      "sha256": "9765fc866f63526b17b99480cd4c1d5daa56f25cf7f58f94d16d18e5dca9acd5",
+      "bytes": 4016,
+      "role": "selected-evidence",
+      "source_bytes_preserved": true
+    },
+    {
+      "path": "logs/ci/2026-11-03/b-route-sprint-planning/preview.json",
+      "sha256": "467b24ac906d62267855a4276d1cfeff3bc89e2bb0a3518886c0a2d40e6b8e48",
+      "bytes": 4015,
+      "role": "selected-evidence",
+      "source_bytes_preserved": true
+    },
+    {
+      "path": "logs/ci/2026-11-03/b-route-sprint-planning/readiness.json",
+      "sha256": "2056a7d1c530a0a169b43b0da86c67ffa5083cb58297c6191350c2d42ba89864",
+      "bytes": 13749,
+      "role": "selected-evidence",
+      "source_bytes_preserved": true
+    },
+    {
+      "path": "logs/ci/2026-11-03/b-route-sprint-planning/readiness.md",
+      "sha256": "3db0322409c34c1cae242d0f3e32fbcfc265f78ddfda926c13f86b3ec69271c9",
+      "bytes": 2221,
+      "role": "selected-evidence",
+      "source_bytes_preserved": true
+    },
+    {
+      "path": "logs/ci/2026-11-03/b-route-sprint-planning/refresh-preview.json",
+      "sha256": "9da313f054edf162acbd0f4373f340b781bad51ab9cffdb685f28003927506ea",
+      "bytes": 776,
+      "role": "selected-evidence",
+      "source_bytes_preserved": true
+    },
+    {
+      "path": "logs/ci/2026-11-03/b-route-sprint-planning/taskmaster-snapshot.json",
+      "sha256": "b4143cc76e6452fb6edfbb0ad95f640bb3b078addac3979f1a300935de6254df",
+      "bytes": 419,
+      "role": "selected-evidence",
+      "source_bytes_preserved": true
+    },
+    {
+      "path": "logs/ci/2026-11-03/b-route-sprint-planning/validate.json",
+      "sha256": "6932f78fba97802571062a433269e0644b8781c9f98bf273c9250ded428c5ca3",
+      "bytes": 184,
+      "role": "selected-evidence",
+      "source_bytes_preserved": true
+    },
+    {
+      "path": "logs/ci/2026-11-03/bmad-b-route-migration/new-baseline-evidence.md",
+      "sha256": "12b208b4265b04a7ae811a8c9bccbb54ca13b1a3ec673f5992e8a86b72615630",
+      "bytes": 16818,
+      "role": "selected-evidence",
+      "source_bytes_preserved": true
+    }
+  ],
+  "selected_ignored_evidence_count": 20,
+  "selected_ignored_evidence_bytes": 523636,
+  "inherited_dependency_baseline": "cd925bdcae4b61992320773497f7edb729aac244",
+  "original_uncommitted_files_preserved": [
+    "_bmad-output/planning-artifacts/newrouge-b-route-workspace.md",
+    "_bmad-output/implementation-artifacts/b-route/SPRINT-SCOPE.md",
+    "_bmad-output/implementation-artifacts/b-route/sprint-status.yaml",
+    "_bmad-output/party-mode/memories/installed/.memlog.md",
+    "_bmad-output/planning-artifacts/b-route/epics.md"
+  ],
+  "excluded_materials_and_limits": "See REVIEW-HANDOFF.md: omitted draft history, backup, raw test/install logs, local tool configuration and temporary scripts; no implementation/runtime/switch evidence exists for this run.",
+  "independent_review_started": false,
+  "implementation_started": false
+}

@@ -1,0 +1,386 @@
+{
+  "status": "requirements-confirmed-epic-design-in-progress",
+  "skill_step": "step-02-design-epics",
+  "branch": "fix/capability-synthesis-input-integrity",
+  "input_commit": "aa821824d1d2700e79cc615de34698dda12363d3",
+  "input_documents": [
+    {
+      "path": "_bmad-output/specs/spec-newrouge-b-route/SPEC.md",
+      "sha256": "4d800350edcd7f68eb4db2e371a072dc6cf0d09975f28dc04dcc0faf391e8450",
+      "lines": 82
+    },
+    {
+      "path": "_bmad-output/specs/spec-newrouge-b-route/workflow-contract.md",
+      "sha256": "60c16a289fbed006143831a2b9f03aed7c16252692d8ae35e55b38cf1ffb52ba",
+      "lines": 76
+    },
+    {
+      "path": "_bmad-output/specs/spec-newrouge-b-route/verification-contract.md",
+      "sha256": "d0f24b3e306b1c11e768811498cefae1385cb7cfcfd8c00d56565110294030c5",
+      "lines": 55
+    },
+    {
+      "path": "_bmad-output/specs/spec-newrouge-b-route/migration-and-pilot.md",
+      "sha256": "c41e8e1e5c807a07f550c1db51c4fce15d37196378bacca57adc1ecff5492dd3",
+      "lines": 46
+    },
+    {
+      "path": "_bmad-output/planning-artifacts/prds/prd-newrouge-b-route-2026-11-03/addendum.md",
+      "sha256": "8d04dea6ae482d6a0419bd385c4ffcc1864881663f97dbfd10442d9c8a69caef",
+      "lines": 113
+    },
+    {
+      "path": "_bmad-output/planning-artifacts/prds/prd-newrouge-b-route-2026-11-03/baseline-update.md",
+      "sha256": "54bdfab6c0b87044471ec046ae5e322501ab5f1b81a784ee22b33269ee9ae294",
+      "lines": 46
+    },
+    {
+      "path": "_bmad-output/planning-artifacts/architecture/architecture-newrouge-b-route-2026-11-03/ARCHITECTURE-SPINE.md",
+      "sha256": "8bc0c4522184c610331c0414ca5e571a8bfb8fdc72fffe61fcff976abfbea513",
+      "lines": 226
+    },
+    {
+      "path": "_bmad-output/planning-artifacts/architecture/architecture-newrouge-b-route-2026-11-03/planning-records.md",
+      "sha256": "41b7129021b55d127149236271513c33a54e133b5577154f8a157c1b1e0f2df8",
+      "lines": 83
+    },
+    {
+      "path": "_bmad-output/planning-artifacts/prds/prd-newrouge-b-route-2026-11-03/prd.md",
+      "sha256": "c180829323229068d080f6f073144c5691f8f7a4290228e1529f0151e4eccf3b",
+      "lines": 233
+    },
+    {
+      "path": "_bmad-output/planning-artifacts/sources/newrouge-b-route-original-requirements.md",
+      "sha256": "61127cd155c243ce3102fd1004e1d147b6beeb65183a1b8d24a560f09f1fbeb2",
+      "lines": 517
+    }
+  ],
+  "functional_requirements": [
+    {
+      "id": "FR-1",
+      "title": "完整来源记账",
+      "body": "规划者可注册累计来源，先形成完整 Source Block Ledger、Requirement 和需求验收意图，再生成 Task。每个声明来源均可解析、可定位，每个来源块均有语义投影或明确去向；分批读取保留完整性证明。未进入当前 Flow 的需求须有累计去向，包括其他 Flow、共享约束、其他验证、待实施范围或有依据的延期及范围外决定。Task、Capability 或节点数量不能作为覆盖充分条件。承接 BR-01；验收 AC-BR-01、02。"
+    },
+    {
+      "id": "FR-2",
+      "title": "独立来源审计前移",
+      "body": "Task 无关的独立提取、遗漏与冲突核对在 Chapter 3A 完成或有效复用。审计从完整来源及 Ledger 确定范围，不受首轮 Requirement、Task 引用或已选 Flow 裁剪。Chapter 5 继续核对 Task、Acceptance、契约和绑定；相关来源、解析器或审计输入变化时，仅复用仍有效的审计，不能刷新旧 readiness 时间戳代替重查。承接 BR-02；验收 AC-BR-02、09。"
+    },
+    {
+      "id": "FR-3",
+      "title": "零 Task 的正式规划与合法非 Flow 去向",
+      "body": "目标范围没有 Task 或 Chapter 5 Task readiness 时，仍可正式规划、审阅和采纳。已有实现、Task 和共享能力可辅助复用判断，但不成为新规划的必需存在条件。不得依靠假 Task、假 readiness 或草案绕过开关获得正式通过。\n\n全局约束、治理和工具链需求可采用已采纳的非 Flow 验证去向，明确来源理由及其他验证义务。标签或空字段不能构成豁免；规划可采纳与 Task 可实施是不同结论。承接 BR-03；验收 AC-BR-01、21。"
+    },
+    {
+      "id": "FR-4",
+      "title": "Flow 语义及四部分职责",
+      "body": "每条目标 Flow 可解析并回链到稳定身份、来源和 Requirement，包含起点、进入条件、成功终点、必要失败／取消／返回分支、关键交接、状态所有者、可观察结果和验证目标。四部分职责可机器读取；合法重入、重试和玩法循环不被无环图假设拒绝，必要可达性及退出条件须检查，检查能力边界由设计明确。\n\n共享规则、命令、状态和资源引用同一受治理定义。每条 Requirement 保留单一权威验证处置／覆盖 owner；多 Flow 路线成员关系、共享依赖与去重证据另行表达，不重复计完成。允许一条 Flow 跨多个 Capability，也允许 Task 与 Flow 多对多，不强制一节点一 Task、四部分各一 Task或每 Task 同时修改四部分。不适用职责有明确理由。四部分在拆 Task 前及实施前的最低内容见 `addendum.md`“四部分的阶段完整性”。承接 BR-04；验收 AC-BR-03、05。"
+    },
+    {
+      "id": "FR-5",
+      "title": "持久采纳与稳定身份",
+      "body": "正式采纳结果具有持久版本、来源绑定、内容身份和采纳依据，可跨会话恢复、审阅差异并驱动 Task。前置 Flow 与后续 Task／契约／manifest 绑定共享同一 Flow 身份；同一已采纳输入恢复时复用有效结果，不重新解释 GDD 或重新分配身份。显式重规划保留差异及身份对齐，不要求模型输出逐字一致。承接 BR-05；验收 AC-BR-04、06。"
+    },
+    {
+      "id": "FR-6",
+      "title": "从真实缺口生成或复用任务三联",
+      "body": "规划者先核对已有实现、完成 Task、共享能力与验证义务，再从目标 Flow 或合法非 Flow 去向的真实缺口产生任务。Task 可独立实施和局部验证，并回链 Requirement、Acceptance、依赖、实施责任及适用验证义务。\n\n生成沿用业务视图、审阅、编译三联的受治理路径，不让 Agent 随意直写 `tasks.json`。成熟身份与状态受保护，不以固定任务数量或未经实测的单 Task 时长约束拆分。承接 BR-06；验收 AC-BR-01、05、14。"
+    },
+    {
+      "id": "FR-7",
+      "title": "分阶段细化四部分与绑定",
+      "body": "Chapter 3B 定义业务角色和逻辑交接，3C 绑定实施 Task，Chapter 4–5 细化契约、生产命令、只读状态、适配生命周期、场景资源及测试责任。前置规划不要求实际 Task ID、完整代码符号或场景已创建；实施前义务必须足够明确，planned 对象可未建但不被宣称已实现。\n\n检查随阶段覆盖引用、状态所有者、命令与只读边界、四部分责任及交接。真实对象存在后再增加类型、编译、绑定和引擎检查。结构检查不能替代业务语义审阅或运行证明，不为过检创建假节点或假接口。承接 BR-07；验收 AC-BR-03、04、12。"
+    },
+    {
+      "id": "FR-8",
+      "title": "一致的 readiness 与验证适用性",
+      "body": "Chapter 5 核对当前 Task Acceptance、Requirement、适用规划或非 Flow 去向、ADR、Overlay、Contract、依赖及验证义务，处理遗漏、重复责任和无人承接的交接。所有实施输入必须属于同一组当前有效依据。\n\n- 归属 Flow，或承担 MVG 交接、集成、回归义务的 Task，须有有效 manifest 绑定；缺失或过期则拒绝。\n- 合法非 Flow 且确无 MVG 义务的 Task，凭有效的已采纳适用性依据、其他验证义务及共同就绪条件进入实施，不强造 Flow 或 manifest 归属。\n- 适用性未知、依据缺失／损坏／过期／来源不明时拒绝，并报告具体缺口。非 Flow 任务实际影响既有 Flow 时仍须承接相应回归。\n\n相关语义或绑定变化使受影响 readiness 失效，无关变化不迫使全仓重做。进入 Chapter 6 不要求待实施 Task 已完成；纯集成测试 owner 不因新条件产生等待自身完成的死锁，保留 producer／consumer／owner 的适用差异。承接 BR-08；验收 AC-BR-08、09、15、21及原始需求第10节 owner 例外。"
+    },
+    {
+      "id": "FR-9",
+      "title": "全入口消费与局部修复",
+      "body": "公共 CLI、直接实施、恢复及页面触发共享上述门禁。B 来源 Task 必须显式消费有效来源、实施依据、readiness 和适用义务；丢失绑定或来源标识不能落入无义务 legacy 路径。保留单 Task Chapter 6、TDD／检查、评审、Needs Fix、pre-commit、恢复和现行质量底线。\n\nAgent 发现上游定义不足时返回定义所属阶段，不自行弱化 Acceptance、改变状态所有权或绕过绑定。纯实现缺陷不改变已采纳定义时复用有效规划，完成必要 Task 映射、readiness、自检和适用回归；若需新修复 Task，保留旧完成历史。触及玩法定义、契约、所有权、交接／绑定或验收义务的修复返回相应上游阶段。承接 BR-09；验收 AC-BR-08、10、19、23。"
+    },
+    {
+      "id": "FR-10",
+      "title": "提前声明 UI 义务并由 Chapter 7 收口",
+      "body": "Flow 规划提前承接 UI、输入、动画反馈、场景入口及返回条件；相关代码和场景可由 Chapter 6 Task 实施。Chapter 7 面向目标 backlog slice 确认闭环、发现遗漏并通过既有治理路径补缺，不等待全游戏 Task 完成，不重复创建已实现且已验证的同义任务。没有 UI 义务时不强制 Chapter 7。\n\n真实引擎输入、场景方法调用及静态接线分别表达，不互相冒充。承接 BR-10；验收 AC-BR-12、13。"
+    },
+    {
+      "id": "FR-11",
+      "title": "两层验证与完成边界",
+      "body": "Task 局部自检验证规则、接口、绑定和受影响局部行为；Flow 集成在目标链路齐备后验证真实输入、跨层交接、状态变化及最终结果。可共享工具、构建和预热，不建设两套重复框架，也不按每个按钮、节点或代码编辑启动完整 MVG。\n\nFlow 完成须满足全部当前必需义务。planned 条目、关系存在、结构通过、空报告、跳过或未运行都不是运行通过；局部绿色不自动推导 Flow 完成。视觉与手感等人工义务按范围保留；合法非 Flow 按其他已采纳义务验证，影响 Flow 时仍回归。承接 BR-11；验收 AC-BR-10、12、17、21。"
+    },
+    {
+      "id": "FR-12",
+      "title": "真实的影响范围与三类义务",
+      "body": "共享状态、命令、契约、适配、场景资源或测试基础设施变化时，登记全部直接及必要传递影响，包括尚未实现的 Flow。交付范围由有效来源及采纳计划确定；系统产生可审阅、可执行的回归集合，并分别列明：\n\n1. 既有受影响可运行 Flow 的完整必需回归。因本次改动无法运行或失败时须修复后验证，不得改记 planned 或移出范围。\n2. 本次交付范围内新增或尚未完成的义务。未完成保持 pending／blocked，并阻断本次范围完成。\n3. 有依据不属于本次交付范围的未来 Flow 或义务。更新影响、定义／绑定和后续责任，不强制提前实现，不宣称已验证，不从累计验收消失。\n\n同一 Flow 可以同时承载既有回归和新增义务。未知映射保守扩大到适用累计范围，仍按上述三类处理，不把全部 planned 当作可执行回归。不得通过重分类、实现状态过滤或旧 manifest 遗漏本次要求。无法确认本次全部必需义务满足时不得报告完成。\n\n允许保守执行更大范围；若选择性执行，执行器须真正消费范围并报告声明范围、实际执行、待完成及覆盖，推荐排序不等于选择性回归。普通 Flow 收尾与累计里程碑收尾分开，critical、partial 或单 Flow 通过不等于 full-MVG。承接 BR-12；验收 AC-BR-11、17、22。"
+    },
+    {
+      "id": "FR-13",
+      "title": "分别证明规划稳定、应用幂等和证据复用",
+      "body": "同一已采纳输入恢复不重新拆分；同操作身份与相同内容重复应用不重复建任务、施加 delta 或覆盖文件；完整相关输入及验证规则未变时才复用有效证据。\n\n应用具有持久记录和明确恢复点；中断后先核对已落地结果，同身份异内容、损坏证据或后续人工编辑产生可解释冲突，不盲目重放。复用身份覆盖适用来源、采纳规划、Task、契约、绑定、规则及相关依赖，影响结果的工具链和环境也纳入，不能只比较 HEAD、Task ID、文件名或单一正文哈希。单项 Capability 的恢复匹配键、当前依赖／delta 兼容性及运行证据身份分别核对，继承 ADR-0039 的完成项规则。\n\n共享测试结果只在输入、快照、测试身份及验证语义均匹配时供多 Flow 引用；共享预热不共享可变测试状态。最终累计通过使用同一整合快照，不拼接不一致报告。承接 BR-13；验收 AC-BR-06、07、09、17。"
+    },
+    {
+      "id": "FR-14",
+      "title": "存量保护与有界兼容",
+      "body": "新增需求默认 B；旧成熟 Task 的 ID、状态、历史依据和成果保留。更新、拆分、合并、退役有可审阅差异与依据，候选默认值不能覆盖旧状态。旧 Flow 和测试留在累计 manifest；删除、退役或降低义务沿用现有防削弱要求。\n\n旧 done 不证明新义务已通过，新增责任用变更任务或明确更新承接。存量 A 仅在明确适用范围内执行，B 不能通过丢来源标识变为 legacy。兼容需要退出条件，不永久维护两套相互矛盾的规划真相；已采纳的具体退出边界见第7节。承接 BR-14；验收 AC-BR-14、15、19、22。"
+    },
+    {
+      "id": "FR-15",
+      "title": "Knowledge 与操作入口一致",
+      "body": "Knowledge 可定位来源、Requirement、Capability、Flow、四部分、Task、契约、场景和验证义务的关系、缺口及影响。展示区分计划、实现和运行证据，也区分工作区／分支预览、attempt、stable 与 main 发布身份；预览不得推进 current／last-known-good。\n\n规划页面、CLI 支持先规划后任务，显示真实阶段、阻塞原因及恢复位置，不统一以 Task readiness 阻断前置规划。Chapter 6 不隐式全局刷新 Knowledge，Agent 消费明确绑定定义及原始证据，不依赖页面摘要或临时重扫推断依据。承接 BR-15；验收 AC-BR-08、16。"
+    },
+    {
+      "id": "FR-16",
+      "title": "有界完整输入与失败成本",
+      "body": "保留输入完整性、隔离分析、独立语义核对、候选采纳和失败预算保护，只调整其所属阶段。大 GDD、长报告和多 Flow 以有界批次处理，跨批共享义务和引用仍完整，禁止静默截断。下游失败时，复用输入未变、已完成并持久化且仍有效的上游成果。MVG 新执行只恢复已提交完成项，不恢复未完成模型候选／修复／检查／评选上下文；Capability 的显式证据恢复按其独立规则处理。\n\n记录规划、任务生成、局部验证、Flow 验证和修复的耗时、模型调用及复用；无确定性进展停止无效重试并保留恢复原因。成本及复用记录用于诊断重复工作和失败开销，不将成本下降、固定 Task 时长或提速比例作为路线改造验收条件。承接 BR-16；验收 AC-BR-09、20。"
+    },
+    {
+      "id": "FR-17",
+      "title": "生产者与消费者完整迁移",
+      "body": "迁移覆盖来源与规划生产者、业务视图生成及三联编译、Chapter 4–7、manifest 校验与执行、Knowledge／规划页面、CLI、Skill、文档和测试，不能仅凭修改 `workflow.md` 判定迁移完成。新旧格式、合法缺失、损坏和未知版本具有可验证且不同的行为；迁移明确输入输出、身份保留及恢复方式。\n\nAGENTS 路由、阶段文档、公共入口和示例指向同一实际流程。最终须对最小必要的规划依据、定义和迁移说明进行版本管理；过程日志遵守 `logs/**` 规则，不要求全部提交 Git。Chapter 顺序及新采纳记录治理须有显式 ADR 演进，不默改现有派生拓扑的权威边界。承接 BR-17；验收 AC-BR-16、19。"
+    },
+    {
+      "id": "FR-18",
+      "title": "奖励真实切片及两条迁移路径",
+      "body": "采用 `combat-reward-return` 为存量迁移与真实消费者试点，保留 Flow 身份及有效责任映射。最小业务改动是将奖励领取／跳过／返回链路收敛到生产命令、只读状态和必要 C# 场景适配；保留现有玩法、候选锁定、地图路由及原生场景布局、美术、动画可编辑区域。\n\n两条路径分别证明：已有 Task／Flow 的增量承接不重建成熟身份；所选奖励适配变更能在尚无该变更实施 Task／readiness 时先完成正式 B 规划，再按实际缺口产生或复用任务，走通 Chapter 4–7 和适用 MVG。两条路径不要求制造第二个同义 Flow、同义 Task 或新奖励玩法。\n\n试点从既有战斗结果进入路由所属独立 Reward 场景开始，到领取或跳过后按规定路由返回 Map 并完成受控状态写回结束。覆盖重复提交、重入／Continue 保持候选及顺序、不重复写回、必要绑定断开及输入漂移反例。玩家行为与自动验证调用同一真实生产业务路径；fixture 初始化与玩家动作证据分开，不能靠测试命名入口或可变内部状态冒充生产接口。\n\n只迁移承担该链路职责的必要适配与绑定，不重构 Combat／Map 全部实现或全仓 GDScript；公开契约只在确有新增或改变公共边界时受治理地更新。试点须有 Windows／Godot／C# 原始证据；关系导入、图生成或 schema 通过不足以完成。承接 BR-18；验收 AC-BR-18，并结合 AC-BR-06–09、12–15、19、21–23。"
+    }
+  ],
+  "architecture_rules": [
+    {
+      "id": "AD-1",
+      "title": "权威与依赖方向 [ADOPTED]",
+      "rule": "来源与有效 ADR 管语义，采纳记录只保存从属来源的规划决定；Taskmaster 管唯一任务状态，Core 契约源码管程序契约，manifest 管累计义务，原始运行证据证明对应快照结果。派生拓扑不反写这些权威；游戏运行不依赖规划工具。新增治理及 Chapter 顺序通过显式 ADR 演进落实。"
+    },
+    {
+      "id": "AD-2",
+      "title": "语义采纳与实施就绪分阶段 [ADOPTED]",
+      "rule": "3A 独立来源审计、3B 无 Task 正式采纳、3C 任务承接和4–5实施绑定使用不同阶段检查。3B 不要求 Task ID、readiness、完整代码符号或已建场景；5才检查当前 Task 的具体义务。现有后置 planner gate 通过显式阶段适配演进，不能以 draft 开关、假 Task／witness 绕过。"
+    },
+    {
+      "id": "AD-3",
+      "title": "共享版本化记录与单一编解码",
+      "rule": "`docs/planning/b-route/` 存最小采纳、绑定、策略及提交记录；语义计划与绑定各自有不可变修订。一个受治理 schema／codec 模块拥有 `planning-records.md` 的公共形状、版本、路径、hash 与错误合同，各消费者调用它；不复制私有解析器。未知、损坏或缺失的必需格式阻断，迁移不静默降级。"
+    },
+    {
+      "id": "AD-4",
+      "title": "稳定身份与需求核算分离 [ADOPTED]",
+      "rule": "复用既有 Requirement／Flow／Task 身份；新身份由采纳操作持久分配且查重，重试不再分配，改义保留 lineage 和差异。Flow 可跨 Capability，Task 与 Flow 多对多。继承现有 route-membership、unique-verification、shared-evidence 三组键及 `coverage_table` 兼容投影，不按路线数增加完成计数或复制规则正文。"
+    },
+    {
+      "id": "AD-5",
+      "title": "B 来源不可通过缺失信息退回 A",
+      "rule": "切换策略及冻结 A 清单为必需版本化输入；只有 Task 定义／来源仍符合冻结边界且无当前 B 义务者可走 A。B origins 与 Task／计划引用双向一致，B 归属不可删回 A。策略、catalog、origins 或依据缺失／损坏／未知时拒绝，不从“没找到 trace”推断 legacy。"
+    },
+    {
+      "id": "AD-6",
+      "title": "全入口共享 InputSet 门禁",
+      "rule": "Chapter5／6、direct CLI、resume／route 和页面调用同一 InputSet resolver／gate；核对来源、采纳、Task 定义、Acceptance、绑定、readiness 及适用义务。Flow／MVG 责任须有有效 manifest；合法无 MVG 非 Flow 须有已采纳适用性与其他验证。未知则拒绝。入口不要求当前 Task 已 done，producer／consumer／integration-only owner 按实际责任检查，不造 owner API。"
+    },
+    {
+      "id": "AD-7",
+      "title": "三联写入与任务状态归属 [ADOPTED]",
+      "rule": "先盘点已有实现、完成Task、共享能力、四部分及验证责任，再仅为真实缺口产生经审阅的业务视图 delta，由既有三联编译路径写任务；保留 ID、状态、历史及严格 join。定义 fingerprint 与可变状态分开；依赖／运行参与者状态由入口另做实时资格检查。编译提交须合并当前状态并对整文件前像作冲突检查，不恢复 journal 中的旧状态覆盖新进度。"
+    },
+    {
+      "id": "AD-8",
+      "title": "journal 恢复与一致提交可见性",
+      "rule": "复用 journal，在项目操作锁下绑定 operation ID、请求内容、全部 authority 与目标 before／after 身份，写持久 pending；预检及逐目标写前复核，冲突不覆盖。全部目标与最小提交 receipt 完成验证后，最后原子发布单一 catalog；消费者复验 receipt、当前相关目标及 catalog 前后身份，不仅看 pending 是否存在。未知提交、中断或占用须消歧／阻断；完成操作同内容 no-op，同 ID 异内容冲突。具体协议见伴随文件。"
+    },
+    {
+      "id": "AD-9",
+      "title": "继承完成项恢复与 worker 边界 [ADOPTED]",
+      "rule": "保持 ADR-0039 的单项规范化内容匹配、历史冻结 proof、当前依赖／delta 校验与独立 adoption receipt；只复用已提交完成 checkpoint。独立 worker 无权推进 selected；协调器掌握复验、提交及持久预算；epoch／reopen 撤销继续生效。新 MVG 执行不恢复未完成候选／修复／检查／评选上下文。Capability 显式证据恢复及正式 apply journal 分别遵守其原合同。"
+    },
+    {
+      "id": "AD-10",
+      "title": "相关输入与运行快照分别绑定",
+      "rule": "InputSet digest 覆盖当前相关来源、采纳修订、Task 定义／Acceptance、契约／绑定、适用义务、依赖闭包、检查规则及影响结果的工具／环境；不把整个 catalog hash、无关 Git 提交或可变 Task 状态等同语义改变。raw frozen proof 与声明的规范化视图分存并注明 codec。未知依赖保守扩大。最终运行结论沿现有 formal receipt／inventory／snapshot manifest，累计通过不得拼接不同整合快照。"
+    },
+    {
+      "id": "AD-11",
+      "title": "影响与执行共用范围合同",
+      "rule": "从受治理反向引用与累计 delta 计算必要传递影响，含 planned Flow；未知扩大后仍区分既有必需回归、本次交付新增和范围外未来义务。真实执行器消费同一范围合同，报告声明／实际／未执行／人工及覆盖，按有效身份去重共享测试。坏掉的既有 Flow 须修后回归；本次未完阻断，未来责任保留。Flow／partial／critical 不授权里程碑 full-MVG。"
+    },
+    {
+      "id": "AD-12",
+      "title": "四部分定义与循环检查 [ADOPTED]",
+      "rule": "3B 完整定义四部分逻辑责任、状态所有者及交接；Task 只承接适用部分，4–5细化生产命令、只读状态、类型／生命周期／资源绑定。确定性检查引用、边界唯一性、必要可达性、循环分量及声明退出；独立语义审阅覆盖条件与交接，不承诺证明任意程序终止。真实对象出现后补编译、类型、绑定及引擎检查；planned 不是实现证据。"
+    },
+    {
+      "id": "AD-13",
+      "title": "修复与 UI 复用 [ADOPTED]",
+      "rule": "纯实现缺陷复用当前有效采纳，仍完成必要映射、readiness、自检与受影响回归；改定义／契约／所有权／交接／义务则回 owning stage 做受治理 delta。Chapter7 只收口目标 slice，复用6已验证 UI；真实输入、场景方法、静态接线及人工义务分别取证，局部 PASS 不推导 Flow 完成。"
+    },
+    {
+      "id": "AD-14",
+      "title": "奖励生产边界 [ADOPTED]",
+      "rule": "保 `combat-reward-return` 身份、独立 route-owned Reward、Map 返回归属及候选／RNG／存档约束；只迁移所选生产命令、只读状态和必要 C# 薄适配／绑定。玩家与自动验证走同一业务入口，fixture 隔离；Core／Contracts BCL-only，原生场景与人工区域保留。公共契约真实变化才同步源码、Overlay 和 contractRefs。"
+    },
+    {
+      "id": "AD-15",
+      "title": "完整来源与候选准入 [ADOPTED]",
+      "rule": "3A 从完整累计来源与 Ledger 独立核对；后续仅按受治理闭包投影模型相关输入，保适用原文、全局记账及守恒 proof。复用现有无损传输、机器先行、独立语义 admission、隔离及稳定预算；未知／歧义保留，真正容量不足停止而不裁剪。执行故障、语义硬问题及预算终止分开。规划、Task生成、局部／Flow验证及返工均记录可追溯耗时、实际调用、复用和重复执行；观测不设提速门槛，不将预算预留当已观察费用。"
+    },
+    {
+      "id": "AD-16",
+      "title": "派生展示与统一诊断 [ADOPTED]",
+      "rule": "Knowledge 读取提交身份，只读展示计划／实现／运行及分支／workspace／attempt／stable／main。committed prefix 可显示部分规划但不授权运行完成；preview 不写 current／last-known-good，6不隐式全局 refresh。所有入口使用共享 reason_code／stage／entity／expected／actual／resume_ref 诊断，不能以摘要替代原始绑定输入。"
+    },
+    {
+      "id": "AD-17",
+      "title": "本地操作与环境边界",
+      "rule": "新增能力运行于现有 Windows 工作站／CI 和既有 Python 编排，schema／文件门禁不依赖再次调用模型；无新数据库或分布式服务。最小治理记录入版本管理，原始 journal／调用与运行证据放 `logs/**`。受管写者共用项目锁；写入期间目标不支持并行人工编辑，发现后编辑或无法获得写入条件即冲突停止。Windows 占用／中断／重启故障注入通过前不切换默认 B；沿用现有平台、权限及 trusted-ref 发布规则。"
+    },
+    {
+      "id": "AD-18",
+      "title": "有界迁移与退出 [ADOPTED]",
+      "rule": "按已采纳五批交付，先固定／冻结A、建立正式无 Task 路径，再接入三联／4–7、真实执行与操作面，奖励双路径取证后切换新增默认 B。全部生产者／消费者／Skill／路由／示例及版本合同同步；活跃A完成或迁入且恢复测试通过后撤除其写入兼容，保历史读取。退役／减义务及回退都经差异审阅和防削弱检查；回退为有依据的补偿操作，保留后编辑与 B 来源。"
+    }
+  ],
+  "ux_contracts_found": [],
+  "root_existing_epics_preserved": true,
+  "planned_output": "_bmad-output/planning-artifacts/b-route/epics.md",
+  "epics_created": false,
+  "stories_created": false,
+  "taskmaster_modified": false,
+  "non_functional_requirements": [
+    {
+      "id": "NFR-E-1",
+      "title": "平台与领域边界",
+      "requirement": "保持Windows-only、Godot.NET.Sdk4.5.1、C#／net8.0及现有SDK策略；Core与Game.Core/Contracts保持BCL-only，Godot薄适配不复制领域裁决，原生场景／人工区域可编辑。",
+      "source": "PRD§5；SPEC Constraints；AD-14/17"
+    },
+    {
+      "id": "NFR-E-2",
+      "title": "权威与完整任务体系",
+      "requirement": "来源和有效ADR管语义，Taskmaster三联保留唯一任务状态，契约源码／manifest／运行报告各守权威，Knowledge只派生；不建立第二Task或MVG完成状态机。",
+      "source": "PRD§2/5/6；AD-1/7/16"
+    },
+    {
+      "id": "NFR-E-3",
+      "title": "追溯与新鲜度",
+      "requirement": "正式义务可定位当前来源、采纳修订、Task定义／Acceptance、契约／绑定及验证规则；相关变更精确失效，无关HEAD／catalog／其他Task状态不使全仓重做。",
+      "source": "PRD FR-8/13、§5；AD-10"
+    },
+    {
+      "id": "NFR-E-4",
+      "title": "恢复可靠性",
+      "requirement": "同ID同内容幂等、异内容冲突，中断先核对完整相关输入和目标；保后续编辑与历史proof，仅按工作流资格复用有效已提交成果，不盲重放或重置预算。",
+      "source": "PRD FR-13/16；AD-8/9；ADR-0039"
+    },
+    {
+      "id": "NFR-E-5",
+      "title": "输入完整性与有界处理",
+      "requirement": "大输入分批但正文／对象／引用完整，保raw proof和全局守恒；机器校验先行、独立语义审阅，未知／歧义不静默裁剪，容量不足和无进展按既有预算停止。",
+      "source": "PRD FR-1/2/16；AD-15"
+    },
+    {
+      "id": "NFR-E-6",
+      "title": "证据真实性",
+      "requirement": "结构、编译、静态接线、场景方法、真实引擎输入及人工义务分开；planned／空／跳过不算运行通过；最终累计验证同整合快照，引用共享结果需输入／测试身份／语义／环境匹配且状态隔离。",
+      "source": "PRD FR-7/10/11/12/13；AD-11/13"
+    },
+    {
+      "id": "NFR-E-7",
+      "title": "存量和质量底线",
+      "requirement": "成熟ID／状态／历史／成果及累计Flow／test保留，更新／拆合／退役有差异和授权，候选默认值不能覆盖旧状态；沿用现有P1必修、NeedsFix、xUnit／GdUnit4、回归及分支保护。",
+      "source": "PRD FR-14、§5；AD-7/18"
+    },
+    {
+      "id": "NFR-E-8",
+      "title": "文件与证据管理",
+      "requirement": "文档UTF-8、中文沟通，代码／脚本／测试／注释／打印遵守英文约定；最小治理定义与迁移说明版本化，原始journal／调用／运行证据按logs管理，不要求全提交。",
+      "source": "PRD§5、FR-17；AD-3/17"
+    },
+    {
+      "id": "NFR-E-9",
+      "title": "有限工作范围与重复工作控制",
+      "requirement": "本期仅B工作流与奖励所选适配边界；纯实现修复复用有效规划，Chapter6不隐式全局Knowledge重建，不按按钮／节点／每次编辑全量MVG，不为回归强迫提前实现范围外Flow。",
+      "source": "PRD FR-9/11/12/15、§6；AD-13/16/18"
+    },
+    {
+      "id": "NFR-E-10",
+      "title": "路线目标与过程观测",
+      "requirement": "目标是先规划后Task的路线成立，不设提速、成本下降、两小时、固定Task数／时长门槛；保各阶段实测耗时／调用／复用／重复与返工记录，unknown不冒充实测或费用。",
+      "source": "用户确认；PRD§7.3/8；AD-15"
+    },
+    {
+      "id": "NFR-E-11",
+      "title": "统一失败与发布边界",
+      "requirement": "必需依据缺失、损坏、未知版本、输入漂移及未发布状态统一failclosed并给可恢复诊断；preview／attempt／workspace／stable／main身份分开，预览不推进canonical指针，部分规划不授予运行完成。",
+      "source": "PRD FR-8/9/15/17；AD-5/6/16"
+    }
+  ],
+  "additional_requirement_supplements": [
+    {
+      "id": "AR-19",
+      "title": "共享记录与写者",
+      "requirement": "实现一处公共schema／codec及计划、绑定、策略、origins、commit、catalog六类版本化合同；plan与binding独立单调修订，同Flow／共享定义唯一owner；新记录从属来源，派生topology不升权。",
+      "source": "planning-records§记录与写入归属；AD-3/4"
+    },
+    {
+      "id": "AR-20",
+      "title": "类型、路径和规范化",
+      "requirement": "公共引用仓库相对POSIX、明确schema／ID／修订和digest；拒绝根外路径／符号链接、重复JSON键、非法类型／未知schema／非有限数；canonical对象排版无关，数组序／类型／字符串值保留，raw proof另存。",
+      "source": "planning-records§引用、类型及内容身份"
+    },
+    {
+      "id": "AR-21",
+      "title": "Task状态与定义指纹分开",
+      "requirement": "初版可变allowlist仅Task／subtask.status，冻结verification_mode／codec／投影digest；提交保raw前后像，后续按相关Task定义＋实时资格检查，完成no-op不回写旧状态；未完成冲突先停止。",
+      "source": "planning-records§引用、类型及内容身份；AD-7/10"
+    },
+    {
+      "id": "AR-22",
+      "title": "来源分类和零Task bootstrap",
+      "requirement": "策略／catalog／origins为必需治理输入，冻结A资格及完整反向Task索引，B不可删回A；3B可无Task映射及空Task bootstrap，不造Task或Chapter5 witness；合法非Flow需采纳理由与其他验证，真实MVG影响仍绑定。",
+      "source": "planning-records§记录与写入归属、Task来源分类和非Flow；AD-2/5/6"
+    },
+    {
+      "id": "AR-23",
+      "title": "应用发布和租约",
+      "requirement": "复用journal和既有锁，执行prepare/reserve/apply/verify/publish/recover；同操作内容绑定、前后像及authority复核，receipt排除自身／catalog输出hash以免循环，catalog最后发布；scope租约按统一顺序，长模型／运行不持全局metadata锁。",
+      "source": "planning-records§共享apply与恢复协议；AD-8/17"
+    },
+    {
+      "id": "AR-24",
+      "title": "已有pending、完成项与清理",
+      "requirement": "共享gate识别既有capability-apply.pending.json及原journal，未知scope保守阻断；无pending clone仍核提交链。继承ADR-0039原proof／新adoption、独立worker／父协调器复验、稳定预算、epoch／reopen撤销；本地clear不删除正式版本化采纳或累计基线。",
+      "source": "planning-records§共享apply与恢复协议；baseline-update；AD-9"
+    },
+    {
+      "id": "AR-25",
+      "title": "真实验证范围接口",
+      "requirement": "按注册反向边和累计delta推导传递影响；VerificationScope绑定plan／manifest／基线／InputSet，执行器回执列声明／实际／未运行及原因／人工／覆盖，未知扩大仍三分类，复用测试需有效同快照身份，不把recommend排序当选择执行。",
+      "source": "planning-records§影响与执行范围接口；AD-11"
+    },
+    {
+      "id": "AR-26",
+      "title": "诊断和观测生产责任",
+      "requirement": "共用reason_code／stage／entity_id／expected／actual／resume_ref，显式null不授权；阶段执行者写带run/operation、scope、stage、attempt的实测观测，同event去重，预算预留和暂停墙钟不作账单。",
+      "source": "planning-records§诊断与实施接入；AD-15/16"
+    },
+    {
+      "id": "AR-27",
+      "title": "当前实现与改造缺口",
+      "requirement": "当前基线已有无损输入、分阶段synthesis、真实模型身份、逐Capability三候选／checkpoint／worker／完成项恢复／全局audit；继承不重造，正式无Task/readiness规划仍是待改造缺口。现有代码和旧窄架构的TARGET字样按当前源码/ADR事实解释。",
+      "source": "baseline-update；架构DesignParadigm与AD-2/9"
+    },
+    {
+      "id": "AR-28",
+      "title": "消费者、ADR和切换前反例",
+      "requirement": "接入来源审计、planner、三联compiler、4/5、_mvg_obligations和6direct/route/resume、7、manifest/runner/milestone、Knowledge/页面/CLI/Skill/文档测试；schema共同产物前置，启用前覆盖缺origin/manifest、旧pending、journal损坏、崩溃点、后编辑、共享Task、状态并发、epoch/nonFlow/owner反例，Chapter/权威演进显式ADR。",
+      "source": "planning-records§诊断与实施接入；AD-17/18"
+    }
+  ],
+  "starter_template": "Not applicable: brownfield newrouge; retain existing project/toolchain, no new application starter.",
+  "ux_requirements": "No independent UX DESIGN/EXPERIENCE supplied; approved UI duties retained in FR10/15/18 and architecture record; no invented design-token/component/visual-redesign requirements.",
+  "authorization_note": "Latest user explicitly authorized bmad-create-epics-and-stories; earlier completed-chain stop/no-story wording describes that prior execution phase, not a product prohibition on this new authorized decomposition. No implementation/Taskmaster apply/push authorized.",
+  "extraction_id_semantics": "FR IDs retain upstream identity. NFR-E and AR inventory IDs are local extraction references, not newly adopted game Requirement IDs, Task IDs, or task-state authority.",
+  "input_set_confirmation": "用户确认：按上述文档范围继续",
+  "requirements_draft_created": true,
+  "requirements_confirmed": true,
+  "requirements_confirmation": "C"
+}

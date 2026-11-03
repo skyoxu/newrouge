@@ -1,0 +1,8 @@
+{
+  "ok": true,
+  "action": "validate",
+  "status_file": "_bmad-output/implementation-artifacts/b-route/sprint-status.yaml",
+  "valid": true,
+  "problems": [],
+  "legacy_mapped": []
+}

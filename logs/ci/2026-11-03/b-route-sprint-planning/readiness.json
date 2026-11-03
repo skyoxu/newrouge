@@ -1,0 +1,550 @@
+{
+  "workflow": "bmad-sprint-planning",
+  "intent": "sprint-planning",
+  "verdict": "PASS",
+  "date": "11-03-2026 17:10",
+  "timezone": "Asia/Shanghai",
+  "branch": "fix/capability-synthesis-input-integrity",
+  "counts": {
+    "epics": 5,
+    "stories": 49,
+    "acceptance_scenarios": 256
+  },
+  "inputs": [
+    {
+      "path": "_bmad-output/specs/spec-newrouge-b-route/SPEC.md",
+      "sha256": "4d800350edcd7f68eb4db2e371a072dc6cf0d09975f28dc04dcc0faf391e8450"
+    },
+    {
+      "path": "_bmad-output/specs/spec-newrouge-b-route/workflow-contract.md",
+      "sha256": "60c16a289fbed006143831a2b9f03aed7c16252692d8ae35e55b38cf1ffb52ba"
+    },
+    {
+      "path": "_bmad-output/specs/spec-newrouge-b-route/verification-contract.md",
+      "sha256": "d0f24b3e306b1c11e768811498cefae1385cb7cfcfd8c00d56565110294030c5"
+    },
+    {
+      "path": "_bmad-output/specs/spec-newrouge-b-route/migration-and-pilot.md",
+      "sha256": "c41e8e1e5c807a07f550c1db51c4fce15d37196378bacca57adc1ecff5492dd3"
+    },
+    {
+      "path": "_bmad-output/planning-artifacts/prds/prd-newrouge-b-route-2026-11-03/addendum.md",
+      "sha256": "8d04dea6ae482d6a0419bd385c4ffcc1864881663f97dbfd10442d9c8a69caef"
+    },
+    {
+      "path": "_bmad-output/planning-artifacts/prds/prd-newrouge-b-route-2026-11-03/baseline-update.md",
+      "sha256": "54bdfab6c0b87044471ec046ae5e322501ab5f1b81a784ee22b33269ee9ae294"
+    },
+    {
+      "path": "_bmad-output/planning-artifacts/architecture/architecture-newrouge-b-route-2026-11-03/ARCHITECTURE-SPINE.md",
+      "sha256": "8bc0c4522184c610331c0414ca5e571a8bfb8fdc72fffe61fcff976abfbea513"
+    },
+    {
+      "path": "_bmad-output/planning-artifacts/architecture/architecture-newrouge-b-route-2026-11-03/planning-records.md",
+      "sha256": "41b7129021b55d127149236271513c33a54e133b5577154f8a157c1b1e0f2df8"
+    },
+    {
+      "path": "_bmad-output/planning-artifacts/prds/prd-newrouge-b-route-2026-11-03/prd.md",
+      "sha256": "c180829323229068d080f6f073144c5691f8f7a4290228e1529f0151e4eccf3b"
+    },
+    {
+      "path": "_bmad-output/planning-artifacts/sources/newrouge-b-route-original-requirements.md",
+      "sha256": "61127cd155c243ce3102fd1004e1d147b6beeb65183a1b8d24a560f09f1fbeb2"
+    },
+    {
+      "path": "_bmad-output/planning-artifacts/b-route/epics.md",
+      "sha256": "6564ee5a816311171f942477bc34ca07b6178aeafda5c4eab2de7d2fff76cceb"
+    }
+  ],
+  "checks": [
+    {
+      "check": "source_snapshot",
+      "result": "PASS",
+      "evidence": "Ten canonical input SHA256 values match the approved Epic input snapshot."
+    },
+    {
+      "check": "finalized_intent",
+      "result": "PASS",
+      "evidence": "PRD, SPEC with seven companions, architecture and final approved epics are explicitly bound; old MVG optimization epics excluded."
+    },
+    {
+      "check": "bidirectional_traceability",
+      "result": "PASS",
+      "evidence": "Reused final-validation semantic matrices for 18 FR, 11 NFR, 28 AR and 23 original AC, with unchanged canonical inputs and approved Story content."
+    },
+    {
+      "check": "dependencies",
+      "result": "PASS",
+      "evidence": "All 49 Story prerequisites refer only to prior Stories. Epic-level staged independent value is documented; 5.11 does not depend on actual retirement 5.10."
+    },
+    {
+      "check": "architecture_and_ux",
+      "result": "PASS",
+      "evidence": "Versioned file/journal/common gate contracts and phased bindings recorded; existing page structure and Reward UI retained with explicit input/production/adapter boundaries. No missing standalone UX decision is required."
+    },
+    {
+      "check": "governance_sequence",
+      "result": "PASS",
+      "evidence": "Story 1.1 read-only inventory precedes Story 1.2 ADR evolution, which precedes new schema/behavior. Current accepted ADRs continue to govern until reviewed evolution."
+    },
+    {
+      "check": "status_authority",
+      "result": "PASS",
+      "evidence": "Sprint tracking is a non-authoritative BMAD planning view. Taskmaster remains the sole Task status authority; no real IDs allocated or statuses changed."
+    },
+    {
+      "check": "conditional_retirement",
+      "result": "PASS",
+      "evidence": "Story 5.10 is not eligible for execution until real exit conditions are proven. 5.8 default-B and 5.11 compensation have separate prerequisites; Epic 5 cannot be declared done while 5.10 is blocked."
+    }
+  ],
+  "implementation_conditions": [
+    "Task mapping/adoption and applicable Chapter 4/5 checks are still required before implementation; Story approval does not establish Task readiness.",
+    "Windows/Godot execution evidence must be produced during implementation; no runtime acceptance was run in this planning session.",
+    "Story 5.10 remains conditionally blocked until actual retirement prerequisites are proven."
+  ],
+  "method": "Primary-agent implementation-readiness assessment plus deterministic input, dependency and tracking checks; not an independent external review.",
+  "story_dependencies": [
+    {
+      "id": "1.1",
+      "title": "生成可复查的当前基线与消费者盘点",
+      "dependencies": []
+    },
+    {
+      "id": "1.2",
+      "title": "明确B阶段顺序、记录权威及迁移启用规则",
+      "dependencies": [
+        "1.1"
+      ]
+    },
+    {
+      "id": "1.3",
+      "title": "统一核验文件引用与规范化内容身份",
+      "dependencies": [
+        "1.1",
+        "1.2"
+      ]
+    },
+    {
+      "id": "1.4",
+      "title": "按唯一公共schema校验六类规划记录",
+      "dependencies": [
+        "1.3"
+      ]
+    },
+    {
+      "id": "1.5",
+      "title": "形成可审阅的成熟成果保护基准与冻结A输入",
+      "dependencies": [
+        "1.1",
+        "1.2",
+        "1.3",
+        "1.4"
+      ]
+    },
+    {
+      "id": "1.6",
+      "title": "通过只读预检审阅迁移差异与阻断原因",
+      "dependencies": [
+        "1.1",
+        "1.2",
+        "1.3",
+        "1.4",
+        "1.5"
+      ]
+    },
+    {
+      "id": "2.1",
+      "title": "在Task之前形成累计来源Ledger与需求验收意图",
+      "dependencies": [
+        "1.1",
+        "1.2",
+        "1.3",
+        "1.4",
+        "1.5",
+        "1.6"
+      ]
+    },
+    {
+      "id": "2.2",
+      "title": "从完整来源独立审计遗漏与冲突",
+      "dependencies": [
+        "2.1"
+      ]
+    },
+    {
+      "id": "2.3",
+      "title": "准备Task无关且完整的规划输入",
+      "dependencies": [
+        "2.1",
+        "2.2"
+      ]
+    },
+    {
+      "id": "2.4",
+      "title": "描述可审阅的Flow及合法非Flow验证去向",
+      "dependencies": [
+        "2.3"
+      ]
+    },
+    {
+      "id": "2.5",
+      "title": "通过独立准入与有界评选选出可采纳候选",
+      "dependencies": [
+        "2.3",
+        "2.4"
+      ]
+    },
+    {
+      "id": "2.6",
+      "title": "冻结采纳操作并持久分配稳定身份",
+      "dependencies": [
+        "2.5",
+        "1.5",
+        "1.6"
+      ]
+    },
+    {
+      "id": "2.7",
+      "title": "一致提交采纳目标并以catalog发布",
+      "dependencies": [
+        "2.6"
+      ]
+    },
+    {
+      "id": "2.8",
+      "title": "按journal恢复中断并保留后编辑",
+      "dependencies": [
+        "2.7"
+      ]
+    },
+    {
+      "id": "2.9",
+      "title": "复用已提交完成规划并遵守epoch与reopen撤销",
+      "dependencies": [
+        "2.3",
+        "2.5",
+        "2.7",
+        "2.8"
+      ]
+    },
+    {
+      "id": "2.10",
+      "title": "从正式规划入口完成零Task采纳与跨会话复验",
+      "dependencies": [
+        "2.1",
+        "2.2",
+        "2.3",
+        "2.4",
+        "2.5",
+        "2.6",
+        "2.7",
+        "2.8",
+        "2.9"
+      ]
+    },
+    {
+      "id": "3.1",
+      "title": "从复用盘点形成真实缺口的任务变更预览",
+      "dependencies": [
+        "2.10"
+      ]
+    },
+    {
+      "id": "3.2",
+      "title": "受治理编译三联与3C绑定并保留当前任务状态",
+      "dependencies": [
+        "3.1",
+        "2.6",
+        "2.7",
+        "2.8"
+      ]
+    },
+    {
+      "id": "3.3",
+      "title": "统一判定Task来源及完整适用计划集合",
+      "dependencies": [
+        "3.2"
+      ]
+    },
+    {
+      "id": "3.4",
+      "title": "在Chapter4细化生产契约与四部分实施定义",
+      "dependencies": [
+        "3.2",
+        "3.3"
+      ]
+    },
+    {
+      "id": "3.5",
+      "title": "构造共同InputSet并精确判断新鲜度",
+      "dependencies": [
+        "3.3",
+        "3.4"
+      ]
+    },
+    {
+      "id": "3.6",
+      "title": "绑定真实MVG义务或合法其他验证依据",
+      "dependencies": [
+        "3.4",
+        "3.5"
+      ]
+    },
+    {
+      "id": "3.7",
+      "title": "在Chapter5核对同源定义并形成有效readiness",
+      "dependencies": [
+        "3.5",
+        "3.6"
+      ]
+    },
+    {
+      "id": "3.8",
+      "title": "让直接Chapter6与公共CLI消费统一实施门禁",
+      "dependencies": [
+        "3.7",
+        "2.8"
+      ]
+    },
+    {
+      "id": "3.9",
+      "title": "在恢复与route入口重验当前输入和任务资格",
+      "dependencies": [
+        "3.8"
+      ]
+    },
+    {
+      "id": "3.10",
+      "title": "按缺陷类型复用规划或返回定义所属阶段",
+      "dependencies": [
+        "3.1",
+        "3.2",
+        "3.7",
+        "3.8",
+        "3.9"
+      ]
+    },
+    {
+      "id": "3.11",
+      "title": "按目标slice收口Chapter7并复用已验证UI",
+      "dependencies": [
+        "3.4",
+        "3.6",
+        "3.7",
+        "3.8",
+        "3.9",
+        "3.10"
+      ]
+    },
+    {
+      "id": "3.12",
+      "title": "让页面实施触发与全入口决定保持一致",
+      "dependencies": [
+        "3.3",
+        "3.5",
+        "3.6",
+        "3.7",
+        "3.8",
+        "3.9",
+        "3.10",
+        "3.11"
+      ]
+    },
+    {
+      "id": "4.1",
+      "title": "从受治理反向关系计算完整传递影响",
+      "dependencies": [
+        "3.12"
+      ]
+    },
+    {
+      "id": "4.2",
+      "title": "形成可执行的三类义务VerificationScope",
+      "dependencies": [
+        "4.1",
+        "3.6",
+        "3.7"
+      ]
+    },
+    {
+      "id": "4.3",
+      "title": "让真实执行器消费范围并报告实际覆盖",
+      "dependencies": [
+        "4.2"
+      ]
+    },
+    {
+      "id": "4.4",
+      "title": "在身份匹配时复用构建与共享测试证据",
+      "dependencies": [
+        "4.3",
+        "2.9",
+        "3.5"
+      ]
+    },
+    {
+      "id": "4.5",
+      "title": "分别核对Task、Flow和累计里程碑完成",
+      "dependencies": [
+        "4.2",
+        "4.3",
+        "4.4",
+        "3.11"
+      ]
+    },
+    {
+      "id": "4.6",
+      "title": "派生展示规划、实施与运行身份",
+      "dependencies": [
+        "4.1",
+        "4.5",
+        "3.5",
+        "2.9"
+      ]
+    },
+    {
+      "id": "4.7",
+      "title": "在规划页面按真实阶段操作并定位阻塞与恢复",
+      "dependencies": [
+        "4.6",
+        "2.10",
+        "3.12"
+      ]
+    },
+    {
+      "id": "4.8",
+      "title": "汇集可追溯过程观测与统一诊断",
+      "dependencies": [
+        "4.3",
+        "4.4",
+        "4.5",
+        "4.7",
+        "2.10",
+        "3.12"
+      ]
+    },
+    {
+      "id": "4.9",
+      "title": "对齐全部生产者消费者与治理文档",
+      "dependencies": [
+        "4.5",
+        "4.6",
+        "4.7",
+        "4.8",
+        "3.12"
+      ]
+    },
+    {
+      "id": "4.10",
+      "title": "在Windows故障与共享变更下核对端到端结论",
+      "dependencies": [
+        "4.1",
+        "4.2",
+        "4.3",
+        "4.4",
+        "4.5",
+        "4.6",
+        "4.7",
+        "4.8",
+        "4.9"
+      ]
+    },
+    {
+      "id": "5.1",
+      "title": "固定奖励真实变更与存量复用边界",
+      "dependencies": [
+        "4.10"
+      ]
+    },
+    {
+      "id": "5.2",
+      "title": "在无变更Task时正式采纳奖励规划",
+      "dependencies": [
+        "5.1",
+        "2.10",
+        "4.7"
+      ]
+    },
+    {
+      "id": "5.3",
+      "title": "以存量增量路径承接真实任务和实施绑定",
+      "dependencies": [
+        "5.2",
+        "3.12"
+      ]
+    },
+    {
+      "id": "5.4",
+      "title": "实现奖励受控生产命令与只读状态边界",
+      "dependencies": [
+        "5.3"
+      ]
+    },
+    {
+      "id": "5.5",
+      "title": "将原生Reward场景接入必要C#薄适配",
+      "dependencies": [
+        "5.4"
+      ]
+    },
+    {
+      "id": "5.6",
+      "title": "使奖励重入与Continue沿既有存档边界恢复",
+      "dependencies": [
+        "5.4",
+        "5.5"
+      ]
+    },
+    {
+      "id": "5.7",
+      "title": "以Windows真实输入完成奖励双路径取证",
+      "dependencies": [
+        "5.1",
+        "5.2",
+        "5.3",
+        "5.4",
+        "5.5",
+        "5.6",
+        "4.10"
+      ]
+    },
+    {
+      "id": "5.8",
+      "title": "在证据齐备后切换新增需求默认入口为B",
+      "dependencies": [
+        "5.7",
+        "4.9",
+        "4.10"
+      ]
+    },
+    {
+      "id": "5.9",
+      "title": "核对A退出资格并交付统一门禁能力",
+      "dependencies": [
+        "5.8",
+        "4.9"
+      ]
+    },
+    {
+      "id": "5.10",
+      "title": "在条件成熟后实际撤权并清理A写入兼容",
+      "dependencies": [
+        "5.8",
+        "5.9",
+        "4.9"
+      ]
+    },
+    {
+      "id": "5.11",
+      "title": "以补偿回退反例收口迁移与完成声明",
+      "dependencies": [
+        "5.7",
+        "5.8",
+        "5.9"
+      ]
+    }
+  ],
+  "implementation_started": false,
+  "taskmaster_modified": false
+}

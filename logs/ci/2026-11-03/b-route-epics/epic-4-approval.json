@@ -1,0 +1,21 @@
+{
+  "approved_by": "user selected C: approve Story 4.1-4.10 and continue Epic 5",
+  "official_document": "_bmad-output/planning-artifacts/b-route/epics.md",
+  "story_ids": [
+    "4.1",
+    "4.2",
+    "4.3",
+    "4.4",
+    "4.5",
+    "4.6",
+    "4.7",
+    "4.8",
+    "4.9",
+    "4.10"
+  ],
+  "body_sha256": "ee662142fdc3b4a0603827e0cf8981bd269f95ebb4e1e23bf49c83867034e72c",
+  "body_projection": "Exact level-2 Epic 4 section, excluding coverage annex",
+  "story_count": 10,
+  "acceptance_scenarios": 51,
+  "implementation_started": false
+}

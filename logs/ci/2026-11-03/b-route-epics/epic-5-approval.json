@@ -1,0 +1,23 @@
+{
+  "approved_by": "user C: end Party, approve revised Epic 5 and enter final validation",
+  "draft_revision": 4,
+  "official_document": "_bmad-output/planning-artifacts/b-route/epics.md",
+  "story_ids": [
+    "5.1",
+    "5.2",
+    "5.3",
+    "5.4",
+    "5.5",
+    "5.6",
+    "5.7",
+    "5.8",
+    "5.9",
+    "5.10",
+    "5.11"
+  ],
+  "body_sha256": "742f58dc3553face097517b3f01d1cd7a14a96de1f06f979b6b57531f9d12b07",
+  "body_projection": "Exact level-2 Epic 5 section, excluding coverage annex",
+  "story_count": 11,
+  "acceptance_scenarios": 61,
+  "implementation_started": false
+}

@@ -1,0 +1,14 @@
+[
+  {
+    "path": ".taskmaster/tasks/tasks.json",
+    "sha256": "c1b09630e7cd733bf1555903ec6e0b05ee742e46a6de22d0dbfc878996be857e"
+  },
+  {
+    "path": ".taskmaster/tasks/tasks_back.json",
+    "sha256": "fadfb7d6650baf5b598ffb1bb568a7d70ff5b14989ee67505473a8c6235f82b8"
+  },
+  {
+    "path": ".taskmaster/tasks/tasks_gameplay.json",
+    "sha256": "17b08134c51ebcfdb09303bdf7b320cd629d924ca8e796948993e55bb09f505f"
+  }
+]

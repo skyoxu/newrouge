@@ -1,0 +1,21 @@
+{
+  "approved_by": "user c",
+  "official_document": "_bmad-output/planning-artifacts/b-route/epics.md",
+  "story_ids": [
+    "2.1",
+    "2.2",
+    "2.3",
+    "2.4",
+    "2.5",
+    "2.6",
+    "2.7",
+    "2.8",
+    "2.9",
+    "2.10"
+  ],
+  "body_sha256": "7e8701e5265ca6427c8e243031a753769e37b5fae134430334ff12a80553b4f8",
+  "body_projection": "Exact level-2 Epic 2 section, excluding coverage annex",
+  "story_count": 10,
+  "acceptance_scenarios": 52,
+  "implementation_started": false
+}

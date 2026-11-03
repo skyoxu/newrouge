@@ -1,0 +1,23 @@
+{
+  "approved_by": "user selected C: approve Story 3.1-3.12 and continue Epic 4",
+  "official_document": "_bmad-output/planning-artifacts/b-route/epics.md",
+  "story_ids": [
+    "3.1",
+    "3.2",
+    "3.3",
+    "3.4",
+    "3.5",
+    "3.6",
+    "3.7",
+    "3.8",
+    "3.9",
+    "3.10",
+    "3.11",
+    "3.12"
+  ],
+  "body_sha256": "b9aeb6ca55d06da49786cc6e9b6f7e014f7342e75503718bb73d920cb9d2ad17",
+  "body_projection": "Exact level-2 Epic 3 section, excluding coverage annex",
+  "story_count": 12,
+  "acceptance_scenarios": 61,
+  "implementation_started": false
+}

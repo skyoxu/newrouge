@@ -1,0 +1,150 @@
+{
+  "skill": "bmad-party-mode",
+  "party": "installed",
+  "mode": "session",
+  "roster": [
+    "Mary",
+    "John",
+    "Sally",
+    "Winston",
+    "Amelia"
+  ],
+  "status": "completed-by-user-C",
+  "parent_workflow": "bmad-create-epics-and-stories",
+  "parent_step": "step-03-create-stories",
+  "focus_epic": 5,
+  "approved_stories": 38,
+  "epic_5_approved": true,
+  "final_validation_started": true,
+  "proposals_adopted": true,
+  "proposals": [
+    {
+      "id": "PM-1",
+      "stories": [
+        "5.8",
+        "5.10"
+      ],
+      "topic": "切换专用补偿验证的时序",
+      "evidence": "5.8依赖5.7/4.9/4.10；补偿反例集中在后置5.10。前期已有通用journal恢复验证，但5.8未显式绑定本次候选策略的切换前补偿演练。",
+      "suggestion": "在5.8应用前要求当前策略候选的受控补偿演练及身份复验；5.10保留后续交接核对，不必新增Story。",
+      "kind": "验收时序补强建议，非已发现的运行故障",
+      "status": "adopted-by-user-and-applied-to-5.8-AC3"
+    },
+    {
+      "id": "PM-2",
+      "stories": [
+        "5.9"
+      ],
+      "topic": "策略撤权与源码清理边界",
+      "evidence": "5.9 AC-3把退出operation和撤除过期入口/适配写在一个动作中；共享apply合同拥有治理文件/规划/绑定/三联，不是通用源码删除执行器。",
+      "suggestion": "区分经journal提交的策略/路由权限变更与按现有开发流程审阅测试的旧代码清理；退出功能验证和当前实际退役继续分别记录。",
+      "kind": "措辞与写者边界风险，非已有实现自修改源码的断言",
+      "status": "adopted-through-user-approved-retirement-split-and-writer-separation"
+    },
+    {
+      "id": "PM-3",
+      "stories": [
+        "5.2",
+        "5.3",
+        "5.7"
+      ],
+      "topic": "两条路径的独立证明",
+      "evidence": "5.2保无变更Task时点，5.3保成熟成果增量，同一变更链可承载两组证明；仅时间顺序不能排除旧Task/readiness仍是隐藏必需输入。",
+      "suggestion": "记录3B必需输入闭包不依赖Task/readiness，并在隔离样本验证缺少可选Task上下文仍可正式准备/准入；不改真实Task、不重造Flow、不要求重复全模型链。",
+      "kind": "证据补强建议，不重新打开已确认的同Flow边界",
+      "status": "adopted-by-user-and-applied-to-5.2-AC6"
+    },
+    {
+      "id": "PM-4",
+      "stories": [
+        "5.6",
+        "5.7"
+      ],
+      "topic": "证据等级及复用范围",
+      "evidence": "reward_fixture.gd明确在已完成遭遇fixture上通过focused controls的InputEventAction/push_input验证引擎动作，未声明mouse hit-testing或OS input；5.7引用全部23项AC需区分机制证据和真实奖励运行。",
+      "suggestion": "用明确证据对照记录规划幂等/文件应用幂等/奖励业务幂等，区分有效机制proof、fixture准备、真实引擎action、场景方法、OS/鼠标及人工证据；不将未覆盖输入等级升级，也不新增自动化OS鼠标或全量重跑要求。",
+      "kind": "证据边界澄清建议，非要求降低真实引擎输入义务",
+      "status": "adopted-by-user-and-applied-to-5.7-AC7"
+    }
+  ],
+  "draft_file": "logs/ci/2026-11-03/b-route-epics/epic-5-stories-draft.md",
+  "draft_sha256": "56aa4f00d64bbbc7bf9864cc79f1aaecf91f968d4ec11a59602bfd09967106a1",
+  "note": "These are discussion proposals and factual source observations, not an independent audit verdict or user-approved revisions.",
+  "round": 6,
+  "current_focus": "all-discussed-clauses-applied-awaiting-user-wrap-and-overall-approval",
+  "user_steering": "继续讨论双路径与输入证据",
+  "boundary_proposal": "logs/ci/2026-11-03/b-route-epics/epic-5-cutover-boundary-proposal.md",
+  "round_2_open_points": [
+    "旧run跨切换的当前门禁与scope保护",
+    "策略撤权与旧源码清理分别验收",
+    "补偿演练须在切换前通过，代码回退另核格式／门禁兼容",
+    "A有界续跑与实际退出完成分别报告"
+  ],
+  "pending_design_choice": {
+    "topic": "Separate retirement capability from actual retirement completion",
+    "recommended": "Split current Story 5.9 into eligibility/gate capability and condition-satisfied actual revoke/cleanup; keep actual retirement blocked until prerequisites are true.",
+    "alternative": "Keep one Story 5.9; do not mark it complete until actual revoke and code cleanup are both complete.",
+    "recommended_epic_5_story_count": 11,
+    "current_epic_5_story_count": 11,
+    "changes_applied": true,
+    "approved_prior_epics_changed": false,
+    "default_B_cutover_requires_all_A_retired": false,
+    "selected": "split",
+    "selected_by": "用户选择：拆为门禁、实际退役两项（建议）"
+  },
+  "accepted_decisions": [
+    {
+      "topic": "拆分退出门禁与实际退役",
+      "new_stories": [
+        "5.9",
+        "5.10"
+      ],
+      "renumbered_compensation": "5.11",
+      "approval_scope": "拆分与必要责任引用调整，不是Epic5整体批准或结束讨论"
+    },
+    {
+      "topic": "5.8应用前本次候选补偿演练",
+      "authorized_by": "用户选择：将其补入5.8的应用前验收（建议）",
+      "applied_to": "5.8 AC-3",
+      "overall_epic_5_approval": false,
+      "party_ended": false
+    },
+    {
+      "topic": "Task无关输入证明及输入证据对照",
+      "authorized_by": "用户：按照你的建议来继续（采纳推荐的5.2／5.7两组验收）",
+      "applied_to": [
+        "5.2 AC-6",
+        "5.7 AC-7"
+      ],
+      "overall_epic_5_approval": false,
+      "party_ended": false
+    }
+  ],
+  "draft_history": [
+    {
+      "sha256": "a39a918b0e7514754974dbcda402bcd4e560c4eab2cf5b19feaece36f7bf7a07",
+      "snapshot": "logs/ci/2026-11-03/b-route-epics/epic-5-stories-before-split.md",
+      "status": "historical-before-approved-split"
+    },
+    {
+      "sha256": "3078deef23a22e4b35a336f2fce35bf517aced22433edfafa3cf4b6c7719dc77",
+      "snapshot": "logs/ci/2026-11-03/b-route-epics/epic-5-stories-before-cutover-rehearsal.md",
+      "status": "historical-before-approved-rehearsal-clause"
+    },
+    {
+      "sha256": "5011c76f0e89c72894e2e6632902f57a955b5d2aeb5df276df16b5a677836165",
+      "snapshot": "logs/ci/2026-11-03/b-route-epics/epic-5-stories-before-input-evidence.md",
+      "status": "historical-before-approved-input-evidence-clauses"
+    }
+  ],
+  "story_count": 11,
+  "pending_proposals": [],
+  "input_evidence_proposal": "logs/ci/2026-11-03/b-route-epics/epic-5-dual-path-input-evidence-proposal.md",
+  "pending_clause_changes": {},
+  "party_changes_ready_for_parent_review": true,
+  "party_ended": true,
+  "final_outcome": "All four discussion revisions approved; revised Epic 5 appended; parent workflow advanced to final validation.",
+  "final_validation_result": "PASS",
+  "final_validation_report": "logs/ci/2026-11-03/b-route-epics/final-validation.md",
+  "final_workflow_completion_pending": true
+}

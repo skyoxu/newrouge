@@ -1,0 +1,28 @@
+{
+  "ok": true,
+  "action": "generate",
+  "status_file": "_bmad-output/implementation-artifacts/b-route/sprint-status.yaml",
+  "dry_run": true,
+  "fresh": false,
+  "epics": 5,
+  "stories": 49,
+  "counts": {
+    "backlog": 54,
+    "optional": 5
+  },
+  "generated": "11-03-2026 17:10",
+  "last_updated": "11-03-2026 17:11",
+  "warnings": [
+    "unparsed Epic/Story-like heading at _bmad-output/planning-artifacts/b-route/epics.md:39: # newrouge B 路线 - Epic Breakdown",
+    "unparsed Epic/Story-like heading at _bmad-output/planning-artifacts/b-route/epics.md:353: ## Epic List"
+  ],
+  "new_entries": [],
+  "preserved": 59,
+  "changed": 0,
+  "upgraded_from_disk": [],
+  "dropped_orphans": [],
+  "legacy_mapped": [],
+  "illegal": [],
+  "in_sync": true,
+  "explicit_set": []
+}
