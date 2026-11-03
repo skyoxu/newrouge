@@ -136,6 +136,171 @@ jobs:
                       summary['exit_code'] = 1
               write_summary()
 
+          # Preserve the original suite outcome before any instrumented trials.
+          summary['full_suite_exit_code'] = summary['exit_code']
+          write_summary()
+          diagnostic_source = r'''
+          import sys
+          sys.dont_write_bytecode = True
+          import hashlib
+          import json
+          import os
+          import time
+          import unittest
+          from pathlib import Path
+          from types import CodeType
+
+          assert os.name == 'nt', 'Timestamp diagnostics require real Windows'
+          root = Path.cwd()
+          output = Path(__file__).resolve().parent
+          sys.path.insert(0, str(root / 'scripts/python'))
+          sys.path.insert(0, str(root / 'scripts/python/tests'))
+          import _b_route_codec as codec
+          import test_b_route_codec as original_tests
+
+          method_name = 'test_same_size_overwrite_during_final_path_resolution_is_rejected'
+          original_class = original_tests.ReadIdentityRegressionTests
+          original_method = getattr(original_class, method_name)
+          watched = {
+              codec.read_reference_bytes.__code__: ('reader', ('before', 'opened', 'after', 'current_info', 'final', 'data', 'resolved', 'current')),
+              codec._stat_identity.__code__: ('stat_identity', ('info',)),
+              codec._cross_stat_identity.__code__: ('cross_stat_identity', ('info',)),
+              original_class.change_bytes_preserving_size_and_mtime.__code__: ('mutation', ('before', 'original', 'changed')),
+              original_method.__code__: ('original_test', ('calls', 'result')),
+          }
+          for code in original_method.__code__.co_consts:
+              if isinstance(code, CodeType) and code.co_name == 'resolve':
+                  watched[code] = ('resolve', ('calls',))
+
+          class ObservedCase(original_class):
+              def _callTestMethod(self, method):
+                  # Original setUp has already completed. No reader/helper body
+                  # is replaced, and no extra file reads occur while tracing.
+                  target = self.root / self.path
+                  self.before_bytes = target.read_bytes()
+                  self.events = []
+                  self.mutation_calls = []
+
+                  def observe(frame, event, value):
+                      description = watched.get(frame.f_code)
+                      if event == 'call':
+                          if description is None:
+                              return None
+                          frame.f_trace_lines = False
+                          if description[0] == 'mutation':
+                              self.mutation_calls.append(True)
+                          return observe
+                      if event == 'return' and description is not None:
+                          name, fields = description
+                          existing = frame.f_locals
+                          self.events.append({'function': name,
+                                              'locals': {key: existing[key] for key in fields if key in existing},
+                                              'return_value': value})
+                      return observe
+
+                  previous = sys.gettrace()
+                  try:
+                      sys.settrace(observe)
+                      return super()._callTestMethod(method)
+                  finally:
+                      sys.settrace(previous)
+                      self.after_bytes = target.read_bytes()
+
+          def file_hash(data):
+              return 'sha256:' + hashlib.sha256(data).hexdigest() if isinstance(data, bytes) else None
+
+          def stat_fields(info):
+              return {field: getattr(info, 'st_' + field, None) for field in
+                      ('dev', 'ino', 'size', 'mtime_ns', 'ctime_ns', 'birthtime_ns')}
+
+          def serializable(value):
+              if isinstance(value, os.stat_result):
+                  return stat_fields(value)
+              if isinstance(value, bytes):
+                  return {'length': len(value), 'raw_digest': file_hash(value)}
+              if isinstance(value, Path):
+                  return str(value)
+              if isinstance(value, codec.VerificationResult):
+                  return value.to_dict()
+              if isinstance(value, dict):
+                  return {key: serializable(item) for key, item in value.items()}
+              if isinstance(value, (tuple, list)):
+                  return [serializable(item) for item in value]
+              return value
+
+          attempts = []
+          for attempt in range(1, 17):
+              case = ObservedCase(method_name)
+              result = unittest.TestResult()
+              started = time.monotonic()
+              case.run(result)
+              elapsed = time.monotonic() - started
+              events = getattr(case, 'events', [])
+              reader = next((event['locals'] for event in reversed(events) if event['function'] == 'reader'), {})
+              fd_samples = [{'observation': field, 'info': stat_fields(reader[field])}
+                            for field in ('opened', 'after', 'final') if field in reader]
+              mutations = [event['locals'] for event in events if event['function'] == 'mutation']
+              mutation_count = len(getattr(case, 'mutation_calls', []))
+              before_bytes = getattr(case, 'before_bytes', None)
+              after_bytes = getattr(case, 'after_bytes', None)
+              mutation_matches = bool(mutations) and after_bytes == mutations[-1].get('changed')
+              capture_complete = len(fd_samples) == 3 and mutation_count == 1 and before_bytes != after_bytes and mutation_matches
+              original_ok = result.testsRun == 1 and result.wasSuccessful() and not result.skipped
+              report = {
+                  'attempt': attempt, 'elapsed_seconds': elapsed,
+                  'original_method': 'test_b_route_codec.ReadIdentityRegressionTests.' + method_name,
+                  'tests_run': result.testsRun, 'original_method_ok': original_ok,
+                  'capture_complete': capture_complete,
+                  'mutation_invocations': mutation_count, 'mutation_exactly_once': mutation_count == 1,
+                  'before_raw_digest': file_hash(before_bytes), 'after_raw_digest': file_hash(after_bytes),
+                  'bytes_changed': before_bytes != after_bytes, 'after_matches_helper_changed_bytes': mutation_matches,
+                  'fstat_observations': fd_samples,
+                  'events': serializable(events),
+                  'failures': [{'test': str(test), 'traceback': trace} for test, trace in result.failures],
+                  'errors': [{'test': str(test), 'traceback': trace} for test, trace in result.errors],
+                  'skipped': [{'test': str(test), 'reason': reason} for test, reason in result.skipped],
+                  'causal_conclusion': None,
+              }
+              # Hashing, serialization, output, and file writes happen only
+              # after this original test invocation and its cleanups have ended.
+              (output / ('timestamp-diagnostic-' + str(attempt).zfill(2) + '.json')).write_text(json.dumps(report, indent=2) + '\n', encoding='utf-8')
+              print('TIMESTAMP_DIAGNOSTIC=' + json.dumps(report, separators=(',', ':')), flush=True)
+              attempts.append({'attempt': attempt, 'original_method_ok': original_ok,
+                               'capture_complete': capture_complete, 'elapsed_seconds': elapsed,
+                               'mutation_invocations': mutation_count, 'fstat_observations': len(fd_samples),
+                               'fd_ctime_ns': [row['info']['ctime_ns'] for row in fd_samples]})
+              print(json.dumps(attempts[-1]), flush=True)
+
+          report = {
+              'native_windows': True, 'attempts_requested': 16, 'attempts_completed': len(attempts),
+              'environment': {
+                  'python': sys.version, 'platform': sys.platform, 'windows_flag': codec._WINDOWS,
+                  'codec_module': codec.__file__, 'codec_raw_digest': file_hash(Path(codec.__file__).read_bytes()),
+                  'test_module': original_tests.__file__, 'test_raw_digest': file_hash(Path(original_tests.__file__).read_bytes()),
+              },
+              'attempts': attempts,
+              'original_method_failure_observed': any(not row['original_method_ok'] for row in attempts),
+              'all_captures_complete': all(row['capture_complete'] for row in attempts),
+              'observation': 'original_method_failed_in_instrumented_trials' if any(not row['original_method_ok'] for row in attempts) else 'not_reproduced_in_16_instrumented_trials',
+              'causal_conclusion': None,
+              'limits': 'Return-event tracing adds overhead; these trials do not replace or clear the original full-suite result.',
+          }
+          (output / 'timestamp-diagnostics.json').write_text(json.dumps(report, indent=2) + '\n', encoding='utf-8')
+          raise SystemExit(0 if all(row['original_method_ok'] and row['capture_complete'] for row in attempts) else 1)
+          '''
+          diagnostic_path = output / 'timestamp-diagnostics.py'
+          diagnostic_path.write_text(diagnostic_source, encoding='utf-8')
+          summary['timestamp_diagnostic_source_sha256'] = hashlib.sha256(diagnostic_source.encode('utf-8')).hexdigest()
+          diagnostic, _, _ = run_logged('timestamp-diagnostics', [sys.executable, '-B', str(diagnostic_path)], 60)
+          try:
+              summary['timestamp_diagnostics'] = json.loads((output / 'timestamp-diagnostics.json').read_text(encoding='utf-8'))
+          except (OSError, ValueError):
+              summary['timestamp_diagnostics'] = {'capture_completed': False, 'causal_conclusion': None}
+              summary['exit_code'] = 1
+          if summary['full_suite_exit_code'] or diagnostic['exit_code']:
+              summary['exit_code'] = 1
+          write_summary()
+
           def run_cli_fixtures():
               sys.path.insert(0, str(root / 'scripts/python'))
               from _b_route_codec import canonical_digest, raw_digest
