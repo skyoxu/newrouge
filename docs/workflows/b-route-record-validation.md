@@ -2,6 +2,8 @@
 
 公共字段和 owner 边界由 [记录格式合同](b-route-record-contract.md) 定义；可执行定义仅位于 `docs/planning/b-route/schemas/` 的六份记录 schema 与 common。身份适配与诊断继续由 `_b_route_codec.py` 拥有，校验服务为 `_b_route_records.py`。本入口不启用 B 路线、不写正式规划记录或 Taskmaster 三联。
 
+Story 1.5 另提供[成熟成果保护输入](b-route-mature-protection.md)的纯保护投影与 capture／verify／compare 入口，共用 codec 中的既定投影标识。其 verify 只重建归档完整性，不替本入口核验 receipt 的 Task 投影；本入口 `target_projection_verified=false` 保持不变。保护候选、审阅文字及 `frozen_a_inventory` 的 locator／raw 核验均不产生正式保护、A 资格或发布授权。
+
 ## Windows 准备
 
 在仓库根目录使用已有 Python 3.12 环境，安装本 Story 锁定依赖；不需要 Godot、模型、数据库或 Chapter 6。

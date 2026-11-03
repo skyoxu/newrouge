@@ -1,0 +1,202 @@
+name: Story 1.5 Windows Protection Validation
+
+on:
+  push:
+    branches: [test/b-route-story-1-5-windows-2026-11-03]
+
+permissions:
+  contents: read
+
+jobs:
+  protection:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    env:
+      PYTHONUTF8: '1'
+      PYTHONIOENCODING: 'utf-8'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate native Windows protection and synthetic CLI
+        shell: python
+        run: |
+          import sys
+          sys.dont_write_bytecode = True
+          import ast
+          import hashlib
+          import importlib.metadata
+          import json
+          import os
+          import platform
+          import re
+          import subprocess
+          import time
+          from pathlib import Path
+
+          root = Path.cwd()
+          output = root / 'logs/ci/story-1-5-windows' / (os.environ['GITHUB_RUN_ID'] + '-' + os.environ['GITHUB_RUN_ATTEMPT'])
+          output.mkdir(parents=True, exist_ok=False)
+          assert os.name == 'nt', 'Native Windows is required'
+          head = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
+          assert head == os.environ['GITHUB_SHA'], 'Unexpected checkout identity'
+          paths = [
+              'scripts/python/_b_route_codec.py', 'scripts/python/_b_route_records.py',
+              'scripts/python/_b_route_protection.py', 'scripts/python/capture_b_route_protection.py',
+              'scripts/python/_b_route_inventory.py', 'scripts/python/inventory_b_route_baseline.py',
+              'scripts/python/_b_route_record_owners.py', 'scripts/python/_chapter5_contract_bindings.py',
+              'scripts/python/update_mvg_baseline.py', 'scripts/python/_mvg_manifest.py',
+              'scripts/python/tests/test_b_route_protection.py', 'scripts/python/tests/test_b_route_inventory.py',
+              'scripts/python/tests/test_b_route_codec.py', 'scripts/python/tests/test_b_route_records.py',
+              'scripts/python/requirements-b-route.txt', 'docs/workflows/b-route-mature-protection.md',
+              'docs/workflows/b-route-record-contract.md', 'docs/workflows/b-route-record-validation.md',
+              '.github/workflows/story-1-5-windows.yml',
+          ]
+          environment = {'head': head, 'event_sha': os.environ['GITHUB_SHA'], 'python': sys.version,
+              'platform': platform.platform(), 'files': {p: {
+                  'raw_sha256': hashlib.sha256((root / p).read_bytes()).hexdigest(),
+                  'git_blob': subprocess.check_output(['git', 'rev-parse', 'HEAD:' + p], text=True).strip(),
+              } for p in paths}}
+          (output / 'environment.json').write_text(json.dumps(environment, indent=2) + '\n', encoding='utf-8')
+          print(json.dumps(environment, indent=2), flush=True)
+          tracked = [p for p in subprocess.check_output(['git', 'ls-files', '-z']).decode('utf-8').split('\0') if p]
+          protected = {p: hashlib.sha256((root / p).read_bytes()).hexdigest() for p in tracked if (root / p).is_file()}
+          summary = {'head': head, 'native_windows': True, 'steps': [], 'exit_code': 0}
+          deadline = time.monotonic() + 480
+
+          def save():
+              (output / 'summary.json').write_text(json.dumps(summary, indent=2) + '\n', encoding='utf-8')
+
+          def run(name, command, budget=180, expected_exit_code=0):
+              available = deadline - time.monotonic()
+              if available <= 0:
+                  summary['exit_code'] = 1
+                  summary['steps'].append({'name': name, 'not_run': 'Internal job budget exhausted'})
+                  save()
+                  return 124, '', ''
+              timeout = min(budget, available)
+              started = time.monotonic()
+              try:
+                  result = subprocess.run(command, cwd=root, capture_output=True, text=True, encoding='utf-8', errors='replace', timeout=timeout)
+                  code, stdout, stderr = result.returncode, result.stdout, result.stderr
+              except subprocess.TimeoutExpired as error:
+                  code = 124
+                  stdout = error.stdout.decode('utf-8', errors='replace') if isinstance(error.stdout, bytes) else (error.stdout or '')
+                  stderr = error.stderr.decode('utf-8', errors='replace') if isinstance(error.stderr, bytes) else (error.stderr or '')
+              (output / (name + '.stdout')).write_text(stdout, encoding='utf-8')
+              (output / (name + '.stderr')).write_text(stderr, encoding='utf-8')
+              row = {'name': name, 'command': command, 'exit_code': code, 'expected_exit_code': expected_exit_code, 'elapsed_seconds': time.monotonic() - started, 'timeout_seconds': timeout}
+              summary['steps'].append(row)
+              if code != expected_exit_code:
+                  summary['exit_code'] = 1
+              save()
+              print(stdout, flush=True)
+              print(stderr, flush=True)
+              print(json.dumps(row), flush=True)
+              return code, stdout, stderr
+
+          run('dependencies', [sys.executable, '-B', '-m', 'pip', 'install', '--disable-pip-version-check', '-r', 'scripts/python/requirements-b-route.txt'], 120)
+          versions = {}
+          for name in ['jsonschema', 'referencing']:
+              try:
+                  versions[name] = importlib.metadata.version(name)
+              except importlib.metadata.PackageNotFoundError:
+                  versions[name] = None
+          summary['dependency_versions'] = versions
+          if versions != {'jsonschema': '4.26.0', 'referencing': '0.37.0'}:
+              summary['exit_code'] = 1
+          required = {
+              'test_b_route_protection.py': {
+                  'test_resigned_missing_inventory_envelope_cannot_claim_complete': 'ProtectionTests',
+                  'test_historical_report_envelope_and_original_metadata_are_rebuilt': 'ProtectionTests',
+                  'test_real_directory_links_cannot_redirect_snapshot_reads_or_output': 'ProtectionTests',
+                  'test_direct_writer_refuses_external_non_log_and_link_ancestor_directories': 'ProtectionTests',
+                  'test_cli_capture_verify_compare_and_repeated_run_preserve_old_inputs': 'ProtectionTests',
+              },
+              'test_b_route_codec.py': {
+                  'test_windows_actual_unicode_file_io_and_case_lookup': 'WindowsIoTests',
+                  'test_windows_actual_internal_junction_is_allowed_and_external_junction_rejected': 'WindowsIoTests',
+                  'test_windows_actual_exclusive_file_occupation_cannot_be_reported_as_success': 'WindowsIoTests',
+              },
+              'test_b_route_records.py': {
+                  'test_bundle_reader_accepts_internal_directory_link': 'CandidateBundleTests',
+                  'test_bundle_reader_rejects_external_directory_link_even_with_matching_bytes': 'CandidateBundleTests',
+                  'test_candidate_bytes_override_disk_when_reference_uses_directory_alias': 'CandidateBundleTests',
+                  'test_contract_directory_alias_keeps_candidate_only_dto_in_the_closure': 'OwnedReferenceTests',
+                  'test_contract_closure_rejects_root_external_directory_link': 'OwnedReferenceTests',
+                  'test_owned_locator_alias_binds_canonical_candidate_bytes_without_disk_shadow': 'OwnedReferenceTests',
+                  'test_windows_candidate_case_alias_collision_without_disk_file_is_rejected': 'CandidateBundleTests',
+                  'test_windows_uppercase_plan_identity_and_internal_junction_remain_valid': 'CandidateBundleTests',
+                  'test_windows_case_alias_candidate_bytes_override_disk': 'CandidateBundleTests',
+              },
+          }
+          for pattern, methods in required.items():
+              module = pattern.removesuffix('.py')
+              code, _, stderr = run(module, [sys.executable, '-B', '-m', 'unittest', 'discover', '-s', 'scripts/python/tests', '-p', pattern, '-v'])
+              count = re.search(r'^Ran ([1-9][0-9]*) tests? in ', stderr, re.MULTILINE)
+              checks = {name: re.search(r'^' + re.escape(name) + r' \(' + re.escape(module + '.' + owner + '.' + name) + r'\)(?:\r?\n[^\r\n]*)? \.\.\. ok$', stderr, re.MULTILINE) is not None for name, owner in methods.items()}
+              expected_count = sum(isinstance(node, ast.FunctionDef) and node.name.startswith('test_') for node in ast.walk(ast.parse((root / 'scripts/python/tests' / pattern).read_text(encoding='utf-8'))))
+              clean = bool(count) and int(count.group(1)) == expected_count and not re.search(r'\.\.\. skipped|^OK \(skipped=', stderr, re.MULTILINE)
+              summary[module] = {'expected_methods': expected_count, 'methods_executed': int(count.group(1)) if count else 0, 'zero_skips': clean, 'required_methods_passed': checks}
+              if code or not clean or not all(checks.values()):
+                  summary['exit_code'] = 1
+              save()
+
+          # Exercise the actual entry script in subprocesses using synthetic data.
+          sys.path[:0] = [str(root / 'scripts/python'), str(root / 'scripts/python/tests')]
+          import test_b_route_protection as tests
+          case = tests.ProtectionTests(methodName='runTest')
+          case.setUp()
+          cli = str(root / 'scripts/python/capture_b_route_protection.py')
+          cli_results = []
+          try:
+              original = case.all_bytes()
+              def command(name, args, expected):
+                  code, stdout, stderr = run(name, [sys.executable, '-B', cli, *args], 90, expected_exit_code=expected)
+                  payload = json.loads(stdout)
+                  assert code == expected, (name, code, expected)
+                  assert all(value is False for value in payload['authorization'].values()), name
+                  cli_results.append({'name': name, 'exit_code': code, 'expected_exit_code': expected})
+                  return payload
+              common = ['--root', str(case.root)]
+              captured = command('cli-capture', ['capture', *common, '--epics', case.epics, '--run-id', 'native-capture'], 0)
+              snapshot = captured['output'] + '/snapshot.json'
+              command('cli-verify', ['verify', *common, '--snapshot', snapshot, '--run-id', 'native-verify'], 0)
+              command('cli-compare', ['compare', *common, '--epics', case.epics, '--baseline', snapshot, '--run-id', 'native-compare'], 0)
+              before_duplicate = case.all_bytes()
+              command('cli-duplicate', ['capture', *common, '--epics', case.epics, '--run-id', 'native-capture'], 2)
+              assert case.all_bytes() == before_duplicate, 'Duplicate run changed existing evidence'
+              command('cli-missing-epics', ['capture', *common, '--epics', 'planning/missing.md', '--run-id', 'native-missing'], 1)
+              command('cli-invalid-run', ['capture', *common, '--epics', case.epics, '--run-id', '../escape'], 2)
+              assert all(hashlib.sha256((case.root / p).read_bytes()).hexdigest() == digest for p, digest in original.items()), 'CLI changed synthetic inputs'
+              assert not list(case.root.rglob('__pycache__')), 'CLI wrote bytecode in synthetic repository'
+          except Exception as error:
+              summary['exit_code'] = 1
+              summary['cli_error'] = {'type': type(error).__name__, 'message': str(error)}
+              print(json.dumps(summary['cli_error']), flush=True)
+          finally:
+              case.doCleanups()
+          summary['cli_results'] = cli_results
+          summary['tracked_files_checked'] = len(protected)
+          summary['changed_tracked_files'] = [p for p, digest in protected.items() if not (root / p).is_file() or hashlib.sha256((root / p).read_bytes()).hexdigest() != digest]
+          if summary['changed_tracked_files']:
+              summary['exit_code'] = 1
+          save()
+          print(json.dumps(summary, indent=2), flush=True)
+          raise SystemExit(summary['exit_code'])
+      - name: Upload current synthetic verification logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: story-1-5-windows-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            logs/ci/story-1-5-windows/${{ github.run_id }}-${{ github.run_attempt }}/environment.json
+            logs/ci/story-1-5-windows/${{ github.run_id }}-${{ github.run_attempt }}/summary.json
+            logs/ci/story-1-5-windows/${{ github.run_id }}-${{ github.run_attempt }}/*.stdout
+            logs/ci/story-1-5-windows/${{ github.run_id }}-${{ github.run_attempt }}/*.stderr
+          if-no-files-found: error
+          retention-days: 7

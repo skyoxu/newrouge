@@ -19,7 +19,7 @@ import _b_route_codec as codec
 
 BASE = "docs/planning/b-route/"
 CATALOG_PATH = BASE + "catalog.v1.json"
-PROJECTION_CODEC = "newrouge.b-route-task-definition.v1"
+PROJECTION_CODEC = codec.PROJECTION_CODEC
 SCHEMA_DIRECTORY = Path(__file__).resolve().parents[2] / BASE / "schemas"
 
 

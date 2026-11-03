@@ -4,6 +4,8 @@
 
 用途：统一六类记录、只读 API 及候选关系的实施合同。字段布局是架构明确委托共享 schema owner 的工程细化，原需求／Accepted ADR 的权威不变；不批准正式采纳、Task readiness、journal 发布或迁移启用。可执行字段定义只有同目录所引七份 JSON Schema，不另建消费者私有版本。
 
+Story 1.5 的纯 Task／三联保护投影、raw 归档与只读比较见[成熟成果保护输入](b-route-mature-protection.md)。既定投影 ID 由 `_b_route_codec.PROJECTION_CODEC` 唯一拥有，records 保留原别名；这不扩展本合同的 receipt 目标复验，`target_projection_verified=false` 继续有效。`frozen_a_inventory` 仍只核 locator／raw，保护候选及其最小 external owner 材料不增加第七类政策记录、不授予正式保护或 A 资格。
+
 ## 1. Sources and fixed boundaries
 
 - AGENTS.md；_bmad-output/planning-artifacts/b-route/epics.md:590–637（Story 1.4 AC-1–5）。

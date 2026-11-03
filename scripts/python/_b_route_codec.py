@@ -22,6 +22,7 @@ from _planning_skill_common import canonical_sha
 
 
 CODEC_VERSION = "newrouge.b-route-json.v1"
+PROJECTION_CODEC = "newrouge.b-route-task-definition.v1"
 PLAN_SCHEMA = "newrouge.b-route-plan.v1"
 _WINDOWS = os.name == "nt"
 
