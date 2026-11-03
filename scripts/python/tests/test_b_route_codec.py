@@ -264,12 +264,18 @@ class ReferenceTests(CodecFixtures):
         self.dump(self.path, {"schema_version": policy_schema})
         self.assert_reason(codec.verify_reference(self.root, self.reference()), codec.ReasonCode.SCHEMA_MISMATCH)
 
-    def test_known_schemas_without_adapters_cannot_claim_verified_identity(self):
+    def test_six_record_adapters_and_unimplemented_verification_scope(self):
         expected = {"newrouge.b-route-policy.v1", codec.PLAN_SCHEMA, "newrouge.b-route-binding.v1",
                     "newrouge.b-route-origins.v1", "newrouge.b-route-commit.v1", "newrouge.b-route-catalog.v1",
                     "newrouge.b-route-verification-scope.v1"}
         self.assertEqual(set(codec.SCHEMA_IDENTITY_REGISTRY), expected)
-        for schema in sorted(expected - {codec.PLAN_SCHEMA}):
+        for schema in sorted(expected):
+            adapter = codec.SCHEMA_IDENTITY_REGISTRY[schema]
+            if adapter is not None:
+                record = {"schema_version": schema, adapter.entity_field: "PLAN-7", adapter.revision_field: 2}
+                self.assertTrue(codec.verify_content(record).ok)
+                self.assertFalse(codec.verify_content(record).to_dict()["schema_validated"])
+                continue
             record = {"schema_version": schema, "plan_id": "PLAN-7", "revision": 2}
             self.dump(self.path, record)
             with self.subTest(schema=schema):

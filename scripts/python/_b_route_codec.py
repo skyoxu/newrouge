@@ -56,6 +56,17 @@ class ReasonCode(str, Enum):
     CONFLICT = "conflict"
     BUDGET_EXHAUSTED = "budget_exhausted"
     SEMANTIC_ERROR = "semantic_error"
+    MISSING_REQUIRED_FIELD = "missing_required_field"
+    UNKNOWN_FIELD = "unknown_field"
+    INVALID_ENUM = "invalid_enum"
+    SCHEMA_VALIDATION_FAILED = "schema_validation_failed"
+    SCHEMA_RESOURCE_ERROR = "schema_resource_error"
+    DEPENDENCY_UNAVAILABLE = "dependency_unavailable"
+    UNRESOLVED_REFERENCE = "unresolved_reference"
+    UNSUPPORTED_LOCATOR = "unsupported_locator"
+    DUPLICATE_OWNER = "duplicate_owner"
+    MAPPING_MISMATCH = "mapping_mismatch"
+    DIGEST_CYCLE = "digest_cycle"
 
 
 class Stage(str, Enum):
@@ -64,6 +75,8 @@ class Stage(str, Enum):
     REFERENCE = "reference"
     PATH = "path"
     TARGET = "target"
+    SCHEMA = "schema"
+    BUNDLE = "bundle"
 
 
 @dataclass(frozen=True)
@@ -224,12 +237,12 @@ class SchemaIdentityAdapter:
 # This is the sole schema identity owner. Story 1.4 extends these entries here.
 # None means known schema, but no approved entity/revision adapter exists yet.
 SCHEMA_IDENTITY_REGISTRY = MappingProxyType({
-    "newrouge.b-route-policy.v1": None,
+    "newrouge.b-route-policy.v1": SchemaIdentityAdapter("policy_id", "policy_revision"),
     PLAN_SCHEMA: SchemaIdentityAdapter("plan_id", "revision"),
-    "newrouge.b-route-binding.v1": None,
-    "newrouge.b-route-origins.v1": None,
-    "newrouge.b-route-commit.v1": None,
-    "newrouge.b-route-catalog.v1": None,
+    "newrouge.b-route-binding.v1": SchemaIdentityAdapter("plan_id", "binding_revision"),
+    "newrouge.b-route-origins.v1": SchemaIdentityAdapter("origins_id", "revision"),
+    "newrouge.b-route-commit.v1": SchemaIdentityAdapter("operation_id", "revision"),
+    "newrouge.b-route-catalog.v1": SchemaIdentityAdapter("catalog_id", "revision"),
     "newrouge.b-route-verification-scope.v1": None,
 })
 

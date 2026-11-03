@@ -1,0 +1,1234 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "newrouge.b-route-common.v1",
+  "title": "Shared B-route record definitions",
+  "$defs": {
+    "String": {
+      "type": "string",
+      "pattern": "\\S"
+    },
+    "PositiveInteger": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "Digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "minLength": 71,
+      "maxLength": 71
+    },
+    "FileId": {
+      "type": "string",
+      "pattern": "^(?![.]{1,2}$)(?!(?:[Cc][Oo][Nn]|[Pp][Rr][Nn]|[Aa][Uu][Xx]|[Nn][Uu][Ll]|[Cc][Oo][Mm][1-9¹²³]|[Ll][Pp][Tt][1-9¹²³])(?:[.].*)?$)[^\\\\/:<>\"|?*\\u0000-\\u001f]*[^\\\\/:<>\"|?*\\u0000-\\u001f .](?![\\s\\S])"
+    },
+    "PartKind": {
+      "enum": [
+        "domain_rules",
+        "csharp_adapter",
+        "binding",
+        "scene"
+      ]
+    },
+    "DefinitionKind": {
+      "enum": [
+        "flow",
+        "command",
+        "state"
+      ]
+    },
+    "PublicRecordRef": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "path": {
+              "$ref": "#/$defs/String"
+            },
+            "schema_version": {
+              "enum": [
+                "newrouge.b-route-policy.v1",
+                "newrouge.b-route-plan.v1",
+                "newrouge.b-route-binding.v1",
+                "newrouge.b-route-origins.v1",
+                "newrouge.b-route-commit.v1",
+                "newrouge.b-route-catalog.v1"
+              ]
+            },
+            "entity_id": {
+              "$ref": "#/$defs/String"
+            },
+            "revision": {
+              "$ref": "#/$defs/PositiveInteger"
+            },
+            "digest": {
+              "$ref": "#/$defs/Digest"
+            },
+            "verification_mode": {
+              "const": "raw"
+            },
+            "codec_version": {
+              "type": "null"
+            }
+          },
+          "required": [
+            "path",
+            "schema_version",
+            "entity_id",
+            "revision",
+            "digest",
+            "verification_mode",
+            "codec_version"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "path": {
+              "$ref": "#/$defs/String"
+            },
+            "schema_version": {
+              "enum": [
+                "newrouge.b-route-policy.v1",
+                "newrouge.b-route-plan.v1",
+                "newrouge.b-route-binding.v1",
+                "newrouge.b-route-origins.v1",
+                "newrouge.b-route-commit.v1",
+                "newrouge.b-route-catalog.v1"
+              ]
+            },
+            "entity_id": {
+              "$ref": "#/$defs/String"
+            },
+            "revision": {
+              "$ref": "#/$defs/PositiveInteger"
+            },
+            "digest": {
+              "$ref": "#/$defs/Digest"
+            },
+            "verification_mode": {
+              "const": "canonical"
+            },
+            "codec_version": {
+              "const": "newrouge.b-route-json.v1"
+            }
+          },
+          "required": [
+            "path",
+            "schema_version",
+            "entity_id",
+            "revision",
+            "digest",
+            "verification_mode",
+            "codec_version"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "PolicyRef": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "path": {
+              "$ref": "#/$defs/String"
+            },
+            "schema_version": {
+              "const": "newrouge.b-route-policy.v1"
+            },
+            "entity_id": {
+              "$ref": "#/$defs/String"
+            },
+            "revision": {
+              "$ref": "#/$defs/PositiveInteger"
+            },
+            "digest": {
+              "$ref": "#/$defs/Digest"
+            },
+            "verification_mode": {
+              "const": "raw"
+            },
+            "codec_version": {
+              "type": "null"
+            }
+          },
+          "required": [
+            "path",
+            "schema_version",
+            "entity_id",
+            "revision",
+            "digest",
+            "verification_mode",
+            "codec_version"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "path": {
+              "$ref": "#/$defs/String"
+            },
+            "schema_version": {
+              "const": "newrouge.b-route-policy.v1"
+            },
+            "entity_id": {
+              "$ref": "#/$defs/String"
+            },
+            "revision": {
+              "$ref": "#/$defs/PositiveInteger"
+            },
+            "digest": {
+              "$ref": "#/$defs/Digest"
+            },
+            "verification_mode": {
+              "const": "canonical"
+            },
+            "codec_version": {
+              "const": "newrouge.b-route-json.v1"
+            }
+          },
+          "required": [
+            "path",
+            "schema_version",
+            "entity_id",
+            "revision",
+            "digest",
+            "verification_mode",
+            "codec_version"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "PlanRef": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "path": {
+              "$ref": "#/$defs/String"
+            },
+            "schema_version": {
+              "const": "newrouge.b-route-plan.v1"
+            },
+            "entity_id": {
+              "$ref": "#/$defs/String"
+            },
+            "revision": {
+              "$ref": "#/$defs/PositiveInteger"
+            },
+            "digest": {
+              "$ref": "#/$defs/Digest"
+            },
+            "verification_mode": {
+              "const": "raw"
+            },
+            "codec_version": {
+              "type": "null"
+            }
+          },
+          "required": [
+            "path",
+            "schema_version",
+            "entity_id",
+            "revision",
+            "digest",
+            "verification_mode",
+            "codec_version"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "path": {
+              "$ref": "#/$defs/String"
+            },
+            "schema_version": {
+              "const": "newrouge.b-route-plan.v1"
+            },
+            "entity_id": {
+              "$ref": "#/$defs/String"
+            },
+            "revision": {
+              "$ref": "#/$defs/PositiveInteger"
+            },
+            "digest": {
+              "$ref": "#/$defs/Digest"
+            },
+            "verification_mode": {
+              "const": "canonical"
+            },
+            "codec_version": {
+              "const": "newrouge.b-route-json.v1"
+            }
+          },
+          "required": [
+            "path",
+            "schema_version",
+            "entity_id",
+            "revision",
+            "digest",
+            "verification_mode",
+            "codec_version"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "BindingRef": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "path": {
+              "$ref": "#/$defs/String"
+            },
+            "schema_version": {
+              "const": "newrouge.b-route-binding.v1"
+            },
+            "entity_id": {
+              "$ref": "#/$defs/String"
+            },
+            "revision": {
+              "$ref": "#/$defs/PositiveInteger"
+            },
+            "digest": {
+              "$ref": "#/$defs/Digest"
+            },
+            "verification_mode": {
+              "const": "raw"
+            },
+            "codec_version": {
+              "type": "null"
+            }
+          },
+          "required": [
+            "path",
+            "schema_version",
+            "entity_id",
+            "revision",
+            "digest",
+            "verification_mode",
+            "codec_version"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "path": {
+              "$ref": "#/$defs/String"
+            },
+            "schema_version": {
+              "const": "newrouge.b-route-binding.v1"
+            },
+            "entity_id": {
+              "$ref": "#/$defs/String"
+            },
+            "revision": {
+              "$ref": "#/$defs/PositiveInteger"
+            },
+            "digest": {
+              "$ref": "#/$defs/Digest"
+            },
+            "verification_mode": {
+              "const": "canonical"
+            },
+            "codec_version": {
+              "const": "newrouge.b-route-json.v1"
+            }
+          },
+          "required": [
+            "path",
+            "schema_version",
+            "entity_id",
+            "revision",
+            "digest",
+            "verification_mode",
+            "codec_version"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "OriginsRef": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "path": {
+              "$ref": "#/$defs/String"
+            },
+            "schema_version": {
+              "const": "newrouge.b-route-origins.v1"
+            },
+            "entity_id": {
+              "$ref": "#/$defs/String"
+            },
+            "revision": {
+              "$ref": "#/$defs/PositiveInteger"
+            },
+            "digest": {
+              "$ref": "#/$defs/Digest"
+            },
+            "verification_mode": {
+              "const": "raw"
+            },
+            "codec_version": {
+              "type": "null"
+            }
+          },
+          "required": [
+            "path",
+            "schema_version",
+            "entity_id",
+            "revision",
+            "digest",
+            "verification_mode",
+            "codec_version"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "path": {
+              "$ref": "#/$defs/String"
+            },
+            "schema_version": {
+              "const": "newrouge.b-route-origins.v1"
+            },
+            "entity_id": {
+              "$ref": "#/$defs/String"
+            },
+            "revision": {
+              "$ref": "#/$defs/PositiveInteger"
+            },
+            "digest": {
+              "$ref": "#/$defs/Digest"
+            },
+            "verification_mode": {
+              "const": "canonical"
+            },
+            "codec_version": {
+              "const": "newrouge.b-route-json.v1"
+            }
+          },
+          "required": [
+            "path",
+            "schema_version",
+            "entity_id",
+            "revision",
+            "digest",
+            "verification_mode",
+            "codec_version"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "CommitRef": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "path": {
+              "$ref": "#/$defs/String"
+            },
+            "schema_version": {
+              "const": "newrouge.b-route-commit.v1"
+            },
+            "entity_id": {
+              "$ref": "#/$defs/String"
+            },
+            "revision": {
+              "$ref": "#/$defs/PositiveInteger"
+            },
+            "digest": {
+              "$ref": "#/$defs/Digest"
+            },
+            "verification_mode": {
+              "const": "raw"
+            },
+            "codec_version": {
+              "type": "null"
+            }
+          },
+          "required": [
+            "path",
+            "schema_version",
+            "entity_id",
+            "revision",
+            "digest",
+            "verification_mode",
+            "codec_version"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "path": {
+              "$ref": "#/$defs/String"
+            },
+            "schema_version": {
+              "const": "newrouge.b-route-commit.v1"
+            },
+            "entity_id": {
+              "$ref": "#/$defs/String"
+            },
+            "revision": {
+              "$ref": "#/$defs/PositiveInteger"
+            },
+            "digest": {
+              "$ref": "#/$defs/Digest"
+            },
+            "verification_mode": {
+              "const": "canonical"
+            },
+            "codec_version": {
+              "const": "newrouge.b-route-json.v1"
+            }
+          },
+          "required": [
+            "path",
+            "schema_version",
+            "entity_id",
+            "revision",
+            "digest",
+            "verification_mode",
+            "codec_version"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "CatalogRef": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "path": {
+              "$ref": "#/$defs/String"
+            },
+            "schema_version": {
+              "const": "newrouge.b-route-catalog.v1"
+            },
+            "entity_id": {
+              "$ref": "#/$defs/String"
+            },
+            "revision": {
+              "$ref": "#/$defs/PositiveInteger"
+            },
+            "digest": {
+              "$ref": "#/$defs/Digest"
+            },
+            "verification_mode": {
+              "const": "raw"
+            },
+            "codec_version": {
+              "type": "null"
+            }
+          },
+          "required": [
+            "path",
+            "schema_version",
+            "entity_id",
+            "revision",
+            "digest",
+            "verification_mode",
+            "codec_version"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "path": {
+              "$ref": "#/$defs/String"
+            },
+            "schema_version": {
+              "const": "newrouge.b-route-catalog.v1"
+            },
+            "entity_id": {
+              "$ref": "#/$defs/String"
+            },
+            "revision": {
+              "$ref": "#/$defs/PositiveInteger"
+            },
+            "digest": {
+              "$ref": "#/$defs/Digest"
+            },
+            "verification_mode": {
+              "const": "canonical"
+            },
+            "codec_version": {
+              "const": "newrouge.b-route-json.v1"
+            }
+          },
+          "required": [
+            "path",
+            "schema_version",
+            "entity_id",
+            "revision",
+            "digest",
+            "verification_mode",
+            "codec_version"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "OwnedFile": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/String"
+        },
+        "raw_digest": {
+          "$ref": "#/$defs/Digest"
+        }
+      },
+      "required": [
+        "path",
+        "raw_digest"
+      ],
+      "additionalProperties": false
+    },
+    "OwnedRef": {
+      "type": "object",
+      "properties": {
+        "owner": {
+          "enum": [
+            "source_manifest",
+            "source_ledger",
+            "planning_proof",
+            "manifest",
+            "contract",
+            "overlay",
+            "adr",
+            "authority",
+            "other_verification",
+            "frozen_a_inventory",
+            "implementation_reference",
+            "verification_record",
+            "runtime_acceptance"
+          ]
+        },
+        "ref": {
+          "$ref": "#/$defs/String"
+        },
+        "files": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/OwnedFile"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "owner",
+        "ref",
+        "files"
+      ],
+      "additionalProperties": false
+    },
+    "SourceManifestRef": {
+      "type": "object",
+      "properties": {
+        "owner": {
+          "const": "source_manifest"
+        },
+        "ref": {
+          "$ref": "#/$defs/String"
+        },
+        "files": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/OwnedFile"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "owner",
+        "ref",
+        "files"
+      ],
+      "additionalProperties": false
+    },
+    "SourceLedgerRef": {
+      "type": "object",
+      "properties": {
+        "owner": {
+          "const": "source_ledger"
+        },
+        "ref": {
+          "$ref": "#/$defs/String"
+        },
+        "files": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/OwnedFile"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "owner",
+        "ref",
+        "files"
+      ],
+      "additionalProperties": false
+    },
+    "PlanningProofRef": {
+      "type": "object",
+      "properties": {
+        "owner": {
+          "const": "planning_proof"
+        },
+        "ref": {
+          "$ref": "#/$defs/String"
+        },
+        "files": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/OwnedFile"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "owner",
+        "ref",
+        "files"
+      ],
+      "additionalProperties": false
+    },
+    "ManifestRef": {
+      "type": "object",
+      "properties": {
+        "owner": {
+          "const": "manifest"
+        },
+        "ref": {
+          "$ref": "#/$defs/String"
+        },
+        "files": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/OwnedFile"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "owner",
+        "ref",
+        "files"
+      ],
+      "additionalProperties": false
+    },
+    "OtherVerificationRef": {
+      "type": "object",
+      "properties": {
+        "owner": {
+          "const": "other_verification"
+        },
+        "ref": {
+          "$ref": "#/$defs/String"
+        },
+        "files": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/OwnedFile"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "owner",
+        "ref",
+        "files"
+      ],
+      "additionalProperties": false
+    },
+    "LogicalDefinitionUse": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/DefinitionKind"
+        },
+        "definition_id": {
+          "$ref": "#/$defs/String"
+        },
+        "owner_plan_id": {
+          "$ref": "#/$defs/FileId"
+        },
+        "owner_revision": {
+          "$ref": "#/$defs/PositiveInteger"
+        }
+      },
+      "required": [
+        "kind",
+        "definition_id",
+        "owner_plan_id",
+        "owner_revision"
+      ],
+      "additionalProperties": false
+    },
+    "PartResponsibility": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "$ref": "#/$defs/PartKind"
+            },
+            "applicability": {
+              "const": "applicable"
+            },
+            "rationale": {
+              "$ref": "#/$defs/String"
+            },
+            "responsibilities": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/String"
+              },
+              "minItems": 1,
+              "uniqueItems": true
+            }
+          },
+          "required": [
+            "kind",
+            "applicability",
+            "rationale",
+            "responsibilities"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "$ref": "#/$defs/PartKind"
+            },
+            "applicability": {
+              "const": "not_applicable"
+            },
+            "rationale": {
+              "$ref": "#/$defs/String"
+            },
+            "responsibilities": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/String"
+              },
+              "uniqueItems": true
+            }
+          },
+          "required": [
+            "kind",
+            "applicability",
+            "rationale",
+            "responsibilities"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "DefinitionOwner": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/DefinitionKind"
+        },
+        "definition_id": {
+          "$ref": "#/$defs/String"
+        },
+        "plan_ref": {
+          "$ref": "#/$defs/PlanRef"
+        }
+      },
+      "required": [
+        "kind",
+        "definition_id",
+        "plan_ref"
+      ],
+      "additionalProperties": false
+    },
+    "RequirementVerification": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "requirement_id": {
+              "$ref": "#/$defs/String"
+            },
+            "disposition": {
+              "const": "flow"
+            },
+            "flow_id": {
+              "$ref": "#/$defs/String"
+            },
+            "rationale": {
+              "$ref": "#/$defs/String"
+            },
+            "sink_id": {
+              "type": "null"
+            },
+            "verification_ref": {
+              "type": "null"
+            },
+            "authority_ref": {
+              "type": "null"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/String"
+              },
+              "uniqueItems": true
+            }
+          },
+          "required": [
+            "requirement_id",
+            "disposition",
+            "flow_id",
+            "rationale",
+            "sink_id",
+            "verification_ref",
+            "authority_ref",
+            "evidence_ids"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "requirement_id": {
+              "$ref": "#/$defs/String"
+            },
+            "disposition": {
+              "const": "other_verification"
+            },
+            "flow_id": {
+              "type": "null"
+            },
+            "rationale": {
+              "$ref": "#/$defs/String"
+            },
+            "sink_id": {
+              "$ref": "#/$defs/String"
+            },
+            "verification_ref": {
+              "$ref": "#/$defs/String"
+            },
+            "authority_ref": {
+              "type": "null"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/String"
+              },
+              "uniqueItems": true
+            }
+          },
+          "required": [
+            "requirement_id",
+            "disposition",
+            "flow_id",
+            "rationale",
+            "sink_id",
+            "verification_ref",
+            "authority_ref",
+            "evidence_ids"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "requirement_id": {
+              "$ref": "#/$defs/String"
+            },
+            "disposition": {
+              "const": "deferred"
+            },
+            "flow_id": {
+              "type": "null"
+            },
+            "rationale": {
+              "$ref": "#/$defs/String"
+            },
+            "sink_id": {
+              "type": "null"
+            },
+            "verification_ref": {
+              "type": "null"
+            },
+            "authority_ref": {
+              "$ref": "#/$defs/String"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/String"
+              },
+              "uniqueItems": true
+            }
+          },
+          "required": [
+            "requirement_id",
+            "disposition",
+            "flow_id",
+            "rationale",
+            "sink_id",
+            "verification_ref",
+            "authority_ref",
+            "evidence_ids"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "requirement_id": {
+              "$ref": "#/$defs/String"
+            },
+            "disposition": {
+              "const": "source_gap"
+            },
+            "flow_id": {
+              "type": "null"
+            },
+            "rationale": {
+              "$ref": "#/$defs/String"
+            },
+            "sink_id": {
+              "type": "null"
+            },
+            "verification_ref": {
+              "type": "null"
+            },
+            "authority_ref": {
+              "type": "null"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/String"
+              },
+              "uniqueItems": true
+            }
+          },
+          "required": [
+            "requirement_id",
+            "disposition",
+            "flow_id",
+            "rationale",
+            "sink_id",
+            "verification_ref",
+            "authority_ref",
+            "evidence_ids"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "CoverageRow": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "requirement_id": {
+              "$ref": "#/$defs/String"
+            },
+            "disposition": {
+              "const": "flow"
+            },
+            "flow_id": {
+              "$ref": "#/$defs/String"
+            },
+            "rationale": {
+              "$ref": "#/$defs/String"
+            },
+            "sink_id": {
+              "type": "null"
+            },
+            "verification_ref": {
+              "type": "null"
+            },
+            "authority_ref": {
+              "type": "null"
+            }
+          },
+          "required": [
+            "requirement_id",
+            "disposition",
+            "flow_id",
+            "rationale",
+            "sink_id",
+            "verification_ref",
+            "authority_ref"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "requirement_id": {
+              "$ref": "#/$defs/String"
+            },
+            "disposition": {
+              "const": "other_verification"
+            },
+            "flow_id": {
+              "type": "null"
+            },
+            "rationale": {
+              "$ref": "#/$defs/String"
+            },
+            "sink_id": {
+              "$ref": "#/$defs/String"
+            },
+            "verification_ref": {
+              "$ref": "#/$defs/String"
+            },
+            "authority_ref": {
+              "type": "null"
+            }
+          },
+          "required": [
+            "requirement_id",
+            "disposition",
+            "flow_id",
+            "rationale",
+            "sink_id",
+            "verification_ref",
+            "authority_ref"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "requirement_id": {
+              "$ref": "#/$defs/String"
+            },
+            "disposition": {
+              "const": "deferred"
+            },
+            "flow_id": {
+              "type": "null"
+            },
+            "rationale": {
+              "$ref": "#/$defs/String"
+            },
+            "sink_id": {
+              "type": "null"
+            },
+            "verification_ref": {
+              "type": "null"
+            },
+            "authority_ref": {
+              "$ref": "#/$defs/String"
+            }
+          },
+          "required": [
+            "requirement_id",
+            "disposition",
+            "flow_id",
+            "rationale",
+            "sink_id",
+            "verification_ref",
+            "authority_ref"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "requirement_id": {
+              "$ref": "#/$defs/String"
+            },
+            "disposition": {
+              "const": "source_gap"
+            },
+            "flow_id": {
+              "type": "null"
+            },
+            "rationale": {
+              "$ref": "#/$defs/String"
+            },
+            "sink_id": {
+              "type": "null"
+            },
+            "verification_ref": {
+              "type": "null"
+            },
+            "authority_ref": {
+              "type": "null"
+            }
+          },
+          "required": [
+            "requirement_id",
+            "disposition",
+            "flow_id",
+            "rationale",
+            "sink_id",
+            "verification_ref",
+            "authority_ref"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "TaskIndex": {
+      "type": "object",
+      "properties": {
+        "task_id": {
+          "$ref": "#/$defs/PositiveInteger"
+        },
+        "plan_refs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PlanRef"
+          },
+          "uniqueItems": true
+        },
+        "binding_refs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/BindingRef"
+          },
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "task_id",
+        "plan_refs",
+        "binding_refs"
+      ],
+      "additionalProperties": false
+    },
+    "BusinessId": {
+      "type": "string",
+      "pattern": "\\S",
+      "not": {
+        "pattern": "^\\s|\\s$"
+      }
+    }
+  }
+}

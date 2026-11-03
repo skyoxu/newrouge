@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "newrouge.b-route-catalog.v1",
+  "title": "B-route catalog record",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "const": "newrouge.b-route-catalog.v1"
+    },
+    "catalog_id": {
+      "const": "catalog"
+    },
+    "revision": {
+      "$ref": "newrouge.b-route-common.v1#/$defs/PositiveInteger"
+    },
+    "policy_ref": {
+      "$ref": "newrouge.b-route-common.v1#/$defs/PolicyRef"
+    },
+    "origins_ref": {
+      "$ref": "newrouge.b-route-common.v1#/$defs/OriginsRef"
+    },
+    "scope_heads": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "scope_id": {
+            "$ref": "newrouge.b-route-common.v1#/$defs/String"
+          },
+          "plan_refs": {
+            "type": "array",
+            "items": {
+              "$ref": "newrouge.b-route-common.v1#/$defs/PlanRef"
+            },
+            "uniqueItems": true
+          },
+          "binding_refs": {
+            "type": "array",
+            "items": {
+              "$ref": "newrouge.b-route-common.v1#/$defs/BindingRef"
+            },
+            "uniqueItems": true
+          },
+          "receipt_ref": {
+            "$ref": "newrouge.b-route-common.v1#/$defs/CommitRef"
+          }
+        },
+        "required": [
+          "scope_id",
+          "plan_refs",
+          "binding_refs",
+          "receipt_ref"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "definition_owners": {
+      "type": "array",
+      "items": {
+        "$ref": "newrouge.b-route-common.v1#/$defs/DefinitionOwner"
+      }
+    },
+    "task_index": {
+      "type": "array",
+      "items": {
+        "$ref": "newrouge.b-route-common.v1#/$defs/TaskIndex"
+      }
+    }
+  },
+  "required": [
+    "schema_version",
+    "catalog_id",
+    "revision",
+    "policy_ref",
+    "origins_ref",
+    "scope_heads",
+    "definition_owners",
+    "task_index"
+  ],
+  "additionalProperties": false
+}

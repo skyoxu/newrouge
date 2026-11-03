@@ -1,0 +1,208 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "newrouge.b-route-commit.v1",
+  "title": "B-route commit record",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "const": "newrouge.b-route-commit.v1"
+    },
+    "operation_id": {
+      "$ref": "newrouge.b-route-common.v1#/$defs/FileId"
+    },
+    "revision": {
+      "type": "integer",
+      "const": 1
+    },
+    "operation_digest": {
+      "$ref": "newrouge.b-route-common.v1#/$defs/Digest"
+    },
+    "scopes": {
+      "type": "array",
+      "items": {
+        "$ref": "newrouge.b-route-common.v1#/$defs/String"
+      },
+      "uniqueItems": true
+    },
+    "authority": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "$ref": "newrouge.b-route-common.v1#/$defs/String"
+          },
+          "before_digest": {
+            "anyOf": [
+              {
+                "$ref": "newrouge.b-route-common.v1#/$defs/Digest"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "after_digest": {
+            "anyOf": [
+              {
+                "$ref": "newrouge.b-route-common.v1#/$defs/Digest"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "path",
+          "before_digest",
+          "after_digest"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "targets": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "path": {
+                "$ref": "newrouge.b-route-common.v1#/$defs/String"
+              },
+              "before_digest": {
+                "anyOf": [
+                  {
+                    "$ref": "newrouge.b-route-common.v1#/$defs/Digest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "after_digest": {
+                "$ref": "newrouge.b-route-common.v1#/$defs/Digest"
+              },
+              "verification_mode": {
+                "const": "immutable_bytes"
+              },
+              "codec_version": {
+                "type": "null"
+              },
+              "projection_digest": {
+                "$ref": "newrouge.b-route-common.v1#/$defs/Digest"
+              }
+            },
+            "required": [
+              "path",
+              "before_digest",
+              "after_digest",
+              "verification_mode",
+              "codec_version",
+              "projection_digest"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "path": {
+                "$ref": "newrouge.b-route-common.v1#/$defs/String"
+              },
+              "before_digest": {
+                "anyOf": [
+                  {
+                    "$ref": "newrouge.b-route-common.v1#/$defs/Digest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "after_digest": {
+                "$ref": "newrouge.b-route-common.v1#/$defs/Digest"
+              },
+              "verification_mode": {
+                "const": "task_definition_projection"
+              },
+              "codec_version": {
+                "const": "newrouge.b-route-task-definition.v1"
+              },
+              "projection_digest": {
+                "$ref": "newrouge.b-route-common.v1#/$defs/Digest"
+              }
+            },
+            "required": [
+              "path",
+              "before_digest",
+              "after_digest",
+              "verification_mode",
+              "codec_version",
+              "projection_digest"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      }
+    },
+    "plan_refs": {
+      "type": "array",
+      "items": {
+        "$ref": "newrouge.b-route-common.v1#/$defs/PlanRef"
+      },
+      "uniqueItems": true
+    },
+    "binding_refs": {
+      "type": "array",
+      "items": {
+        "$ref": "newrouge.b-route-common.v1#/$defs/BindingRef"
+      },
+      "uniqueItems": true
+    },
+    "resolved_definitions": {
+      "type": "array",
+      "items": {
+        "$ref": "newrouge.b-route-common.v1#/$defs/DefinitionOwner"
+      }
+    },
+    "result": {
+      "type": "object",
+      "properties": {
+        "target_paths": {
+          "type": "array",
+          "items": {
+            "$ref": "newrouge.b-route-common.v1#/$defs/String"
+          },
+          "uniqueItems": true
+        },
+        "scope_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "newrouge.b-route-common.v1#/$defs/String"
+          },
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "target_paths",
+        "scope_ids"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "schema_version",
+    "operation_id",
+    "revision",
+    "operation_digest",
+    "scopes",
+    "authority",
+    "targets",
+    "plan_refs",
+    "binding_refs",
+    "resolved_definitions",
+    "result"
+  ],
+  "additionalProperties": false
+}

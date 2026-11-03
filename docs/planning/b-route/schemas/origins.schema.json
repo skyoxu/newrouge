@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "newrouge.b-route-origins.v1",
+  "title": "B-route origins record",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "const": "newrouge.b-route-origins.v1"
+    },
+    "origins_id": {
+      "const": "task-origins"
+    },
+    "revision": {
+      "$ref": "newrouge.b-route-common.v1#/$defs/PositiveInteger"
+    },
+    "tasks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "task_id": {
+            "$ref": "newrouge.b-route-common.v1#/$defs/PositiveInteger"
+          },
+          "source_refs": {
+            "type": "array",
+            "items": {
+              "$ref": "newrouge.b-route-common.v1#/$defs/OwnedRef"
+            },
+            "uniqueItems": true
+          },
+          "plan_refs": {
+            "type": "array",
+            "items": {
+              "$ref": "newrouge.b-route-common.v1#/$defs/PlanRef"
+            },
+            "uniqueItems": true
+          },
+          "binding_refs": {
+            "type": "array",
+            "items": {
+              "$ref": "newrouge.b-route-common.v1#/$defs/BindingRef"
+            },
+            "uniqueItems": true
+          }
+        },
+        "required": [
+          "task_id",
+          "source_refs",
+          "plan_refs",
+          "binding_refs"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "frozen_legacy_refs": {
+      "type": "array",
+      "items": {
+        "$ref": "newrouge.b-route-common.v1#/$defs/OwnedRef"
+      },
+      "uniqueItems": true
+    }
+  },
+  "required": [
+    "schema_version",
+    "origins_id",
+    "revision",
+    "tasks",
+    "frozen_legacy_refs"
+  ],
+  "additionalProperties": false
+}

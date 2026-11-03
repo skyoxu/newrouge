@@ -1,0 +1,334 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "newrouge.b-route-binding.v1",
+  "title": "B-route binding record",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "const": "newrouge.b-route-binding.v1"
+    },
+    "plan_id": {
+      "$ref": "newrouge.b-route-common.v1#/$defs/FileId"
+    },
+    "binding_revision": {
+      "$ref": "newrouge.b-route-common.v1#/$defs/PositiveInteger"
+    },
+    "plan_ref": {
+      "$ref": "newrouge.b-route-common.v1#/$defs/PlanRef"
+    },
+    "stage": {
+      "enum": [
+        "3C",
+        "4",
+        "5"
+      ]
+    },
+    "task_mappings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "task_id": {
+            "$ref": "newrouge.b-route-common.v1#/$defs/PositiveInteger"
+          },
+          "view_refs": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "properties": {
+                "view": {
+                  "enum": [
+                    "back",
+                    "gameplay"
+                  ]
+                },
+                "business_id": {
+                  "$ref": "newrouge.b-route-common.v1#/$defs/BusinessId"
+                }
+              },
+              "required": [
+                "view",
+                "business_id"
+              ],
+              "additionalProperties": false
+            },
+            "uniqueItems": true
+          },
+          "requirement_ids": {
+            "type": "array",
+            "items": {
+              "$ref": "newrouge.b-route-common.v1#/$defs/String"
+            },
+            "uniqueItems": true
+          },
+          "flow_ids": {
+            "type": "array",
+            "items": {
+              "$ref": "newrouge.b-route-common.v1#/$defs/String"
+            },
+            "uniqueItems": true
+          },
+          "part_kinds": {
+            "type": "array",
+            "items": {
+              "$ref": "newrouge.b-route-common.v1#/$defs/PartKind"
+            },
+            "uniqueItems": true
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "enum": [
+                "producer",
+                "consumer",
+                "integration_only_owner"
+              ]
+            },
+            "uniqueItems": true
+          },
+          "obligation_ids": {
+            "type": "array",
+            "items": {
+              "$ref": "newrouge.b-route-common.v1#/$defs/String"
+            },
+            "uniqueItems": true
+          }
+        },
+        "required": [
+          "task_id",
+          "view_refs",
+          "requirement_ids",
+          "flow_ids",
+          "part_kinds",
+          "roles",
+          "obligation_ids"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "parts": {
+      "type": "array",
+      "items": {
+        "$ref": "newrouge.b-route-common.v1#/$defs/PartResponsibility"
+      }
+    },
+    "implementation_objects": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "$ref": "newrouge.b-route-common.v1#/$defs/String"
+              },
+              "kind": {
+                "enum": [
+                  "command",
+                  "read_only_state",
+                  "adapter",
+                  "binding",
+                  "scene",
+                  "resource"
+                ]
+              },
+              "availability": {
+                "const": "planned"
+              },
+              "responsible_task_ids": {
+                "type": "array",
+                "items": {
+                  "$ref": "newrouge.b-route-common.v1#/$defs/PositiveInteger"
+                },
+                "minItems": 1,
+                "uniqueItems": true
+              },
+              "expected_type": {
+                "$ref": "newrouge.b-route-common.v1#/$defs/String"
+              },
+              "lifecycle": {
+                "$ref": "newrouge.b-route-common.v1#/$defs/String"
+              },
+              "target_ref": {
+                "anyOf": [
+                  {
+                    "$ref": "newrouge.b-route-common.v1#/$defs/OwnedRef"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "later_checks": {
+                "type": "array",
+                "items": {
+                  "enum": [
+                    "type",
+                    "compile",
+                    "binding",
+                    "engine"
+                  ]
+                },
+                "minItems": 1,
+                "uniqueItems": true
+              }
+            },
+            "required": [
+              "id",
+              "kind",
+              "availability",
+              "responsible_task_ids",
+              "expected_type",
+              "lifecycle",
+              "target_ref",
+              "later_checks"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "$ref": "newrouge.b-route-common.v1#/$defs/String"
+              },
+              "kind": {
+                "enum": [
+                  "command",
+                  "read_only_state",
+                  "adapter",
+                  "binding",
+                  "scene",
+                  "resource"
+                ]
+              },
+              "availability": {
+                "const": "existing"
+              },
+              "responsible_task_ids": {
+                "type": "array",
+                "items": {
+                  "$ref": "newrouge.b-route-common.v1#/$defs/PositiveInteger"
+                },
+                "minItems": 1,
+                "uniqueItems": true
+              },
+              "expected_type": {
+                "$ref": "newrouge.b-route-common.v1#/$defs/String"
+              },
+              "lifecycle": {
+                "$ref": "newrouge.b-route-common.v1#/$defs/String"
+              },
+              "target_ref": {
+                "$ref": "newrouge.b-route-common.v1#/$defs/OwnedRef"
+              },
+              "later_checks": {
+                "type": "array",
+                "items": {
+                  "enum": [
+                    "type",
+                    "compile",
+                    "binding",
+                    "engine"
+                  ]
+                },
+                "minItems": 1,
+                "uniqueItems": true
+              }
+            },
+            "required": [
+              "id",
+              "kind",
+              "availability",
+              "responsible_task_ids",
+              "expected_type",
+              "lifecycle",
+              "target_ref",
+              "later_checks"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      }
+    },
+    "obligations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "newrouge.b-route-common.v1#/$defs/String"
+          },
+          "requirement_ids": {
+            "type": "array",
+            "items": {
+              "$ref": "newrouge.b-route-common.v1#/$defs/String"
+            },
+            "uniqueItems": true
+          },
+          "flow_ids": {
+            "type": "array",
+            "items": {
+              "$ref": "newrouge.b-route-common.v1#/$defs/String"
+            },
+            "uniqueItems": true
+          },
+          "test_ids": {
+            "type": "array",
+            "items": {
+              "$ref": "newrouge.b-route-common.v1#/$defs/String"
+            },
+            "uniqueItems": true
+          },
+          "responsibility": {
+            "$ref": "newrouge.b-route-common.v1#/$defs/String"
+          },
+          "verification_refs": {
+            "type": "array",
+            "items": {
+              "$ref": "newrouge.b-route-common.v1#/$defs/OwnedRef"
+            },
+            "uniqueItems": true
+          }
+        },
+        "required": [
+          "id",
+          "requirement_ids",
+          "flow_ids",
+          "test_ids",
+          "responsibility",
+          "verification_refs"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "manifest_refs": {
+      "type": "array",
+      "items": {
+        "$ref": "newrouge.b-route-common.v1#/$defs/ManifestRef"
+      },
+      "uniqueItems": true
+    },
+    "other_verification_refs": {
+      "type": "array",
+      "items": {
+        "$ref": "newrouge.b-route-common.v1#/$defs/OwnedRef"
+      },
+      "uniqueItems": true
+    }
+  },
+  "required": [
+    "schema_version",
+    "plan_id",
+    "binding_revision",
+    "plan_ref",
+    "stage",
+    "task_mappings",
+    "parts",
+    "implementation_objects",
+    "obligations",
+    "manifest_refs",
+    "other_verification_refs"
+  ],
+  "additionalProperties": false
+}

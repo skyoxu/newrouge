@@ -3,12 +3,22 @@ from __future__ import annotations
 
 import hashlib
 import re
+from collections.abc import Mapping
 from pathlib import Path
 
 
-def resolve_contract(root: Path, ref: str) -> dict | None:
-    files = {p: p.read_text(encoding='utf-8')
-             for p in sorted((root / 'Game.Core/Contracts').rglob('*.cs'))}
+def resolve_contract(root: Path, ref: str, *, sources: Mapping[str, bytes] | None = None) -> dict | None:
+    """Resolve from disk, or exclusively from an already read source collection.
+
+    The sources seam preserves read_text's universal-newline text identity. Its
+    caller owns path containment and raw-byte verification before parsing.
+    """
+    if sources is None:
+        files = {p: p.read_text(encoding='utf-8')
+                 for p in sorted((root / 'Game.Core/Contracts').rglob('*.cs'))}
+    else:
+        files = {root / path: data.decode('utf-8').replace('\r\n', '\n').replace('\r', '\n')
+                 for path, data in sorted(sources.items())}
     direct = root / ref
     seeds = {p for p, text in files.items() if ref in text}
     if ref.startswith('Game.Core/Contracts/') and direct in files:

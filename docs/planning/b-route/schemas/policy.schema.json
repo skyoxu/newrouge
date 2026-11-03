@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "newrouge.b-route-policy.v1",
+  "title": "B-route policy record",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "const": "newrouge.b-route-policy.v1"
+    },
+    "policy_id": {
+      "$ref": "newrouge.b-route-common.v1#/$defs/String"
+    },
+    "policy_revision": {
+      "$ref": "newrouge.b-route-common.v1#/$defs/PositiveInteger"
+    },
+    "switch_boundary": {
+      "type": "object",
+      "properties": {
+        "default_route": {
+          "enum": [
+            "A",
+            "B"
+          ]
+        },
+        "a_write_allowed": {
+          "type": "boolean"
+        },
+        "allowed_a_operations": {
+          "type": "array",
+          "items": {
+            "$ref": "newrouge.b-route-common.v1#/$defs/String"
+          },
+          "uniqueItems": true
+        },
+        "authority_refs": {
+          "type": "array",
+          "items": {
+            "$ref": "newrouge.b-route-common.v1#/$defs/OwnedRef"
+          },
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "default_route",
+        "a_write_allowed",
+        "allowed_a_operations",
+        "authority_refs"
+      ],
+      "additionalProperties": false
+    },
+    "frozen_a_refs": {
+      "type": "array",
+      "items": {
+        "$ref": "newrouge.b-route-common.v1#/$defs/OwnedRef"
+      },
+      "uniqueItems": true
+    }
+  },
+  "required": [
+    "schema_version",
+    "policy_id",
+    "policy_revision",
+    "switch_boundary",
+    "frozen_a_refs"
+  ],
+  "additionalProperties": false
+}
