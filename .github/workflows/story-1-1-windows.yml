@@ -18,7 +18,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: bad70a5e446b2c4f3263d3e8c1fd2d1c6781b65f
+          ref: 4aa86ba42eb2e06da84b2e40a87b099faca23be5
           path: source
           fetch-depth: 0
           persist-credentials: false
@@ -48,7 +48,7 @@ jobs:
           utc_date = dt.datetime.now(dt.timezone.utc).date().isoformat()
           evidence = root / 'logs/ci' / utc_date / 'story-1-1-windows-validation' / run_id
           evidence.mkdir(parents=True, exist_ok=False)
-          state = {'status': 'running', 'source_commit': 'bad70a5e446b2c4f3263d3e8c1fd2d1c6781b65f',
+          state = {'status': 'running', 'source_commit': '4aa86ba42eb2e06da84b2e40a87b099faca23be5',
                    'workflow_commit': os.getenv('GITHUB_SHA'), 'run_id': os.getenv('GITHUB_RUN_ID'),
                    'platform': platform.platform(), 'python': sys.version, 'checks': {}}
 
@@ -118,14 +118,15 @@ jobs:
               assert volume.returncode == 0 and volume.stdout.decode('utf-8').strip() == 'NTFS'
               state['git_version'] = git('--version').decode('utf-8').strip()
               assert git('rev-parse', 'HEAD').decode().strip() == state['source_commit']
-              assert git('rev-parse', 'HEAD^').decode().strip() == 'c5538a284037b9d06984f04fd997bc061ff2ca5f'
+              assert git('rev-parse', 'HEAD^').decode().strip() == '241543d9c6e56859314e0d52a0459958501b4105'
+              assert git('merge-base', 'bad70a5e446b2c4f3263d3e8c1fd2d1c6781b65f', 'HEAD').decode().strip() == 'bad70a5e446b2c4f3263d3e8c1fd2d1c6781b65f'
               expected = {
                   'scripts/python/_b_route_inventory.py': 'bb976d4a5247792faff23a7046ff754ac0049939',
                   'scripts/python/inventory_b_route_baseline.py': '042fadf591a626429c3c4beddc9502d8307d3e05',
-                  'scripts/python/tests/test_b_route_inventory.py': '22e24c0321829ec2cab2bbe53740062c5d17d17d',
+                  'scripts/python/tests/test_b_route_inventory.py': '02bd87c87babdd109cfc75fe95202e20d70e45e5',
                   'docs/workflows/b-route-baseline-inventory.md': 'ca5ef5d94166a871c182326f3e32ed9b5b4f9d4b',
               }
-              assert set(git('diff', '--name-only', 'HEAD^', 'HEAD').decode().splitlines()) == set(expected)
+              assert set(git('diff', '--name-only', 'HEAD^', 'HEAD').decode().splitlines()) == {'scripts/python/tests/test_b_route_inventory.py'}
               save('source-file-identity.json', {p: {'git_blob': git('rev-parse', 'HEAD:' + p).decode().strip(),
                                                    'checkout_raw_sha256': digest(root / p)} for p in expected})
               for p, blob in expected.items():
@@ -206,7 +207,7 @@ jobs:
               if report_files[0].name == 'inventory.json':
                   assert (missing_output / 'inventory.md').stat().st_size > 0
               state['checks']['missing_epics_no_fallback'] = {'exit': result.returncode, 'report': report_files[0].name,
-                  'diagnostics': [{'code': d.get('code'), 'location': d.get('location')} for d in missing_diagnostics]}
+                  'diagnostics': [{'code': d.get('code'), 'location': d.get('location')} for d in missing_diagnostics if d.get('severity') == 'error']}
               print('MISSING EPICS DIAGNOSTIC CHECK ' + json.dumps(state['checks']['missing_epics_no_fallback']), flush=True)
 
               sys.path.insert(0, str(root / 'scripts/python/tests'))
