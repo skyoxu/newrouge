@@ -36,6 +36,7 @@
 - ADR-0038: Semantic Delivery Topology — `docs/adr/ADR-0038-semantic-delivery-topology.md`
 - ADR-0038: MVG Candidate Admission Before Selection — `docs/adr/ADR-0038-mvg-candidate-admission.md`
 - ADR-0039: MVG 完成项恢复与独立候选生命周期 — `docs/adr/ADR-0039-mvg-completed-capability-recovery.md`
+- ADR-0040: B 路线阶段、记录权威与迁移启用治理 — [docs/adr/ADR-0040-b-route-stages-authority-and-activation.md](../adr/ADR-0040-b-route-stages-authority-and-activation.md)。治理定义已采纳，当前未启用；后续实现交付和迁移启用另有条件，现行 A 入口继续有效。
 
 ---
 

@@ -205,6 +205,8 @@ Chapter 2 任务完毕时，必须向用户展示 project-health 的访问信息
 
 MVG 集成补充：按 [MVG 集成验收](docs/workflows/mvg-integration-acceptance.md) 建立链路清单，复用真实任务指定交接归属；只有无人承担时才补集成任务。
 
+B 路线治理入口：[ADR-0040（Accepted，治理已采纳，未启用）](docs/adr/ADR-0040-b-route-stages-authority-and-activation.md)。目标职责为 3A 完整来源及独立审计 → 3B 无 Task 正式语义采纳 → 3C 盘点复用／真实缺口与三联承接 → 4–5 具体绑定和同源 readiness → 6 单 Task → 适用 7 → Flow／累计收尾。3B 不要求 Task／readiness／真实场景，3A／3B／3C 不代表三个新公共命令。以下仍是现行 A 实现入口；后续共享记录、消费者门禁和运行证据交付，以及 A 冻结／默认 B／A 退出／补偿操作，分别按 ADR 条件准入，不能由本次文档变更推定生效。
+
 ### 3.0 Choose The Chapter 3 Route First
 
 Do not author `tasks.json` directly. Chapter 3 now uses semantic conservation before coarse task generation while preserving the existing triplet authority:
@@ -512,6 +514,8 @@ dotnet test Game.Core.Tests/Game.Core.Tests.csproj
 ## 5. Phase 3：语义核对与就绪门（Semantic Reconciliation and Readiness）
 
 进入 Chapter 6 前必须具备与当前输入一致的 Chapter 5 readiness；有效工件可以复用，不要求每次从零重跑 Extraction B。5.0 的全局审计和就绪检查不能被单任务轻量 lane 替代。
+
+目标 B 的阶段区分见 [ADR-0040（Accepted，未启用）](docs/adr/ADR-0040-b-route-stages-authority-and-activation.md)：3A 独立来源审计前移，Chapter 5 仍核对当前 Task／Acceptance／契约／绑定及适用义务；3B 的正式采纳不等于 Task readiness。进入 6 不要求本 Task 已 done；合法非 Flow 仍须已采纳理由及其他验证依据，真实 Flow 影响仍绑定回归。对应统一 gate 待后续实现，本文不修改当前脚本检查或原命令。
 
 5.1/5.2 的语义修复按需执行，典型触发条件：
 
@@ -1683,7 +1687,9 @@ py -3 scripts/sc/run_review_pipeline.py --task-id <id> --godot-bin "$env:GODOT_B
 
 ## 9. 最佳默认路径（Best Default）
 
-对本仓的大多数真实工作，用户仍通过对应 Chapter Skill 提供来源或 task id；主要编排由 Skill 和脚本承担，章节顺序不变：Chapter 3 → 4 → 5 → 6 → 7。
+对本仓的大多数真实工作，用户仍通过对应 Chapter Skill 提供来源或 task id；主要编排由 Skill 和脚本承担。以下是现行 A 的可执行顺序：Chapter 3 → 4 → 5 → 6 → 7。
+
+目标 B 的阶段和权威定义见 [ADR-0040（Accepted，未启用）](docs/adr/ADR-0040-b-route-stages-authority-and-activation.md)，治理定义已采纳，后续实现及启用条件仍须分别满足。新增默认 B 须等待全部消费者／恢复反例与奖励双路径真实证据；迁移启用后，A 仅在正式冻结且仍有效的边界内继续实施／恢复，最终退出另查全部活跃 A 完成或受治理迁入等条件。补偿回退保留后编辑、历史和 B 来源，不以删标识退回 A。单 Task／Flow 通过不授予累计里程碑完成。
 
 1. Chapter 3 声明来源、完成语义守恒与任务三联；Chapter 4 冻结 Overlay/Contract 基线。
 2. Chapter 5 完成全局核对并获得当前有效 readiness；BLOCKED 或陈旧工件不得进入 Chapter 6。

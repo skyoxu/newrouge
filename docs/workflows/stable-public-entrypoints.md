@@ -13,6 +13,12 @@ Use `docs/workflows/script-entrypoints-index.md` when you need the full executab
   - a one-off repair or template sync tool
 - Do not manually stitch `scripts/sc/test.py + scripts/sc/acceptance_check.py + scripts/sc/llm_review.py` when `scripts/sc/run_review_pipeline.py` already covers the same task path.
 
+## B Route Governance (Accepted; Not Enabled)
+
+[ADR-0040: B route stages, authority and activation](../adr/ADR-0040-b-route-stages-authority-and-activation.md) is Accepted following independent source review under the user’s explicit delegation after the full proposal was presented. Governance adoption, implementation delivery and migration activation have separate admission conditions. The current commands below remain the implemented A entrypoints.
+
+The target order is 3A source audit, 3B formal adoption without Task/readiness/real scenes, 3C Task handoff, 4–5 binding/readiness, 6 one Task, applicable 7, then Flow/cumulative closeout. These are responsibilities, not three new commands. Default B waits for later consumers, recovery counterexamples and real reward evidence from both paths. A freeze, final A exit and reviewed compensation each follow the ADR conditions; this navigation does not activate them.
+
 ## Repo Bootstrap And Recovery
 
 ### `py -3 scripts/python/dev_cli.py run-prototype-workflow --prototype-file docs/prototypes/<your-file>.md`

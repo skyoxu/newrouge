@@ -29,6 +29,7 @@ Context Reset 后先读取本文件，再按当前任务范围选择首要入口
 | 任务范围 | 首要入口 | 按需补充 |
 | --- | --- | --- |
 | 项目身份/状态 | `README.md` | 当前任务三联或用户明确指定的状态文件 |
+| B 路线阶段／权威／迁移治理 | [ADR-0040（Accepted，未启用）](docs/adr/ADR-0040-b-route-stages-authority-and-activation.md) | 治理定义已采纳；实现及启用待后续交付，现行 A 命令仍有效 |
 | Chapter 3 | `workflow.md` 第 3 章 | `.agents/skills/workflow-chapter3-task-triplet-baseline/SKILL.md`；本次 PRD/GDD/planning sources |
 | Chapter 4 | `workflow.md` 第 4 章 | `.agents/skills/workflow-chapter4-overlays-contracts-baseline/SKILL.md`；任务三联、相关 Overlay/Contract |
 | Chapter 5 | `workflow.md` 第 5 章 | `.agents/skills/workflow-chapter5-semantics-stabilization/SKILL.md`；当前 reconciliation/readiness |
@@ -43,6 +44,8 @@ Context Reset 后先读取本文件，再按当前任务范围选择首要入口
 | Testing/MVG | `docs/testing-framework.md` | `docs/workflows/mvg-integration-acceptance.md`、选定 manifest |
 | Harness/工作流维护 | `docs/workflows/run-protocol.md` | 当前涉及入口脚本、schema、`docs/workflows/local-hard-checks.md` |
 | 显式 plan/decision 工作 | 用户或当前任务绑定的具体文件 | 该文件引用的来源；不按目录时间戳猜测 |
+
+B 路线目标为 3A 来源审计 → 3B 无 Task 正式采纳 → 3C 任务承接 → 4–5 绑定／readiness → 6 单 Task → 适用 7 → Flow／累计收尾。阶段、记录权威及 A 冻结／切 B／退 A／补偿条件见上述 Accepted ADR；治理采纳、实现交付和迁移启用分别准入，不据导航或 Build spec 获批切换默认路径。Story 1.2 的纯治理纳管不豁免后续实施。
 
 历史日志是证据而不是当前指令。被当前 Task、ADR、冻结来源、恢复对象或显式 plan/decision 引用时再展开；source 缺失且影响边界判断时 fail closed，不用摘要猜测替代。
 
