@@ -1,0 +1,146 @@
+name: Story 1.3 Windows Codec Validation
+
+on:
+  push:
+    branches: [test/b-route-story-1-3-windows-2026-11-03]
+    paths:
+      - .github/workflows/story-1-3-windows.yml
+      - scripts/python/_b_route_codec.py
+      - scripts/python/verify_b_route_reference.py
+      - scripts/python/tests/test_b_route_codec.py
+      - docs/workflows/b-route-reference-verification.md
+
+permissions:
+  contents: read
+
+jobs:
+  codec:
+    runs-on: windows-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run native Windows codec matrix
+        shell: python
+        run: |
+          import hashlib
+          import json
+          import os
+          import platform
+          import re
+          from pathlib import Path
+          import subprocess
+          import sys
+          import time
+
+          sys.dont_write_bytecode = True
+
+          root = Path.cwd()
+          output = root / 'logs' / 'ci' / 'story-1-3-windows' / (os.environ['GITHUB_RUN_ID'] + '-' + os.environ['GITHUB_RUN_ATTEMPT'])
+          output.mkdir(parents=True, exist_ok=False)
+          assert os.name == 'nt', 'Native Windows is required'
+          head = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
+          assert head == os.environ['GITHUB_SHA'], 'Unexpected checkout SHA'
+          paths = ['scripts/python/_b_route_codec.py', 'scripts/python/verify_b_route_reference.py', 'scripts/python/tests/test_b_route_codec.py', 'docs/workflows/b-route-reference-verification.md']
+          environment = {'head': head, 'python': sys.version, 'platform': platform.platform(), 'files': {p: {'raw_sha256': hashlib.sha256((root / p).read_bytes()).hexdigest(), 'git_blob': subprocess.check_output(['git', 'rev-parse', 'HEAD:' + p], text=True).strip()} for p in paths}}
+          (output / 'environment.json').write_text(json.dumps(environment, indent=2) + '\n', encoding='utf-8')
+          print(json.dumps(environment, indent=2), flush=True)
+          command = [sys.executable, '-B', '-m', 'unittest', 'discover', '-s', 'scripts/python/tests', '-p', 'test_b_route_codec.py', '-v']
+          start = time.monotonic()
+          try:
+              result = subprocess.run(command, cwd=root, capture_output=True, text=True, encoding='utf-8', errors='replace', timeout=180)
+              stdout, stderr, code = result.stdout, result.stderr, result.returncode
+          except subprocess.TimeoutExpired as exc:
+              stdout = exc.stdout.decode('utf-8', errors='replace') if isinstance(exc.stdout, bytes) else (exc.stdout or '')
+              stderr = exc.stderr.decode('utf-8', errors='replace') if isinstance(exc.stderr, bytes) else (exc.stderr or '')
+              code = 124
+          (output / 'unit.stdout').write_text(stdout, encoding='utf-8')
+          (output / 'unit.stderr').write_text(stderr, encoding='utf-8')
+          required_windows = [
+              'test_windows_actual_unicode_file_io_and_case_lookup',
+              'test_windows_actual_internal_junction_is_allowed_and_external_junction_rejected',
+              'test_windows_actual_exclusive_file_occupation_cannot_be_reported_as_success',
+          ]
+          windows_results = {name: re.search(r'^' + re.escape(name) + r' \(test_b_route_codec\.WindowsIoTests\.' + re.escape(name) + r'\) \.\.\. ok$', stderr, re.MULTILINE) is not None for name in required_windows}
+          if not all(windows_results.values()) and code == 0:
+              code = 1
+          summary = {'command': command, 'exit_code': code, 'elapsed_seconds': time.monotonic() - start, 'native_windows': True, 'head': head, 'required_windows_tests_passed': windows_results}
+          (output / 'summary.json').write_text(json.dumps(summary, indent=2) + '\n', encoding='utf-8')
+          print(stdout, flush=True)
+          print(stderr, flush=True)
+          print(json.dumps(summary, indent=2), flush=True)
+          def run_cli_fixtures(root, output):
+              sys.path.insert(0, str(root / 'scripts' / 'python'))
+              from _b_route_codec import PLAN_SCHEMA, CODEC_VERSION, canonical_digest, raw_digest
+
+              fixture = output / 'cli-fixtures'
+              fixture.mkdir(exist_ok=False)
+              relative = fixture.relative_to(root).as_posix()
+              record = {'schema_version': PLAN_SCHEMA, 'plan_id': 'WINDOWS-PLAN', 'revision': 1, 'label': 'é中'}
+              raw = (json.dumps(record, ensure_ascii=False, indent=2) + '\n').encode('utf-8')
+              (fixture / 'plan.json').write_bytes(raw)
+              reference = {'path': relative + '/plan.json', 'schema_version': PLAN_SCHEMA, 'entity_id': 'WINDOWS-PLAN', 'revision': 1, 'digest': canonical_digest(record), 'verification_mode': 'canonical', 'codec_version': CODEC_VERSION}
+              for name, value in [
+                  ('reference.json', reference),
+                  ('reference-raw.json', dict(reference, digest=raw_digest(raw), verification_mode='raw', codec_version=None)),
+                  ('reference-bad.json', dict(reference, digest='sha256:' + '0' * 64)),
+                  ('unknown.json', {'schema_version': 'unknown.v1'}),
+                  ('policy.json', {'schema_version': 'newrouge.b-route-policy.v1'}),
+              ]:
+                  (fixture / name).write_text(json.dumps(value, ensure_ascii=False) + '\n', encoding='utf-8')
+              (fixture / 'duplicate.json').write_bytes(b'{"schema_version":"x","schema_version":"y"}')
+              cases = [
+                  ('content-ok', 'content', '--path', 'plan.json', 0, 'ok'),
+                  ('reference-ok', 'reference', '--reference', 'reference.json', 0, 'ok'),
+                  ('reference-raw-ok', 'reference', '--reference', 'reference-raw.json', 0, 'ok'),
+                  ('reference-bad', 'reference', '--reference', 'reference-bad.json', 1, 'digest_mismatch'),
+                  ('duplicate', 'content', '--path', 'duplicate.json', 1, 'duplicate_key'),
+                  ('unknown', 'content', '--path', 'unknown.json', 1, 'unknown_schema'),
+                  ('unprovable', 'content', '--path', 'policy.json', 1, 'identity_unprovable'),
+                  ('missing', 'content', '--path', 'missing.json', 1, 'file_not_found'),
+              ]
+              source_files = [root / 'scripts/python/_b_route_codec.py', root / 'scripts/python/verify_b_route_reference.py', root / 'scripts/python/tests/test_b_route_codec.py', root / 'docs/workflows/b-route-reference-verification.md']
+              before = {str(p): p.read_bytes() for p in source_files}
+              fixture_before = {str(p): p.read_bytes() for p in fixture.rglob('*') if p.is_file()}
+              results = []
+              for name, mode, option, path, expected_exit, expected_reason in cases:
+                  invocation = [sys.executable, '-B', 'scripts/python/verify_b_route_reference.py', mode, '--repo-root', str(root), option, relative + '/' + path]
+                  result = subprocess.run(invocation, cwd=root, capture_output=True, text=True, encoding='utf-8', errors='replace', timeout=15)
+                  (output / (name + '.stdout.json')).write_text(result.stdout, encoding='utf-8')
+                  (output / (name + '.stderr.log')).write_text(result.stderr, encoding='utf-8')
+                  try:
+                      value = json.loads(result.stdout)
+                      matched = result.returncode == expected_exit and value['diagnostic']['reason_code'] == expected_reason and value['schema_validated'] is False and not result.stderr
+                  except (ValueError, KeyError, TypeError):
+                      matched = False
+                  row = {'name': name, 'command': invocation, 'exit_code': result.returncode, 'expected_exit': expected_exit, 'expected_reason': expected_reason, 'matched': matched}
+                  results.append(row)
+                  print(json.dumps(row), flush=True)
+                  print(result.stdout, flush=True)
+                  print(result.stderr, flush=True)
+              unchanged = before == {str(p): p.read_bytes() for p in source_files} and fixture_before == {str(p): p.read_bytes() for p in fixture.rglob('*') if p.is_file()}
+              report = {'cases': results, 'inputs_unchanged': unchanged, 'all_matched': all(row['matched'] for row in results)}
+              (output / 'cli-results.json').write_text(json.dumps(report, indent=2) + '\n', encoding='utf-8')
+              return report['all_matched'] and unchanged
+
+          cli_ok = run_cli_fixtures(root, output)
+          if not cli_ok and code == 0:
+              code = 1
+          summary['cli_ok'] = cli_ok
+          summary['exit_code'] = code
+          (output / 'summary.json').write_text(json.dumps(summary, indent=2) + '\n', encoding='utf-8')
+          print(json.dumps(summary, indent=2), flush=True)
+          raise SystemExit(code)
+      - name: Upload this run only
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: story-1-3-windows-${{ github.run_id }}-${{ github.run_attempt }}
+          path: logs/ci/story-1-3-windows/${{ github.run_id }}-${{ github.run_attempt }}/
+          if-no-files-found: error
+          retention-days: 7
