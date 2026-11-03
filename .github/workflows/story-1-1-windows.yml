@@ -1,0 +1,216 @@
+name: Story 1.1 Windows inventory verification
+
+on:
+  push:
+    branches: [test/b-route-story-1-1-windows-ci-2026-11-03]
+
+permissions:
+  contents: read
+
+jobs:
+  inventory:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    env:
+      PYTHONUTF8: '1'
+      PYTHONIOENCODING: utf-8
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: bad70a5e446b2c4f3263d3e8c1fd2d1c6781b65f
+          path: source
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify fixed source, CLI and actual NTFS junction guards
+        working-directory: source
+        shell: python
+        run: |
+          import datetime as dt
+          import hashlib
+          import json
+          import os
+          import pathlib
+          import platform
+          import re
+          import stat
+          import subprocess
+          import sys
+          import traceback
+          import uuid
+
+          root = pathlib.Path.cwd()
+          run_id = 'win-' + uuid.uuid4().hex
+          utc_date = dt.datetime.now(dt.timezone.utc).date().isoformat()
+          evidence = root / 'logs/ci' / utc_date / 'story-1-1-windows-validation' / run_id
+          evidence.mkdir(parents=True, exist_ok=False)
+          state = {'status': 'running', 'source_commit': 'bad70a5e446b2c4f3263d3e8c1fd2d1c6781b65f',
+                   'workflow_commit': os.getenv('GITHUB_SHA'), 'run_id': os.getenv('GITHUB_RUN_ID'),
+                   'platform': platform.platform(), 'python': sys.version, 'checks': {}}
+
+          def save(name, data):
+              (evidence / name).write_text(json.dumps(data, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+
+          def command(label, args, cwd=root):
+              metadata = {'argv': [str(x) for x in args], 'cwd': str(cwd), 'status': 'started'}
+              save(label + '.command.json', metadata)
+              try:
+                  result = subprocess.run(metadata['argv'], cwd=cwd, capture_output=True, timeout=240)
+              except subprocess.TimeoutExpired as exc:
+                  (evidence / (label + '.stdout')).write_bytes(exc.stdout or b'')
+                  (evidence / (label + '.stderr')).write_bytes(exc.stderr or b'')
+                  save(label + '.command.json', dict(metadata, status='timeout', timeout_seconds=240))
+                  raise
+              (evidence / (label + '.stdout')).write_bytes(result.stdout)
+              (evidence / (label + '.stderr')).write_bytes(result.stderr)
+              save(label + '.command.json', dict(metadata, status='completed', exit=result.returncode))
+              return result
+
+          def git(*args):
+              result = subprocess.run(['git', *args], cwd=root, capture_output=True, check=True)
+              return result.stdout
+
+          def digest(path):
+              return hashlib.sha256(path.read_bytes()).hexdigest()
+
+          def protected():
+              paths = git('ls-files', '-z').decode('utf-8').split('\0')
+              return {p: digest(root / p) if (root / p).is_file() else None for p in paths if p}
+
+          def inventory_output(repo, identity):
+              matches = list((repo / 'logs/ci').glob('*/b-route-baseline-inventory/' + identity))
+              assert len(matches) == 1, matches
+              return matches[0]
+
+          def cli(label, repo=root, epics='_bmad-output/planning-artifacts/b-route/epics.md', identity=None):
+              identity = identity or (run_id + '-' + label)
+              result = command(label, [sys.executable, root / 'scripts/python/inventory_b_route_baseline.py',
+                                      '--root', repo, '--epics', epics, '--run-id', identity])
+              return result, identity
+
+          def junction(label, link, target):
+              result = command(label, ['cmd.exe', '/d', '/c', 'mklink', '/J', link, target])
+              assert result.returncode == 0, 'Real junction creation blocked; do not elevate or change ACL'
+              attributes = link.lstat().st_file_attributes
+              save(label + '.attributes.json', {'link': str(link), 'target': str(target), 'attributes': attributes})
+              assert attributes & stat.FILE_ATTRIBUTE_REPARSE_POINT
+
+          before = None
+          original_status = None
+          cases = []
+          try:
+              assert os.name == 'nt', 'Native Windows is required'
+              volume = command('filesystem', ['powershell.exe', '-NoProfile', '-Command',
+                               '(Get-Volume -DriveLetter (Get-Item .).PSDrive.Name).FileSystemType'])
+              assert volume.returncode == 0 and volume.stdout.decode('utf-8').strip() == 'NTFS'
+              state['git_version'] = git('--version').decode('utf-8').strip()
+              assert git('rev-parse', 'HEAD').decode().strip() == state['source_commit']
+              assert git('rev-parse', 'HEAD^').decode().strip() == 'c5538a284037b9d06984f04fd997bc061ff2ca5f'
+              expected = {
+                  'scripts/python/_b_route_inventory.py': 'bb976d4a5247792faff23a7046ff754ac0049939',
+                  'scripts/python/inventory_b_route_baseline.py': '042fadf591a626429c3c4beddc9502d8307d3e05',
+                  'scripts/python/tests/test_b_route_inventory.py': '22e24c0321829ec2cab2bbe53740062c5d17d17d',
+                  'docs/workflows/b-route-baseline-inventory.md': 'ca5ef5d94166a871c182326f3e32ed9b5b4f9d4b',
+              }
+              assert set(git('diff', '--name-only', 'HEAD^', 'HEAD').decode().splitlines()) == set(expected)
+              save('source-file-identity.json', {p: {'git_blob': git('rev-parse', 'HEAD:' + p).decode().strip(),
+                                                   'checkout_raw_sha256': digest(root / p)} for p in expected})
+              for p, blob in expected.items():
+                  assert git('rev-parse', 'HEAD:' + p).decode().strip() == blob, p
+              original_status = git('status', '--porcelain=v1', '-uall')
+              before = protected()
+              save('protected-before.json', before)
+              result = command('unit', [sys.executable, '-m', 'unittest', 'discover', '-s',
+                                       'scripts/python/tests', '-p', 'test_b_route_inventory.py', '-v'])
+              unit_text = result.stderr.decode('utf-8', errors='replace')
+              count = re.search(r'Ran (\d+) tests?', unit_text)
+              assert result.returncode == 0 and count and int(count[1]) == 59
+              state['checks']['unit'] = {'exit': result.returncode, 'count': int(count[1]),
+                                        'skipped_lines': [x for x in unit_text.splitlines() if 'skipped ' in x]}
+              reports = []
+              for label in ('capture-a', 'capture-b'):
+                  result, identity = cli(label)
+                  folder = inventory_output(root, identity)
+                  report = json.loads((folder / 'inventory.json').read_text(encoding='utf-8'))
+                  assert result.returncode == 1 and report['stable'] and not report['adoptable']
+                  errors = [x for x in report['diagnostics'] if x['severity'] == 'error']
+                  assert len(errors) == 1 and errors[0]['code'] == 'missing-input'
+                  assert errors[0]['location'] == 'logs/ci/2026-05-06/sc-build-tdd/summary.json'
+                  assert (folder / 'inventory.md').stat().st_size > 0
+                  reports.append((identity, folder, report))
+              assert reports[0][2]['content_identity'] == reports[1][2]['content_identity']
+              assert reports[0][2]['collection']['event_id'] != reports[1][2]['collection']['event_id']
+              state['checks']['two_captures'] = 'stable identities; expected historical missing-input; not adoptable'
+              first_identity, first_folder, _ = reports[0]
+              first_bytes = {p.name: digest(p) for p in first_folder.iterdir()}
+              result, _ = cli('repeat', identity=first_identity)
+              assert result.returncode == 2
+              assert first_bytes == {p.name: digest(p) for p in first_folder.iterdir()}
+              state['checks']['repeat_no_overwrite'] = True
+              result, identity = cli('missing-epics', epics='planning/missing.md')
+              assert result.returncode == 1
+              assert (inventory_output(root, identity) / 'failure.json').is_file()
+              state['checks']['missing_epics_no_fallback'] = True
+
+              sys.path.insert(0, str(root / 'scripts/python/tests'))
+              from test_b_route_inventory import InventoryTests
+              for kind in ('input', 'output'):
+                  case = InventoryTests(methodName='runTest')
+                  cases.append(case)
+                  case.setUp()
+                  save(kind + '-fixture.json', {'root': str(case.root)})
+                  fixture_volume = command(kind + '-filesystem', ['powershell.exe', '-NoProfile', '-Command',
+                                           '(Get-Volume -DriveLetter (Get-Item .).PSDrive.Name).FileSystemType'], cwd=case.root)
+                  assert fixture_volume.returncode == 0 and fixture_volume.stdout.decode('utf-8').strip() == 'NTFS'
+                  fixture_before = case.bytes_before()
+                  if kind == 'input':
+                      junction('input-junction-create', case.root / 'planning-junction', case.root / 'planning')
+                      result, identity = cli('input-junction', repo=case.root, epics='planning-junction/epics.md')
+                      folder = inventory_output(case.root, identity)
+                      failure = json.loads((folder / 'failure.json').read_text(encoding='utf-8'))
+                      save('input-junction-failure.json', failure)
+                      assert result.returncode == 1 and 'reparse' in failure['error'].lower()
+                      assert not (folder / 'inventory.json').exists()
+                  else:
+                      target = case.root / 'junction-empty-target'
+                      target.mkdir(exist_ok=False)
+                      parent = case.root / 'logs/ci' / dt.datetime.now(dt.timezone.utc).date().isoformat()
+                      parent.mkdir(parents=True, exist_ok=False)
+                      junction('output-junction-create', parent / 'b-route-baseline-inventory', target)
+                      result, identity = cli('output-junction', repo=case.root, epics=case.epics)
+                      assert result.returncode == 2 and b'reparse' in result.stdout.lower()
+                      assert not list(target.iterdir())
+                  for path, value in fixture_before.items():
+                      assert digest(case.root / path) == value, path
+                  state['checks'][kind + '_real_junction'] = True
+              state['status'] = 'passed'
+          except Exception:
+              state['status'] = 'failed-or-blocked'
+              state['error'] = traceback.format_exc()
+              raise
+          finally:
+              try:
+                  if before is not None:
+                      after = protected()
+                      save('protected-after.json', after)
+                      unchanged = before == after and original_status == git('status', '--porcelain=v1', '-uall')
+                      state['checks']['protected_source_and_git_status_unchanged'] = unchanged
+                      if not unchanged:
+                          state['status'] = 'failed-or-blocked'
+                  save('summary.json', state)
+              finally:
+                  for case in cases:
+                      if hasattr(case, 'temporary'):
+                          case.tearDown()
+              assert state['status'] == 'passed', state
+      - name: Upload original evidence even on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: story-1-1-windows-${{ github.run_id }}-${{ github.run_attempt }}
+          path: source/logs/ci/**
+          if-no-files-found: error
+          retention-days: 14
