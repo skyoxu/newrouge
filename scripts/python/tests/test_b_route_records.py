@@ -1162,7 +1162,7 @@ class CandidateBundleTests(RecordAssertions):
         task_path = ".taskmaster/tasks/tasks.json"
         for managed_path in (POLICY, ORIGINS, CATALOG, PREFIX + "plans/ghost/1.json"):
             with self.subTest(managed_path=managed_path), tempfile.TemporaryDirectory() as directory:
-                root = Path(directory)
+                root = Path(directory).resolve(strict=True)
                 storage = root / "storage/b-route"
                 storage.mkdir(parents=True)
                 managed_directory = root / PREFIX.rstrip("/")
