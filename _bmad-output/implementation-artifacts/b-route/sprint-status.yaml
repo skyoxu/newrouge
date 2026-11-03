@@ -41,7 +41,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 11-03-2026 17:10
-last_updated: 11-04-2026 00:16
+last_updated: 11-04-2026 01:22
 project: newrouge
 project_key: newrouge-b-route
 tracking_system: taskmaster-authoritative-planning-view
@@ -76,7 +76,7 @@ development_status:
   # Story 1.1 only: user-approved toolchain bootstrap, not a Task/runtime status.
   1-1-生成可复查的当前基线与消费者盘点: review
   1-2-明确b阶段顺序-记录权威及迁移启用规则: review
-  1-3-统一核验文件引用与规范化内容身份: backlog
+  1-3-统一核验文件引用与规范化内容身份: review
   1-4-按唯一公共schema校验六类规划记录: backlog
   1-5-形成可审阅的成熟成果保护基准与冻结a输入: backlog
   1-6-通过只读预检审阅迁移差异与阻断原因: backlog
