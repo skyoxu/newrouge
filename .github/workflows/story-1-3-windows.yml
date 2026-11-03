@@ -50,6 +50,36 @@ jobs:
           environment = {'head': head, 'python': sys.version, 'platform': platform.platform(), 'files': {p: {'raw_sha256': hashlib.sha256((root / p).read_bytes()).hexdigest(), 'git_blob': subprocess.check_output(['git', 'rev-parse', 'HEAD:' + p], text=True).strip()} for p in paths}}
           (output / 'environment.json').write_text(json.dumps(environment, indent=2) + '\n', encoding='utf-8')
           print(json.dumps(environment, indent=2), flush=True)
+          # Observe the actual production identity comparator without changing its return values.
+          sys.path.insert(0, str(root / 'scripts' / 'python'))
+          import _b_route_codec as codec
+
+          def trace_identity_comparisons(root, output):
+              fixture = output / 'identity-trace'
+              fixture.mkdir(exist_ok=False)
+              path = fixture.relative_to(root).as_posix() + '/plan.json'
+              target = root / path
+              events = []
+              original = codec._stat_identity
+              for attempt in range(12):
+                  target.write_text(json.dumps({'schema_version': codec.PLAN_SCHEMA, 'plan_id': 'TRACE', 'revision': 1, 'attempt': attempt}) + '\n', encoding='utf-8')
+                  calls = []
+                  def observed(info):
+                      returned = original(info)
+                      calls.append({'comparison_call': len(calls) + 1, 'returned': list(returned), 'fields': {name: getattr(info, name, None) for name in ['st_dev', 'st_ino', 'st_size', 'st_mtime_ns', 'st_ctime_ns', 'st_birthtime_ns', 'st_atime_ns', 'st_nlink', 'st_mode', 'st_file_attributes', 'st_reparse_tag']}})
+                      return returned
+                  codec._stat_identity = observed
+                  try:
+                      result = codec.verify_content_file(root, path)
+                  finally:
+                      codec._stat_identity = original
+                  row = {'attempt': attempt, 'reason_code': result.diagnostic.reason_code.value, 'resolved': str(target.resolve()), 'calls': calls}
+                  events.append(row)
+                  print('IDENTITY_TRACE ' + json.dumps(row), flush=True)
+              (output / 'identity-trace.json').write_text(json.dumps(events, indent=2) + '\n', encoding='utf-8')
+
+          trace_identity_comparisons(root, output)
+
           command = [sys.executable, '-B', '-m', 'unittest', 'discover', '-s', 'scripts/python/tests', '-p', 'test_b_route_codec.py', '-v']
           start = time.monotonic()
           try:
