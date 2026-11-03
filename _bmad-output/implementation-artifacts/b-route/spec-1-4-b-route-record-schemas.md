@@ -2,7 +2,7 @@
 title: 'Story 1.4 六类公共记录只读校验'
 type: 'feature'
 created: '2026-11-03'
-status: 'in-progress'
+status: 'in-review'
 route: 'dispatch'
 review_loop_iteration: 0
 baseline_commit: f4964fdfa0167f9e66b08319aeaa655700e378ea
@@ -54,14 +54,14 @@ context:
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `docs/planning/b-route/schemas/*.schema.json`：六类＋common唯一Draft202012定义，所有扩展封闭。
-- [ ] `scripts/python/_b_route_records.py`、`_b_route_codec.py`：离线validator、单记录／bundle、精确引用／闭包／反向join及baseline；集中诊断。
-- [ ] `scripts/python/_chapter5_contract_bindings.py`：同resolver增加keyword-only预读bytes seam，保旧默认解析／native text hash；新adapter用安全candidate cache，不复制解析器。
-- [ ] `scripts/python/validate_b_route_records.py`：record／bundle只读CLI，候选载体固定、禁pycache、结构化失败。
-- [ ] `scripts/python/requirements-b-route.txt`：冻结已有jsonschema4.26.0／referencing0.37.0；缺库fail closed，不升级工具链。
-- [ ] `scripts/python/tests/test_b_route_records.py`、`test_b_route_codec.py`：全部矩阵正负例与1.3回归；原已交付功能不削弱，扩adapter只更新原None假设。
-- [ ] `docs/workflows/b-route-record-contract.md`、`b-route-record-validation.md`：公共字段／owner边界和Windows API／CLI说明。
-- [ ] `.github/workflows/story-1-4-windows.yml`：仅独立test/b-route-story-1-4-windows-2026-11-03 push，contents:read、固定事件SHA；新旧单测及CLI／真实Windows必需项，限定本轮logs上传，原始失败保留。
+- [x] `docs/planning/b-route/schemas/*.schema.json`：六类＋common唯一Draft202012定义，所有扩展封闭。
+- [x] `scripts/python/_b_route_records.py`、`_b_route_codec.py`：离线validator、单记录／bundle、精确引用／闭包／反向join及baseline；集中诊断。
+- [x] `scripts/python/_chapter5_contract_bindings.py`：同resolver增加keyword-only预读bytes seam，保旧默认解析／native text hash；新adapter用安全candidate cache，不复制解析器。
+- [x] `scripts/python/validate_b_route_records.py`：record／bundle只读CLI，候选载体固定、禁pycache、结构化失败。
+- [x] `scripts/python/requirements-b-route.txt`：冻结已有jsonschema4.26.0／referencing0.37.0；缺库fail closed，不升级工具链。
+- [x] `scripts/python/tests/test_b_route_records.py`、`test_b_route_codec.py`：全部矩阵正负例与1.3回归；原已交付功能不削弱，扩adapter只更新原None假设。
+- [x] `docs/workflows/b-route-record-contract.md`、`b-route-record-validation.md`：公共字段／owner边界和Windows API／CLI说明。
+- [x] `.github/workflows/story-1-4-windows.yml`：仅独立test/b-route-story-1-4-windows-2026-11-03 push，contents:read、固定事件SHA；新旧单测及CLI／真实Windows必需项，限定本轮logs上传，原始失败保留。
 
 **Acceptance Criteria:**
 - Given单记录或完整候选闭包，when公共API／CLI校验，then原Story AC1–5及全部矩阵成立，六类唯一schema及原registry／共同诊断可查。
@@ -84,10 +84,27 @@ context:
 
 2026-11-03：为消歧第二轮真实失败，仅专用workflow诊断候选470089d9e431a6fae3d9cb634b86816c020fd8c8已正常快进，run41692633924。最多16次原失败test，子进程60秒，return-frame观测不改reader／原测试／时间／返回tuple；日志只在单项结束后序列化，保原fullsuite失败，全部通过也只记未复现。当前根因未定，所有草稿／原失败证据保留。实际安装Core/BMM6.12.4，planning_artifacts与implementation_artifacts显式b-route；本Story renderer已调用一次，不能伪造安装/配置或把缓存当源码。为应对云重置保存明确in-progress的独立恢复检查点，不等于Story验收或Task／runtime状态。
 
+2026-11-03：有界诊断run41692633924的16次原方法均未复现，不能清除第二轮失败。root另以真实同长度字节改写＋还原mtime、固定相同metadata样本构造确定性反例，旧reader返回ok；因此在原stat／路径／birthtime检查外增加同一无缓冲句柄二读字节比较，新增反例先红后绿。候选e314f46477a3060ae8bde0d549549640e1e09542在run41694371920/job126120925011实跑records74通过、codec55中54通过1失败、0skip；新增反例和原late-overwrite已通过。失败为旧early-overwrite测试的ctime必须不同前提，两个真实fd ctime均1793730651625173900，前置FILE_CHANGED业务断言已经通过。12CLI及9必需Windows项通过，原rawlog SHA256=8a11109ad13ed291bde9c80aa4953eb040b6abf4982af04567146797da81083c。此事实不证明第二轮的具体机制；正在按实际平台合同修正不成立的测试前提并保留拒绝变化的功能要求。Step3继续in-progress，不用单项通过清除整体失败。
+
+2026-11-03 Step3最终验证：原early-overwrite不可靠ctime唯一性前提改为更强的单次实际字节改写、等长度／还原mtime与三次FD采样断言，FILE_CHANGED及其他metadata比较负例全保留；未用skip、sleep或强制新时间值。Linux当前源码records74／74、codec52通过＋3真实Windows专项skip；真实Windows候选4c85268c045d922e7946c4f094668d94ce2871dc，run41695807890/job126125894999，在Windows2025Server／Python3.12.10实跑74＋55全通过、0skip，12CLI正负与9必需Windows方法通过，无输入变化／pycache。19个runner源码Gitblob与当前本地匹配，原始checkout raw身份另记不混同。全部8矩阵行有实际通过方法；原job log SHA256=6263d228b8d504c400f3038e9d01986937aeff7abb20ba0066dd518c13017a18。所有旧失败证据保留，不宣称已确定第二轮精确机制或任意并发隔离。根已审原完整diff所有段及此后逐项delta，判断依据为源码与原始测试输出。
+
 ## Spec Change Log
 
 ## Review Triage Log
 
+| Finding | Verdict | 原始证据与裁定 | 分组／路由 |
+|---|---|---|---|
+| BH-1 projection target 可绕过不可变 B 原字节 | medium | root 以缺失 plans/absent/1.json、projection mode＋任意digest重现 ok/references_validated；receipt仅 immutable 分支读取目标。架构 planning-records.md:36 明确不可变plan/binding/receipt用immutable_bytes，Taskmaster／业务视图才用定义投影。现有投影字段延期不授权 B target 绕过字节检查；原反例 root-review-target-mode-probe.json。 | G1／patch：将投影目标限于已有三联实际目标并保留合法延期投影的false claim；不新增模式／投影计算。 |
+| BH-2 Windows 未落盘候选大小写冲突 | medium | lookup将resolved路径转str，constructor用该str区分候选；缺失尾部保留输入大小写，普通Windows同目标大小写等价，两个候选可逃过既有冲突guard。已核CPython3.12.10 ntpath及Python／微软原文，属于静态确定的比较遗漏；尚未原生Windows运行此具体反例，不能冒充已复现，修复后需真实回归。合同73要求拒绝同实际目标的冲突别名且不改payload/hash。 | G2／patch：仅修内部目标比较，保实体ID／受管路径原拼写、candidate优先和链接语义，增加原生Windows必跑反例。 |
+| EC-1 Windows candidate path case equality | medium | 与BH-2同一lookup str键缺陷；该层亦明确Windows未实跑。根按上述实际代码与主源确认默认Windows可达后果；不会据Linux双文件成功声称原生复现。 | G2／patch，与BH-2同根因，单独保留此行。 |
+| VG-1 bundle缓存后的漂移无回归保护 | medium | 依原生规则信任本层已核测试／全仓搜索及变异证据：stable改no-op仍74通过；最终复查前改ledger，现实现file_changed、去掉复查则ok。CLI调用者的观测稳定性可在无测试报警下失守。 | G3／patch：加真实缓存后改写输入、返回前拒绝且references_validated=false的确定性回归，不改产品行为。 |
+| VG-2 CLI完整三联参数接线缺成功验证 | medium | 依原生规则信任本层完整测试搜索及变异证据：把三参数都误读master仍现CLI测试通过，而合法非空API fixture实际CLI原版成功、变异invalid_type。用户公开CLI可在错误接线后拒绝合法绑定。 | G4／patch：完整三联subprocess成功＋错误业务映射失败，保无写入检查。 |
+
+全部三层已返回后逐条裁定，之后才合并同根因；共5原始finding、4根因，无数量门槛。上述均有既定架构／公共合同可直接解决，最小更正不增加公共API或新状态权威，不改frozen intent，不需intent_gap／bad_spec重派生。投影模式和路径比较的现有guard缺漏属于已展示输入的局部补正；两项验证缺口仅加可执行回归。此轮无defer；若原生Windows揭示不同实际行为，将按新证据重判，不能拿静态判断伪称执行通过。
+
 ## Verification
 
 `python -B -m unittest discover -s scripts/python/tests -p test_b_route_records.py -v`，并跑`test_b_route_codec.py`回归；每套180秒。独立CLI正负／raw身份／无写入及candidate影子反例。Windows job预算10分钟，库安装与单测实际计时；必需Windows项不能skip。root逐段审diff、逐矩阵读原始输出、核Task／旧proof／默认入口raw身份及远端tested blob。
+
+
+Step3原始证据目录：`../../../logs/ci/2026-11-03/b-route-story-1-4-build-172705Z/`，最终Windows原始输出、逐方法／逐blob／逐矩阵核验、Linux全套及原失败各自留档，状态不是验收证据。

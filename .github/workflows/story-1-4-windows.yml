@@ -121,6 +121,14 @@ jobs:
                   summary['required_windows_tests_passed'] = required
                   if not all(required.values()):
                       summary['exit_code'] = 1
+                  regression = 'test_same_size_overwrite_with_identical_metadata_samples_is_rejected'
+                  regression_ok = re.search(
+                      r'^' + regression + r' \(test_b_route_codec\.ReadIdentityRegressionTests\.' + regression
+                      + r'\)(?:\r?\n[^\r\n]*)? \.\.\. ok$', stderr, re.MULTILINE,
+                  ) is not None
+                  summary['metadata_plateau_regression_passed'] = regression_ok
+                  if not regression_ok:
+                      summary['exit_code'] = 1
               if pattern == 'test_b_route_records.py':
                   required_records = {
                       'test_bundle_reader_accepts_internal_directory_link': 'CandidateBundleTests',
@@ -162,7 +170,7 @@ jobs:
           original_class = original_tests.ReadIdentityRegressionTests
           original_method = getattr(original_class, method_name)
           watched = {
-              codec.read_reference_bytes.__code__: ('reader', ('before', 'opened', 'after', 'current_info', 'final', 'data', 'resolved', 'current')),
+              codec.read_reference_bytes.__code__: ('reader', ('before', 'opened', 'after', 'current_info', 'final', 'data', 'confirmed', 'resolved', 'current')),
               codec._stat_identity.__code__: ('stat_identity', ('info',)),
               codec._cross_stat_identity.__code__: ('cross_stat_identity', ('info',)),
               original_class.change_bytes_preserving_size_and_mtime.__code__: ('mutation', ('before', 'original', 'changed')),
