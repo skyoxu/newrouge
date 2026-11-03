@@ -1,0 +1,13 @@
+{
+  "status": "complete",
+  "files": [
+    "_bmad-output/specs/spec-newrouge-b-route/SPEC.md",
+    "_bmad-output/specs/spec-newrouge-b-route/workflow-contract.md",
+    "_bmad-output/specs/spec-newrouge-b-route/verification-contract.md",
+    "_bmad-output/specs/spec-newrouge-b-route/migration-and-pilot.md",
+    "_bmad-output/specs/spec-newrouge-b-route/.memlog.md",
+    "_bmad-output/planning-artifacts/prds/prd-newrouge-b-route-2026-11-03/baseline-update.md"
+  ],
+  "baseline_branch": "fix/capability-synthesis-input-integrity",
+  "baseline_commit": "cd925bdcae4b61992320773497f7edb729aac244"
+}

@@ -1,0 +1,11 @@
+{
+  "status": "complete",
+  "intent": "create",
+  "prd": "_bmad-output/planning-artifacts/prds/prd-newrouge-b-route-2026-11-03/prd.md",
+  "addendum": "_bmad-output/planning-artifacts/prds/prd-newrouge-b-route-2026-11-03/addendum.md",
+  "assumptions": [],
+  "open_questions": [],
+  "objective": "route-change-not-speed",
+  "baseline_branch": "fix/capability-synthesis-input-integrity",
+  "baseline_commit": "cd925bdcae4b61992320773497f7edb729aac244"
+}
