@@ -12,6 +12,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from types import SimpleNamespace
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -1175,7 +1176,19 @@ class CandidateBundleTests(RecordAssertions):
                 task_file.symlink_to(managed_file)
                 self.assertTrue(task_file.is_symlink())
                 self.assertFalse(task_file.exists())
-                self.assertEqual(task_file.resolve(strict=False), managed_file.resolve(strict=False))
+                self.assertTrue(managed_directory.samefile(storage))
+                link_target = task_file.readlink()
+                self.assertTrue(link_target.is_absolute())
+                self.assertEqual(link_target.name, managed_file.name)
+                target_parent = link_target.parent.resolve(strict=True)
+                managed_parent = managed_file.parent.resolve(strict=True)
+                detail = json.dumps({"readlink_target": str(link_target),
+                                     "strict_target_parent": str(target_parent),
+                                     "strict_managed_parent": str(managed_parent)})
+                self.assertTrue(target_parent.samefile(managed_parent), detail)
+                actual_missing = managed_parent / link_target.name
+                self.assertEqual(actual_missing, storage / Path(managed_path).relative_to(Path(PREFIX)), detail)
+                self.assertFalse(actual_missing.exists())
                 output = self._bundle_with_task_projection_alias(task_path, replacing_target=managed_path)
                 before = dict(output)
                 result = records.validate_bundle(output, root=root)
@@ -1228,6 +1241,198 @@ class CandidateBundleTests(RecordAssertions):
                 self.assert_valid(result)
                 self.assertFalse(result.target_projection_verified)
                 self.assertFalse((destination / "tasks.json").exists())
+                self.assertEqual(output, before)
+
+    def test_missing_projection_target_rejects_external_nested_directory_alias(self):
+        task_path = ".taskmaster/tasks/tasks.json"
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory).resolve(strict=True)
+            root, outside = base / "repository", base / "outside"
+            root.mkdir()
+            outside.mkdir()
+            storage = root / "storage"
+            storage.mkdir()
+            internal = root / "internal"
+            directory_link(internal, storage)
+            directory_link(storage / "external", outside)
+            task_file = root / task_path
+            task_file.parent.mkdir(parents=True)
+            task_file.symlink_to(internal / "external/missing.json")
+            self.assertTrue(task_file.is_symlink())
+            self.assertFalse(task_file.exists())
+            self.assertTrue(task_file.readlink().parent.resolve(strict=True).samefile(outside))
+            output = self._bundle_with_task_projection_alias(task_path)
+            before = dict(output)
+            self.assert_invalid(records.validate_bundle(output, root=root), "unsafe_path")
+            self.assertEqual(output, before)
+            self.assertFalse((outside / "missing.json").exists())
+
+    def test_candidate_lookup_keeps_existing_codec_alias_chains_that_return_inside(self):
+        for directory_alias in (False, True):
+            with self.subTest(directory_alias=directory_alias), tempfile.TemporaryDirectory() as directory:
+                base = Path(directory).resolve(strict=True)
+                root, outside = base / "repository", base / "outside"
+                root.mkdir()
+                outside.mkdir()
+                destination = root / "real"
+                destination.mkdir()
+                target = destination / "proof.json"
+                data = b'{"independent":"proof"}\n'
+                target.write_bytes(data)
+                if directory_alias:
+                    directory_link(outside / "return-link", destination)
+                    directory_link(root / "alias", outside / "return-link")
+                    locator = "alias/proof.json"
+                else:
+                    (outside / "return-link.json").symlink_to(target)
+                    (root / "alias.json").symlink_to(outside / "return-link.json")
+                    locator = "alias.json"
+                self.assertTrue(codec.resolve_reference_path(root, locator).samefile(target))
+                self.assertEqual(codec.read_reference_bytes(root, locator), data)
+                fixture = MatrixFixture()
+                fixture.artifacts["real/proof.json"] = data
+                fixture.models[plan_path()]["adoption_proof_refs"] = [
+                    fixture.owned("planning_proof", locator, ["real/proof.json"])]
+                output = fixture.render()
+                before = dict(output)
+                self.assert_valid(records.validate_bundle(output, root=root))
+                self.assertEqual(output, before)
+                self.assertEqual(target.read_bytes(), data)
+
+    def test_missing_projection_keeps_proven_internal_parent_via_external_return_alias(self):
+        task_path = ".taskmaster/tasks/tasks.json"
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory).resolve(strict=True)
+            root, outside = base / "repository", base / "outside"
+            root.mkdir()
+            outside.mkdir()
+            destination = root / "task-state"
+            destination.mkdir()
+            directory_link(outside / "return-link", destination)
+            task_directory = root / ".taskmaster/tasks"
+            task_directory.parent.mkdir()
+            directory_link(task_directory, outside / "return-link")
+            self.assertTrue(codec.resolve_reference_path(root, ".taskmaster/tasks").samefile(destination))
+            self.assertFalse((destination / "tasks.json").exists())
+            output = self._bundle_with_task_projection_alias(task_path)
+            before = dict(output)
+            result = records.validate_bundle(output, root=root)
+            self.assert_valid(result)
+            self.assertFalse(result.target_projection_verified)
+            self.assertEqual(output, before)
+            self.assertFalse((destination / "tasks.json").exists())
+
+    def test_external_public_prefix_cannot_be_hidden_by_later_parent_steps(self):
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory).resolve(strict=True)
+            root, outside = base / "repository", base / "outside"
+            root.mkdir()
+            outside.mkdir()
+            directory_link(root / "external", outside)
+            spelling = "external/../repository/future.json"
+            with self.assertRaises(codec.CodecError) as caught:
+                codec.resolve_reference_path(root, spelling)
+            self.assertIs(caught.exception.diagnostic.reason_code, codec.ReasonCode.UNSAFE_PATH)
+            output = MatrixFixture().render()
+            output[spelling] = b"future bytes"
+            before = dict(output)
+            self.assert_invalid(records.validate_bundle(output, root=root), "unsafe_path")
+            self.assertEqual(output, before)
+
+    def test_candidate_lookup_rejects_unknown_reparse_metadata_before_readlink(self):
+        for tag, attributes in ((0xA0000042, 0x400), (0, 0x400), (0xA0000042, 0)):
+            with self.subTest(tag=tag, attributes=attributes), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory).resolve(strict=True)
+                native_directory = root / "native"
+                native_directory.mkdir()
+                self.assertEqual(native_directory.resolve(strict=True), native_directory)
+                original_lstat = Path.lstat
+                real_info = original_lstat(native_directory)
+                fields = {name: getattr(real_info, name) for name in dir(real_info) if name.startswith("st_")}
+                fields.update(st_reparse_tag=tag, st_file_attributes=attributes)
+                def injected_lstat(path, *args, **kwargs):
+                    return SimpleNamespace(**fields) if path == native_directory else original_lstat(path, *args, **kwargs)
+                output = MatrixFixture().render()
+                output["native/future.json"] = b"future bytes"
+                before = dict(output)
+                with patch.object(Path, "lstat", injected_lstat), patch.object(
+                        records.os, "readlink", side_effect=AssertionError("Unknown reparse metadata must not be followed")) as readlink:
+                    result = records.validate_bundle(output, root=root)
+                self.assert_invalid(result, "path_unprovable")
+                readlink.assert_not_called()
+                self.assertEqual(output, before)
+
+    def test_candidate_lookup_does_not_treat_permission_errors_as_missing(self):
+        for phase in ("lstat", "strict_resolve"):
+            with self.subTest(phase=phase), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory).resolve(strict=True)
+                blocked = root / "blocked"
+                blocked.mkdir()
+                original = getattr(Path, "lstat" if phase == "lstat" else "resolve")
+                def denied(path, *args, **kwargs):
+                    if path == blocked:
+                        raise PermissionError("Injected permission denial")
+                    return original(path, *args, **kwargs)
+                output = MatrixFixture().render()
+                output["blocked/future.json"] = b"future bytes"
+                before = dict(output)
+                with patch.object(Path, "lstat" if phase == "lstat" else "resolve", denied):
+                    result = records.validate_bundle(output, root=root)
+                self.assert_invalid(result, "path_unprovable")
+                self.assertEqual(output, before)
+
+    def test_candidate_link_cycles_terminate_but_completed_aliases_can_be_reused(self):
+        for growing in (False, True):
+            with self.subTest(growing=growing), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory).resolve(strict=True)
+                first = root / "loop-a"
+                if growing:
+                    first.symlink_to("loop-a/child")
+                else:
+                    first.symlink_to(root / "loop-b")
+                    (root / "loop-b").symlink_to(first)
+                output = MatrixFixture().render()
+                output["loop-a/future.json"] = b"future bytes"
+                self.assert_invalid(records.validate_bundle(output, root=root), "path_unprovable")
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve(strict=True)
+            destination = root / "destination"
+            destination.mkdir()
+            directory_link(root / "alias", destination)
+            output = MatrixFixture().render()
+            output["alias/../alias/future.json"] = b"future bytes"
+            self.assert_valid(records.validate_bundle(output, root=root))
+
+    def test_candidate_path_step_limit_rejects_an_unfinished_missing_suffix(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve(strict=True)
+            original_lstat = Path.lstat
+            def missing(path, *args, **kwargs):
+                if path != root:
+                    raise FileNotFoundError("Injected missing suffix")
+                return original_lstat(path, *args, **kwargs)
+            with patch.object(Path, "lstat", missing), self.assertRaises(codec.CodecError) as caught:
+                records._Bytes({"missing/" * 4097 + "future.json": b"future bytes"}, root)
+            self.assertIs(caught.exception.diagnostic.reason_code, codec.ReasonCode.PATH_UNPROVABLE)
+            self.assertEqual(caught.exception.diagnostic.actual["value"], "step limit exceeded")
+
+    def test_extended_link_nonportable_suffixes_are_not_reinterpreted(self):
+        for component in ("name.", "name ", "NUL", ".", "..", "dir/missing"):
+            with self.subTest(component=component), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory).resolve(strict=True)
+                task_file = root / ".taskmaster/tasks/tasks.json"
+                task_file.parent.mkdir(parents=True)
+                task_file.symlink_to(root / "missing.json")
+                original_readlink = os.readlink
+                raw_target = "\\\\?\\C:\\root\\" + component + "\\missing.json"
+                def injected_readlink(path, *args, **kwargs):
+                    return raw_target if Path(path) == task_file else original_readlink(path, *args, **kwargs)
+                output = self._bundle_with_task_projection_alias(".taskmaster/tasks/tasks.json")
+                before = dict(output)
+                with patch.object(records.os, "readlink", injected_readlink):
+                    result = records.validate_bundle(output, root=root)
+                self.assert_invalid(result, "path_unprovable")
+                self.assertEqual(result.diagnostic.expected["value"], "portable extended link suffix")
                 self.assertEqual(output, before)
 
     def test_target_bytes_result_paths_and_scope_relationships_are_checked(self):

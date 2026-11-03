@@ -5,11 +5,13 @@ adoption, publication, Task readiness, runtime acceptance, or historical proof.
 """
 from __future__ import annotations
 
+import os
 import posixpath
+import stat
 from collections.abc import Mapping
 from dataclasses import dataclass
 from functools import lru_cache
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 from typing import Any
 
 import _b_route_codec as codec
@@ -436,18 +438,124 @@ class _Bytes:
             self.candidates[key] = data
             self.original_paths[key] = path
 
-    def _contained(self, path: str) -> None:
+    def _contained(self, path: str) -> Path | None:
         if self.root is None:
-            return
-        base = self.root.resolve(strict=True)
-        current = base
-        for part in path.split("/"):
-            current = current / part
-            # Resolve every existing prefix, including dangling/outside links.
-            if current.exists() or current.is_symlink():
-                resolved = current.resolve(strict=False)
-                if not resolved.is_relative_to(base):
-                    _fail(codec.ReasonCode.UNSAFE_PATH, path=path, expected="root-contained path", actual="external link")
+            return None
+        try:
+            base = self.root.resolve(strict=True)
+            base_spellings = [base]
+            spelling = str(base)
+            alternate = None
+            if base.drive:
+                if spelling.upper().startswith("\\\\?\\UNC\\"):
+                    alternate = Path("\\\\" + spelling[8:])
+                elif spelling.startswith("\\\\?\\") and len(base.drive) == 6 and base.drive[-1] == ":":
+                    alternate = Path(spelling[4:])
+                elif base.drive.startswith("\\\\") and not spelling.startswith("\\\\?\\"):
+                    alternate = Path("\\\\?\\UNC\\" + spelling[2:])
+                elif len(base.drive) == 2 and base.drive[-1] == ":":
+                    alternate = Path("\\\\?\\" + spelling)
+            # Only the fully existing repository root gets another comparison
+            # spelling, proven by object identity. Never rewrite a missing tail.
+            if alternate is not None:
+                if not alternate.samefile(base):
+                    _fail(codec.ReasonCode.PATH_UNPROVABLE, path=path, stage=codec.Stage.PATH,
+                          expected="equivalent existing root spelling", actual=str(alternate))
+                base_spellings.append(alternate.resolve(strict=True))
+            active_links = set()
+            steps = 0
+
+            def link_kind(info) -> bool:
+                tag = getattr(info, "st_reparse_tag", 0)
+                attributes = getattr(info, "st_file_attributes", 0)
+                known = tag in (getattr(stat, "IO_REPARSE_TAG_SYMLINK", -1),
+                                getattr(stat, "IO_REPARSE_TAG_MOUNT_POINT", -2))
+                if (tag or attributes & getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400)) and not known:
+                    _fail(codec.ReasonCode.PATH_UNPROVABLE, path=path, stage=codec.Stage.PATH,
+                          expected="supported symlink or junction tag", actual={"tag": tag, "attributes": attributes})
+                return stat.S_ISLNK(info.st_mode) or known
+
+            def walk(current: Path, parts: tuple[str, ...]) -> Path:
+                nonlocal steps
+                for part in parts:
+                    steps += 1
+                    if steps > 4096:
+                        _fail(codec.ReasonCode.PATH_UNPROVABLE, path=path, stage=codec.Stage.PATH,
+                              expected="at most 4096 path steps", actual="step limit exceeded")
+                    if part in ("", "."):
+                        continue
+                    if part == "..":
+                        current = current.parent
+                    else:
+                        try:
+                            parent_info = current.lstat()
+                        except FileNotFoundError:
+                            parent_info = None
+                        if parent_info is not None:
+                            link_kind(parent_info)
+                            if not stat.S_ISDIR(parent_info.st_mode):
+                                _fail(codec.ReasonCode.PATH_UNPROVABLE, path=path, stage=codec.Stage.PATH,
+                                      expected="directory prefix", actual=str(current))
+                        candidate = current / part
+                        try:
+                            info = candidate.lstat()
+                        except FileNotFoundError:
+                            current = candidate
+                            continue
+                        if link_kind(info):
+                            if candidate in active_links or len(active_links) >= 64:
+                                _fail(codec.ReasonCode.PATH_UNPROVABLE, path=path, stage=codec.Stage.PATH,
+                                      expected="acyclic link expansion within 64 active links", actual=str(candidate))
+                            active_links.add(candidate)
+                            try:
+                                raw_target = os.readlink(candidate)
+                                if raw_target.startswith("\\\\?\\"):
+                                    try:
+                                        if "/" in raw_target:
+                                            raise ValueError("namespace-dependent separator")
+                                        native = PureWindowsPath(raw_target)
+                                        tail = raw_target[len(native.anchor):]
+                                        for component in tail.split("\\"):
+                                            if component:
+                                                if component in (".", ".."):
+                                                    raise ValueError("namespace-dependent component")
+                                                codec.validate_reference_path(component)
+                                    except (codec.CodecError, ValueError):
+                                        _fail(codec.ReasonCode.PATH_UNPROVABLE, path=path, stage=codec.Stage.PATH,
+                                              expected="portable extended link suffix", actual=raw_target)
+                                target = Path(raw_target)
+                                if target.anchor:
+                                    if not target.is_absolute():
+                                        if target.drive:
+                                            _fail(codec.ReasonCode.PATH_UNPROVABLE, path=path, stage=codec.Stage.PATH,
+                                                  expected="absolute or relative link target", actual=str(target))
+                                        target = candidate.parent / target
+                                    current = walk(Path(target.anchor), target.parts[1:])
+                                else:
+                                    current = walk(candidate.parent, target.parts)
+                            finally:
+                                active_links.remove(candidate)
+                        else:
+                            current = candidate.resolve(strict=True)
+                return current
+
+            current = base
+            for part in path.split("/"):
+                current = walk(current, (part,))
+                # Native Path equality retains Windows case rules without
+                # enumerating every ancestor of a long missing suffix.
+                matched = next((spelling for spelling in base_spellings
+                                if len(current.parts) >= len(spelling.parts)
+                                and Path(*current.parts[:len(spelling.parts)]) == spelling), None)
+                if matched is None:
+                    _fail(codec.ReasonCode.UNSAFE_PATH, path=path, stage=codec.Stage.PATH,
+                          expected="root-contained public segment target", actual=str(current))
+            return base / current.relative_to(matched)
+        except codec.CodecError:
+            raise
+        except (OSError, RuntimeError, ValueError, RecursionError) as error:
+            _fail(codec.ReasonCode.PATH_UNPROVABLE, path=path, stage=codec.Stage.PATH,
+                  expected="provable candidate path", actual=type(error).__name__)
 
     def read(self, path: str) -> bytes:
         key = self.lookup(path)
@@ -465,12 +573,9 @@ class _Bytes:
     def lookup(self, path: str) -> str:
         original = _path(path)
         key = original
-        self._contained(path)
-        if self.root is not None:
+        resolved = self._contained(path)
+        if resolved is not None:
             base = self.root.resolve(strict=True)
-            resolved = (base / path).resolve(strict=False)
-            if not resolved.is_relative_to(base):
-                _fail(codec.ReasonCode.UNSAFE_PATH, path=path, expected="root-contained lookup", actual="external target")
             key = resolved.relative_to(base).as_posix()
         # Path equality follows the native host's path comparison rules, even
         # when the candidate file does not exist. Keep the first spelling as the

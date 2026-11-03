@@ -32,9 +32,9 @@ CLI `reference` 模式优先在 `path` 中保留引用内已取得的目标路�
 
 ## 唯一身份 registry 与引用形状
 
-`SCHEMA_IDENTITY_REGISTRY` 是公共模块内唯一、只读的 schema 身份 owner。当前登记六类记录的 `newrouge.b-route-{policy,plan,binding,origins,commit,catalog}.v1`，以及 `newrouge.b-route-verification-scope.v1`。只有 `newrouge.b-route-plan.v1` 已有足够合同支持 adapter：`plan_id` 为非空原字符串，`revision` 为严格正整数。仅检查顶层记录／引用的 schema，不拒绝扩展对象内部同名的 `schema_version` 键。
+`SCHEMA_IDENTITY_REGISTRY` 是公共模块内唯一、只读的 schema 身份 owner。Story 1.3 最初落实 plan adapter；Story 1.4 已在同一 registry 为六类 `newrouge.b-route-{policy,plan,binding,origins,commit,catalog}.v1` 记录落实经定义的实体／修订 adapter。`newrouge.b-route-verification-scope.v1` 仍登记为已知 schema，但没有 adapter。现行字段映射见[公共记录合同](b-route-record-contract.md)，完整 schema 与候选关系校验见[记录只读校验](b-route-record-validation.md)，本页不复制另一套映射。identity-only 层仅检查顶层记录／引用的 schema，不拒绝扩展对象内部同名的 `schema_version` 键。
 
-其他已知 schema 缺少经定义的实体／修订 adapter 时返回 `identity_unprovable`，不推断文件名、`v1`、digest 或缺失字段的含义，也不报告通过。未知 schema 返回 `unknown_schema`；引用与目标的已知 schema 不符返回 `schema_mismatch`；目标 plan ID 与引用不符返回 `unknown_entity`；修订与 digest 差异分别返回 `revision_mismatch`、`digest_mismatch`。Story 1.4 必须扩展同一 registry；消费者与 CLI 不自行配置字段映射或私设相同 schema 的解释。
+verification-scope 因缺少 adapter 仍返回 `identity_unprovable`，不推断文件名、`v1`、digest 或缺失字段的含义，也不报告通过。未知 schema 返回 `unknown_schema`；引用与目标的已知 schema 不符返回 `schema_mismatch`；目标实体 ID 与引用不符返回 `unknown_entity`；修订与 digest 差异分别返回 `revision_mismatch`、`digest_mismatch`。六类记录的 content／reference 身份成功仍是 identity-only，`schema_validated` 保持 `false`，不证明完整 schema、runtime 或正式采纳；消费者与 CLI 不自行配置字段映射或私设相同 schema 的解释。
 
 类型化引用是只读输入类型，不是新增正式规划记录。以下七个字段都必须显式提供，不能靠默认值补齐身份：
 
