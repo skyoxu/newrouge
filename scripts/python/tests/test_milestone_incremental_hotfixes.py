@@ -188,6 +188,8 @@ class MilestoneHotfixTests(unittest.TestCase):
             subprocess.run(["git", "-C", str(root), "-c", "user.name=Test", "-c", "user.email=test@example.com", "commit", "--allow-empty", "-qm", "baseline"], check=True)
             manifest = root / "docs/testing/mvg/critical.json"
             save(manifest, {"tests": [{"id": "old-test"}]})
+            manifest.write_bytes(manifest.read_bytes().replace(b"\r\n", b"\n").replace(b"\n", b"\r\n"))
+            self.assertIn(b"\r\n", manifest.read_bytes())
             (root / ".gitignore").write_text("logs/\n", encoding="utf-8")
             (root / "behavior.py").write_text("result = True\n", encoding="utf-8")
             subprocess.run(["git", "-C", str(root), "add", "."], check=True)
@@ -196,7 +198,7 @@ class MilestoneHotfixTests(unittest.TestCase):
             summary = root / "logs/ci/mvg-acceptance/run/summary.json"
             save(summary, {
                 "schema_version": "newrouge.mvg-acceptance.v1", "manifest": "docs/testing/mvg/critical.json",
-                "manifest_sha256": handoff_mod._file_sha(manifest), "mode": "run", "status": "passed",
+                "manifest_sha256": handoff_mod.normalized_file_sha(manifest), "mode": "run", "status": "passed",
                 "runtime_verified": True, "workspace_dirty": False, "source_revision": revision,
                 "steps": [{"id": "old-test", "status": "passed"}],
             })
