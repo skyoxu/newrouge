@@ -161,6 +161,19 @@ class ProtectionTests(unittest.TestCase):
     def compare(self, baseline, **kwargs):
         return protection.compare_protection(self.root, self.snapshot_path(baseline), self.epics, **kwargs)
 
+    def write_resigned_archive(self, output, snapshot, report=None):
+        if report is not None:
+            identity = codec.canonical_digest({key: value for key, value in report.items()
+                                                if key not in protection._INVENTORY_ENVELOPE})
+            report.update(content_identity=identity, second_pass_identity=identity)
+            raw = (json.dumps(report, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
+            (output / "inventory.json").write_bytes(raw)
+            snapshot["inventory"].update(raw_digest=codec.raw_digest(raw), content_identity=identity,
+                adoptable=report["adoptable"], diagnostics=copy.deepcopy(report["diagnostics"]))
+        snapshot["snapshot_digest"] = codec.canonical_digest({key: value for key, value in snapshot.items()
+                                                               if key != "snapshot_digest"})
+        self.dump(self.snapshot_path(output), snapshot)
+
     def test_capture_preserves_every_present_raw_input_and_archives_full_manifest(self):
         self.fixture.edit_task("master", lambda rows: rows[0].update(subtasks=[{"id": 1, "status": "pending", "unknown": {"status": "keep"}}]))
         raw = b"# Source\r\nA\r\nB\r\n"
@@ -198,6 +211,7 @@ class ProtectionTests(unittest.TestCase):
         self.assertEqual({row["task_id"] for row in frozen["candidates"]}, {1, 2})
         for row in frozen["candidates"]:
             self.assertEqual(row["status"], "blocked")
+            self.assertIs(row["a_eligible"], False)
             self.assertTrue(row["definition_digest"].startswith("sha256:"))
             self.assertIn("source_scope", row)
             self.assertTrue(row["old_operation_candidates"])
@@ -402,6 +416,44 @@ class ProtectionTests(unittest.TestCase):
         self.assertFalse((self.root / missing).exists())
         self.assertEqual((self.root / inventory.TRIPLET["back"]).read_bytes(), original_task)
 
+    def test_resigned_deleted_required_missing_diagnostic_cannot_claim_complete(self):
+        missing = "logs/ci/historical/required-still-missing.json"
+        self.fixture.edit_task("back", lambda rows: rows[0]["evidence_refs"].append(missing))
+        capture = self.collect()
+        output = self.archive(capture)
+        original = protection.verify_protection(self.root, self.snapshot_path(output))
+        self.assertTrue(original["ok"], original["diagnostics"])
+        self.assertEqual(original["claim"], "protection_archive_integrity_only")
+        self.assertFalse(original["capture_complete"])
+        self.assertTrue(any(row.get("location") == missing and row.get("severity") == "error"
+                            for row in capture.inventory["diagnostics"]))
+        report, snapshot = copy.deepcopy(capture.inventory), copy.deepcopy(capture.snapshot)
+        report["diagnostics"] = [row for row in report["diagnostics"] if row.get("location") != missing]
+        self.assertFalse(any(row["severity"] == "error" for row in report["diagnostics"]))
+        report.update(adoptable=True, status="stable")
+        snapshot["capture_complete"] = True
+        self.write_resigned_archive(output, snapshot, report)
+        verified = protection.verify_protection(self.root, self.snapshot_path(output))
+        self.assertFalse(verified["ok"], "Removing a diagnostic cannot establish the still-missing required evidence")
+        self.assert_public_diagnostics(verified)
+        self.assert_no_authorization(verified)
+        self.assertFalse((self.root / missing).exists())
+
+    def test_planned_missing_manifest_test_stays_optional_in_archive(self):
+        planned = "Game.Core.Tests/NotYetBuilt.cs"
+        manifest = copy.deepcopy(self.fixture.manifest)
+        manifest["tests"][0].update(state="planned", path=planned)
+        self.dump("docs/testing/mvg/fixture.json", manifest)
+        capture = self.collect()
+        self.assertFalse((self.root / planned).exists())
+        self.assertTrue(capture.snapshot["capture_complete"], capture.snapshot["diagnostics"])
+        self.assertTrue(any(row["path"] == planned and row["exists"] is False for row in capture.snapshot["raw_files"]))
+        output = self.archive(capture)
+        verified = protection.verify_protection(self.root, self.snapshot_path(output))
+        self.assertTrue(verified["ok"], verified["diagnostics"])
+        self.assertTrue(verified["capture_complete"])
+        self.assert_no_authorization(verified)
+
     def test_historical_report_envelope_and_original_metadata_are_rebuilt(self):
         missing = "logs/ci/historical/task-108/summary.json"
         historical = "logs/ci/historical/missing-inventory.json"
@@ -582,6 +634,138 @@ class ProtectionTests(unittest.TestCase):
                 self.assert_no_authorization(verified)
         path.write_bytes(original)
 
+    def test_resigned_json_type_equivalence_is_rejected_against_archived_bytes(self):
+        self.fixture.edit_task("master", lambda rows: rows[0].update(subtasks=[{"id": 1, "status": "pending"}]))
+        manifest = copy.deepcopy(self.fixture.manifest)
+        manifest["unknown_manual_obligation"] = {"minimum": 1}
+        self.dump("docs/testing/mvg/fixture.json", manifest)
+        capture = self.collect()
+        output = self.archive(capture)
+        original_raw = {path: (self.root / path).read_bytes() for path in inventory.TRIPLET.values()}
+        mutations = (
+            ("task-id-bool", lambda value: value["tasks"][0].update(task_id=True)),
+            ("definition-id-bool", lambda value: value["tasks"][0]["definition"]["master"].update(id=True)),
+            ("definition-id-float", lambda value: value["tasks"][0]["definition"]["master"].update(id=1.0)),
+            ("triplet-id-bool", lambda value: value["triplet"]["documents"]["master"]["master"]["tasks"][0].update(id=True)),
+            ("subtask-id-bool", lambda value: value["tasks"][0]["state"]["master"]["subtasks"][0].update(id=True)),
+            ("subtask-index-bool", lambda value: value["tasks"][0]["state"]["master"]["subtasks"][0].update(index=False)),
+            ("candidate-id-bool", lambda value: value["frozen_a"]["candidates"][0].update(task_id=True)),
+            ("candidate-eligibility-int", lambda value: value["frozen_a"]["candidates"][0].update(a_eligible=0)),
+            ("authorization-int", lambda value: value["authorization"].update(write=0)),
+            ("raw-size-float", lambda value: value["raw_files"][0].update(size_bytes=float(value["raw_files"][0]["size_bytes"]))),
+            ("manifest-minimum-bool", lambda value: value["cumulative"][0]["document"]["unknown_manual_obligation"].update(minimum=True)),
+        )
+        for label, mutate in mutations:
+            with self.subTest(case=label):
+                snapshot = copy.deepcopy(capture.snapshot)
+                mutate(snapshot)
+                self.write_resigned_archive(output, snapshot)
+                verified = protection.verify_protection(self.root, self.snapshot_path(output))
+                self.assertFalse(verified["ok"], "Python numeric equality must not erase JSON type differences: " + label)
+                self.assert_public_diagnostics(verified)
+                self.assert_no_authorization(verified)
+        self.assertEqual({path: (self.root / path).read_bytes() for path in inventory.TRIPLET.values()}, original_raw)
+
+    def test_resigned_inventory_cannot_shrink_source_paths_declared_by_archived_epics(self):
+        capture = self.collect()
+        output = self.archive(capture)
+        removed = self.fixture.sources[0]
+        self.assertIn(removed, capture.raw_files[self.epics].decode("utf-8"))
+        report, snapshot = copy.deepcopy(capture.inventory), copy.deepcopy(capture.snapshot)
+        removed_raw = next(row for row in snapshot["raw_files"] if row["path"] == removed)
+        self.assertTrue(any(row["path"] != removed and row["raw_digest"] == removed_raw["raw_digest"]
+                            for row in snapshot["raw_files"]), "A shared blob must not replace a missing original path binding")
+        report["inputs"] = [row for row in report["inputs"] if row["path"] != removed]
+        snapshot["raw_files"] = [row for row in snapshot["raw_files"] if row["path"] != removed]
+        self.write_resigned_archive(output, snapshot, report)
+        self.assertTrue((output / removed_raw["artifact"]).is_file())
+        self.assertTrue((self.root / removed).is_file(), "Current disk contents cannot fill a historical archive gap")
+        verified = protection.verify_protection(self.root, self.snapshot_path(output))
+        self.assertFalse(verified["ok"], "Archived epics still requires the source omitted from both self-reported indexes")
+        self.assert_public_diagnostics(verified)
+        self.assert_no_authorization(verified)
+
+    def test_resigned_inventory_cannot_hide_discovered_manifest_obligations_with_raw_retained(self):
+        capture = self.collect()
+        self.assertTrue(capture.snapshot["capture_complete"], capture.snapshot["diagnostics"])
+        output = self.archive(capture)
+        manifest_path = "docs/testing/mvg/fixture.json"
+        self.assertTrue(any(role == "manifest" and path == manifest_path
+                            for role, path in capture.inventory["discovery"]))
+        raw_ref = next(row for row in capture.snapshot["raw_files"] if row["path"] == manifest_path)
+        original_raw = capture.raw_files[manifest_path]
+        report, snapshot = copy.deepcopy(capture.inventory), copy.deepcopy(capture.snapshot)
+        report["manifests"] = []
+        report["task_and_manifest_references"] = [row for row in report["task_and_manifest_references"]
+                                                 if row["owner_file"] != manifest_path]
+        snapshot["cumulative"] = []
+        self.write_resigned_archive(output, snapshot, report)
+        self.assertTrue(any(row["path"] == manifest_path for row in report["inputs"]))
+        self.assertTrue(any(row["path"] == manifest_path for row in snapshot["raw_files"]))
+        self.assertEqual((output / raw_ref["artifact"]).read_bytes(), original_raw)
+        verified = protection.verify_protection(self.root, self.snapshot_path(output))
+        self.assertFalse(verified["ok"], "Retaining a discovered manifest's bytes cannot justify omitting all its obligations")
+        self.assert_public_diagnostics(verified)
+        self.assert_no_authorization(verified)
+        self.assertEqual((self.root / manifest_path).read_bytes(), original_raw)
+
+    def test_resigned_source_set_resolution_cannot_hide_the_owner_mismatch(self):
+        source_set = self.load(inventory.SOURCE_SET)
+        mismatched = copy.deepcopy(source_set)
+        mismatched["active_sources"] = []
+        self.dump(inventory.SOURCE_SET, mismatched)
+        incomplete = self.collect()
+        errors = [row for row in incomplete.inventory["diagnostics"] if row["severity"] == "error"]
+        self.assertEqual([row["code"] for row in errors], ["source-set-mismatch"])
+        self.assertFalse(incomplete.snapshot["capture_complete"])
+        legitimate = self.archive(incomplete, name="legitimate-source-set-mismatch")
+        verification = protection.verify_protection(self.root, self.snapshot_path(legitimate))
+        self.assertTrue(verification["ok"], verification["diagnostics"])
+        self.assertEqual(verification["claim"], "protection_archive_integrity_only")
+        self.assertFalse(verification["capture_complete"])
+        self.assert_no_authorization(verification)
+
+        self.dump(inventory.SOURCE_SET, source_set)
+        capture = self.collect()
+        self.assertTrue(capture.snapshot["capture_complete"], capture.snapshot["diagnostics"])
+        output = self.archive(capture, name="forged-source-set-resolution")
+        report, snapshot = copy.deepcopy(capture.inventory), copy.deepcopy(capture.snapshot)
+        self.assertEqual(report["source_set"]["resolved_active_sources"], source_set["active_sources"])
+        self.assertTrue(source_set["active_sources"])
+        report["source_set"]["resolved_active_sources"] = []
+        report["diagnostics"] = [row for row in report["diagnostics"] if row.get("code") != "source-set-mismatch"]
+        self.assertFalse(any(row["severity"] == "error" for row in report["diagnostics"]))
+        report.update(adoptable=True, status="stable")
+        snapshot["capture_complete"] = True
+        self.write_resigned_archive(output, snapshot, report)
+        raw_ref = next(row for row in snapshot["raw_files"] if row["path"] == inventory.SOURCE_SET)
+        self.assertEqual((output / raw_ref["artifact"]).read_bytes(), capture.raw_files[inventory.SOURCE_SET])
+        self.assertEqual(codec.strict_json_loads(capture.raw_files[inventory.SOURCE_SET])["active_sources"], source_set["active_sources"])
+        forged = protection.verify_protection(self.root, self.snapshot_path(output))
+        self.assertFalse(forged["ok"], "The original source-set owner relation cannot disappear from a re-signed complete report")
+        self.assert_public_diagnostics(forged)
+        self.assert_no_authorization(forged)
+
+    def test_manifest_unknown_json_type_change_is_a_semantic_difference(self):
+        original = copy.deepcopy(self.fixture.manifest)
+        original["unknown_manual_obligation"] = {"required": 0}
+        self.dump("docs/testing/mvg/fixture.json", original)
+        baseline = self.archive()
+        current = copy.deepcopy(original)
+        current["unknown_manual_obligation"]["required"] = False
+        self.dump("docs/testing/mvg/fixture.json", current)
+        compared = self.compare(baseline)
+        self.assertTrue(compared.current.snapshot["capture_complete"], compared.current.snapshot["diagnostics"])
+        self.assertTrue(compared.report["ok"], compared.report["diagnostics"])
+        self.assertNotEqual(codec.canonical_digest(original), codec.canonical_digest(current))
+        changes = compared.report["changes"]["manifests"]
+        self.assertEqual(len(changes), 1, "Numeric and boolean unknown obligations have different canonical identities")
+        self.assertEqual(changes[0]["path"], "docs/testing/mvg/fixture.json")
+        self.assertNotEqual(changes[0]["before_digest"], changes[0]["after_digest"])
+        self.assertTrue(changes[0]["source_backed_review_required"])
+        self.assertIs(changes[0]["apply_authorized"], False)
+        self.assert_no_authorization(compared.report)
+
     def test_late_snapshot_inventory_or_raw_edit_cannot_mix_baseline_observations(self):
         baseline = self.archive()
         snapshot_path = self.snapshot_path(baseline)
@@ -758,6 +942,67 @@ class ProtectionTests(unittest.TestCase):
         code, text = self.run_cli("compare", *common, "--run-id", "compare", "--epics", self.epics, "--baseline", self.snapshot_path(output))
         self.assertEqual(code, 0, text)
         self.assertTrue((self.cli_output("compare") / "snapshot.json").is_file())
+
+    def test_cli_task_set_replacement_reports_and_persists_all_exact_membership_changes(self):
+        baseline = self.archive()
+        self.fixture.edit_task("master", lambda rows: rows[1].update(id=3))
+        for name in ("back", "gameplay"):
+            self.fixture.edit_task(name, lambda rows: rows[1].update(taskmaster_id=3))
+        before = self.all_bytes()
+        code, stdout = self.run_cli("compare", "--root", str(self.root), "--run-id", "task-set-replacement",
+                                    "--epics", self.epics, "--baseline", self.snapshot_path(baseline))
+        self.assertEqual(code, 0, stdout)
+        payload = json.loads(stdout)
+        expected = {"added": [3], "removed": [2], "changed": []}
+        for section in ("task_definitions", "task_states", "source_test_history_references_changed"):
+            self.assertEqual(payload["changes"][section], expected, section)
+        output = self.cli_output("task-set-replacement")
+        persisted = json.loads((output / "comparison.json").read_bytes())
+        self.assertEqual(persisted["changes"], payload["changes"])
+        snapshot = json.loads((output / "snapshot.json").read_bytes())
+        self.assertTrue(snapshot["capture_complete"], snapshot["diagnostics"])
+        self.assertEqual([row["task_id"] for row in snapshot["tasks"]], [1, 3])
+        self.assertEqual(persisted["current_snapshot_digest"], snapshot["snapshot_digest"])
+        self.assertEqual(persisted["baseline"]["snapshot_digest"], self.load(self.snapshot_path(baseline))["snapshot_digest"])
+        self.assert_no_authorization(payload)
+        for path, digest in before.items():
+            self.assertEqual(hashlib.sha256((self.root / path).read_bytes()).hexdigest(), digest, path)
+
+    def test_cli_flow_only_handoff_removal_reports_the_exact_weakened_flow(self):
+        original = copy.deepcopy(self.fixture.manifest)
+        second = copy.deepcopy(original["flows"][0]["handoffs"][0])
+        second["behavior"] = "Confirm transfer"
+        original["flows"][0]["handoffs"].append(second)
+        self.dump("docs/testing/mvg/fixture.json", original)
+        baseline = self.archive()
+        current = copy.deepcopy(original)
+        current["flows"][0]["handoffs"].pop()
+        self.dump("docs/testing/mvg/fixture.json", current)
+        self.assertEqual(original["tests"], current["tests"])
+        self.assertEqual(len(original["flows"][0]["handoffs"]), 2)
+        self.assertEqual(len(current["flows"][0]["handoffs"]), 1)
+        code, stdout = self.run_cli("compare", "--root", str(self.root), "--run-id", "flow-only-weakening",
+                                    "--epics", self.epics, "--baseline", self.snapshot_path(baseline))
+        self.assertEqual(code, 0, stdout)
+        payload = json.loads(stdout)
+        changes = payload["changes"]["manifests"]
+        self.assertEqual(len(changes), 1)
+        self.assertEqual(changes[0]["weakened_obligations"], ["flows/flow"])
+        self.assertEqual(changes[0]["removed_obligations"], [])
+        self.assertEqual(changes[0]["added_obligations"], [])
+        self.assertIs(changes[0]["weakening_detected"], True)
+        self.assertIs(changes[0]["manual_limits_changed"], False)
+        self.assertIs(changes[0]["source_backed_review_required"], True)
+        self.assertIs(changes[0]["source_backed_review_verified"], False)
+        self.assertIs(changes[0]["apply_authorized"], False)
+        self.assertIs(payload["old_done_satisfies_new_obligations"], False)
+        output = self.cli_output("flow-only-weakening")
+        persisted = json.loads((output / "comparison.json").read_bytes())
+        snapshot = json.loads((output / "snapshot.json").read_bytes())
+        self.assertTrue(snapshot["capture_complete"], snapshot["diagnostics"])
+        self.assertEqual(snapshot["cumulative"][0]["document"], current)
+        self.assertEqual(persisted["changes"]["manifests"], changes)
+        self.assert_no_authorization(payload)
 
     def test_cli_bad_arguments_and_invalid_inputs_have_structured_public_errors(self):
         cases = [[], ["unknown"], ["capture", "--root", str(self.root), "--run-id", "../escape", "--epics", self.epics],

@@ -58,6 +58,11 @@ def _json_bytes(value: Any) -> bytes:
     return (json.dumps(value, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
 
 
+def _same_json(left: Any, right: Any) -> bool:
+    """Use the existing codec, retaining JSON number/boolean distinctions."""
+    return codec.canonical_digest(left) == codec.canonical_digest(right)
+
+
 def _read(root: Path, path: str) -> bytes:
     # Inventory's stricter no-reparse/case checks also apply to logs archives.
     try:
@@ -196,23 +201,26 @@ class _ArchivedReferences:
 
     def __init__(self, raw_files: dict[str, bytes]):
         self.raw_files, self.references = raw_files, []
+        self.requests, self.diagnostics = [], []
 
-    def diagnostic(self, *_args: Any) -> None:
-        # The exact reference state/reason is compared below. Original inventory
-        # diagnostics remain intact rather than being reworded as new evidence.
-        pass
+    def diagnostic(self, code: str, location: str, message: str, severity: str = "error") -> None:
+        self.diagnostics.append({"code": code, "location": location, "message": message, "severity": severity})
 
     def read(self, path: str, _role: str, *, required: bool = True,
              evidence: bool = False) -> bytes | None:
         try:
             inventory.canonical_path(path, allow_logs=evidence)
         except ValueError:
+            self.requests.append({"path": path, "required": required, "allowed": False, "available": False})
             return None
-        return self.raw_files.get(path)
+        data = self.raw_files.get(path)
+        self.requests.append({"path": path, "required": required, "allowed": True, "available": data is not None})
+        return data
 
 
-def _reference_closure(documents: dict, manifests: list, raw_files: dict[str, bytes]) -> list:
-    reader = _ArchivedReferences(raw_files)
+def _reference_closure(documents: dict, report: dict, raw_files: dict[str, bytes],
+                       reader: _ArchivedReferences | None = None) -> list:
+    reader = reader if reader is not None else _ArchivedReferences(raw_files)
     for name in inventory.TRIPLET:
         rows = documents["master"]["master"]["tasks"] if name == "master" else documents[name]
         for index, task in enumerate(rows):
@@ -226,19 +234,120 @@ def _reference_closure(documents: dict, manifests: list, raw_files: dict[str, by
                 for ref_index, value in enumerate(task[field]):
                     reader.reference(inventory.TRIPLET[name], pointer + "/" + field + "/" + str(ref_index),
                         task["id"], task["id"] if name == "master" else task["taskmaster_id"], field, value)
-    for row in manifests:
-        path, document = row["path"], codec.strict_json_loads(raw_files[row["path"]])
-        for index, test in enumerate(document.get("tests", [])):
-            reader.reference(path, f"/tests/{index}/path", test.get("id"), None,
-                "manifest-test", test["path"], required=test.get("state") != "planned")
-        for index, flow in enumerate(document.get("flows", [])):
-            for source_index, source in enumerate(flow.get("source_paths", [])):
-                reader.reference(path, f"/flows/{index}/source_paths/{source_index}", flow.get("id"), None,
-                    "manifest-source", source)
-            for edge_index, edge in enumerate(flow.get("handoffs", [])):
-                reader.reference(path, f"/flows/{index}/handoffs/{edge_index}/contract_ref", flow.get("id"), None,
-                    "manifest-contract", edge["contract_ref"])
+    manifest_paths = []
+    for role, path in report["discovery"]:
+        if role != "manifest":
+            continue
+        document = reader.json(path, "cumulative-manifest")
+        if not isinstance(document, dict):
+            reader.diagnostic("invalid-manifest", path, "Manifest must be an object")
+            continue
+        # Story 1.1 retains every object whose reference traversal succeeds,
+        # including objects with static validation errors. Rebuild that set
+        # from discovery and raw bytes, rather than from the claimed projection.
+        try:
+            for index, test in enumerate(document.get("tests", [])):
+                reader.reference(path, f"/tests/{index}/path", test.get("id"), None,
+                    "manifest-test", test["path"], required=test.get("state") != "planned")
+            for index, flow in enumerate(document.get("flows", [])):
+                for source_index, source in enumerate(flow.get("source_paths", [])):
+                    reader.reference(path, f"/flows/{index}/source_paths/{source_index}", flow.get("id"), None,
+                        "manifest-source", source)
+                for edge_index, edge in enumerate(flow.get("handoffs", [])):
+                    reader.reference(path, f"/flows/{index}/handoffs/{edge_index}/contract_ref", flow.get("id"), None,
+                        "manifest-contract", edge["contract_ref"])
+            manifest_paths.append(path)
+        except (KeyError, TypeError, ValueError, AttributeError, OSError) as error:
+            reader.diagnostic("invalid-manifest", path, str(error))
+    if not _same_json([row["path"] for row in report["manifests"]], manifest_paths):
+        _fail(codec.ReasonCode.DIGEST_MISMATCH, None,
+              "manifest membership rebuilt from archived discovery and original bytes", "different inventory manifest projection")
+    if not manifest_paths:
+        reader.diagnostic("missing-manifests", "docs/testing/mvg", "No cumulative manifest could be inventoried")
     return reader.references
+
+
+def _archive_closure(report: dict, rows: dict, reader: _ArchivedReferences) -> None:
+    """Recheck declared read membership and owner-required failures, archive only."""
+    epics = report["epics"]
+    raw_epics = reader.read(epics, "epics")
+    header = {}
+    try:
+        header = inventory.frontmatter(raw_epics) if raw_epics is not None else {}
+        if header.get("status") != "final":
+            raise ValueError("Epics status must be final")
+        sources = header.get("inputDocuments")
+        if type(sources) is not list or len(sources) != 10:
+            raise ValueError("Epics must declare ten canonical sources")
+        seen = set()
+        for path in sources:
+            inventory.canonical_path(path)
+            if path.casefold() in seen or Path(path).suffix.lower() not in inventory.SUPPORTED_SUFFIXES:
+                raise ValueError("Canonical sources must be distinct and supported")
+            seen.add(path.casefold())
+            data = reader.read(path, "canonical-source")
+            if data is not None:
+                data.decode("utf-8-sig")
+                if Path(path).suffix.lower() == ".json":
+                    inventory.strict_json(data)
+    except (ValueError, UnicodeError, TypeError):
+        reader.diagnostic("invalid-epics", epics, "Archived epics declaration is invalid")
+    expected = {"canonical_inputs": header.get("inputDocuments"),
+                "declared_code_baseline": header.get("codeBaselineCommit"),
+                "declared_input_snapshot": header.get("inputSnapshotCommit")}
+    if not _same_json({key: report.get(key) for key in expected}, expected):
+        _fail(codec.ReasonCode.DIGEST_MISMATCH, epics, "source declarations from original epics bytes", "different inventory declarations")
+
+    source_set = reader.json(inventory.SOURCE_SET, "source-set")
+    projected = report.get("source_set")
+    if (type(projected) is not dict or projected.get("path") != inventory.SOURCE_SET
+            or not _same_json(projected.get("document"), source_set)):
+        _fail(codec.ReasonCode.DIGEST_MISMATCH, inventory.SOURCE_SET, "original source-set document", "different source projection")
+    try:
+        if (type(source_set) is not dict or source_set.get("schema_version") != "chapter3.source-set.v1"
+                or type(source_set.get("active_patterns")) is not list or not source_set["active_patterns"]
+                or type(source_set.get("active_sources")) is not list):
+            raise ValueError("Invalid source-set declaration")
+        for path in source_set["active_sources"]:
+            reader.read(path, "declared-active-source")
+        for path in projected["resolved_active_sources"]:
+            reader.read(path, "resolved-active-source")
+        if sorted(source_set["active_sources"]) != sorted(projected["resolved_active_sources"]):
+            reader.diagnostic("source-set-mismatch", inventory.SOURCE_SET, "Declared active_sources differ from resolved active_patterns")
+        for retirement in source_set.get("retirements", []):
+            reader.read(retirement["path"], "historical-retired-source", required=False)
+    except (ValueError, TypeError, KeyError):
+        reader.diagnostic("invalid-source-set", inventory.SOURCE_SET, "Archived source-set declaration is invalid")
+
+    for _category, _responsibility, _difference, _epic, entries in inventory.GROUPS:
+        for path, _symbol in entries:
+            reader.read(path, "consumer")
+    for path in inventory.REQUIRED_CHAPTER_SKILLS:
+        reader.read(path, "required-chapter-skill")
+    for path in (".agents/skills/plan-capabilities/SKILL.md", ".agents/skills/plan-mvg/SKILL.md"):
+        reader.read(path, "required-planning-skill")
+    for path in ("docs/architecture/ADR_INDEX_GODOT.md", "DELIVERY_PROFILE.md",
+                 "docs/workflows/run-protocol.md", "docs/workflows/local-hard-checks.md"):
+        reader.read(path, "authority")
+    for role, path in report["discovery"]:
+        reader.read(path, role)
+    for manifest in report["manifests"]:
+        reader.read(manifest["path"], "cumulative-manifest")
+
+    diagnostics = report["diagnostics"]
+    for request in reader.requests:
+        path = request["path"]
+        if type(path) is not str or path not in rows:
+            _fail(codec.ReasonCode.MISSING_REQUIRED_FIELD, path, "observation for every declared owner read", "missing inventory path binding")
+        if not request["allowed"] or (request["required"] and not request["available"]):
+            if not any(item.get("location") == path and item.get("severity") == "error"
+                       and item.get("code") in ("missing-input", "unsafe-or-unreadable-input") for item in diagnostics):
+                _fail(codec.ReasonCode.DIGEST_MISMATCH, path, "retained owner error for unavailable required input", "missing required error diagnostic")
+    for diagnostic in reader.diagnostics:
+        if diagnostic["severity"] == "error" and not any(
+                all(_same_json(item.get(key), diagnostic[key]) for key in ("code", "location", "severity"))
+                for item in diagnostics):
+            _fail(codec.ReasonCode.DIGEST_MISMATCH, diagnostic["location"], "retained raw-derived owner error", diagnostic["code"])
 
 
 def _materials(report: dict, raw_files: dict[str, bytes]) -> tuple[dict, list, list, dict]:
@@ -249,7 +358,8 @@ def _materials(report: dict, raw_files: dict[str, bytes]) -> tuple[dict, list, l
     references = report.get("task_and_manifest_references")
     if type(references) is not list:
         _fail(codec.ReasonCode.INVALID_TYPE, None, "original reference closure array", references)
-    if references != _reference_closure(documents, report.get("manifests", []), raw_files):
+    reader = _ArchivedReferences(raw_files)
+    if not _same_json(references, _reference_closure(documents, report, raw_files, reader)):
         _fail(codec.ReasonCode.DIGEST_MISMATCH, None, "reference closure rebuilt from original bytes", "different inventory reference closure")
     task_entries, candidates = [], []
     for task_id, task in tasks.items():
@@ -289,15 +399,16 @@ def _materials(report: dict, raw_files: dict[str, bytes]) -> tuple[dict, list, l
     for row in report.get("manifests", []):
         path = row["path"]
         document = codec.strict_json_loads(raw_files[path])
-        if document != row["document"]:
+        if not _same_json(document, row["document"]):
             _fail(codec.ReasonCode.DIGEST_MISMATCH, path, "inventory manifest object", "different raw document")
         cumulative.append({"path": path, "raw_digest": codec.raw_digest(raw_files[path]),
             "canonical_digest": codec.canonical_digest(document), "document": document,
             "execution_claim": "not-run; retained obligations do not prove acceptance"})
-    task_summary = inventory.Snapshot.tasks(_ArchivedReferences(raw_files))
+    task_summary = inventory.Snapshot.tasks(reader)
     if codec.canonical_digest(report.get("tasks")) != codec.canonical_digest(task_summary):
         _fail(codec.ReasonCode.DIGEST_MISMATCH, None, "Task summary rebuilt by Story 1.1 from archived triplet bytes",
               "different inventory Task documents, counts, status authority or status differences")
+    _archive_closure(report, rows, reader)
     triplet = {"documents": documents, "definition": projected, "definition_digest": codec.canonical_digest(projected),
         "state_digest": codec.canonical_digest([row["state"] for row in task_entries]),
         "counts": copy.deepcopy(task_summary["counts"]),
@@ -419,9 +530,9 @@ def collect_protection(root: Path, epics: str, *, historical_inventory: str | No
                     diagnostics.append(_diagnostic(codec.ReasonCode.FILE_CHANGED, path, before_code, error.diagnostic.reason_code.value))
     try:
         git_end = inventory.git_identity(root)
-        if git_end != report.get("git"):
+        if not _same_json(git_end, report.get("git")):
             # Inventory's private blob index is omitted from its public report.
-            if {k: v for k, v in git_end.items() if k != "blobs"} != report.get("git"):
+            if not _same_json({k: v for k, v in git_end.items() if k != "blobs"}, report.get("git")):
                 diagnostics.append(_diagnostic(codec.ReasonCode.FILE_CHANGED, "git", report.get("git"),
                     {k: v for k, v in git_end.items() if k != "blobs"}))
     except (OSError, ValueError) as error:
@@ -551,7 +662,7 @@ def _load_snapshot(root: Path, path: str) -> tuple[dict, dict, dict[str, bytes]]
     if snapshot.get("content_codec") != codec.CODEC_VERSION or snapshot.get("projection_codec") != codec.PROJECTION_CODEC:
         _fail(codec.ReasonCode.UNKNOWN_CODEC_VERSION, path, [codec.CODEC_VERSION, codec.PROJECTION_CODEC],
               [snapshot.get("content_codec"), snapshot.get("projection_codec")])
-    if snapshot.get("authorization") != AUTHORIZATION:
+    if not _same_json(snapshot.get("authorization"), AUTHORIZATION):
         _fail(codec.ReasonCode.CONFLICT, path, AUTHORIZATION, snapshot.get("authorization"))
     expected = _checked_digest(snapshot.get("snapshot_digest"), path)
     actual = codec.canonical_digest({key: value for key, value in snapshot.items() if key != "snapshot_digest"})
@@ -570,7 +681,7 @@ def _load_snapshot(root: Path, path: str) -> tuple[dict, dict, dict[str, bytes]]
     _inventory_identity(report)
     if (inv_ref.get("content_identity") != report["content_identity"]
             or inv_ref.get("adoptable") is not (report.get("adoptable") is True)
-            or inv_ref.get("diagnostics") != report.get("diagnostics")):
+            or not _same_json(inv_ref.get("diagnostics"), report.get("diagnostics"))):
         _fail(codec.ReasonCode.DIGEST_MISMATCH, path, "original inventory metadata", "different snapshot metadata")
     original = _inventory_rows(report)
     raw_files, observations = {}, {}
@@ -597,7 +708,7 @@ def _load_snapshot(root: Path, path: str) -> tuple[dict, dict, dict[str, bytes]]
         if row.get("artifact") != "raw/" + digest[7:] + ".bin":
             _fail(codec.ReasonCode.UNSAFE_PATH, source, "content-addressed raw archive path", row.get("artifact"))
         raw = read_artifact(artifact(row["artifact"]))
-        if codec.raw_digest(raw) != digest or len(raw) != row.get("size_bytes"):
+        if codec.raw_digest(raw) != digest or not _same_json(len(raw), row.get("size_bytes")):
             _fail(codec.ReasonCode.DIGEST_MISMATCH, source, digest, codec.raw_digest(raw))
         canonical = None
         if source.endswith(".json"):
@@ -612,16 +723,16 @@ def _load_snapshot(root: Path, path: str) -> tuple[dict, dict, dict[str, bytes]]
         _fail(codec.ReasonCode.MISSING_REQUIRED_FIELD, path, "full original inventory archive index", sorted(set(original) - set(observations)))
     for source, row in original.items():
         archived = observations[source]
-        if (archived["exists"] != row["exists"] or archived.get("raw_digest") != row["raw_sha256"]
-                or archived.get("roles") != row.get("roles")):
+        if (archived["exists"] is not row["exists"] or archived.get("raw_digest") != row["raw_sha256"]
+                or not _same_json(archived.get("roles"), row.get("roles"))):
             _fail(codec.ReasonCode.DIGEST_MISMATCH, source, row, archived)
     triplet, tasks, cumulative, frozen = _materials(report, raw_files)
     for field, actual_value in (("triplet", triplet), ("tasks", tasks), ("cumulative", cumulative), ("frozen_a", frozen)):
-        if snapshot.get(field) != actual_value:
+        if not _same_json(snapshot.get(field), actual_value):
             _fail(codec.ReasonCode.DIGEST_MISMATCH, path, "raw-derived " + field, "different " + field)
     if snapshot.get("status_authority") != inventory.TRIPLET["master"]:
         _fail(codec.ReasonCode.CONFLICT, path, inventory.TRIPLET["master"], snapshot.get("status_authority"))
-    if snapshot.get("stable") is not True or snapshot.get("diagnostics") != []:
+    if snapshot.get("stable") is not True or not _same_json(snapshot.get("diagnostics"), []):
         _fail(codec.ReasonCode.FILE_CHANGED, path, "stable raw collection without capture errors", "invalid or unstable snapshot")
     if snapshot.get("capture_complete") is not (report.get("adoptable") is True):
         _fail(codec.ReasonCode.CONFLICT, path, "capture completeness derived from inventory", snapshot.get("capture_complete"))
@@ -638,8 +749,8 @@ def _load_snapshot(root: Path, path: str) -> tuple[dict, dict, dict[str, bytes]]
         if (history.get("integrity_verified") is not True
                 or history.get("content_identity") != previous["content_identity"]
                 or history.get("original_adoptable") is not previous["adoptable"]
-                or history.get("original_diagnostics") != previous["diagnostics"]
-                or history.get("diagnostics") != []):
+                or not _same_json(history.get("original_diagnostics"), previous["diagnostics"])
+                or not _same_json(history.get("diagnostics"), [])):
             _fail(codec.ReasonCode.DIGEST_MISMATCH, source, "historical metadata rebuilt from archived report", "different historical metadata")
         allowed_extra = set(_inventory_rows(previous)) | {source}
         comparisons = history.get("input_comparison")
@@ -693,7 +804,7 @@ def verify_protection(root: Path, snapshot_path: str) -> dict:
 
 def _changes(before: dict, after: dict) -> dict:
     return {"added": sorted(after.keys() - before.keys()), "removed": sorted(before.keys() - after.keys()),
-            "changed": sorted(key for key in before.keys() & after.keys() if before[key] != after[key])}
+            "changed": sorted(key for key in before.keys() & after.keys() if not _same_json(before[key], after[key]))}
 
 
 def _manifest_changes(before: list[dict], after: list[dict]) -> list[dict]:
@@ -701,7 +812,7 @@ def _manifest_changes(before: list[dict], after: list[dict]) -> list[dict]:
     changes = []
     for path in sorted(set(old) | set(new)):
         left, right = old.get(path), new.get(path)
-        if left is not None and right is not None and left["document"] == right["document"]:
+        if left is not None and right is not None and _same_json(left["document"], right["document"]):
             continue
         a, b = (left or {}).get("document", {}), (right or {}).get("document", {})
         for document in (a, b):
@@ -721,7 +832,7 @@ def _manifest_changes(before: list[dict], after: list[dict]) -> list[dict]:
             added.extend(section + "/" + str(key) for key in new_rows.keys() - old_rows.keys())
             weakened.extend(section + "/" + str(key) for key in old_rows.keys() & new_rows.keys()
                             if _weakens_baseline(old_rows[key], new_rows[key]))
-        manual_changed = a.get("coverage", {}).get("excluded_claims") != b.get("coverage", {}).get("excluded_claims")
+        manual_changed = not _same_json(a.get("coverage", {}).get("excluded_claims"), b.get("coverage", {}).get("excluded_claims"))
         coverage_weakened = _weakens_baseline(a.get("coverage", {}), b.get("coverage", {}))
         changes.append({"path": path, "before_digest": left["canonical_digest"] if left else None,
             "after_digest": right["canonical_digest"] if right else None,

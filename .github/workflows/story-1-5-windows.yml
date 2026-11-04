@@ -159,7 +159,7 @@ jobs:
               module = pattern.removesuffix('.py')
               if pattern == 'test_b_route_protection.py':
                   command = [sys.executable, '-B', '-c', timed_runner, pattern]
-                  budget = 240
+                  budget = 300
               else:
                   command = [sys.executable, '-B', '-m', 'unittest', 'discover', '-s', 'scripts/python/tests', '-p', pattern, '-v']
                   budget = 180
