@@ -1,0 +1,237 @@
+name: Story 2.2 Windows Independent Source Audit Validation
+on:
+  push:
+    branches: [test/b-route-story-2-2-windows-2026-11-04]
+permissions:
+  contents: read
+jobs:
+  source-audit:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    env:
+      PYTHONUTF8: '1'
+      PYTHONIOENCODING: 'utf-8'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify source audit orchestration and synthetic CLI
+        shell: python
+        run: |
+          import sys
+          sys.dont_write_bytecode = True
+          import hashlib
+          import json
+          import os
+          import subprocess
+          import time
+          from pathlib import Path
+          os.environ.pop('PYTHONDONTWRITEBYTECODE', None)
+          root = Path.cwd()
+          output = root / 'logs/ci/story-2-2-windows' / (os.environ['GITHUB_RUN_ID'] + '-' + os.environ['GITHUB_RUN_ATTEMPT'])
+          output.mkdir(parents=True, exist_ok=False)
+          assert os.name == 'nt'
+          head = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
+          assert head == os.environ['GITHUB_SHA']
+          tracked = [p for p in subprocess.check_output(['git', 'ls-files', '-z']).decode('utf-8').split('\0') if p]
+          before = {p: hashlib.sha256((root / p).read_bytes()).hexdigest() for p in tracked if (root / p).is_file()}
+          bytecode_before = {p.relative_to(root).as_posix() for p in (root / 'scripts').rglob('*.pyc')}
+          paths = ['scripts/python/_b_route_source_audit.py', 'scripts/python/_b_route_sources.py', 'scripts/python/_planning_skill_common.py', 'scripts/python/account_b_route_sources.py', 'scripts/python/dev_cli.py', 'scripts/python/tests/test_b_route_source_audit.py', 'scripts/python/tests/fixtures/b_route_audit_synthetic_runner.py', 'scripts/python/tests/test_b_route_sources.py', 'scripts/python/build_source_ledger.py', 'scripts/python/project_semantics_from_sources.py', 'scripts/python/validate_semantic_conservation.py', 'scripts/python/_b_route_codec.py', 'scripts/python/_b_route_inventory.py', 'scripts/python/_mvg_evidence_transport.py', 'scripts/python/_capability_input_integrity.py', 'scripts/python/requirements-b-route.txt', '.github/workflows/story-2-2-windows.yml']
+          environment = {'head': head, 'python': sys.version, 'platform': sys.platform, 'synthetic_only': True, 'actual_model_semantics_verified': False, 'subprocess_bytecode_override_present': 'PYTHONDONTWRITEBYTECODE' in os.environ, 'files': {p: {'raw_sha256': hashlib.sha256((root / p).read_bytes()).hexdigest(), 'git_blob': subprocess.check_output(['git', 'rev-parse', 'HEAD:' + p], text=True).strip()} for p in paths}}
+          summary = {'head': head, 'steps': [], 'exit_code': 0, 'synthetic_only': True, 'actual_model_semantics_verified': False}
+          deadline = time.monotonic() + 1600
+          def save():
+              (output / 'summary.json').write_text(json.dumps(summary, indent=2) + '\n', encoding='utf-8')
+          def run(name, command, budget):
+              available = min(budget, deadline - time.monotonic())
+              started = time.monotonic()
+              if available <= 0:
+                  code, stdout, stderr = 124, '', 'Internal verification budget exhausted'
+              else:
+                  try:
+                      result = subprocess.run(command, cwd=root, capture_output=True, text=True, encoding='utf-8', errors='replace', timeout=available)
+                      code, stdout, stderr = result.returncode, result.stdout, result.stderr
+                  except subprocess.TimeoutExpired as error:
+                      code = 124
+                      stdout = error.stdout.decode('utf-8', errors='replace') if isinstance(error.stdout, bytes) else (error.stdout or '')
+                      stderr = error.stderr.decode('utf-8', errors='replace') if isinstance(error.stderr, bytes) else (error.stderr or '')
+              for suffix, value in [('stdout', stdout), ('stderr', stderr)]:
+                  (output / (name + '.' + suffix)).write_text(value, encoding='utf-8')
+              summary['steps'].append({'name': name, 'exit_code': code, 'elapsed_seconds': time.monotonic() - started, 'budget_seconds': available})
+              if code:
+                  summary['exit_code'] = 1
+              save()
+              print(stdout, flush=True)
+              print(stderr, flush=True)
+              return code
+          (output / 'environment.json').write_text(json.dumps(environment, indent=2) + '\n', encoding='utf-8')
+          print(json.dumps(environment, indent=2), flush=True)
+          code = run('dependencies', [sys.executable, '-B', '-m', 'pip', 'install', '--disable-pip-version-check', '-r', 'scripts/python/requirements-b-route.txt'], 120)
+          runner = r'''
+          import sys, json, unittest, time
+          sys.dont_write_bytecode = True
+          class TimedResult(unittest.TextTestResult):
+              def __init__(self, *args, **kwargs):
+                  super().__init__(*args, **kwargs)
+                  self.successes = []
+              def addSuccess(self, test):
+                  self.successes.append(test.id())
+                  super().addSuccess(test)
+              def startTest(self, test):
+                  super().startTest(test)
+                  self.started = time.monotonic()
+                  print(json.dumps({'test_started': test.id()}), flush=True)
+              def stopTest(self, test):
+                  print(json.dumps({'test_finished': test.id(), 'elapsed_seconds': time.monotonic() - self.started}), flush=True)
+                  super().stopTest(test)
+          suite = unittest.TestSuite()
+          for module in ('test_chapter3_semantic_conservation', 'test_milestone_incremental_hotfixes', 'test_mvg_evidence_transport', 'test_b_route_sources', 'test_b_route_source_audit', 'test_codex_isolated_model_runner'):
+              suite.addTests(unittest.defaultTestLoader.discover('scripts/python/tests', pattern=module + '.py'))
+          suite.addTests(unittest.defaultTestLoader.loadTestsFromName('test_planning_main_audit_fixes.PlanningMainAuditFixesTests.test_interrupted_runner_terminates_and_reaps_real_child'))
+          expected = suite.countTestCases()
+          result = unittest.TextTestRunner(verbosity=2, resultclass=TimedResult).run(suite)
+          allowed_skips = {'test_b_route_sources.SourceAccountingTests.test_root_source_and_logs_symlinks_are_rejected'}
+          actual_skips = {test.id() for test, reason in result.skipped}
+          required = {'test_b_route_source_audit.SourceAuditTests.test_windows_audit_real_junction_and_short_path_rejected', 'test_b_route_sources.SourceAccountingTests.test_windows_real_junction_and_short_path'}
+          record = {'expected': expected, 'executed': result.testsRun, 'passed': len(result.successes), 'skipped': sorted(actual_skips), 'required_windows_methods': {name: name in result.successes for name in sorted(required)}}
+          print(json.dumps({'test_summary': record}, indent=2), flush=True)
+          raise SystemExit(0 if result.wasSuccessful() and result.testsRun == expected and actual_skips == allowed_skips and required <= set(result.successes) else 1)
+          '''
+          if not code:
+              code = run('source-and-native-tests', [sys.executable, '-B', '-c', runner], 1050)
+          matrix_runner = r'''
+          """Independent synthetic CLI exercise; never actual model semantic evidence."""
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+          import subprocess
+          import sys
+
+          sys.dont_write_bytecode = True
+          repository = Path.cwd()
+          output = Path(sys.argv[1]).absolute()
+          output.mkdir(parents=True, exist_ok=False)
+          cases = []
+
+
+          def save(path, value):
+              path.parent.mkdir(parents=True, exist_ok=True)
+              path.write_text(json.dumps(value, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+
+          def fixture(name, mode="clean"):
+              root = output / name
+              (root / "docs").mkdir(parents=True)
+              (root / "docs/first.md").write_bytes(b"# Synthetic obligation\r\n\r\nPreserve input order.  \r\n")
+              (root / "docs/second.md").write_bytes(b"# Synthetic handoff\r\n\r\nReturn to map when the action completes.\r\n")
+              paths = ["docs/first.md", "docs/second.md"]
+              save(root / "docs/source-set.json", {"schema_version": "chapter3.source-set.v1", "active_patterns": paths,
+                                                 "active_sources": paths, "retirements": []})
+              source = (repository / "scripts/python/tests/fixtures/b_route_audit_synthetic_runner.py").read_text(encoding="utf-8")
+              (root / "runner.py").write_text(source.replace('MODE = "clean"', "MODE = " + repr(mode)), encoding="utf-8")
+              return root
+
+
+          def call(root, run, stage, attempt, expected, extra, *, public=True):
+              before = {p.relative_to(root).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest()
+                        for p in root.rglob("*") if p.is_file() and not p.relative_to(root).as_posix().startswith("logs/")}
+              command = [sys.executable, str(repository / "scripts/python/dev_cli.py"), "b-route-sources"] if public else [
+                  sys.executable, str(repository / "scripts/python/account_b_route_sources.py")]
+              command += ["--root", str(root), "--run-id", run, "--scope-id", "synthetic-scope", "--attempt-id", attempt, "--stage", stage, *extra]
+              proc = subprocess.run(command, cwd=repository, capture_output=True, text=True, encoding="utf-8", errors="strict", timeout=180)
+              name = f"{len(cases) + 1:03d}-" + root.name + "-" + stage + "-" + attempt
+              (output / (name + ".stdout")).write_text(proc.stdout, encoding="utf-8")
+              (output / (name + ".stderr")).write_text(proc.stderr, encoding="utf-8")
+              assert proc.stderr == "", (name, proc.stderr)
+              assert len(proc.stdout.splitlines()) == 1, (name, proc.stdout)
+              value = json.loads(proc.stdout)
+              assert proc.returncode == expected and value["exit_code"] == expected, (name, proc.returncode, value)
+              assert value["formal_adoption"] is False and value["budget_is_billing"] is False, (name, value)
+              if stage in {"audit", "verify"}:
+                  assert value["planning_eligible"] is False, (name, value)
+                  count = value["model_dispatch_count"]
+                  assert count == 0 or (count == "unknown" and expected != 0 and not value["execution_complete"] and value["runner_dispatch_count"] > 0), (name, value)
+              assert all((root / p).is_file() and hashlib.sha256((root / p).read_bytes()).hexdigest() == h for p, h in before.items()), name
+              assert not (root / ".taskmaster").exists(), name
+              cases.append({"case": name, "exit_code": proc.returncode, "synthetic_only": True,
+                            "original_bytes_unchanged": True, "model_dispatch_count": value["model_dispatch_count"]})
+              return value
+
+
+          def accounted(root):
+              run = root.name
+              prepared = call(root, run, "prepare", "prepare", 0, ["--source-set", "docs/source-set.json"], public=False)
+              value = json.loads((root / prepared["output_ref"] / "candidate.json").read_bytes())
+              for index, row in enumerate(value["block_results"]):
+                  row.update(delivery_potential=False, disposition="context", reason="Synthetic context for the independent orchestration fixture.", atoms=[])
+                  if index == 0:
+                      row.update(delivery_potential=True, disposition="atomized", atoms=[{
+                          "proposal_id": "proposal:preserve-order", "kind": "functional", "statement": "Preserve input order.",
+                          "source_block_ids": [row["block_id"]], "acceptance_intent": "The input order remains observable.",
+                          "prior_requirement_ids": [], "non_task_sinks": []}])
+              for row in value["batch_summaries"]:
+                  row["output_accounted_count"] = row["input_block_count"]
+              save(root / "docs/candidate.json", value)
+              return call(root, run, "account", "account", 0, ["--prepared", prepared["prepared_ref"]["path"], "--candidate", "docs/candidate.json"])
+
+
+          def audit(root, report, attempt, expected=0, extra=()):
+              return call(root, root.name, "audit", attempt, expected, ["--accounted", report["output_ref"] + "/report.json",
+                  "--runner", "runner.py", "--expected-model", "synthetic/source-audit-v1", *extra])
+
+
+          root = fixture("clean")
+          account = accounted(root)
+          complete = audit(root, account, "fresh")
+          assert complete["execution_complete"] and complete["synthetic_dispatch_count"] == 3
+          ref = complete["output_ref"] + "/report.json"
+          verified = call(root, root.name, "verify", "verify", 0, ["--audit-ref", ref, "--runner", "runner.py", "--expected-model", "synthetic/source-audit-v1"], public=False)
+          assert verified["runner_dispatch_count"] == 0
+          reused = audit(root, account, "reuse", extra=["--audit-ref", ref])
+          assert reused["runner_dispatch_count"] == 0 and reused["reuse_reason"] == "complete_identity_and_original_proof_match"
+          assert audit(root, account, "fresh") == complete
+          bad = call(root, root.name, "verify", "missing-proof", 1, ["--audit-ref", "missing/report.json", "--runner", "runner.py", "--expected-model", "synthetic/source-audit-v1"])
+          capacity_root = fixture("capacity")
+          capacity = audit(capacity_root, accounted(capacity_root), "capacity", 1, ["--transport-max-input-tokens", "20"])
+          assert capacity["runner_dispatch_count"] == 0 and capacity["termination_reason"] == "capacity_blocked"
+          for mode in ("omission", "conflict", "bad-quote", "fake-pass", "tools"):
+              root = fixture(mode, mode)
+              report = audit(root, accounted(root), "negative", 1)
+              assert not report["planning_eligible"]
+              if mode in {"omission", "conflict"}:
+                  assert report["execution_complete"] and report["semantic_blockers"]
+              else:
+                  assert not report["execution_complete"]
+          root = fixture("budget")
+          account = accounted(root)
+          blocked = audit(root, account, "first", 1, ["--request-budget", "1"])
+          assert blocked["termination_reason"] == "budget_blocked" and blocked["synthetic_dispatch_count"] == 1
+          again = audit(root, account, "second", 1, ["--request-budget", "1"])
+          assert again["termination_reason"] == "budget_blocked" and again["runner_dispatch_count"] == 0
+          save(output / "cli-summary.json", {"cases": cases, "passed_cli_invocations": len(cases), "synthetic_only": True,
+                                             "actual_model_semantics_verified": False, "production_inputs_used": False})
+          print(json.dumps({"passed_cli_invocations": len(cases), "synthetic_only": True}, indent=2))
+          '''
+          if not code:
+              code = run('independent-synthetic-cli', [sys.executable, '-c', matrix_runner, str(output / 'cli')], 300)
+          changed = [p for p, digest in before.items() if not (root / p).is_file() or hashlib.sha256((root / p).read_bytes()).hexdigest() != digest]
+          bytecode_after = {p.relative_to(root).as_posix() for p in (root / 'scripts').rglob('*.pyc')}
+          summary.update(tracked_files_verified=len(before), tracked_files_changed=changed, new_script_bytecode=sorted(bytecode_after - bytecode_before))
+          if changed or bytecode_after - bytecode_before:
+              summary['exit_code'] = 1
+          save()
+          print(json.dumps(summary, indent=2), flush=True)
+          raise SystemExit(summary['exit_code'])
+      - name: Upload only this run's synthetic validation logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: story-2-2-windows-${{ github.run_id }}-${{ github.run_attempt }}
+          path: logs/ci/story-2-2-windows/${{ github.run_id }}-${{ github.run_attempt }}/
+          retention-days: 3
+          if-no-files-found: error

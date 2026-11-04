@@ -300,6 +300,30 @@ class SourceAccountingTests(unittest.TestCase):
                 self.assertEqual(code, 1, report)
                 self.assertTrue(report["diagnostics"])
 
+    def test_bad_prepared_reference_retains_parsed_failure_snapshot(self):
+        prepared = self.prepare()
+        candidate = self.candidate(prepared)
+        candidate["prepared_ref"]["raw_digest"] = "sha256:" + "0" * 64
+        self.put("candidate.json", candidate)
+        before = {p.relative_to(self.root): p.read_bytes() for p in self.root.rglob("*") if p.is_file()}
+        code, report = self.account(prepared, "bad-prepared-ref")
+        self.assertEqual(code, 1, report)
+        self.assertFalse(report["accounting_complete"])
+        self.assertEqual(report["model_dispatch_count"], 0)
+        self.assertEqual(report["diagnostics"][0]["expected"], "exact prepared reference and raw identity")
+        snapshot = self.root / report["output_ref"] / "candidate.snapshot.json"
+        self.assertEqual(self.json(snapshot.relative_to(self.root).as_posix()), candidate)
+        event = self.json(report["output_ref"] + "/event.json")
+        self.assertEqual(event["artifacts"]["candidate.snapshot.json"], codec.raw_digest(snapshot.read_bytes()))
+        for path, raw in before.items():
+            self.assertEqual((self.root / path).read_bytes(), raw)
+        frozen = {p.relative_to(snapshot.parent): p.read_bytes() for p in snapshot.parent.rglob("*") if p.is_file()}
+        replay_code, replay = self.account(prepared, "bad-prepared-ref")
+        self.assertEqual(replay_code, 1, replay)
+        self.assertEqual(replay, report)
+        for path, raw in frozen.items():
+            self.assertEqual((snapshot.parent / path).read_bytes(), raw)
+
     def test_account_rejects_rebound_caches_that_omit_a_registered_source(self):
         self.put("docs/other.md", b"Another registered cumulative obligation.\r\n")
         self.registration(["docs/source.md", "docs/other.md"])

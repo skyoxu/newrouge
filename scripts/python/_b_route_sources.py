@@ -31,6 +31,8 @@ CANDIDATE = "newrouge.b-route-sources-candidate.v1"
 DECLARATION = "newrouge.b-route-sources-declaration.v1"
 ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9_-]{0,95}\Z")
 PROPOSAL = re.compile(r"proposal:[A-Za-z0-9][A-Za-z0-9_.-]{0,127}\Z")
+AUDIT_ARGUMENTS = ("accounted", "audit_ref", "runner", "expected_model", "request_budget",
+                   "active_budget_seconds", "timeout_seconds")
 
 
 def fail(code, entity, expected, actual):
@@ -225,6 +227,62 @@ def archive_observations(obs, output):
     return rows
 
 
+def validate_event(obs, report_ref, *, stage=None):
+    """Validate a complete immutable event without trusting its self-reported status."""
+    path = checked_path(obs.root, report_ref)
+    require(path.name == "report.json", report_ref, "report.json reference")
+    prefix = path.parent.relative_to(obs.root).as_posix()
+    require(prefix.startswith("logs/ci/"), prefix, "attempt-local logs reference")
+    report, event = obs.json(report_ref), obs.json(prefix + "/event.json")
+    require(stage is None or event.get("stage") == stage, prefix, stage)
+    require(event.get("event_key") == [event.get(k) for k in ("run_id", "scope_id", "stage", "attempt_id")],
+            prefix, "matching event identity")
+    require(all(event.get(key) == value for key, value in report.items()), prefix, "same report and terminal event")
+    require(isinstance(event.get("artifacts"), dict) and "report.json" in event["artifacts"],
+            prefix, "complete output proof")
+    actual = set()
+    for item in path.parent.rglob("*"):
+        inventory.no_reparse(item)
+        if item.is_file():
+            actual.add(item.relative_to(path.parent).as_posix())
+    require(set(event["artifacts"]) | {"event.json"} == actual, prefix, "exact immutable output inventory")
+    for relative, digest in event["artifacts"].items():
+        raw = obs.read(prefix + "/" + relative)
+        require(codec.raw_digest(raw) == digest, prefix + "/" + relative, digest, codec.raw_digest(raw))
+    return report, event, prefix
+
+
+def load_accounted(obs, report_ref):
+    """Read-only public seam: verify account execution and reproduce native accounting."""
+    report, event, prefix = validate_event(obs, report_ref, stage="account")
+    require("/b-route-sources/" in prefix and report.get("termination_reason") in {"accounted", "unresolved"}
+            and type(event.get("exit_code")) is int and event["exit_code"] in {0, 1},
+            report_ref, "terminal mechanically valid account, including unresolved")
+    request = obs.json(prefix + "/request.json")
+    require([request.get(k) for k in ("run_id", "scope_id", "stage", "attempt_id")] == event["event_key"],
+            prefix, "account request identity")
+    for value, digest in event["observations"].items():
+        raw = obs.read(value, optional=digest is None)
+        require((codec.raw_digest(raw) if raw is not None else None) == digest, value, "frozen account input identity")
+    for watch in event["glob_observations"]:
+        require(obs.watch(watch["patterns"]) == watch["result"], prefix, "frozen account membership")
+    state = validate_account_input(obs, argparse.Namespace(**request),
+                                   candidate=obs.json(prefix + "/candidate.snapshot.json"))
+    for filename, value in (("requirement-proposals.json", state["proposals"]),
+                            ("source-accounting.json", state["accounting"])):
+        frozen = obs.json(prefix + "/" + filename)
+        if filename == "source-accounting.json":
+            # Native edges include observation time, which is provenance, not content.
+            value["edges"]["generated_at_utc"] = frozen["edges"]["generated_at_utc"]
+        require(frozen == value, prefix + "/" + filename, "reproduced native accounting")
+    require(report.get("unresolved") == state["unresolved"] and report.get("accounting_complete") is (not state["unresolved"]),
+            report_ref, "all original mechanical unresolved items retained")
+    require(event["exit_code"] == (1 if state["unresolved"] else 0)
+            and report["termination_reason"] == ("unresolved" if state["unresolved"] else "accounted"),
+            report_ref, "terminal outcome agrees with reproduced accounting")
+    return state, report
+
+
 def load_prepared(obs, value, *, current_sources=True):
     path = checked_path(obs.root, value)
     require(path.name == "prepared.json", value, "prepared.json reference")
@@ -241,6 +299,8 @@ def load_prepared(obs, value, *, current_sources=True):
             prefix, "matching successful preparation event identity")
     expected_paths = set(event.get("artifacts", {})) | {"event.json"}
     actual_paths = {p.relative_to(path.parent).as_posix() for p in path.parent.rglob("*") if p.is_file()}
+    for item in path.parent.rglob("*"):
+        inventory.no_reparse(item)
     require(expected_paths == actual_paths, prefix, sorted(expected_paths), sorted(actual_paths))
     for relative, digest in event["artifacts"].items():
         raw = obs.read(prefix + "/" + relative)
@@ -386,7 +446,8 @@ def accountable_candidate(candidate, ledger, unresolved):
     return native_candidate, list(proposals.values())
 
 
-def account(obs, args, output, result):
+def _account_candidate_input(obs, args, *, candidate=None):
+    """Load the validated preparation and parsed candidate before its binding check."""
     prepared, prefix = load_prepared(obs, args.prepared)
     require(prepared["scope_id"] == args.scope_id, args.prepared, "matching scope_id")
     selected = argparse.Namespace(**obs.json(prefix + "/request.json"))
@@ -400,8 +461,16 @@ def account(obs, args, output, result):
     }.items():
         require(prepared[field] == expected, "prepared." + field,
                 expected, prepared[field])
-    candidate = obs.json(args.candidate)
-    write(output / "candidate.snapshot.json", candidate)
+    candidate = obs.json(args.candidate) if candidate is None else candidate
+    return prepared, prefix, patterns, retired, previous_ledger, prior_sources, candidate
+
+
+def validate_account_input(obs, args, *, candidate=None):
+    """Reproduce mechanical accounting without writing or granting audit authority."""
+    return _validate_account_candidate(obs, args, *_account_candidate_input(obs, args, candidate=candidate))
+
+
+def _validate_account_candidate(obs, args, prepared, prefix, patterns, retired, previous_ledger, prior_sources, candidate):
     require(candidate.get("prepared_ref") == {"path": args.prepared, "raw_digest": codec.raw_digest(obs.read(args.prepared))},
             args.candidate, "exact prepared reference and raw identity")
     ledger, manifest = obs.json(prefix + "/source-blocks.json"), obs.json(prefix + "/source-manifest.json")
@@ -445,18 +514,30 @@ def account(obs, args, output, result):
             evidence(obs, row.get("evidence"))
     for path in sorted(empty - seen):
         unresolved.append({"entity_id": path, "reason": "missing file disposition"})
-    write(output / "requirement-proposals.json", {"source_revision": ledger["source_revision"], "proposals": proposals})
+    proposed = {"source_revision": ledger["source_revision"], "proposals": proposals}
     semantics, _, edges = projection.compile_projection(ledger, index, native_candidate)
     checks = projection_checks(obs.root, ledger, semantics,
                                hash_reader=lambda p: native.sha256_text(obs.reader(p)))
     for key, value in checks.items():
         if isinstance(value, list) and value:
             unresolved.append({"entity_id": key, "reason": value})
-    write(output / "source-accounting.json", {"source_accounting": semantics["source_accounting"],
-                                             "file_accounting": candidate.get("file_results", []),
-                                             "projection_checks": checks, "edges": edges})
+    accounting = {"source_accounting": semantics["source_accounting"],
+                  "file_accounting": candidate.get("file_results", []),
+                  "projection_checks": checks, "edges": edges}
+    return {"prepared": prepared, "manifest": manifest, "ledger": ledger, "candidate": candidate,
+            "proposals": proposed, "accounting": accounting, "unresolved": unresolved}
+
+
+def account(obs, args, output, result):
+    inputs = _account_candidate_input(obs, args)
+    # Retain the parsed failure input at the original accounting boundary.
+    write(output / "candidate.snapshot.json", inputs[-1])
+    state = _validate_account_candidate(obs, args, *inputs)
+    ledger, manifest, unresolved = state["ledger"], state["manifest"], state["unresolved"]
+    write(output / "requirement-proposals.json", state["proposals"])
+    write(output / "source-accounting.json", state["accounting"])
     result.update(source_count=len(manifest["sources"]), source_block_count=len(ledger["blocks"]),
-                  proposal_count=len(proposals), unresolved=unresolved, accounting_complete=not unresolved,
+                  proposal_count=len(state["proposals"]["proposals"]), unresolved=unresolved, accounting_complete=not unresolved,
                   termination_reason="accounted" if not unresolved else "unresolved")
     return 0 if not unresolved else 1
 
@@ -467,7 +548,7 @@ class Parser(argparse.ArgumentParser):
 
 
 def register_arguments(parser):
-    parser.add_argument("--stage", choices=("prepare", "account"), required=True)
+    parser.add_argument("--stage", choices=("prepare", "account", "audit", "verify"), required=True)
     for option in ("root", "run-id", "scope-id", "attempt-id"):
         parser.add_argument("--" + option, required=True)
     for option in ("source-set", "declaration", "previous", "prepared", "candidate"):
@@ -476,6 +557,11 @@ def register_arguments(parser):
     parser.add_argument("--max-chars", type=int, default=24000)
     parser.add_argument("--transport-max-bytes", type=int, default=1048576)
     parser.add_argument("--transport-max-input-tokens", type=int, default=96000)
+    for option in ("accounted", "audit-ref", "runner", "expected-model"):
+        parser.add_argument("--" + option)
+    parser.add_argument("--request-budget", type=int)
+    parser.add_argument("--active-budget-seconds", type=int)
+    parser.add_argument("--timeout-seconds", type=int)
 
 
 def admission(args):
@@ -491,6 +577,8 @@ def admission(args):
         inventory.canonical_path(value)
     require(all(getattr(args, k) > 0 for k in ("max_blocks", "max_chars", "transport_max_bytes", "transport_max_input_tokens")),
             "limits", "positive capacities")
+    require(not any(getattr(args, k, None) is not None for k in AUDIT_ARGUMENTS),
+            "arguments", "prepare/account reject audit-only parameters")
     if args.stage == "prepare":
         require(args.source_set and not args.prepared and not args.candidate, "arguments", "prepare requires source-set only")
     else:
@@ -528,11 +616,14 @@ def main(argv=None):
               "budget_is_billing": False, "billed_cost": "unknown", "reuse_reason": "not_requested"}
     started, output, obs = time.monotonic(), None, None
     try:
-        parser = Parser(description="3A prepare/account source proposals; no independent audit or formal adoption authority")
+        parser = Parser(description="3A source prepare/account and independent audit/verify; no formal adoption authority")
         register_arguments(parser)
         args = parser.parse_args(argv)
+        if args.stage in {"audit", "verify"}:
+            from _b_route_source_audit import execute
+            return execute(args)
         root, admitted, created = admission(args)
-        request = {k: v for k, v in vars(args).items() if k != "root"}
+        request = {k: v for k, v in vars(args).items() if k != "root" and k not in AUDIT_ARGUMENTS}
         request["root"] = str(root)
         if not created:
             try:

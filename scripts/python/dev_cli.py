@@ -606,7 +606,7 @@ def build_parser() -> argparse.ArgumentParser:
     for option in ("root", "epics", "protection-input", "candidate", "intents", "run-id"):
         preflight_parser.add_argument("--" + option, required=True)
 
-    sources_parser = sub.add_parser("b-route-sources", help="3A source prepare/account; no formal adoption authority")
+    sources_parser = sub.add_parser("b-route-sources", help="3A source prepare/account/audit/verify; no formal adoption authority")
     from _b_route_sources import register_arguments as register_sources_arguments
     register_sources_arguments(sources_parser)
 

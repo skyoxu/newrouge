@@ -2,7 +2,7 @@
 
 `_b_route_sources.py` 是唯一编排 owner；`account_b_route_sources.py` 和 `dev_cli.py b-route-sources` 共用该服务。它准备累计来源并消费显式语义提议，不要求 Task、Chapter 5 readiness 或既有场景。现行 A 命令继续有效，本入口不启用 B。
 
-来源准备、完整记账、独立来源审计和正式采纳分别判断；本命令只提供前两项。报告中的 `satisfied`、`independent_audit`、`formal_adoption` 始终为 false。不调用模型、apply、来源注册写入、Taskmaster／MVG 修改、Knowledge 发布或旧操作恢复。
+来源准备、完整记账、独立来源审计和正式采纳分别判断；本文说明 `prepare|account` 前两项。`audit|verify` 通过同一公共入口交给[独立来源审计 owner](b-route-source-audit.md)。报告中的 `satisfied`、`independent_audit`、`formal_adoption` 始终为 false。不调用模型、apply、来源注册写入、Taskmaster／MVG 修改、Knowledge 发布或旧操作恢复。
 
 ## 准备来源
 

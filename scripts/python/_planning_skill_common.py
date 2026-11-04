@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import hashlib
+import base64
 import json
 import os
 import re
@@ -12,6 +13,7 @@ import shutil
 import subprocess
 import sys
 import threading
+import time
 import uuid
 from pathlib import Path
 from typing import Any
@@ -508,15 +510,15 @@ def validate_output_schema(output_path: Path, schema_path: Path) -> None:
         raise ValueError(f"model output does not satisfy JSON schema: {details}")
 
 
-def _runner_prefix(executable: Path) -> list[str]:
+def _runner_prefix(executable: Path, *, suppress_bytecode: bool = False) -> list[str]:
     if executable.suffix.casefold() == ".py":
-        return [sys.executable, str(executable)]
+        return [sys.executable, *(["-B"] if suppress_bytecode else []), str(executable)]
     return [str(executable)]
 
 
-def inspect_isolated_runner(executable: Path) -> dict[str, Any]:
+def inspect_isolated_runner(executable: Path, *, suppress_bytecode: bool = False) -> dict[str, Any]:
     proc = subprocess.run(
-        [*_runner_prefix(executable), "--describe"],
+        [*_runner_prefix(executable, suppress_bytecode=suppress_bytecode), "--describe"],
         text=True,
         encoding="utf-8",
         errors="replace",
@@ -581,9 +583,12 @@ def run_isolated_model(
     synthesis_timeout_sec: int | None = None,
     output_schema: Path | None = None,
     model_request_budget: int | None = None,
+    execution_log: Path | None = None,
+    wall_timeout_sec: int | None = None,
+    suppress_bytecode: bool = False,
 ) -> dict[str, Any]:
     cmd = [
-        *_runner_prefix(executable),
+        *_runner_prefix(executable, suppress_bytecode=suppress_bytecode),
         "--workspace", str(workspace),
         "--prompt-file", str(prompt_path),
         "--output", str(output_path),
@@ -606,20 +611,47 @@ def run_isolated_model(
         kwargs["creationflags"] = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
     else:
         kwargs["start_new_session"] = True
-    proc = subprocess.Popen(cmd, **kwargs)
+    if execution_log is not None:
+        # The audit must retain exact OS output bytes, even for malformed UTF-8.
+        kwargs["text"] = False
+        kwargs.pop("encoding")
+        kwargs.pop("errors")
+    started = time.monotonic()
     try:
-        wall_timeout_sec = timeout_sec + max(0, synthesis_timeout_sec or 0)
-        stdout, _stderr = proc.communicate(timeout=max(wall_timeout_sec + 30, 60))
+        proc = subprocess.Popen(cmd, **kwargs)
+    except OSError:
+        if execution_log is not None:
+            atomic_json(execution_log, {"command": cmd, "returncode": None, "status": "launch_failed",
+                "runner_dispatch_count": 0, "active_elapsed_seconds": time.monotonic() - started,
+                "stdout_base64": "", "stdout": ""})
+        raise
+    def persist_execution(stdout: str | bytes, status: str) -> None:
+        if execution_log is not None:
+            raw = stdout if isinstance(stdout, bytes) else stdout.encode("utf-8")
+            atomic_json(execution_log, {"command": cmd, "returncode": proc.returncode,
+                "status": status, "runner_dispatch_count": 1,
+                "active_elapsed_seconds": time.monotonic() - started,
+                "stdout_base64": base64.b64encode(raw).decode("ascii"),
+                "stdout": raw.decode("utf-8", errors="replace")})
+    try:
+        effective_timeout = (max(timeout_sec + max(0, synthesis_timeout_sec or 0) + 30, 60)
+                             if wall_timeout_sec is None else max(1, wall_timeout_sec))
+        stdout, _stderr = proc.communicate(timeout=effective_timeout)
     except subprocess.TimeoutExpired as exc:
         _terminate_process_tree(proc)
         stdout, _stderr = proc.communicate()
+        persist_execution(stdout, "timeout")
         raise TimeoutError(
-            f"isolated model runner timed out after {wall_timeout_sec}s: {stdout[-2000:]}"
+            f"isolated model runner timed out after {effective_timeout}s: {stdout[-2000:]}"
         ) from exc
     except BaseException:
         _terminate_process_tree(proc)
-        proc.communicate(timeout=15)
+        stdout, _stderr = proc.communicate(timeout=15)
+        persist_execution(stdout, "interrupted")
         raise
+    persist_execution(stdout, "completed" if proc.returncode == 0 else "failed")
+    if isinstance(stdout, bytes):
+        stdout = stdout.decode("utf-8", errors="strict")
     if proc.returncode != 0:
         raise RuntimeError(f"isolated model runner failed: {stdout.strip()}")
     if not output_path.is_file():
