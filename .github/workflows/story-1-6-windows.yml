@@ -1,0 +1,126 @@
+name: Story 1.6 Windows Migration Preflight Validation
+on:
+  push:
+    branches: [test/b-route-story-1-6-windows-2026-11-04]
+permissions:
+  contents: read
+jobs:
+  preflight:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    env:
+      PYTHONUTF8: '1'
+      PYTHONIOENCODING: 'utf-8'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify read-only preflight and eight synthetic CLI scenarios
+        shell: python
+        run: |
+          import sys
+          sys.dont_write_bytecode = True
+          import ast
+          import hashlib
+          import json
+          import os
+          import re
+          import subprocess
+          import time
+          from pathlib import Path
+          root = Path.cwd()
+          output = root / 'logs/ci/story-1-6-windows' / (os.environ['GITHUB_RUN_ID'] + '-' + os.environ['GITHUB_RUN_ATTEMPT'])
+          output.mkdir(parents=True, exist_ok=False)
+          assert os.name == 'nt'
+          head = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
+          assert head == os.environ['GITHUB_SHA']
+          tracked = [p for p in subprocess.check_output(['git', 'ls-files', '-z']).decode('utf-8').split('\0') if p]
+          before = {p: hashlib.sha256((root / p).read_bytes()).hexdigest() for p in tracked if (root / p).is_file()}
+          paths = ['scripts/python/_b_route_preflight.py', 'scripts/python/preflight_b_route_migration.py', 'scripts/python/dev_cli.py', 'scripts/python/tests/test_b_route_preflight.py', 'scripts/python/_b_route_codec.py', 'scripts/python/_b_route_records.py', 'scripts/python/_b_route_protection.py', '.github/workflows/story-1-6-windows.yml']
+          environment = {'head': head, 'python': sys.version, 'platform': sys.platform, 'files': {p: {'raw_sha256': hashlib.sha256((root / p).read_bytes()).hexdigest(), 'git_blob': subprocess.check_output(['git', 'rev-parse', 'HEAD:' + p], text=True).strip()} for p in paths}}
+          summary = {'head': head, 'steps': [], 'exit_code': 0}
+          deadline = time.monotonic() + 1200
+          def save():
+              (output / 'summary.json').write_text(json.dumps(summary, indent=2) + '\n', encoding='utf-8')
+          def run(name, command, budget):
+              available = min(budget, deadline - time.monotonic())
+              started = time.monotonic()
+              if available <= 0:
+                  code, stdout, stderr = 124, '', 'Internal verification budget exhausted'
+              else:
+                  try:
+                      result = subprocess.run(command, cwd=root, capture_output=True, text=True, encoding='utf-8', errors='replace', timeout=available)
+                      code, stdout, stderr = result.returncode, result.stdout, result.stderr
+                  except subprocess.TimeoutExpired as error:
+                      code = 124
+                      stdout = error.stdout.decode('utf-8', errors='replace') if isinstance(error.stdout, bytes) else (error.stdout or '')
+                      stderr = error.stderr.decode('utf-8', errors='replace') if isinstance(error.stderr, bytes) else (error.stderr or '')
+              for suffix, text in [('stdout', stdout), ('stderr', stderr)]:
+                  (output / (name + '.' + suffix)).write_text(text, encoding='utf-8')
+              summary['steps'].append({'name': name, 'exit_code': code, 'elapsed_seconds': time.monotonic() - started, 'budget_seconds': available})
+              if code:
+                  summary['exit_code'] = 1
+              save()
+              print(stdout, flush=True)
+              print(stderr, flush=True)
+              return code, stderr
+          (output / 'environment.json').write_text(json.dumps(environment, indent=2) + '\n', encoding='utf-8')
+          print(json.dumps(environment, indent=2), flush=True)
+          code, _ = run('dependencies', [sys.executable, '-B', '-m', 'pip', 'install', '--disable-pip-version-check', '-r', 'scripts/python/requirements-b-route.txt'], 120)
+          runner = r'''
+          import json, sys, time, unittest
+          sys.dont_write_bytecode = True
+          class TimedResult(unittest.TextTestResult):
+              def startTest(self, test):
+                  super().startTest(test)
+                  self.started = time.monotonic()
+                  print(json.dumps({'test_started': test.id()}), flush=True)
+              def stopTest(self, test):
+                  print(json.dumps({'test_finished': test.id(), 'elapsed_seconds': time.monotonic() - self.started}), flush=True)
+                  super().stopTest(test)
+          result = unittest.TextTestRunner(verbosity=2, resultclass=TimedResult).run(unittest.defaultTestLoader.discover('scripts/python/tests', pattern='test_b_route_preflight.py'))
+          raise SystemExit(0 if result.wasSuccessful() else 1)
+          '''
+          if not code:
+              code, stderr = run('preflight-tests', [sys.executable, '-B', '-c', runner], 900)
+              expected = sum(isinstance(node, ast.FunctionDef) and node.name.startswith('test_') for node in ast.walk(ast.parse((root / 'scripts/python/tests/test_b_route_preflight.py').read_text(encoding='utf-8'))))
+              count = re.search(r'^Ran ([1-9][0-9]*) tests? in ', stderr, re.MULTILINE)
+              clean = bool(count) and int(count.group(1)) == expected and not re.search(r'\.\.\. skipped|^OK \(skipped=', stderr, re.MULTILINE)
+              summary['test_methods'] = {'expected': expected, 'executed': int(count.group(1)) if count else 0, 'zero_skips': clean}
+              if not clean:
+                  summary['exit_code'] = 1
+          if not summary['exit_code']:
+              matrix = output / 'cli-matrix'
+              code, _ = run('cli-matrix', [sys.executable, '-B', 'scripts/python/tests/test_b_route_preflight.py', '--cli-matrix', str(matrix)], 240)
+              if not code:
+                  value = json.loads((matrix / 'summary.json').read_text(encoding='utf-8'))
+                  expected = {'success': 0, 'missing-input': 1, 'unknown-version': 1, 'path-escape': 1, 'state-overwrite': 1, 'unsupported-retirement': 1, 'old-pending': 1, 'zero-task': 0}
+                  assert value['synthetic_only'] is True and value['platform'] == 'win32'
+                  assert value['case_count'] == 8 and len(value['cases']) == 8
+                  assert {r['case']: r['exit_code'] for r in value['cases']} == expected
+                  assert all(r['original_bytes_unchanged'] and r['only_fresh_log_report_added'] for r in value['cases'])
+                  summary['cli_matrix'] = value
+          summary['tracked_files_checked'] = len(before)
+          summary['changed_tracked_files'] = [p for p, digest in before.items() if not (root / p).is_file() or hashlib.sha256((root / p).read_bytes()).hexdigest() != digest]
+          if summary['changed_tracked_files']:
+              summary['exit_code'] = 1
+          save()
+          print(json.dumps(summary, indent=2), flush=True)
+          raise SystemExit(summary['exit_code'])
+      - name: Upload current synthetic verification only
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: story-1-6-windows-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            logs/ci/story-1-6-windows/${{ github.run_id }}-${{ github.run_attempt }}/environment.json
+            logs/ci/story-1-6-windows/${{ github.run_id }}-${{ github.run_attempt }}/summary.json
+            logs/ci/story-1-6-windows/${{ github.run_id }}-${{ github.run_attempt }}/*.stdout
+            logs/ci/story-1-6-windows/${{ github.run_id }}-${{ github.run_attempt }}/*.stderr
+            logs/ci/story-1-6-windows/${{ github.run_id }}-${{ github.run_attempt }}/cli-matrix/*.json
+          if-no-files-found: error
+          retention-days: 7

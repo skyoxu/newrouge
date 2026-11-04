@@ -19,6 +19,10 @@ import subprocess
 import sys
 from pathlib import Path
 
+# The read-only command must not create bytecode even without Python -B.
+if len(sys.argv) > 1 and sys.argv[1] == "b-route-preflight":
+    sys.dont_write_bytecode = True
+
 from dev_cli_builders import (
     DEFAULT_GATE_BUNDLE_TASK_FILES,
     build_check_directory_boundaries_cmd,
@@ -594,6 +598,10 @@ def build_parser() -> argparse.ArgumentParser:
     )
     sub = parser.add_subparsers(dest="cmd", required=True)
 
+    preflight_parser = sub.add_parser("b-route-preflight", help="Read-only B-route migration preview; no apply")
+    for option in ("root", "epics", "protection-input", "candidate", "intents", "run-id"):
+        preflight_parser.add_argument("--" + option, required=True)
+
     # run-ci-basic
     p_ci = sub.add_parser(
         "run-ci-basic",
@@ -1111,8 +1119,13 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
+    arguments = list(sys.argv[1:] if argv is None else argv)
+    if arguments and arguments[0] == "b-route-preflight":
+        sys.dont_write_bytecode = True
+        from preflight_b_route_migration import main as preflight_main
+        return preflight_main(arguments[1:])
     parser = build_parser()
-    args = parser.parse_args(argv)
+    args = parser.parse_args(arguments)
     func = getattr(args, "func", None)
     if func is None:
         parser.print_help()
