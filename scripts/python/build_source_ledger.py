@@ -384,10 +384,10 @@ def parse_json(source_path: str, source_sha: str, text: str) -> list[dict[str, A
     return blocks
 
 
-def parse_source(path: Path, root: Path) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+def parse_source(path: Path, root: Path, *, text_reader=None) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     source_path = rel(path, root)
     try:
-        text = path.read_text(encoding="utf-8")
+        text = text_reader(path) if text_reader else path.read_text(encoding="utf-8")
     except UnicodeDecodeError as exc:
         raise ValueError(f"authoritative source is not valid UTF-8: {source_path}") from exc
     source_sha = sha256_text(text)
@@ -515,6 +515,7 @@ def build_ledger(
     explicit: bool = False,
     previous_ledger: dict[str, Any] | None = None,
     retired_sources: set[str] | None = None,
+    *, text_reader=None, previous_sources=(),
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     files, missing = resolve_sources(root, patterns, explicit)
     if missing:
@@ -525,8 +526,8 @@ def build_ledger(
     )]
     if not files:
         raise ValueError("no authoritative planning sources matched")
-    if mode == "add" and previous_ledger:
-        previous_paths = {str(row.get("source_path")) for row in previous_ledger.get("blocks", []) if isinstance(row, dict)}
+    if mode == "add" and (previous_ledger or previous_sources):
+        previous_paths = set(previous_sources) | {str(row.get("source_path")) for row in (previous_ledger or {}).get("blocks", []) if isinstance(row, dict)}
         current_paths = {path.relative_to(root).as_posix() for path in files}
         missing_prior = sorted(path for path in previous_paths - current_paths if not any(fnmatch.fnmatch(path, pattern) for pattern in (retired_sources or set())))
         if missing_prior:
@@ -534,7 +535,7 @@ def build_ledger(
     sources = []
     blocks = []
     for path in files:
-        source, parsed = parse_source(path, root)
+        source, parsed = parse_source(path, root, text_reader=text_reader)
         sources.append(source)
         blocks.extend(parsed)
     binding = [{"path": row["path"], "source_type": row["source_type"], "sha256": row["sha256"]} for row in sources]
@@ -573,12 +574,12 @@ def write_json(path: Path, payload: Any) -> None:
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8", newline="\n")
 
 
-def _load_source_set(root: Path, path_value: str) -> dict[str, Any] | None:
+def _load_source_set(root: Path, path_value: str, *, json_reader=None) -> dict[str, Any] | None:
     path = Path(path_value)
     path = path if path.is_absolute() else root / path
     if not path.is_file():
         return None
-    payload = json.loads(path.read_text(encoding="utf-8"))
+    payload = json_reader(path) if json_reader else json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(payload, dict) or payload.get("schema_version") != "chapter3.source-set.v1":
         raise ValueError("invalid Chapter 3 source-set schema")
     patterns = payload.get("active_patterns")
@@ -587,7 +588,7 @@ def _load_source_set(root: Path, path_value: str) -> dict[str, Any] | None:
     return payload
 
 
-def collect_patterns(root: Path, args: argparse.Namespace) -> tuple[list[str], bool]:
+def collect_patterns(root: Path, args: argparse.Namespace, *, json_reader=None) -> tuple[list[str], bool]:
     values = (
         list(getattr(args, "prd_path", []) or [])
         + list(getattr(args, "gdd_path", []) or [])
@@ -599,7 +600,7 @@ def collect_patterns(root: Path, args: argparse.Namespace) -> tuple[list[str], b
     for value in values:
         additions.extend(expand_source_arg(root, value))
     source_set_value = str(getattr(args, "source_set", DEFAULT_SOURCE_SET) or DEFAULT_SOURCE_SET)
-    source_set = _load_source_set(root, source_set_value)
+    source_set = _load_source_set(root, source_set_value, json_reader=json_reader)
     mode = str(getattr(args, "mode", "init") or "init")
     if mode == "add":
         adopt_baseline = bool(getattr(args, "adopt_baseline", False))

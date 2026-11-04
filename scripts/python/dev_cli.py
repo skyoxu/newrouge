@@ -20,8 +20,12 @@ import sys
 from pathlib import Path
 
 # The read-only command must not create bytecode even without Python -B.
-if len(sys.argv) > 1 and sys.argv[1] == "b-route-preflight":
+if len(sys.argv) > 1 and sys.argv[1] in {"b-route-preflight", "b-route-sources"}:
     sys.dont_write_bytecode = True
+
+if __name__ == "__main__" and len(sys.argv) > 1 and sys.argv[1] == "b-route-sources":
+    from account_b_route_sources import main as sources_main
+    raise SystemExit(sources_main(sys.argv[2:]))
 
 from dev_cli_builders import (
     DEFAULT_GATE_BUNDLE_TASK_FILES,
@@ -602,6 +606,10 @@ def build_parser() -> argparse.ArgumentParser:
     for option in ("root", "epics", "protection-input", "candidate", "intents", "run-id"):
         preflight_parser.add_argument("--" + option, required=True)
 
+    sources_parser = sub.add_parser("b-route-sources", help="3A source prepare/account; no formal adoption authority")
+    from _b_route_sources import register_arguments as register_sources_arguments
+    register_sources_arguments(sources_parser)
+
     # run-ci-basic
     p_ci = sub.add_parser(
         "run-ci-basic",
@@ -1120,6 +1128,10 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     arguments = list(sys.argv[1:] if argv is None else argv)
+    if arguments and arguments[0] == "b-route-sources":
+        sys.dont_write_bytecode = True
+        from account_b_route_sources import main as sources_main
+        return sources_main(arguments[1:])
     if arguments and arguments[0] == "b-route-preflight":
         sys.dont_write_bytecode = True
         from preflight_b_route_migration import main as preflight_main

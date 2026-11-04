@@ -38,7 +38,7 @@ def sha256_file(path: Path) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
-def projection_checks(root: Path, ledger: dict[str, Any], semantics: dict[str, Any]) -> dict[str, Any]:
+def projection_checks(root: Path, ledger: dict[str, Any], semantics: dict[str, Any], *, hash_reader=None) -> dict[str, Any]:
     binding_mismatches = []
     ledger_revision = str(ledger.get("source_revision") or "")
     semantic_revision = str(semantics.get("source_revision") or "")
@@ -151,7 +151,7 @@ def projection_checks(root: Path, ledger: dict[str, Any], semantics: dict[str, A
         if not path.is_file():
             source_hash_drift.append({"path": source_path, "reason": "missing"})
             continue
-        actual = sha256_file(path)
+        actual = hash_reader(path) if hash_reader else sha256_file(path)
         expected = str(block.get("source_sha256") or "").removeprefix("sha256:")
         if actual != expected:
             source_hash_drift.append({

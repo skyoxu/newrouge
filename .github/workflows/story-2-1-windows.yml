@@ -1,0 +1,303 @@
+name: Story 2.1 Windows Source Accounting Validation
+on:
+  push:
+    branches: [test/b-route-story-2-1-windows-2026-11-04]
+permissions:
+  contents: read
+jobs:
+  sources:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    env:
+      PYTHONUTF8: '1'
+      PYTHONIOENCODING: 'utf-8'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify cumulative source accounting and synthetic CLI scenarios
+        shell: python
+        run: |
+          import sys
+          sys.dont_write_bytecode = True
+          import ast
+          import hashlib
+          import json
+          import os
+          import re
+          import subprocess
+          import time
+          from pathlib import Path
+          root = Path.cwd()
+          output = root / 'logs/ci/story-2-1-windows' / (os.environ['GITHUB_RUN_ID'] + '-' + os.environ['GITHUB_RUN_ATTEMPT'])
+          output.mkdir(parents=True, exist_ok=False)
+          assert os.name == 'nt'
+          head = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
+          assert head == os.environ['GITHUB_SHA']
+          tracked = [p for p in subprocess.check_output(['git', 'ls-files', '-z']).decode('utf-8').split('\0') if p]
+          before = {p: hashlib.sha256((root / p).read_bytes()).hexdigest() for p in tracked if (root / p).is_file()}
+          bytecode_before = {p.relative_to(root).as_posix() for p in (root / 'scripts').rglob('*.pyc')}
+          paths = ['scripts/python/_b_route_sources.py', 'scripts/python/account_b_route_sources.py', 'scripts/python/dev_cli.py', 'scripts/python/tests/test_b_route_sources.py', 'scripts/python/build_source_ledger.py', 'scripts/python/validate_semantic_conservation.py', 'scripts/python/project_semantics_from_sources.py', 'scripts/python/_mvg_evidence_transport.py', 'scripts/python/_mvg_lossless_context.py', 'scripts/python/_capability_input_integrity.py', 'scripts/python/_b_route_codec.py', 'scripts/python/_b_route_inventory.py', '.github/workflows/story-2-1-windows.yml']
+          environment = {'head': head, 'python': sys.version, 'platform': sys.platform, 'files': {p: {'raw_sha256': hashlib.sha256((root / p).read_bytes()).hexdigest(), 'git_blob': subprocess.check_output(['git', 'rev-parse', 'HEAD:' + p], text=True).strip()} for p in paths}}
+          summary = {'head': head, 'steps': [], 'exit_code': 0}
+          deadline = time.monotonic() + 1600
+          def save():
+              (output / 'summary.json').write_text(json.dumps(summary, indent=2) + '\n', encoding='utf-8')
+          def run(name, command, budget):
+              available = min(budget, deadline - time.monotonic())
+              started = time.monotonic()
+              if available <= 0:
+                  code, stdout, stderr = 124, '', 'Internal verification budget exhausted'
+              else:
+                  try:
+                      result = subprocess.run(command, cwd=root, capture_output=True, text=True, encoding='utf-8', errors='replace', timeout=available)
+                      code, stdout, stderr = result.returncode, result.stdout, result.stderr
+                  except subprocess.TimeoutExpired as error:
+                      code = 124
+                      stdout = error.stdout.decode('utf-8', errors='replace') if isinstance(error.stdout, bytes) else (error.stdout or '')
+                      stderr = error.stderr.decode('utf-8', errors='replace') if isinstance(error.stderr, bytes) else (error.stderr or '')
+              for suffix, text in [('stdout', stdout), ('stderr', stderr)]:
+                  (output / (name + '.' + suffix)).write_text(text, encoding='utf-8')
+              summary['steps'].append({'name': name, 'exit_code': code, 'elapsed_seconds': time.monotonic() - started, 'budget_seconds': available})
+              if code:
+                  summary['exit_code'] = 1
+              save()
+              print(stdout, flush=True)
+              print(stderr, flush=True)
+              return code, stderr
+          (output / 'environment.json').write_text(json.dumps(environment, indent=2) + '\n', encoding='utf-8')
+          print(json.dumps(environment, indent=2), flush=True)
+          code, _ = run('dependencies', [sys.executable, '-B', '-m', 'pip', 'install', '--disable-pip-version-check', '-r', 'scripts/python/requirements-b-route.txt'], 120)
+          runner = r'''
+          import json, sys, time, unittest
+          sys.dont_write_bytecode = True
+          class TimedResult(unittest.TextTestResult):
+              def __init__(self, *args, **kwargs):
+                  super().__init__(*args, **kwargs)
+                  self.successes = []
+              def addSuccess(self, test):
+                  self.successes.append(test.id())
+                  super().addSuccess(test)
+              def startTest(self, test):
+                  super().startTest(test)
+                  self.started = time.monotonic()
+                  print(json.dumps({'test_started': test.id()}), flush=True)
+              def stopTest(self, test):
+                  print(json.dumps({'test_finished': test.id(), 'elapsed_seconds': time.monotonic() - self.started}), flush=True)
+                  super().stopTest(test)
+          result = unittest.TextTestRunner(verbosity=2, resultclass=TimedResult).run(unittest.defaultTestLoader.discover('scripts/python/tests', pattern='test_b_route_sources.py'))
+          allowed = {'test_b_route_sources.SourceAccountingTests.test_root_source_and_logs_symlinks_are_rejected'}
+          actual = {test.id() for test, reason in result.skipped}
+          print(json.dumps({'source_suite': {'executed': result.testsRun, 'skipped': sorted(actual), 'passed': len(result.successes)}}), flush=True)
+          raise SystemExit(0 if result.wasSuccessful() and actual == allowed else 1)
+          '''
+          controls = r'''
+          import sys, unittest
+          sys.dont_write_bytecode = True
+          suite = unittest.TestSuite()
+          for module in ('test_chapter3_semantic_conservation', 'test_milestone_incremental_hotfixes', 'test_mvg_evidence_transport'):
+              suite.addTests(unittest.defaultTestLoader.discover('scripts/python/tests', pattern=module + '.py'))
+          expected = suite.countTestCases()
+          assert expected == 101, expected
+          result = unittest.TextTestRunner(verbosity=2).run(suite)
+          raise SystemExit(0 if result.wasSuccessful() and result.testsRun == expected and not result.skipped else 1)
+          '''
+          if not code:
+              code, _ = run('native-owner-default-controls', [sys.executable, '-B', '-c', controls], 400)
+          if not code:
+              code, stderr = run('source-accounting-tests', [sys.executable, '-B', '-c', runner], 900)
+              expected = sum(isinstance(node, ast.FunctionDef) and node.name.startswith('test_') for node in ast.walk(ast.parse((root / 'scripts/python/tests/test_b_route_sources.py').read_text(encoding='utf-8'))))
+              count = re.search(r'^Ran ([1-9][0-9]*) tests? in ', stderr, re.MULTILINE)
+              skips = re.findall(r"^([a-zA-Z0-9_]+) \([^\n]+\) \.\.\. skipped ", stderr, re.MULTILINE)
+              passed = len(re.findall(r'^[a-zA-Z0-9_]+ \([^\n]+\) \.\.\. ok$', stderr, re.MULTILINE))
+              clean = bool(count) and int(count.group(1)) == expected and passed + len(skips) == expected and skips == ['test_root_source_and_logs_symlinks_are_rejected']
+              summary['test_methods'] = {'expected': expected, 'executed': int(count.group(1)) if count else 0, 'passed': passed, 'skipped': skips, 'only_expected_posix_skip': clean}
+              required = ['test_windows_real_junction_and_short_path']
+              checks = {name: re.search(r'^' + re.escape(name) + r' \(test_b_route_sources\.SourceAccountingTests\.' + re.escape(name) + r'\) \.\.\. ok$', stderr, re.MULTILINE) is not None for name in required}
+              summary['required_windows_methods_passed'] = checks
+              if not all(checks.values()):
+                  summary['exit_code'] = 1
+              if not clean:
+                  summary['exit_code'] = 1
+          matrix_runner = r'''
+          """Independent synthetic source-accounting CLI checks; no repository data inputs."""
+          import hashlib
+          import json
+          import os
+          import subprocess
+          import sys
+          from pathlib import Path
+          
+          sys.dont_write_bytecode = True
+          repository = Path.cwd()
+          output = Path(sys.argv[1]).absolute()
+          output.mkdir(parents=True, exist_ok=False)
+          cases = []
+          
+          
+          def digest(path):
+              return hashlib.sha256(path.read_bytes()).hexdigest()
+          
+          
+          def save(path, value):
+              path.parent.mkdir(parents=True, exist_ok=True)
+              path.write_text(json.dumps(value, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+          
+          
+          def fixture(name, *, long=False):
+              root = output / ('fixture-' + name)
+              (root / 'docs/workflows').mkdir(parents=True)
+              path = 'docs/source.json' if long else 'docs/source.md'
+              body = (json.dumps({'rule': 'Preserve every declared source and reject omissions. ' * 1600},
+                                 ensure_ascii=False).encode('utf-8') if long else
+                      b'# Synthetic source\r\n\r\nPreserve all declared input bytes.\r\n\r\nReject omitted source blocks.  \r\n')
+              (root / path).write_bytes(body)
+              save(root / 'docs/workflows/chapter3-source-set.json', {
+                  'schema_version': 'chapter3.source-set.v1', 'active_patterns': [path],
+                  'active_sources': [path], 'retirements': []})
+              return root
+          
+          
+          def call(root, name, stage, expected, *, public=True, extra=(), attempt='a'):
+              source_guard = {p.relative_to(root).as_posix(): digest(p) for p in (root / 'docs').rglob('*') if p.is_file()}
+              command = [sys.executable, str(repository / 'scripts/python/dev_cli.py'), 'b-route-sources'] if public else [
+                  sys.executable, str(repository / 'scripts/python/account_b_route_sources.py')]
+              command += ['--root', str(root), '--stage', stage, '--run-id', name,
+                          '--scope-id', 'synthetic-scope', '--attempt-id', attempt]
+              command += list(extra)
+              result = subprocess.run(command, cwd=repository, capture_output=True, text=True,
+                                      encoding='utf-8', errors='strict', timeout=150)
+              (output / (name + '-' + stage + '-' + attempt + '.stdout')).write_text(result.stdout, encoding='utf-8')
+              (output / (name + '-' + stage + '-' + attempt + '.stderr')).write_text(result.stderr, encoding='utf-8')
+              value = json.loads(result.stdout)
+              assert result.returncode == expected, (name, result.returncode, result.stdout, result.stderr)
+              assert type(value) is dict and value['exit_code'] == expected, (name, value)
+              assert value['model_dispatch_count'] == 0 and value['budget_is_billing'] is False
+              assert value['satisfied'] is False and value['formal_adoption'] is False and value['independent_audit'] is False
+              assert all((root / p).is_file() and digest(root / p) == h for p, h in source_guard.items())
+              if value.get('output_ref'):
+                  directory = root / value['output_ref']
+                  assert json.loads((directory / 'report.json').read_text(encoding='utf-8')) == value
+                  event = json.loads((directory / 'event.json').read_text(encoding='utf-8'))
+                  assert event['event_key'] == [name, 'synthetic-scope', stage, attempt]
+                  assert event['model_dispatch_count'] == 0 and type(event['active_elapsed_seconds']) in (int, float)
+              cases.append({'case': name, 'stage': stage, 'attempt': attempt, 'exit_code': result.returncode,
+                            'original_source_bytes_unchanged': True, 'zero_model_dispatch': True})
+              return value
+          
+          
+          def prepare(root, name, *, public=True, long=False):
+              extra = ['--source-set', 'docs/workflows/chapter3-source-set.json']
+              if long:
+                  extra += ['--max-chars', '500000', '--max-blocks', '1',
+                            '--transport-max-bytes', '16000', '--transport-max-input-tokens', '16000']
+              return call(root, name, 'prepare', 0, public=public, extra=extra)
+          
+          
+          def candidate(root, result):
+              prefix = (root / result['prepared_ref']['path']).parent
+              value = json.loads((prefix / 'candidate.json').read_text(encoding='utf-8'))
+              for index, row in enumerate(value['block_results']):
+                  row.update(disposition='context', delivery_potential=False, reason='This block supplies source context.', review_status='reviewed')
+                  if index == 0:
+                      row.update(disposition='', delivery_potential=True)
+                      row['atoms'] = [{'proposal_id': 'proposal:source-preservation', 'kind': 'functional',
+                          'statement': 'Preserve declared sources and reject omissions.',
+                          'source_block_ids': [row['block_id']],
+                          'acceptance_intent': 'Full original bytes remain reconstructable; omitted or corrupt input blocks accounting.',
+                          'prior_requirement_ids': [], 'non_task_sinks': []}]
+              for row in value['batch_summaries']:
+                  row['output_accounted_count'] = row['input_block_count']
+              save(root / 'docs/proposal-input.json', value)
+              return ['--prepared', result['prepared_ref']['path'], '--candidate', 'docs/proposal-input.json']
+          
+          
+          for name, public in [('zero-task-direct', False), ('zero-task-public', True), ('long-object', True)]:
+              root = fixture(name, long=name == 'long-object')
+              prepared = prepare(root, name, public=public, long=name == 'long-object')
+              assert prepared['accounting_complete'] is False
+              assert not (root / '.taskmaster').exists()
+              result = call(root, name, 'account', 0, public=not public, extra=candidate(root, prepared))
+              assert result['accounting_complete'] is True and result['unresolved'] == []
+              if name == 'long-object':
+                  plan = json.loads(((root / prepared['prepared_ref']['path']).parent / 'transport.json').read_text())
+                  assert len(plan['batches']) > 1
+          
+          root = fixture('unresolved')
+          prepared = prepare(root, 'unresolved')
+          prefix = (root / prepared['prepared_ref']['path']).parent
+          value = json.loads((prefix / 'candidate.json').read_text())
+          for row in value['batch_summaries']:
+              row['output_accounted_count'] = row['input_block_count']
+          save(root / 'docs/proposal-input.json', value)
+          result = call(root, 'unresolved', 'account', 1, extra=['--prepared', prepared['prepared_ref']['path'], '--candidate', 'docs/proposal-input.json'])
+          assert result['accounting_complete'] is False
+          
+          root = fixture('missing-input')
+          call(root, 'missing-input', 'prepare', 1, extra=['--source-set', 'docs/missing.json'])
+          
+          root = fixture('unsupported-retirement')
+          save(root / 'docs/declaration.json', {'schema_version': 'newrouge.b-route-sources-declaration.v1',
+              'additions': [], 'retirements': [{'path': 'docs/source.md', 'reason': '', 'evidence': None}]})
+          call(root, 'unsupported-retirement', 'prepare', 1, extra=['--source-set', 'docs/workflows/chapter3-source-set.json', '--declaration', 'docs/declaration.json'])
+          
+          for name in ['source-drift', 'transport-corruption']:
+              root = fixture(name)
+              prepared = prepare(root, name)
+              extra = candidate(root, prepared)
+              path = root / 'docs/source.md' if name == 'source-drift' else (root / prepared['prepared_ref']['path']).parent / 'transport.json'
+              path.write_bytes(path.read_bytes() + b'changed')
+              result = call(root, name, 'account', 1, extra=extra)
+              assert result['accounting_complete'] is False and result['diagnostics']
+          
+          root = fixture('repeat-event')
+          prepared = prepare(root, 'repeat-event')
+          prefix = (root / prepared['prepared_ref']['path']).parent
+          guard = {p.relative_to(root).as_posix(): digest(p) for p in prefix.rglob('*') if p.is_file()}
+          repeated = prepare(root, 'repeat-event')
+          assert repeated == prepared
+          assert all(digest(root / p) == h for p, h in guard.items())
+          
+          root = fixture('invalid-id')
+          call(root, 'invalid-id', 'prepare', 2, extra=['--run-id', '../invalid-id', '--source-set', 'docs/workflows/chapter3-source-set.json'])
+          
+          summary = {'synthetic_only': True, 'platform': sys.platform, 'invocation_count': len(cases), 'cases': cases}
+          save(output / 'summary.json', summary)
+          print(json.dumps(summary, indent=2), flush=True)
+          '''
+          if not summary['exit_code']:
+              matrix = output / 'cli-matrix'
+              code, _ = run('cli-matrix', [sys.executable, '-B', '-c', matrix_runner, str(matrix)], 240)
+              if not code:
+                  value = json.loads((matrix / 'summary.json').read_text(encoding='utf-8'))
+                  assert value['synthetic_only'] is True and value['platform'] == 'win32'
+                  expected = [('zero-task-direct', 'prepare', 0), ('zero-task-direct', 'account', 0), ('zero-task-public', 'prepare', 0), ('zero-task-public', 'account', 0), ('long-object', 'prepare', 0), ('long-object', 'account', 0), ('unresolved', 'prepare', 0), ('unresolved', 'account', 1), ('missing-input', 'prepare', 1), ('unsupported-retirement', 'prepare', 1), ('source-drift', 'prepare', 0), ('source-drift', 'account', 1), ('transport-corruption', 'prepare', 0), ('transport-corruption', 'account', 1), ('repeat-event', 'prepare', 0), ('repeat-event', 'prepare', 0), ('invalid-id', 'prepare', 2)]
+                  assert value['invocation_count'] == 17 and len(value['cases']) == 17
+                  assert [(r['case'], r['stage'], r['exit_code']) for r in value['cases']] == expected
+                  assert all(r['original_source_bytes_unchanged'] and r['zero_model_dispatch'] for r in value['cases'])
+                  summary['cli_matrix'] = value
+          summary['tracked_files_checked'] = len(before)
+          summary['changed_tracked_files'] = [p for p, digest in before.items() if not (root / p).is_file() or hashlib.sha256((root / p).read_bytes()).hexdigest() != digest]
+          summary['new_bytecode_files'] = sorted({p.relative_to(root).as_posix() for p in (root / 'scripts').rglob('*.pyc')} - bytecode_before)
+          if summary['changed_tracked_files'] or summary['new_bytecode_files']:
+              summary['exit_code'] = 1
+          save()
+          print(json.dumps(summary, indent=2), flush=True)
+          raise SystemExit(summary['exit_code'])
+      - name: Upload current synthetic verification only
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: story-2-1-windows-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            logs/ci/story-2-1-windows/${{ github.run_id }}-${{ github.run_attempt }}/environment.json
+            logs/ci/story-2-1-windows/${{ github.run_id }}-${{ github.run_attempt }}/summary.json
+            logs/ci/story-2-1-windows/${{ github.run_id }}-${{ github.run_attempt }}/*.stdout
+            logs/ci/story-2-1-windows/${{ github.run_id }}-${{ github.run_attempt }}/*.stderr
+            logs/ci/story-2-1-windows/${{ github.run_id }}-${{ github.run_attempt }}/cli-matrix/*.json
+          if-no-files-found: error
+          retention-days: 7
