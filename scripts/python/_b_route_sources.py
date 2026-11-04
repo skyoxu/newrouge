@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import argparse
 import datetime as dt
+import fnmatch
 import io
 import json
 import re
@@ -170,7 +171,7 @@ def effective(obs, args):
     for pattern in source_set.get("active_patterns", []) + additions:
         inventory.safe_source_pattern(obs.root, pattern)
     for pattern in additions:
-        require(not any(native._source_pattern_matches(pattern, row["path"])
+        require(not any(fnmatch.fnmatch(pattern, row["path"])
                         or pattern == row["path"] for row in source_set.get("retirements", [])),
                 pattern, "no resurrection of historical retirements")
     namespace = argparse.Namespace(source_set=args.source_set, mode="add", source_glob=additions,
@@ -179,7 +180,7 @@ def effective(obs, args):
                                          json_reader=lambda p: obs.json(p.relative_to(obs.root).as_posix()))
     all_retired = {row["path"] for row in source_set.get("retirements", [])} | set(retirements)
     addition_members = obs.watch(additions)["members"] if additions else []
-    require(not any(native._source_pattern_matches(path, retired) for path in addition_members for retired in all_retired),
+    require(not any(fnmatch.fnmatch(path, retired) for path in addition_members for retired in all_retired),
             "additions", "no addition/retirement conflict or retired glob resurrection")
     # Watch both original and effective glob membership, including removed sources.
     obs.watch(source_set.get("active_patterns", []))
@@ -266,16 +267,25 @@ def load_prepared(obs, value, *, current_sources=True):
     return prepared, prefix
 
 
-def prepare(obs, args, output, result):
-    source_set, declaration, patterns, retired = effective(obs, args)
+def previous_context(obs, args, source_set, retired):
     previous_ledger, prior_sources = None, list(source_set.get("active_sources", []))
     if args.previous:
         previous, prefix = load_prepared(obs, args.previous, current_sources=False)
+        missing_retirements = sorted(set(previous["retired_sources"]) - retired)
+        require(not missing_retirements, args.source_set,
+                "retain all prior effective retirement identities in current registered/explicit inputs",
+                missing_retirements)
         old_retirements = previous["source_registration"].get("retirements", [])
         require(all(row in source_set.get("retirements", []) for row in old_retirements),
                 args.source_set, "retain prior registered retirement history")
         previous_ledger = obs.json(prefix + "/source-blocks.json")
         prior_sources += [x["path"] for x in obs.json(prefix + "/source-manifest.json")["sources"]]
+    return previous_ledger, prior_sources
+
+
+def prepare(obs, args, output, result):
+    source_set, declaration, patterns, retired = effective(obs, args)
+    previous_ledger, prior_sources = previous_context(obs, args, source_set, retired)
     manifest, ledger = native.build_ledger(obs.root, patterns, "add", True, previous_ledger,
                                           retired, text_reader=obs.reader, previous_sources=prior_sources)
     write(output / "source-manifest.json", manifest)
@@ -326,15 +336,19 @@ def accountable_candidate(candidate, ledger, unresolved):
     blocks = {b["block_id"]: b for b in ledger["blocks"]}
     summaries = candidate.get("batch_summaries", [])
     require(len(summaries) == len({x.get("batch_id") for x in summaries}), "batch_summaries", "no duplicate summaries")
+    for summary in summaries:
+        require(type(summary.get("output_accounted_count")) is int, str(summary.get("batch_id")),
+                "integer output_accounted_count", summary.get("output_accounted_count"))
     for row in native_candidate.get("block_results", []):
         block_id = row.get("block_id")
         require(block_id in blocks, str(block_id), "known source block")
-        if row.get("disposition") == "unresolved" or row.get("delivery_potential") is None:
+        disposition = str(row.get("disposition") or "").strip().casefold()
+        if disposition == "unresolved" or row.get("delivery_potential") is None:
             unresolved.append({"entity_id": block_id, "reason": "unresolved source disposition"})
             row["delivery_potential"] = True
             row["disposition"] = "unresolved"
         if not row.get("atoms"):
-            require(row.get("disposition") != "atomized", block_id, "atomized blocks require explicit proposals")
+            require(disposition != "atomized", block_id, "atomized blocks require explicit proposals")
             refs = string_list(row.get("source_block_ids"), block_id)
             require(block_id in refs and set(refs) <= set(blocks), block_id, "source-backed disposition")
             if not (type(row.get("reason")) is str and row["reason"].strip()):
@@ -346,6 +360,8 @@ def accountable_candidate(candidate, ledger, unresolved):
                     "proposal: namespace; no formal allocation", proposal_id)
             require("requirement_id" not in atom and not atom.get("capability_ids"), proposal_id,
                     "no formal planning identity")
+            require(type(atom.get("statement")) is str and atom["statement"].strip(), proposal_id,
+                    "nonempty statement text", atom.get("statement"))
             refs = string_list(atom.get("source_block_ids"), proposal_id)
             require(block_id in refs and set(refs) <= set(blocks), proposal_id, "complete known references including primary block")
             prior = string_list(atom.get("prior_requirement_ids"), proposal_id + ".prior_requirement_ids")
@@ -364,7 +380,8 @@ def accountable_candidate(candidate, ledger, unresolved):
             # Native sink types belong to later Task closure. Keep explicit sink
             # IDs in the B proposal without inventing a classification here.
             atom["non_task_sinks"] = []
-            if atom.get("status") == "unresolved" or atom.get("disposition") == "unresolved":
+            if any(str(atom.get(field) or "").strip().casefold() == "unresolved"
+                   for field in ("status", "disposition")):
                 unresolved.append({"entity_id": proposal_id, "reason": "unresolved proposal"})
     return native_candidate, list(proposals.values())
 
@@ -372,15 +389,26 @@ def accountable_candidate(candidate, ledger, unresolved):
 def account(obs, args, output, result):
     prepared, prefix = load_prepared(obs, args.prepared)
     require(prepared["scope_id"] == args.scope_id, args.prepared, "matching scope_id")
+    selected = argparse.Namespace(**obs.json(prefix + "/request.json"))
+    source_set, declaration, patterns, retired = effective(obs, selected)
+    previous_ledger, prior_sources = previous_context(obs, selected, source_set, retired)
+    for field, expected in {
+        "source_set": selected.source_set, "declaration": selected.declaration,
+        "source_registration": source_set, "declaration_content": declaration,
+        "effective_patterns": patterns, "retired_sources": sorted(retired),
+        "previous_ledger": previous_ledger, "prior_sources": prior_sources,
+    }.items():
+        require(prepared[field] == expected, "prepared." + field,
+                expected, prepared[field])
     candidate = obs.json(args.candidate)
     write(output / "candidate.snapshot.json", candidate)
     require(candidate.get("prepared_ref") == {"path": args.prepared, "raw_digest": codec.raw_digest(obs.read(args.prepared))},
             args.candidate, "exact prepared reference and raw identity")
     ledger, manifest = obs.json(prefix + "/source-blocks.json"), obs.json(prefix + "/source-manifest.json")
     # Reparse authoritative bytes through the original owner to verify full block bodies and order.
-    fresh_manifest, fresh = native.build_ledger(obs.root, prepared["effective_patterns"], "add", True,
-                                               prepared["previous_ledger"], set(prepared["retired_sources"]),
-                                               text_reader=obs.reader, previous_sources=prepared["prior_sources"])
+    fresh_manifest, fresh = native.build_ledger(obs.root, patterns, "add", True,
+                                               previous_ledger, retired,
+                                               text_reader=obs.reader, previous_sources=prior_sources)
     for key in ("blocks", "delta", "parser_inventory", "source_revision", "source_manifest_sha256"):
         require(fresh[key] == ledger[key], "ledger." + key, "original native parse and order")
     require(fresh_manifest["sources"] == manifest["sources"], "source-manifest", "current full native source identity")
@@ -410,7 +438,8 @@ def account(obs, args, output, result):
         require(path in empty and path not in seen, str(path), "exactly one empty-file disposition")
         seen.add(path)
         require(row.get("raw_digest") == codec.raw_digest(obs.read(path)), path, "original file raw identity")
-        if row.get("disposition") not in {"context", "rationale", "deferred", "out_of_scope", "adr_owned"} or not str(row.get("reason") or "").strip():
+        if (row.get("disposition") not in {"context", "rationale", "deferred", "out_of_scope", "adr_owned"}
+                or not (type(row.get("reason")) is str and row["reason"].strip())):
             unresolved.append({"entity_id": path, "reason": "empty/unparsed file requires explicit disposition"})
         else:
             evidence(obs, row.get("evidence"))

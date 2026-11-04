@@ -12,7 +12,7 @@
 py -3 scripts/python/dev_cli.py b-route-sources --stage prepare --root C:/work/newrouge --run-id source-review --scope-id reward --attempt-id prepare-01 --source-set docs/workflows/chapter3-source-set.json
 ```
 
-source-set 使用既有 `chapter3.source-set.v1` 合同；当前 patterns 与 `active_sources` 均累计保留，旧来源消失须显式退役。历史退役继续排除，包括三份已退役 GDD。可选 `--previous <prepared.json>` 提供旧归档 Ledger，供原生 add 稳定块 ID 和计算 delta。新一次准备允许当前来源变化，旧 proof 保持不可变。
+source-set 使用既有 `chapter3.source-set.v1` 合同；当前 patterns 与 `active_sources` 均累计保留，旧来源消失须显式退役。历史退役继续排除，包括三份已退役 GDD。可选 `--previous <prepared.json>` 提供旧归档 Ledger，供原生 add 稳定块 ID 和计算 delta。使用 `--previous` 时，旧轮次有效退役集合中的每个身份（包括显式 declaration 的退役）须由当前注册或显式 declaration 输入继续保留；缺失即阻断并列出身份，不自动合并退役权限或重新启用来源。新一次准备允许当前来源变化，旧 proof 保持不可变。
 
 可选 `--declaration <path>` 是显式待核对输入载体，不是第七类正式规划记录。精确结构：
 

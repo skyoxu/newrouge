@@ -123,6 +123,70 @@ class SourceAccountingTests(unittest.TestCase):
         self.assertFalse(report["accounting_complete"])
         self.assertTrue(report["unresolved"])
 
+    def test_normalized_unresolved_status_and_disposition_remain_blocking(self):
+        prepared = self.prepare(extras=["--max-blocks", "1"])
+        original_bytes = (self.root / "docs/source.md").read_bytes()
+        original_ids = [row["block_id"] for row in self.json(prepared["output_ref"] + "/source-blocks.json")["blocks"]]
+        for index, (field, value) in enumerate((("status", "UNRESOLVED"), ("status", " unresolved "),
+                                                 ("disposition", " UNRESOLVED "))):
+            with self.subTest(field=field, value=value):
+                candidate = self.candidate(prepared)
+                for row in candidate["block_results"]:
+                    row["delivery_potential"] = False
+                    row["atoms"][0].update(kind="context", delivery_relevant=False, **{field: value})
+                self.put("candidate.json", candidate)
+                code, report = self.account(prepared, "normalized-atom-" + str(index))
+                self.assertEqual(code, 1, report)
+                self.assertFalse(report["accounting_complete"])
+                self.assertTrue(any(row["entity_id"] == "proposal:reward-order" for row in report["unresolved"]))
+        candidate = self.candidate(prepared, disposition=" unresolved ")
+        for row in candidate["block_results"]:
+            row["delivery_potential"] = False
+        self.put("candidate.json", candidate)
+        code, report = self.account(prepared, "normalized-block")
+        self.assertEqual(code, 1, report)
+        self.assertFalse(report["accounting_complete"])
+        self.assertTrue(any(row["entity_id"] == original_ids[0] for row in report["unresolved"]))
+        self.assertEqual((self.root / "docs/source.md").read_bytes(), original_bytes)
+        self.assertEqual([row["block_id"] for row in self.json(prepared["output_ref"] + "/source-blocks.json")["blocks"]], original_ids)
+
+    def test_object_statement_is_rejected_without_string_coercion(self):
+        prepared = self.prepare()
+        candidate = self.candidate(prepared)
+        candidate["block_results"][0]["atoms"][0]["statement"] = {"rule": "Preserve reward order."}
+        self.put("candidate.json", candidate)
+        code, report = self.account(prepared)
+        self.assertEqual(code, 1, report)
+        self.assertFalse(report["accounting_complete"])
+        self.assertEqual(report["diagnostics"][0]["entity_id"], "proposal:reward-order")
+        self.assertEqual(report["diagnostics"][0]["actual"], {"rule": "Preserve reward order."})
+
+    def test_fractional_accounted_count_is_rejected_before_native_coercion(self):
+        prepared = self.prepare()
+        candidate = self.candidate(prepared)
+        summary = candidate["batch_summaries"][0]
+        summary["output_accounted_count"] = summary["input_block_count"] + 0.5
+        self.put("candidate.json", candidate)
+        code, report = self.account(prepared)
+        self.assertEqual(code, 1, report)
+        self.assertFalse(report["accounting_complete"])
+        self.assertEqual(report["diagnostics"][0]["entity_id"], summary["batch_id"])
+        self.assertEqual(report["diagnostics"][0]["actual"], summary["output_accounted_count"])
+
+    def test_cross_batch_shared_proposal_conflicting_acceptance_intent_is_rejected(self):
+        prepared = self.prepare(extras=["--max-blocks", "1"])
+        candidate = self.candidate(prepared)
+        first, second = candidate["block_results"][:2]
+        self.assertNotEqual(first["batch_id"], second["batch_id"])
+        self.assertEqual(first["atoms"][0]["source_block_ids"], second["atoms"][0]["source_block_ids"])
+        self.assertEqual(first["atoms"][0]["proposal_id"], second["atoms"][0]["proposal_id"])
+        second["atoms"][0]["acceptance_intent"] = "Selecting a reward reverses the displayed candidate ordering."
+        self.put("candidate.json", candidate)
+        code, report = self.account(prepared)
+        self.assertEqual(code, 1, report)
+        self.assertFalse(report["accounting_complete"])
+        self.assertEqual(report["diagnostics"][0]["entity_id"], "proposal:reward-order")
+
     def test_missing_intent_preserves_local_proposal_but_blocks(self):
         prepared = self.prepare()
         candidate = self.candidate(prepared)
@@ -161,6 +225,22 @@ class SourceAccountingTests(unittest.TestCase):
         self.put("candidate.json", candidate)
         code, report = self.account(prepared, "resolved")
         self.assertEqual(code, 0, report)
+
+    def test_empty_file_object_reason_remains_unresolved_with_valid_evidence(self):
+        self.put("docs/empty.json", b"{}\r\n  ")
+        self.registration(["docs/empty.json"])
+        prepared = self.prepare()
+        candidate = self.candidate(prepared)
+        self.put("docs/review.md", b"Retain this intentionally empty source.\n")
+        candidate["file_results"][0].update(disposition="context", reason={"text": "Intentionally empty."},
+            evidence={"path": "docs/review.md", "raw_digest": codec.raw_digest((self.root / "docs/review.md").read_bytes()),
+                      "byte_start": 0, "byte_end": 10})
+        self.put("candidate.json", candidate)
+        code, report = self.account(prepared)
+        self.assertEqual(code, 1, report)
+        self.assertFalse(report["accounting_complete"])
+        self.assertTrue(any(row["entity_id"] == "docs/empty.json" for row in report["unresolved"]))
+        self.assertEqual(report["diagnostics"], [])
 
     def test_whole_long_json_object_transport_and_capacity_rejection(self):
         self.put("docs/long.json", ('[ {"long": "' + "x" * 16000 + '\\r\\n' + 'y' * 16000 + '"} ]\r\n ').encode())
@@ -220,6 +300,48 @@ class SourceAccountingTests(unittest.TestCase):
                 self.assertEqual(code, 1, report)
                 self.assertTrue(report["diagnostics"])
 
+    def test_account_rejects_rebound_caches_that_omit_a_registered_source(self):
+        self.put("docs/other.md", b"Another registered cumulative obligation.\r\n")
+        self.registration(["docs/source.md", "docs/other.md"])
+        protected = {path: (self.root / path).read_bytes()
+                     for path in ("docs/source-set.json", "docs/source.md", "docs/other.md")}
+        prepared = self.prepare()
+        prefix = self.root / prepared["output_ref"]
+        proof = self.json(prepared["prepared_ref"]["path"])
+        limits = sources.argparse.Namespace(**proof["limits"])
+        obs = sources.Observations(self.root)
+        manifest, ledger = sources.native.build_ledger(self.root, ["docs/source.md"], "add", True,
+            text_reader=obs.reader, previous_sources=["docs/source.md"])
+        index, candidate = sources.projection.prepare(ledger, limits.max_blocks, prefix / "batches", limits.max_chars)
+        candidate.update(schema_version=sources.CANDIDATE, file_results=[])
+        proof.update(effective_patterns=["docs/source.md"], prior_sources=["docs/source.md"],
+                     source_revision=manifest["source_revision"], source_manifest_sha256=manifest["manifest_sha256"])
+        self.assertEqual(proof["source_registration"]["active_sources"], ["docs/source.md", "docs/other.md"])
+        for name, payload in (("source-manifest.json", manifest), ("source-blocks.json", ledger),
+                              ("batch-index.json", index), ("prepared.json", proof)):
+            self.put(prepared["output_ref"] + "/" + name, payload)
+        candidate["prepared_ref"] = {"path": prepared["prepared_ref"]["path"],
+            "raw_digest": codec.raw_digest((prefix / "prepared.json").read_bytes())}
+        self.put(prepared["output_ref"] + "/candidate.json", candidate)
+        plan = sources.plan_transport(sources.transport_context(obs, manifest), phase="inspect",
+            probe=sources.probe_for(limits), schema_version=sources.TRANSPORT_SCHEMA)
+        self.put(prepared["output_ref"] + "/transport.json", plan)
+        event = self.json(prepared["output_ref"] + "/event.json")
+        event["artifacts"] = {path.relative_to(prefix).as_posix(): codec.raw_digest(path.read_bytes())
+                              for path in prefix.rglob("*") if path.is_file() and path.name != "event.json"}
+        self.put(prepared["output_ref"] + "/event.json", event)
+        self.candidate(prepared)
+        code, report = self.account(prepared, "contradictory-cache")
+        self.assertEqual(code, 1, report)
+        self.assertFalse(report["accounting_complete"])
+        self.assertEqual(report["diagnostics"][0]["entity_id"], "prepared.effective_patterns")
+        self.assertEqual(report["diagnostics"][0]["expected"], ["docs/source.md", "docs/other.md"])
+        self.assertEqual(report["diagnostics"][0]["actual"], ["docs/source.md"])
+        self.assertEqual(report["model_dispatch_count"], 0)
+        self.assertFalse(report["formal_adoption"])
+        for path, raw in protected.items():
+            self.assertEqual((self.root / path).read_bytes(), raw)
+
     def test_explicit_retirement_and_additions_preserve_registration(self):
         before = (self.root / "docs/source-set.json").read_bytes()
         self.put("docs/new.md", b"A new cumulative obligation.\n")
@@ -235,6 +357,9 @@ class SourceAccountingTests(unittest.TestCase):
         self.assertEqual((self.root / "docs/source-set.json").read_bytes(), before)
         proof = self.json(prepared["prepared_ref"]["path"])
         self.assertTrue(any(r["path"] == "docs/source.md" for r in proof["observations"]))
+        self.candidate(prepared)
+        code, report = self.account(prepared)
+        self.assertEqual(code, 0, report)
         declaration["retirements"][0]["reason"] = ""
         self.put("declaration.json", declaration)
         code, _ = self.invoke("prepare", "bad-retire", ["--source-set", "docs/source-set.json", "--declaration", "declaration.json"])
@@ -264,6 +389,61 @@ class SourceAccountingTests(unittest.TestCase):
         old_id = next(r["block_id"] for r in old["blocks"] if "Keep" in r["raw_text"])
         new_id = next(r["block_id"] for r in new["blocks"] if "Keep" in r["raw_text"])
         self.assertEqual(old_id, new_id)
+        self.candidate(prepared)
+        code, report = self.account(prepared)
+        self.assertEqual(code, 0, report)
+
+    def test_previous_explicit_retirement_cannot_disappear_or_reactivate_source(self):
+        self.put("docs/current.md", b"Current cumulative source and reviewed retirement basis.\n")
+        self.registration(["docs/source.md", "docs/current.md"])
+        self.put("declaration.json", {"schema_version": sources.DECLARATION, "additions": [], "retirements": [{
+            "path": "docs/source.md", "reason": "Retain this earlier source as retired history.",
+            "evidence": {"path": "docs/current.md", "raw_digest": codec.raw_digest((self.root / "docs/current.md").read_bytes()),
+                         "byte_start": 0, "byte_end": 10}}]})
+        previous = self.prepare(extras=["--declaration", "declaration.json"])
+        prefix = self.root / previous["output_ref"]
+        original_proof = {p.relative_to(prefix): p.read_bytes() for p in prefix.rglob("*") if p.is_file()}
+        code, report = self.invoke("prepare", "missing-history", ["--source-set", "docs/source-set.json",
+            "--previous", previous["prepared_ref"]["path"]])
+        self.assertEqual(code, 1, report)
+        self.assertFalse(report["accounting_complete"])
+        self.assertEqual(report["diagnostics"][0]["actual"], ["docs/source.md"])
+        self.assertFalse((self.root / report["output_ref"] / "source-manifest.json").exists())
+        explicit = self.prepare("retained-explicit", ["--declaration", "declaration.json",
+                                                      "--previous", previous["prepared_ref"]["path"]])
+        self.assertEqual([row["path"] for row in self.json(explicit["output_ref"] + "/source-manifest.json")["sources"]],
+                         ["docs/current.md"])
+        self.candidate(explicit)
+        code, report = self.account(explicit, "account-retained-explicit")
+        self.assertEqual(code, 0, report)
+        self.registration(["docs/current.md"], retired=[{"path": "docs/source.md", "reason": "Reviewed registered retirement."}])
+        registered = self.prepare("retained-registered", ["--previous", previous["prepared_ref"]["path"]])
+        self.assertEqual(self.json(registered["prepared_ref"]["path"])["retired_sources"], ["docs/source.md"])
+        self.candidate(registered)
+        code, report = self.account(registered, "account-retained-registered")
+        self.assertEqual(code, 0, report)
+        self.registration(["docs/current.md"])
+        code, report = self.invoke("prepare", "missing-registered-history", ["--source-set", "docs/source-set.json",
+            "--previous", registered["prepared_ref"]["path"]])
+        self.assertEqual(code, 1, report)
+        self.assertEqual(report["diagnostics"][0]["actual"], ["docs/source.md"])
+        for path, raw in original_proof.items():
+            self.assertEqual((prefix / path).read_bytes(), raw)
+
+    def test_nested_addition_conflict_uses_native_retirement_fnmatch(self):
+        self.put("prd/current.md", b"An active source outside the retired tree.\n")
+        self.put("docs/nested/new.md", b"An explicit addition cannot disappear silently.\n")
+        self.registration(["prd/current.md"], retired=[{"path": "docs/*.md", "reason": "Retired source range."}])
+        self.put("declaration.json", {"schema_version": sources.DECLARATION,
+                                      "additions": ["docs/nested/new.md"], "retirements": []})
+        source_bytes = (self.root / "docs/nested/new.md").read_bytes()
+        code, report = self.invoke("prepare", "nested-addition", ["--source-set", "docs/source-set.json",
+                                                                   "--declaration", "declaration.json"])
+        self.assertEqual(code, 1, report)
+        self.assertFalse(report["accounting_complete"])
+        self.assertTrue(report["diagnostics"])
+        self.assertFalse((self.root / report["output_ref"] / "source-manifest.json").exists())
+        self.assertEqual((self.root / "docs/nested/new.md").read_bytes(), source_bytes)
 
     def test_duplicate_event_conflict_partial_and_new_attempt(self):
         first = self.prepare()
