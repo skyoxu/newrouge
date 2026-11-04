@@ -91,6 +91,11 @@ jobs:
               count = re.search(r'^Ran ([1-9][0-9]*) tests? in ', stderr, re.MULTILINE)
               clean = bool(count) and int(count.group(1)) == expected and not re.search(r'\.\.\. skipped|^OK \(skipped=', stderr, re.MULTILINE)
               summary['test_methods'] = {'expected': expected, 'executed': int(count.group(1)) if count else 0, 'zero_skips': clean}
+              required = ['test_root_alias_keeps_nonempty_governance_scan_and_original_diagnostics', 'test_root_alias_direct_and_public_cli_keep_single_json_and_physical_report_identity', 'test_real_directory_links_still_block_governance_scan_and_report_output']
+              checks = {name: re.search(r'^' + re.escape(name) + r' \(test_b_route_preflight\.PreflightTests\.' + re.escape(name) + r'\) \.\.\. ok$', stderr, re.MULTILINE) is not None for name in required}
+              summary['required_windows_methods_passed'] = checks
+              if not all(checks.values()):
+                  summary['exit_code'] = 1
               if not clean:
                   summary['exit_code'] = 1
           if not summary['exit_code']:

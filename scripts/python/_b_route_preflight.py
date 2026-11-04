@@ -94,6 +94,9 @@ class Observations:
         directory = path(directory)
         result = []
         candidate = inventory.safe_input(self.root, directory, allow_logs=True)
+        # safe_input checked the caller's spelling and every original ancestor
+        # before resolving the physical anchor (including Windows 8.3 aliases).
+        physical_root = self.root.resolve(strict=True)
         if candidate.exists():
             inventory.no_reparse(candidate)
             if not candidate.is_dir():
@@ -104,7 +107,7 @@ class Observations:
                 for name in dirs + files:
                     inventory.no_reparse(Path(current, name))
                 for name in files:
-                    source = (Path(current) / name).relative_to(self.root).as_posix()
+                    source = (Path(current) / name).relative_to(physical_root).as_posix()
                     result.append(source)
         result.sort()
         if directory in self.directories and self.directories[directory] != result:

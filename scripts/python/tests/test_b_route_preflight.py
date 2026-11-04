@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import copy
+import contextlib
+import io
 import hashlib
 import importlib
 import json
@@ -782,6 +784,117 @@ class PreflightTests(unittest.TestCase):
         valid = self.fixture.preview()
         self.assertTrue(valid["ok"], valid["diagnostics"])
         self.assertEqual(self.fixture.load(source), current)
+
+    def existing_root_alias(self):
+        if os.name == "nt":
+            import ctypes
+            short_path = ctypes.WinDLL("kernel32", use_last_error=True).GetShortPathNameW
+            short_path.argtypes = [ctypes.c_wchar_p, ctypes.c_wchar_p, ctypes.c_uint]
+            short_path.restype = ctypes.c_uint
+            physical = self.fixture.root.resolve(strict=True)
+            size = short_path(str(physical), None, 0)
+            self.assertGreater(size, 0, "A real Windows short-path lookup is required")
+            buffer = ctypes.create_unicode_buffer(size)
+            written = short_path(str(physical), buffer, size)
+            self.assertTrue(0 < written < size, "A real Windows short-path lookup is required")
+            alias = Path(buffer.value)
+            self.assertNotEqual(str(alias), str(physical), "Exercise the native 8.3 root alias")
+        else:
+            (self.fixture.root / "root-spelling").mkdir()
+            alias = self.fixture.root / "root-spelling" / ".."
+        self.assertTrue(alias.samefile(self.fixture.root))
+        return alias
+
+    def test_root_alias_keeps_nonempty_governance_scan_and_original_diagnostics(self):
+        alias = self.existing_root_alias()
+        source = "docs/planning/b-route/plans/p/1.json"
+        self.fixture.dump(source, {"schema_version": "newrouge.b-route-plan.v1"})
+        before = self.fixture.bytes()
+        observed = preflight.Observations(alias)
+        self.assertEqual(str(observed.root), str(alias.absolute()), "Keep the caller's original root spelling")
+        self.assertEqual(observed.scan("docs/planning/b-route"), [source])
+        report = preflight.preflight(alias, self.fixture.epics, self.fixture.protection_input,
+                                     self.fixture.candidate_path, self.fixture.intents_path)
+        self.assert_failed(report, "required_governance_missing")
+        self.assertNotIn("identity_unprovable", {row["reason_code"] for row in report["diagnostics"]})
+        self.assertEqual(self.fixture.bytes(), before)
+
+    def test_root_alias_direct_and_public_cli_keep_single_json_and_physical_report_identity(self):
+        alias = self.existing_root_alias()
+        before = self.fixture.bytes()
+        for direct, run_id in ((True, "alias-direct"), (False, "alias-public")):
+            arguments = self.fixture.arguments(run_id)
+            arguments[arguments.index("--root") + 1] = str(alias)
+            entry = "preflight_b_route_migration.py" if direct else "dev_cli.py"
+            command = [sys.executable, "-B", str(REPOSITORY / "scripts/python" / entry)]
+            if not direct:
+                command.append("b-route-preflight")
+            completed = subprocess.run(command + arguments, capture_output=True, text=True,
+                                       encoding="utf-8", timeout=30)
+            self.assertEqual(completed.returncode, 0, completed.stdout + completed.stderr)
+            self.assertEqual(completed.stderr, "")
+            report = json.loads(completed.stdout)
+            target = self.fixture.root / report["report_path"]
+            self.assertEqual(json.loads(target.read_text(encoding="utf-8")), report)
+            self.assertEqual(report["report_path"], target.resolve().relative_to(self.fixture.root.resolve()).as_posix())
+        current = self.fixture.bytes()
+        self.assertTrue(all(current.get(source) == digest for source, digest in before.items()))
+        self.assertTrue(all("/b-route-preflight/" in source and source.endswith("/report.json")
+                            for source in set(current) - set(before)))
+
+    def test_report_path_admission_failure_is_a_public_json_diagnostic(self):
+        import preflight_b_route_migration as command
+        output = io.StringIO()
+        error = codec.CodecError(codec.Diagnostic(codec.ReasonCode.UNSAFE_PATH, codec.Stage.PATH,
+            expected="contained output with no linked ancestors", actual="unsafe output identity"))
+        with patch.object(protection, "_output_relative_path", side_effect=error) as guard:
+            with contextlib.redirect_stdout(output):
+                code = command.main(self.fixture.arguments("path-guard-failure"))
+        self.assertTrue(guard.called, "The output identity fault must hit the real CLI boundary")
+        self.assertEqual(code, 2)
+        report = json.loads(output.getvalue())
+        self.assertFalse(report["ok"])
+        self.assertIsNone(report["report_path"])
+        self.assertEqual(report["diagnostics"][-1]["reason_code"], "unsafe_path")
+        self.assertEqual(set(report["diagnostics"][-1]), FIELDS)
+
+    def test_real_directory_links_still_block_governance_scan_and_report_output(self):
+        def link(alias, target):
+            if os.name == "nt":
+                completed = subprocess.run(["cmd", "/d", "/c", "mklink", "/J", str(alias), str(target)],
+                                           capture_output=True, text=True)
+                self.assertEqual(completed.returncode, 0, "Real Windows junction creation failed: " + completed.stderr)
+            else:
+                alias.symlink_to(target, target_is_directory=True)
+        def unlink(alias):
+            alias.rmdir() if os.name == "nt" else alias.unlink()
+        with tempfile.TemporaryDirectory() as external:
+            target = Path(external)
+            (target / "sentinel.json").write_bytes(b"{}")
+            governance = self.fixture.root / "docs/planning/b-route"
+            governance.parent.mkdir(parents=True, exist_ok=True)
+            link(governance, target)
+            try:
+                report = self.fixture.preview()
+                self.assert_failed(report, "unsafe_path")
+                self.assertEqual((target / "sentinel.json").read_bytes(), b"{}")
+            finally:
+                unlink(governance)
+            original = self.fixture.root / "logs/ci"
+            saved = self.fixture.root / "logs/original-ci"
+            original.rename(saved)
+            link(original, target)
+            try:
+                completed = self.fixture.cli("junction-output")
+                self.assertEqual(completed.returncode, 2, completed.stdout + completed.stderr)
+                self.assertEqual(completed.stderr, "")
+                report = json.loads(completed.stdout)
+                self.assertEqual(report["diagnostics"][0]["reason_code"], "unsafe_path")
+                self.assertEqual(set(report["diagnostics"][0]), FIELDS)
+                self.assertEqual([item.name for item in target.iterdir()], ["sentinel.json"])
+            finally:
+                unlink(original)
+                saved.rename(original)
 
     def test_eight_independent_cli_scenarios(self):
         with tempfile.TemporaryDirectory() as temporary:

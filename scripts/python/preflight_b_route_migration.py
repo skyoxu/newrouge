@@ -40,19 +40,23 @@ def main(argv=None):
         print(json.dumps(result, ensure_ascii=True, allow_nan=False, separators=(",", ":")))
         return 2
     result = service.preflight(args.root, args.epics, args.protection_input, args.candidate, args.intents)
-    report_path = (output / "report.json").relative_to(args.root.absolute()).as_posix()
-    result["report_path"] = report_path
+    report_path = None
+    result["report_path"] = None
     try:
-        # Recheck the original output path before exclusive report creation.
-        service.protection._output_relative_path(args.root.absolute(), output)
+        # The Story 1.5 guard checks every original ancestor before comparing
+        # physical identities; caller and output may use different 8.3 spellings.
+        relative_output = service.protection._output_relative_path(args.root.absolute(), output)
+        report_path = relative_output + "/report.json"
+        result["report_path"] = report_path
         service.inventory.safe_input(args.root.absolute(), report_path, allow_logs=True)
         with (output / "report.json").open("x", encoding="utf-8", newline="\n") as stream:
             json.dump(result, stream, ensure_ascii=True, allow_nan=False, indent=2)
             stream.write("\n")
     except (OSError, ValueError, codec.CodecError) as error:
         result["ok"] = False
-        result["diagnostics"].append(codec.Diagnostic(codec.ReasonCode.CONFLICT, codec.Stage.PATH,
-            expected="new writable report", actual=type(error).__name__, resume_ref=report_path).to_dict())
+        result["diagnostics"].append(error.diagnostic.to_dict() if isinstance(error, codec.CodecError)
+            else codec.Diagnostic(codec.ReasonCode.CONFLICT, codec.Stage.PATH,
+                expected="new writable report", actual=type(error).__name__, resume_ref=report_path).to_dict())
         print(json.dumps(result, ensure_ascii=True, allow_nan=False, separators=(",", ":")))
         return 2
     print(json.dumps(result, ensure_ascii=True, allow_nan=False, separators=(",", ":")))
