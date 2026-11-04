@@ -1031,6 +1031,153 @@ class PreflightTests(unittest.TestCase):
         self.assertEqual(json.loads(self.fixture.raw(report["report_path"])), report)
         self.assertTrue(all(self.fixture.bytes().get(target) == raw for target, raw in before.items()))
 
+    def test_candidate_epics_missing_canonical_source_uses_native_owner(self):
+        source = "registered/candidate-canonical-missing.md"
+        candidate_epics = self.fixture.raw(self.fixture.epics).decode("utf-8").replace(
+            self.fixture.base.sources[-1], source).encode("utf-8")
+        self.fixture.set_candidate({self.fixture.epics: candidate_epics})
+        before = self.fixture.bytes()
+        report = self.fixture.preview()
+        self.assert_failed(report, "file_not_found")
+        self.assertIn(source, {row["path"] for row in report["candidate_inventory"]["inputs"]})
+        self.assertTrue(any(row["path"] == source and not row["exists"] for row in report["observations"]))
+        located = [row for row in report["diagnostics"] if row["reason_code"] == "file_not_found"
+                   and row["resume_ref"] == self.fixture.epics + "#/frontmatter/inputDocuments/9"]
+        self.assertTrue(located, report["diagnostics"])
+        self.assertEqual(before, self.fixture.bytes())
+
+    def test_candidate_epics_candidate_only_canonical_source_is_valid(self):
+        source = "registered/candidate-only-canonical.md"
+        candidate_epics = self.fixture.raw(self.fixture.epics).decode("utf-8").replace(
+            self.fixture.base.sources[-1], source).encode("utf-8")
+        content = b"# Candidate-only canonical input\nFull original requirement.\n"
+        self.fixture.set_candidate({self.fixture.epics: candidate_epics, source: content})
+        before = self.fixture.bytes()
+        report = self.fixture.preview()
+        self.assertTrue(report["ok"], report["diagnostics"])
+        self.assertIn(source, {row["path"] for row in report["candidate_inventory"]["inputs"]})
+        self.assertNotIn(source, report["current_inventory"]["canonical_source_paths"])
+        self.assertIn({"path": source, "exists": True, "raw_digest": identity(content)},
+                      report["candidate_inventory"]["inputs"])
+        self.assertFalse((self.fixture.root / source).exists())
+        self.assertEqual(before, self.fixture.bytes())
+        self.assertEqual(report["difference_identity"], self.fixture.preview()["difference_identity"])
+
+    def test_candidate_epics_actual_canonical_dependency_post_edit_invalidates_preview(self):
+        source = "registered/after-image-canonical.md"
+        self.fixture.write(source, "# Candidate canonical dependency\nOriginal requirement.\n")
+        candidate_epics = self.fixture.raw(self.fixture.epics).decode("utf-8").replace(
+            self.fixture.base.sources[-1], source).encode("utf-8")
+        self.fixture.set_candidate({self.fixture.epics: candidate_epics})
+        valid = self.fixture.preview()
+        self.assertTrue(valid["ok"], valid["diagnostics"])
+        self.assertIn(source, {row["path"] for row in valid["candidate_inventory"]["inputs"]})
+        self.assertNotIn(source, valid["current_inventory"]["input_paths"])
+        hits = []
+        def edit():
+            hits.append(source)
+            self.fixture.write(source, "# Edited candidate canonical dependency\nChanged requirement.\n")
+        changed = self.fixture.preview(before_reread=edit)
+        self.assertEqual(hits, [source], "The actual candidate canonical dependency edit must execute")
+        self.assert_failed(changed, "file_changed")
+        self.assertFalse(changed["stable"])
+        self.assertFalse(changed["conclusion_valid"])
+        self.assertTrue(any(row["path"] == source for row in changed["observations"]))
+
+    def test_historical_manifest_ref_uses_archive_and_allows_current_additions(self):
+        source = "docs/testing/mvg/fixture.json"
+        historical = self.fixture.raw(source)
+        protection_before = self.fixture.raw(self.fixture.protection_input)
+        current = self.fixture.load(source)
+        additional = copy.deepcopy(current["tests"][0])
+        additional.update(id="current-added-test", state="planned", path="Game.Core.Tests/CurrentAdded.cs")
+        current["tests"].append(additional)
+        current["flows"][0]["test_ids"].append(additional["id"])
+        self.fixture.dump(source, current)
+        from _mvg_manifest import validate_manifest
+        self.assertEqual(validate_manifest(self.fixture.root, current), [])
+        before = self.fixture.bytes()
+        report = self.fixture.preview()
+        self.assertTrue(report["ok"], report["diagnostics"])
+        self.assertEqual(set(report["protection_to_current"]), {"triplet_definition_changed", "raw_changes"})
+        self.assertEqual(report["cumulative_changes"], [])
+        self.assertIn({"path": source, "before_raw_digest": identity(historical),
+                       "current_raw_digest": identity(self.fixture.raw(source))},
+                      report["protection_to_current"]["raw_changes"])
+        self.assertIn({"path": source, "exists": True, "raw_digest": identity(self.fixture.raw(source))},
+                      report["observations"])
+        self.assertEqual(self.fixture.raw(self.fixture.protection_input), protection_before)
+        self.assertEqual(before, self.fixture.bytes())
+        value = self.fixture.load(self.fixture.protection_input)
+        value["manifest_refs"][0]["files"][0]["raw_digest"] = identity(self.fixture.raw(source))
+        self.fixture.dump(self.fixture.protection_input, value)
+        self.fixture.rebind()
+        self.assert_failed(self.fixture.preview(), "digest_mismatch")
+
+        unarchived = "docs/testing/mvg/current-only-not-archived.json"
+        self.fixture.dump(unarchived, current)
+        value["manifest_refs"] = [self.fixture.owned("manifest", unarchived)]
+        self.fixture.dump(self.fixture.protection_input, value)
+        self.fixture.rebind()
+        self.assert_failed(self.fixture.preview(), "file_not_found")
+
+    def test_current_native_valid_manifest_replacement_cannot_erase_archived_obligations(self):
+        source = "docs/testing/mvg/fixture.json"
+        current = self.fixture.load(source)
+        current["tests"][0]["id"] = "replacement-test"
+        current["flows"][0]["test_ids"] = ["replacement-test"]
+        current["flows"][0]["handoffs"][0]["test_ids"] = ["replacement-test"]
+        self.fixture.dump(source, current)
+        from _mvg_manifest import validate_manifest
+        self.assertEqual(validate_manifest(self.fixture.root, current), [], "Only cumulative protection must block")
+        before = self.fixture.bytes()
+        report = self.fixture.preview()
+        self.assert_failed(report, "semantic_error")
+        self.assertEqual({row["reason_code"] for row in report["diagnostics"]}, {"semantic_error"})
+        self.assertEqual(report["diagnostics"][0]["actual"]["removed_obligations"], ["tests/test"])
+        self.assertEqual(set(report["protection_to_current"]), {"triplet_definition_changed", "raw_changes"})
+        self.assertEqual(report["cumulative_changes"], [])
+        self.assertTrue(any(row["entity_id"] == source for row in report["diagnostics"]))
+        self.assertEqual(before, self.fixture.bytes())
+
+    def test_public_cli_without_bytecode_flag_preserves_fresh_isolated_sources(self):
+        import shutil
+        with tempfile.TemporaryDirectory() as temporary:
+            isolated = Path(temporary) / "source-copy"
+            originals = {}
+            for directory in ("scripts/python", "scripts/sc"):
+                origin = REPOSITORY / directory
+                target = isolated / directory
+                shutil.copytree(origin, target, ignore=shutil.ignore_patterns("__pycache__", "*.pyc", "tests"))
+                for copied in target.rglob("*"):
+                    if copied.is_file():
+                        name = copied.relative_to(isolated).as_posix()
+                        originals[name] = identity((REPOSITORY / name).read_bytes())
+            self.assertFalse(list(isolated.rglob("*.pyc")))
+            self.assertFalse(list(isolated.rglob("__pycache__")))
+            source_before = {item.relative_to(isolated).as_posix(): identity(item.read_bytes())
+                             for item in isolated.rglob("*") if item.is_file()}
+            fixture_before = self.fixture.bytes()
+            environment = dict(os.environ)
+            for key in ("PYTHONDONTWRITEBYTECODE", "PYTHONPYCACHEPREFIX", "PYTHONOPTIMIZE", "PYTHONPATH"):
+                environment.pop(key, None)
+            completed = subprocess.run([sys.executable, str(isolated / "scripts/python/dev_cli.py"),
+                "b-route-preflight", *self.fixture.arguments("without-bytecode-flag")],
+                cwd=isolated, env=environment, capture_output=True, text=True, encoding="utf-8", timeout=30)
+            self.assertEqual(completed.returncode, 0, completed.stdout + completed.stderr)
+            self.assertEqual(completed.stderr, "")
+            report = json.loads(completed.stdout)
+            self.assertTrue(report["ok"], report["diagnostics"])
+            self.assertEqual(json.loads(self.fixture.raw(report["report_path"])), report)
+            self.assertFalse(list(isolated.rglob("*.pyc")), "The real CLI must set the earliest bytecode guard")
+            self.assertFalse(list(isolated.rglob("__pycache__")))
+            self.assertEqual(source_before, {item.relative_to(isolated).as_posix(): identity(item.read_bytes())
+                                           for item in isolated.rglob("*") if item.is_file()})
+            fixture_after = self.fixture.bytes()
+            self.assertTrue(all(fixture_after.get(name) == raw for name, raw in fixture_before.items()))
+            self.assertEqual(set(fixture_after) - set(fixture_before), {report["report_path"]})
+            self.assertEqual(originals, {name: identity((REPOSITORY / name).read_bytes()) for name in originals})
+
     def existing_root_alias(self):
         if os.name == "nt":
             import ctypes

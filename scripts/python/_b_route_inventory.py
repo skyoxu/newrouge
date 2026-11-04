@@ -588,7 +588,7 @@ class Snapshot:
             self.diagnostic("missing-manifests", "docs/testing/mvg", "No cumulative manifest could be inventoried")
         return manifests
 
-    def collect(self) -> dict:
+    def _canonical_inputs(self) -> dict:
         raw = self.read(self.epics, "epics")
         header = {}
         try:
@@ -622,6 +622,10 @@ class Snapshot:
         except (ValueError, UnicodeError, TypeError) as exc:
             self.diagnostic("invalid-epics", self.epics, str(exc))
 
+        return header
+
+    def collect(self) -> dict:
+        header = self._canonical_inputs()
         discovered = self.discover()
         for prefix in ("docs/adr/", "docs/architecture/base/", "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/", "Game.Core/Contracts/"):
             if not any(path.startswith(prefix) for _, path in discovered):

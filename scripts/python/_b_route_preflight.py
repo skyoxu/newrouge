@@ -188,11 +188,8 @@ def _load_protection(observations, source, epics, diagnostics):
                 "raw_archive_index_ref", "frozen_a_candidates_ref", "historical_inventory_ref"):
         if key in value:
             owned(value[key], observations)
-    for key in ("manifest_refs",):
-        if type(value.get(key)) is not list:
-            fail(codec.ReasonCode.INVALID_TYPE, source, key + " array", value.get(key))
-        for reference in value[key]:
-            owned(reference, observations)
+    if type(value.get("manifest_refs")) is not list:
+        fail(codec.ReasonCode.INVALID_TYPE, source, "manifest_refs array", value.get("manifest_refs"))
     for reference in value.get("rules_refs", []):
         if type(reference) is not dict or not {"path", "raw_digest"} <= set(reference):
             fail(codec.ReasonCode.INVALID_REFERENCE, source, "rule identity", reference)
@@ -204,7 +201,7 @@ def _load_protection(observations, source, epics, diagnostics):
     if snapshot_ref is None or inv_ref is None:
         fail(codec.ReasonCode.MISSING_REQUIRED_FIELD, source, "snapshot and inventory references", None)
     snapshot_path = snapshot_ref["ref"].split("#", 1)[0]
-    snapshot, report, _raw = protection._load_snapshot(observations.root, snapshot_path)
+    snapshot, report, original_raw = protection._load_snapshot(observations.root, snapshot_path)
     parent = snapshot_path.rsplit("/", 1)[0]
     observations.read(parent + "/inventory.json")
     for row in snapshot["raw_files"]:
@@ -212,6 +209,15 @@ def _load_protection(observations, source, epics, diagnostics):
             archived = observations.read(parent + "/" + row["artifact"])
             if codec.raw_digest(archived) != row["raw_digest"]:
                 fail(codec.ReasonCode.DIGEST_MISMATCH, row["path"], row["raw_digest"], codec.raw_digest(archived))
+    def archived_read(source):
+        source = path(source)
+        if source not in original_raw:
+            fail(codec.ReasonCode.FILE_NOT_FOUND, source, "verified archived original bytes", None)
+        return original_raw[source]
+    for reference in value["manifest_refs"]:
+        resolve_owned_ref(reference, read_bytes=archived_read,
+            contract_sources=lambda: {key: raw for key, raw in original_raw.items()
+                if key.startswith("Game.Core/Contracts/") and key.endswith(".cs")}, path_key=path)
     if report.get("epics") != epics or snapshot["inventory"]["raw_digest"] != inv_ref["files"][0]["raw_digest"]:
         fail(codec.ReasonCode.CONFLICT, source, "same explicit epics and archived inventory", "different bound inputs")
     for row in report["inputs"]:
@@ -676,13 +682,14 @@ def _candidate_inventory(observations, epics, candidate, current_inventory, *, z
     """Use native owners on the candidate after-image without a shadow tree."""
     view = CandidateView(observations, candidate)
     native = inventory.Snapshot(observations.root, epics, read_bytes=view.read, virtual_files=candidate)
+    header = native._canonical_inputs()
     tasks = native.tasks()
     source_set = native.source_set()
     manifest_paths = sorted({source for role, source in current_inventory["discovery"] if role == "manifest"}
         | {source for source in candidate if source.startswith("docs/testing/mvg/")})
     manifests = native.manifests(manifest_paths)
     current = {"inputs": [native.inputs[key] for key in sorted(native.inputs)],
-        "canonical_inputs": [], "tasks": tasks, "source_set": source_set,
+        "canonical_inputs": header.get("inputDocuments"), "tasks": tasks, "source_set": source_set,
         "manifests": manifests, "task_and_manifest_references": native.references,
         "diagnostics": native.diagnostics}
     lawful_absence = zero_task_manifest_absence and not manifest_paths and not protection._join(tasks["documents"])[0]
@@ -794,10 +801,13 @@ def preflight(root: Path, epics: str, protection_input: str, candidate_path: str
             if raw is not None:
                 current = codec.strict_json_loads(raw)
                 current_manifests.append({"path": source, "document": current, "canonical_digest": codec.canonical_digest(current)})
-            after = codec.strict_json_loads(candidate.get(source, raw))
-            after_manifests.append({"path": source, "document": after, "canonical_digest": codec.canonical_digest(after)})
+            after_raw = candidate.get(source, raw)
+            if after_raw is not None:
+                after = codec.strict_json_loads(after_raw)
+                after_manifests.append({"path": source, "document": after, "canonical_digest": codec.canonical_digest(after)})
+        baseline_changes = protection._manifest_changes(snapshot["cumulative"], current_manifests)
         result["cumulative_changes"] = protection._manifest_changes(current_manifests, after_manifests)
-        for change in result["cumulative_changes"]:
+        for change in [*baseline_changes, *result["cumulative_changes"]]:
             # The baseline owner compares exclusions conservatively even when
             # there is no before manifest. Its own applicability flag marks
             # that case as additive: there is no prior obligation to weaken.
