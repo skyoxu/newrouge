@@ -32,6 +32,7 @@ jobs:
           import subprocess
           import time
           from pathlib import Path
+          os.environ.pop('PYTHONDONTWRITEBYTECODE', None)
           root = Path.cwd()
           output = root / 'logs/ci/story-2-1-windows' / (os.environ['GITHUB_RUN_ID'] + '-' + os.environ['GITHUB_RUN_ATTEMPT'])
           output.mkdir(parents=True, exist_ok=False)
@@ -42,7 +43,7 @@ jobs:
           before = {p: hashlib.sha256((root / p).read_bytes()).hexdigest() for p in tracked if (root / p).is_file()}
           bytecode_before = {p.relative_to(root).as_posix() for p in (root / 'scripts').rglob('*.pyc')}
           paths = ['scripts/python/_b_route_sources.py', 'scripts/python/account_b_route_sources.py', 'scripts/python/dev_cli.py', 'scripts/python/tests/test_b_route_sources.py', 'scripts/python/tests/test_milestone_incremental_hotfixes.py', 'scripts/python/build_source_ledger.py', 'scripts/python/validate_semantic_conservation.py', 'scripts/python/project_semantics_from_sources.py', 'scripts/python/_mvg_evidence_transport.py', 'scripts/python/_mvg_lossless_context.py', 'scripts/python/_capability_input_integrity.py', 'scripts/python/_b_route_codec.py', 'scripts/python/_b_route_inventory.py', '.github/workflows/story-2-1-windows.yml']
-          environment = {'head': head, 'python': sys.version, 'platform': sys.platform, 'files': {p: {'raw_sha256': hashlib.sha256((root / p).read_bytes()).hexdigest(), 'git_blob': subprocess.check_output(['git', 'rev-parse', 'HEAD:' + p], text=True).strip()} for p in paths}}
+          environment = {'head': head, 'python': sys.version, 'platform': sys.platform, 'subprocess_bytecode_override_present': 'PYTHONDONTWRITEBYTECODE' in os.environ, 'files': {p: {'raw_sha256': hashlib.sha256((root / p).read_bytes()).hexdigest(), 'git_blob': subprocess.check_output(['git', 'rev-parse', 'HEAD:' + p], text=True).strip()} for p in paths}}
           summary = {'head': head, 'steps': [], 'exit_code': 0}
           deadline = time.monotonic() + 1600
           def save():

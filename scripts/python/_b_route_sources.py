@@ -13,6 +13,7 @@ import re
 import sys
 import time
 from copy import deepcopy
+from dataclasses import replace
 from pathlib import Path
 
 import _b_route_codec as codec
@@ -77,13 +78,19 @@ class Observations:
         return raw
 
     def json(self, value):
-        return codec.strict_json_loads(self.read(value))
+        return self._decode_json(value, self.read(value))
+
+    def _decode_json(self, value, raw):
+        try:
+            return codec.strict_json_loads(raw)
+        except codec.CodecError as error:
+            raise codec.CodecError(replace(error.diagnostic, entity_id=value)) from error
 
     def reader(self, path):
         value = path.relative_to(self.root).as_posix()
         raw = self.read(value)
         if path.suffix.lower() == ".json":
-            codec.strict_json_loads(raw)
+            self._decode_json(value, raw)
         return text_view(raw)
 
     def members(self, patterns):

@@ -329,12 +329,57 @@ class SourceAccountingTests(unittest.TestCase):
         code, report = self.invoke("prepare", extras=["--source-set", "docs/source-set.json"])
         self.assertEqual(code, 1)
         self.assertEqual(report["diagnostics"][0]["reason_code"], "duplicate_key")
+        self.assertEqual(report["diagnostics"][0]["entity_id"], "docs/source-set.json")
         for args in (("--source-set", "../escape"), (), ("--source-set", "docs/source-set.json", "--unexpected", "x")):
             code, _ = self.invoke("prepare", "invalid", args)
             self.assertEqual(code, 2)
         code, report = self.invoke("prepare", "missing", ["--source-set", "docs/missing.json"])
         self.assertEqual(code, 1)
         self.assertEqual(report["diagnostics"][0]["reason_code"], "file_not_found")
+
+    def test_json_source_decode_errors_locate_exact_input_and_preserve_codec_diagnostic(self):
+        self.put("docs/a-valid.json", b'{"rule":"Valid source read first."}')
+        for label, raw in (("syntax", b'{"rule":'), ("utf8", b'{"rule":"\xff"}')):
+            with self.subTest(label=label):
+                corrupt_path = "docs/z-corrupt.json"
+                self.put(corrupt_path, raw)
+                self.registration(["docs/a-valid.json", corrupt_path])
+                with self.assertRaises(codec.CodecError) as original:
+                    codec.strict_json_loads(raw)
+                expected = original.exception.diagnostic.to_dict()
+                code, report = self.invoke("prepare", "bad-source-" + label,
+                                           ["--source-set", "docs/source-set.json"])
+                self.assertEqual(code, 1, report)
+                actual = report["diagnostics"][0]
+                self.assertEqual(actual["entity_id"], corrupt_path)
+                for field in ("reason_code", "stage", "expected", "actual"):
+                    self.assertEqual(actual[field], expected[field])
+                event = self.json(report["output_ref"] + "/event.json")
+                self.assertEqual(event["diagnostics"], report["diagnostics"])
+                observed = list(event["observations"])
+                self.assertLess(observed.index("docs/a-valid.json"), observed.index(corrupt_path))
+                self.assertEqual((self.root / corrupt_path).read_bytes(), raw)
+
+    def test_registry_and_candidate_decode_errors_share_located_codec_diagnostic(self):
+        prepared = self.prepare()
+        for label, raw in (("syntax", b'{"rule":'), ("utf8", b'{"rule":"\xff"}')):
+            with self.subTest(label=label):
+                with self.assertRaises(codec.CodecError) as original:
+                    codec.strict_json_loads(raw)
+                expected = original.exception.diagnostic.to_dict()
+                for path, stage, extras in (
+                    ("candidate.json", "account", ["--prepared", prepared["prepared_ref"]["path"],
+                                                       "--candidate", "candidate.json"]),
+                    ("docs/source-set.json", "prepare", ["--source-set", "docs/source-set.json"]),
+                ):
+                    self.put(path, raw)
+                    code, report = self.invoke(stage, "bad-" + stage + "-" + label, extras)
+                    self.assertEqual(code, 1, report)
+                    actual = report["diagnostics"][0]
+                    self.assertEqual(actual["entity_id"], path)
+                    for field in ("reason_code", "stage", "expected", "actual"):
+                        self.assertEqual(actual[field], expected[field])
+                    self.registration(["docs/source.md"])
 
     @unittest.skipIf(os.name == "nt", "POSIX symlink counterpart; Windows junction is tested separately")
     def test_root_source_and_logs_symlinks_are_rejected(self):
