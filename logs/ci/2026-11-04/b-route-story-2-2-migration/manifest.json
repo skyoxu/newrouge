@@ -361,10 +361,15 @@
       "bytes": 721,
       "sha256": "f6e68534345e5dd335f95f76e5014f806c31a2773f70fc31bc47ab02d2d75391",
       "git_raw_blob": "e461eea8a1995911a118ce5f9979a9715856986b"
+    },
+    "logs/ci/2026-11-04/b-route-story-2-2-migration/native-step3-checkpoint.diff": {
+      "bytes": 189074,
+      "sha256": "820367868e50909025a2d915f4b673a299ad5e29cce614acc13b4466b3f8fadf",
+      "git_raw_blob": "cf9d3f6e109af67d03e0ffaa1753d97ec6acd679"
     }
   },
-  "source_file_count": 71,
-  "source_bytes": 1087221,
+  "source_file_count": 72,
+  "source_bytes": 1276295,
   "frozen_intent_sha256": "9454a00ff8d169a1f540eff43b33ed742d01249b87a78b0742ea2797ce0e5192",
   "native_step": 3,
   "story_status": "in-progress",
@@ -382,5 +387,11 @@
     "Absolute paths in archived evidence refer to the original worktree. Do not rewrite frozen evidence to make it current.",
     "Story2.2 stays at Step3 until actual-model acceptance and native review complete.",
     "Public commits may remain recoverable after deleting files or the branch."
-  ]
+  ],
+  "preserved_baseline_diff": {
+    "path": "logs/ci/2026-11-04/b-route-story-2-2-migration/native-step3-checkpoint.diff",
+    "original_baseline_commit": "2f7d36bdb6e1e0f9f3201a3df3c38bfb2dab6624",
+    "sha256": "820367868e50909025a2d915f4b673a299ad5e29cce614acc13b4466b3f8fadf",
+    "purpose": "Original complete 17-file Step3 working diff, read in full previously; review input only after current source identities and all acceptance are checked. Does not reconstruct original Git history or substitute for native review."
+  }
 }

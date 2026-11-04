@@ -47,3 +47,8 @@ that parent version; do not delete the old workspace or private checkpoint.
 At minimum exclude _bmad/** and logs/**. Review specs, Sprint state and handoff
 records individually. Deleting files never retracts this public commit's history.
 The exact transferred paths and hashes are in manifest.json.
+
+The original complete Step3 baseline diff is preserved as native-step3-checkpoint.diff
+with SHA-256 820367868e50909025a2d915f4b673a299ad5e29cce614acc13b4466b3f8fadf.
+It supplies the original review input without publishing the full local history;
+verify current files match before using it, and regenerate after any later changes.
