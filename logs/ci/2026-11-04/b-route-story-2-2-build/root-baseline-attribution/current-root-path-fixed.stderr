@@ -1,0 +1,43 @@
+test_existing_manifest_implementation_is_copied_by_prepare (test_planning_main_audit_fixes.PlanningMainAuditFixesTests.test_existing_manifest_implementation_is_copied_by_prepare) ... FAIL
+test_explicit_existing_test_is_prepared_and_drift_blocks (test_planning_main_audit_fixes.PlanningMainAuditFixesTests.test_explicit_existing_test_is_prepared_and_drift_blocks) ... FAIL
+test_manifest_and_milestone_checkout_eol_keep_binding_but_real_edit_blocks (test_planning_main_audit_fixes.PlanningMainAuditFixesTests.test_manifest_and_milestone_checkout_eol_keep_binding_but_real_edit_blocks) ... ERROR
+
+======================================================================
+ERROR: test_manifest_and_milestone_checkout_eol_keep_binding_but_real_edit_blocks (test_planning_main_audit_fixes.PlanningMainAuditFixesTests.test_manifest_and_milestone_checkout_eol_keep_binding_but_real_edit_blocks)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/newrouge-b-story-1-1/scripts/python/tests/test_planning_main_audit_fixes.py", line 501, in test_manifest_and_milestone_checkout_eol_keep_binding_but_real_edit_blocks
+    mvg.apply(self.root, run_id="repair", confirm=True)
+  File "/workspace/newrouge-b-story-1-1/scripts/python/plan_mvg.py", line 7024, in apply
+    return _apply_impl(root, run_id=run_id)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/newrouge-b-story-1-1/scripts/python/plan_mvg.py", line 7065, in _apply_impl
+    raise ValueError("MVG proposal/delta validation is blocked")
+ValueError: MVG proposal/delta validation is blocked
+
+======================================================================
+FAIL: test_existing_manifest_implementation_is_copied_by_prepare (test_planning_main_audit_fixes.PlanningMainAuditFixesTests.test_existing_manifest_implementation_is_copied_by_prepare)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/newrouge-b-story-1-1/scripts/python/tests/test_planning_main_audit_fixes.py", line 387, in test_existing_manifest_implementation_is_copied_by_prepare
+    self.assertEqual("passed", mvg.validate_proposal(self.root, state, proposal)["status"])
+AssertionError: 'passed' != 'blocked'
+- passed
++ blocked
+
+
+======================================================================
+FAIL: test_explicit_existing_test_is_prepared_and_drift_blocks (test_planning_main_audit_fixes.PlanningMainAuditFixesTests.test_explicit_existing_test_is_prepared_and_drift_blocks)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/newrouge-b-story-1-1/scripts/python/tests/test_planning_main_audit_fixes.py", line 143, in test_explicit_existing_test_is_prepared_and_drift_blocks
+    self.assertEqual("passed", mvg.validate_proposal(self.root, state, proposal)["status"])
+AssertionError: 'passed' != 'blocked'
+- passed
++ blocked
+
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.486s
+
+FAILED (failures=2, errors=1)

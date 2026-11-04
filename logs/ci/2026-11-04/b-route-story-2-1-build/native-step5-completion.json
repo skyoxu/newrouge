@@ -1,0 +1,17 @@
+{
+  "commit": "2f7d36bdb6e1e0f9f3201a3df3c38bfb2dab6624",
+  "branch": "build/b-route-story-2-1-2026-11-04",
+  "files": 16,
+  "spec_status": "done",
+  "sprint_status": "review",
+  "worktree_clean": true,
+  "windows_run": 41817232590,
+  "windows_code_candidate": "edd061fdf97982f37437db33e1aa439f405f3222",
+  "windows_actual_passed": 130,
+  "windows_posix_only_skipped": 1,
+  "windows_mandatory_real_method_passed": true,
+  "cli_invocations": 17,
+  "native_review": "three layers plus coordinator verification complete;8 patch groups closed;1 false refuted; no deferred",
+  "pushed_local_commit": false,
+  "remaining": "T108 original missing; formal protection/frozen A/default B/A retirement qualifications not granted"
+}

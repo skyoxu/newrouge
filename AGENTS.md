@@ -30,6 +30,9 @@ Context Reset 后先读取本文件，再按当前任务范围选择首要入口
 | --- | --- | --- |
 | 项目身份/状态 | `README.md` | 当前任务三联或用户明确指定的状态文件 |
 | B 路线阶段／权威／迁移治理 | [ADR-0040（Accepted，未启用）](docs/adr/ADR-0040-b-route-stages-authority-and-activation.md) | 治理定义已采纳；实现及启用待后续交付，现行 A 命令仍有效 |
+| B 路线 3A 来源记账 | [来源记账 owner 说明](docs/workflows/b-route-source-accounting.md) | `dev_cli.py b-route-sources --stage prepare\|account`；零 Task 提议与完整记账，不授予独立审计／正式采纳，现行 A 有效 |
+| B 路线 3A 独立来源审计 | [来源审计 owner 说明](docs/workflows/b-route-source-audit.md) | `dev_cli.py b-route-sources --stage audit\|verify`；完整来源两步独立审计／只读 proof 复验，不授正式采纳或默认 B 启用 |
+| B 路线只读迁移预检 | [预检 owner 说明](docs/workflows/b-route-migration-preflight.md) | `dev_cli.py b-route-preflight`；明确候选／意图／保护原身份，仅新 logs，不调用 apply 或授予启用 |
 | Chapter 3 | `workflow.md` 第 3 章 | `.agents/skills/workflow-chapter3-task-triplet-baseline/SKILL.md`；本次 PRD/GDD/planning sources |
 | Chapter 4 | `workflow.md` 第 4 章 | `.agents/skills/workflow-chapter4-overlays-contracts-baseline/SKILL.md`；任务三联、相关 Overlay/Contract |
 | Chapter 5 | `workflow.md` 第 5 章 | `.agents/skills/workflow-chapter5-semantics-stabilization/SKILL.md`；当前 reconciliation/readiness |

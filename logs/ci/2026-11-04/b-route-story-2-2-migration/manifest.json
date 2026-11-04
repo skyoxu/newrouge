@@ -1,0 +1,386 @@
+{
+  "format": "newrouge.story22.scoped-public-migration.v1",
+  "created_at": "2026-11-04T15:43:21.727060+00:00",
+  "parent_public_commit": "18f54b10a4a2811eb8c167bc6289791d43c2c3e5",
+  "original_local_head": "2f7d36bdb6e1e0f9f3201a3df3c38bfb2dab6624",
+  "original_local_branch": "build/b-route-story-2-2-2026-11-04",
+  "original_worktree": "/workspace/newrouge-b-story-1-1",
+  "target_branch": "build/b-route-story-2-2-migration-2026-11-04",
+  "files": {
+    ".agents/skills/plan-capabilities/SKILL.md": {
+      "bytes": 19204,
+      "sha256": "3001c2eae0e7034d09896ba5731d53ce08e160982ac7a665e2ff08fcf165925c",
+      "git_raw_blob": "0955d650bbaad24ff603801a129ddc9f899737fe"
+    },
+    "AGENTS.md": {
+      "bytes": 9771,
+      "sha256": "5252f14af79f6d4224f5c5d567f0936434198563c8cf52388b2df08cc3da303d",
+      "git_raw_blob": "a3120e992730f58a58d294f3447848c3a17e0727"
+    },
+    "_bmad-output/implementation-artifacts/b-route/sprint-status.yaml": {
+      "bytes": 7098,
+      "sha256": "fb3d113e8330b97bc5625258af43f4f0296add78dc8e3380c066e1cd48dc24b3",
+      "git_raw_blob": "89229430a842a44c92e495dbb9f219b6791260d7"
+    },
+    "docs/workflows/script-entrypoints-index.md": {
+      "bytes": 110587,
+      "sha256": "aa0f2437210126b5db84b58153de95b2aa0f8bb4a231b8e1b0bb05b40cf48c88",
+      "git_raw_blob": "18476cddc0e48ca9ef70485771eb75e2b75d8040"
+    },
+    "docs/workflows/stable-public-entrypoints.md": {
+      "bytes": 34949,
+      "sha256": "74dac2bbf32e260a1d5e3960d11bc8238a0718e012d59bd89c5243e32e5508a1",
+      "git_raw_blob": "cfe18430834469ea912e482815c41c97af0690c3"
+    },
+    "workflow.md": {
+      "bytes": 133075,
+      "sha256": "0d65a6edd5893707db866dd3f4d006e1cc48cb1f9f695d496f62c25401b50cfb",
+      "git_raw_blob": "8422dbc62aa772ebbcc160e899380871f71d6b69"
+    },
+    "_bmad-output/implementation-artifacts/b-route/epic-2-context.md": {
+      "bytes": 6627,
+      "sha256": "e2d3c3b17566a80af20a935797f32c937685bb26bd7e3594d7bb1f888065770e",
+      "git_raw_blob": "45f52cb7842d36b188451b1b3b06a5e1fe97f3d7"
+    },
+    "_bmad-output/implementation-artifacts/b-route/spec-1-4-b-route-record-schemas.md": {
+      "bytes": 22177,
+      "sha256": "e3c0d123d46ecd04f80cf418a6e624043700a0f1c6b271248b059a1bb97718c5",
+      "git_raw_blob": "a755b8bea3c008046ef052a9c7ea9d85eb90d6fc"
+    },
+    "_bmad-output/implementation-artifacts/b-route/spec-1-5-mature-protection-and-frozen-a-input.md": {
+      "bytes": 14037,
+      "sha256": "c63ed69a1598ae8395698a47ed68717f65b07c9e90c8253c5b45379b545f67d6",
+      "git_raw_blob": "deaffd94fcab8969cca2975164ef5f028ed3bce0"
+    },
+    "_bmad-output/implementation-artifacts/b-route/spec-1-6-read-only-migration-preflight.md": {
+      "bytes": 21208,
+      "sha256": "6955d601527a70d6b0fabb982f0d5d2f026ddcc8fb8ad286f516304f6281fcbb",
+      "git_raw_blob": "d473c4afbb1a77b68f50ca53dbc3da89bb8f3c68"
+    },
+    "_bmad-output/implementation-artifacts/b-route/spec-2-1-cumulative-source-ledger-and-requirement-intents.md": {
+      "bytes": 20917,
+      "sha256": "fc9bb4d2737f94ddc1e9a5b3edacafac5003b747649085fcca1f3008532184f2",
+      "git_raw_blob": "1098880540313f5713dd27d590baf7436d49ce3e"
+    },
+    "_bmad-output/implementation-artifacts/b-route/spec-2-2-independent-cumulative-source-audit.md": {
+      "bytes": 16263,
+      "sha256": "4943af2779466c83fdcabae387ebb28bea19aa7086869fb2363e99b318814501",
+      "git_raw_blob": "33f338510fcb2ae49611d0c12fd2a1a87eba37c2"
+    },
+    "docs/planning/b-route/epic1-handoff.v1.json": {
+      "bytes": 12897,
+      "sha256": "b8914de43b678c42d131e94f8550615afa89071bd8bfb8c34dd072df20c9d7b4",
+      "git_raw_blob": "2b3fdea3ca2b3dc4d1cd748efd9e213afb98dba9"
+    },
+    "docs/planning/b-route/protection-input.v1.json": {
+      "bytes": 8882,
+      "sha256": "d17666096acb6bd706e41ce894a49d016fd7f629ec4c3bb871885c14b994874f",
+      "git_raw_blob": "a55d37b9174ce93795b5e158eeee790e0ae2896d"
+    },
+    "_bmad/_config/bmad-help.csv": {
+      "bytes": 7329,
+      "sha256": "fc9c206d394e72d18a051b0de6eb18e2f1b3abae8f585927496cbf8f7a8ac365",
+      "git_raw_blob": "322b4183d543c0dad23b80ac4bf3276834b2e5e9"
+    },
+    "_bmad/_config/files-manifest.csv": {
+      "bytes": 33525,
+      "sha256": "92f1f94f1e08e76f7d99cabd1ab78dd5faba515d6718f7615c67a66443179cee",
+      "git_raw_blob": "b0c702853fa8e6d54dabe34431e0082a8707bb53"
+    },
+    "_bmad/_config/manifest.yaml": {
+      "bytes": 516,
+      "sha256": "068d76a6731da033f07f08aa54fcff2503568a1a0a244a82df5429471e71f3cc",
+      "git_raw_blob": "427f36bf307f78716b9b3d4c3d070d0e91200c38"
+    },
+    "_bmad/_config/skill-manifest.csv": {
+      "bytes": 9658,
+      "sha256": "6d414dcda3fbfc4c8716ab309dbfa5493c0ce0fee8566cc822918e5c874a2544",
+      "git_raw_blob": "0e3aad50d08eb91308a43d1960db711824922955"
+    },
+    "_bmad/bmm/config.yaml": {
+      "bytes": 510,
+      "sha256": "61a809db3775a236c34520d82920a09812387db396118dfa308990eeaccdcbb3",
+      "git_raw_blob": "373506fb421e081b677085487a28249ca851b41d"
+    },
+    "_bmad/bmm/module-help.csv": {
+      "bytes": 4893,
+      "sha256": "c3c1033c8fffef924bb71342e22a0a2a8243911a0b856e2aa7804d8bb49feb5a",
+      "git_raw_blob": "e031b73e841613a0fe4bb621024e991845ea3773"
+    },
+    "_bmad/bmm/v6-shims/README.md": {
+      "bytes": 1769,
+      "sha256": "5495469425b50bca1cd74899c6ebfe840f137cf2a68d008bc993aa2574bd9972",
+      "git_raw_blob": "3581be4a4db7b698002afce623b767c932618c85"
+    },
+    "_bmad/core/config.yaml": {
+      "bytes": 244,
+      "sha256": "25c5bcf3ccaeefcd1455f1b829a17a0dcddeb4dd5820c0390a4a5f64b9514bb4",
+      "git_raw_blob": "a079e035e69a81d50a964e98ed80f2a800059855"
+    },
+    "_bmad/core/module-help.csv": {
+      "bytes": 2562,
+      "sha256": "38846d71f87159345d6a6256a170c142fb3f53d9cf9c258c9ee6f26bd88a86c7",
+      "git_raw_blob": "a422f0997521932b4b24c83975805dc96f45bd02"
+    },
+    "_bmad/core/v6-shims/README.md": {
+      "bytes": 1507,
+      "sha256": "017900bb03baeddc0262041a6aa85bce744e8c45991dcde32ef042f9bc2a32b2",
+      "git_raw_blob": "865f8e599387b44111d6b71757d9b4c393bfb18a"
+    },
+    "_bmad/render/bmad-build/newrouge-b-story-1-1-02cdfd490b63/e98b3afbaa8732d08aa0/compile-epic-context.md": {
+      "bytes": 2918,
+      "sha256": "6793b15ae85766cee529e6b349e45f2c6ec9e3212019611c29e8c77b4dc4b924",
+      "git_raw_blob": "f5963b36ca1ac9410b151a6ccd75755123ddae3b"
+    },
+    "_bmad/render/bmad-build/newrouge-b-story-1-1-02cdfd490b63/e98b3afbaa8732d08aa0/manifest.json": {
+      "bytes": 7835,
+      "sha256": "dfcc013a1d7578142a27746720a3ceea55cfc4aeab2d2dc986a45f94758b744b",
+      "git_raw_blob": "039bdf20f265a9ddf24a6864eca490b28b3dd3be"
+    },
+    "_bmad/render/bmad-build/newrouge-b-story-1-1-02cdfd490b63/e98b3afbaa8732d08aa0/references/claims-check.md": {
+      "bytes": 1430,
+      "sha256": "50ea17cb89a78ef815286dde2dabfd09f1dc9841d07a10857f88b39ab7b9bd2a",
+      "git_raw_blob": "8d7c9db42368b1b835e3adf138fba7f6fd08749d"
+    },
+    "_bmad/render/bmad-build/newrouge-b-story-1-1-02cdfd490b63/e98b3afbaa8732d08aa0/references/deletion-check.md": {
+      "bytes": 1009,
+      "sha256": "0f1f124e4e957147e89164a272b10bedc694ad0d9ad2618c8610ac74ee9cb0da",
+      "git_raw_blob": "5cc3d771aabef26e88f20c06ab87bdbd3c182ada"
+    },
+    "_bmad/render/bmad-build/newrouge-b-story-1-1-02cdfd490b63/e98b3afbaa8732d08aa0/review-prompts/edge-case-hunter.md": {
+      "bytes": 8361,
+      "sha256": "8fc046af1cbf4ecc928207cec75e29c3c260adb86cc7da77537ade3b3a3b9448",
+      "git_raw_blob": "7a0744d6af23a196fdddbd721fe6bd1ec5d7f94f"
+    },
+    "_bmad/render/bmad-build/newrouge-b-story-1-1-02cdfd490b63/e98b3afbaa8732d08aa0/review-prompts/verification-gap.md": {
+      "bytes": 9821,
+      "sha256": "45ab0b8c4c56c5c055c97a293a8591a67e256d0b1a2058ce1f093cd866be8d03",
+      "git_raw_blob": "7fd9d744e90f1f2b18fc4cd74e865c0b57d9d296"
+    },
+    "_bmad/render/bmad-build/newrouge-b-story-1-1-02cdfd490b63/e98b3afbaa8732d08aa0/spec-template.md": {
+      "bytes": 4753,
+      "sha256": "e217325964857ebd90a9508bf171eddc2c4ad1b0b9b32a119775ac5c015695fd",
+      "git_raw_blob": "f1c88f05dec51be3c0df930520942ac9687eee37"
+    },
+    "_bmad/render/bmad-build/newrouge-b-story-1-1-02cdfd490b63/e98b3afbaa8732d08aa0/step-01-clarify-and-route.md": {
+      "bytes": 12884,
+      "sha256": "95c4ad699676adf5139b6d9383d9e83595e0dbac800bc19644d4c7765cc28a81",
+      "git_raw_blob": "9bd6b96f954ee03484e3210a3008807f108585b9"
+    },
+    "_bmad/render/bmad-build/newrouge-b-story-1-1-02cdfd490b63/e98b3afbaa8732d08aa0/step-02-plan.md": {
+      "bytes": 6652,
+      "sha256": "fafb3acb5c63de15aa395b92ee8518d93bd9a90fe8fe616b16886e774919df7e",
+      "git_raw_blob": "aa93aaed2e811bcbb5a57b9b9c80fbe1c65f10bd"
+    },
+    "_bmad/render/bmad-build/newrouge-b-story-1-1-02cdfd490b63/e98b3afbaa8732d08aa0/step-03-implement.md": {
+      "bytes": 4502,
+      "sha256": "ea4ba7678e33cb74bbe841cd42d4da7fc94d0963eb2bdc249233338c9f444f64",
+      "git_raw_blob": "f3ab6ea49dfd1fa78c381826a2f6d27189c675e6"
+    },
+    "_bmad/render/bmad-build/newrouge-b-story-1-1-02cdfd490b63/e98b3afbaa8732d08aa0/step-04-review.md": {
+      "bytes": 13614,
+      "sha256": "dded445c1f14b48a3410290e9cceff90e81070409314ff543dcf95093a718b3c",
+      "git_raw_blob": "e776fe808c2adbbf73ec621e557eaad1bb54369a"
+    },
+    "_bmad/render/bmad-build/newrouge-b-story-1-1-02cdfd490b63/e98b3afbaa8732d08aa0/step-05-present.md": {
+      "bytes": 1395,
+      "sha256": "073fb3d559a5d0d254cd467030c9b47a6cf22d73d6c4065b477670fe457206b1",
+      "git_raw_blob": "2fa547760a866247ad6d63a6a2dce54ed93acc16"
+    },
+    "_bmad/render/bmad-build/newrouge-b-story-1-1-02cdfd490b63/e98b3afbaa8732d08aa0/step-oneshot.md": {
+      "bytes": 7432,
+      "sha256": "63e9ceb7869ab22d7be746fb77c07c2930f946b97cbfb09470f6c4a3c527cbc9",
+      "git_raw_blob": "aa11d3bcb03bc6eba57865e908e8272377cbf3e3"
+    },
+    "_bmad/render/bmad-build/newrouge-b-story-1-1-02cdfd490b63/e98b3afbaa8732d08aa0/sync-sprint-status.md": {
+      "bytes": 459,
+      "sha256": "db5564f0e9b274a5fbdd1a354fac738d83bc1aa923154f8a28a5a1a41c840d15",
+      "git_raw_blob": "a79b1df8658df00157746026e57aeb1d6d9fdf95"
+    },
+    "_bmad/render/bmad-build/newrouge-b-story-1-1-02cdfd490b63/e98b3afbaa8732d08aa0/workflow.md": {
+      "bytes": 3963,
+      "sha256": "f578a3861f74978e6ca70f886d158b34be5ba54e0c80978b7a142684b04a9baa",
+      "git_raw_blob": "933c1cf5166a6800b71109d47b8277351568d4af"
+    },
+    "_bmad/config.toml": {
+      "bytes": 3238,
+      "sha256": "5b7c48258f2ba749f60c941b7c4b29318f0571e58b1f941f9563392d86b71a86",
+      "git_raw_blob": "845a6c7d953db15aaa56eaa291231f17a6c6e17b"
+    },
+    "_bmad/config.user.toml": {
+      "bytes": 961,
+      "sha256": "5c2ff60113c5f3c3cf0184a467bb14a75e0a5c0240df8838f6cba89164adda32",
+      "git_raw_blob": "b6159023a9738f4db490f54062a621ea28a69f7d"
+    },
+    "_bmad/custom/config.toml": {
+      "bytes": 348,
+      "sha256": "d00d0bb7e0e03a7e32a9c7c935f2509e17107bb9949162450e408adef01878df",
+      "git_raw_blob": "4c3a857c2ebdadd52c5de81d73f4b403c36179b0"
+    },
+    "_bmad/custom/config.user.toml": {
+      "bytes": 379,
+      "sha256": "ddb0b0034d3a63261fcb251f596ff6755b4b878682c6f6a950736ddf0094e64a",
+      "git_raw_blob": "847e9e21c0f713dd65acc97b584c6f954960698f"
+    },
+    "logs/ci/2026-11-04/b-route-story-2-2-build/session.json": {
+      "bytes": 2470,
+      "sha256": "700a3cef273dcfe7ad11a259bae11708428a06588464207647ccab470d4d2fe3",
+      "git_raw_blob": "2806cab28ee9566940c956d51bf674eea5622b6d"
+    },
+    "logs/ci/2026-11-04/b-route-story-2-2-build/SESSION-RECOVERY.md": {
+      "bytes": 10479,
+      "sha256": "118e017007a1cd6ca8286fa5bb802bfc7b716e8060854fd37bc985ffe78e43dc",
+      "git_raw_blob": "ed6fd12fc871ac87e126f8835b479e814eff5df3"
+    },
+    "logs/ci/2026-11-04/b-route-story-2-2-build/native-step2-approval.json": {
+      "bytes": 646,
+      "sha256": "0c3bb17df1148641728e7b343d29352e7caa15a7a14538f711a1d4157cc11779",
+      "git_raw_blob": "5af8cb6d1e355684b68156262ac7cf9f2c2e7370"
+    },
+    "logs/ci/2026-11-04/b-route-story-2-2-build/native-step3-matrix-audit-partial.json": {
+      "bytes": 3708,
+      "sha256": "530416c77c032c3925a6adcd1b9d7fbf5ddf5cc2bee3c5fe1821d493400cad92",
+      "git_raw_blob": "2dbd55a1882f173f6ddf8cd3a1031d0d76bda327"
+    },
+    "logs/ci/2026-11-04/b-route-story-2-2-build/native-step3-proof-and-snapshot-verdicts.json": {
+      "bytes": 1562,
+      "sha256": "753497b61b9404e8f404d97690aee341a1adcabd114bb350483f10f61dc6a07b",
+      "git_raw_blob": "9784fd248efd14b2ae64dd788ad29b167e3726ca"
+    },
+    "logs/ci/2026-11-04/b-route-story-2-2-build/windows-run-41828857551-job-126570514428.log": {
+      "bytes": 158945,
+      "sha256": "92b9d07f1b3eabcc328a3e650a3aa0fb5ef4919567fb41f39cceec60c61dda1e",
+      "git_raw_blob": "f46a6009a90e14c20b36898fd52ae4f3f71c0475"
+    },
+    "logs/ci/2026-11-04/b-route-story-2-2-build/windows-run-41831324047-job-126578946400.log": {
+      "bytes": 158303,
+      "sha256": "7f8a0f682ac8c089c7445506d6a6dad1d779d572ad69df6df504e9319c7e2bb1",
+      "git_raw_blob": "4f3cec06f579c45e1845b252ca0dec74591616cb"
+    },
+    "logs/ci/2026-11-04/b-route-story-2-2-build/windows-run1-verified.json": {
+      "bytes": 2086,
+      "sha256": "dd0b6fab469de47a22e7dc839b9524ced699e06e2a102ef68c0a4b0934f2903a",
+      "git_raw_blob": "0ea22e0c1539fcb80873b673a216f6f814ec7754"
+    },
+    "logs/ci/2026-11-04/b-route-story-2-2-build/windows-run1-source-identity-verified.json": {
+      "bytes": 3117,
+      "sha256": "d3fd5872d35c19b9b90d7ac1d94b97b6781674f1b5e0673b02476e9b031c75a5",
+      "git_raw_blob": "1b1769241dc79a45be302290ccd5654ad0328802"
+    },
+    "logs/ci/2026-11-04/b-route-story-2-2-build/windows-run2-verified.json": {
+      "bytes": 4828,
+      "sha256": "90a96722f1871cc2365d62dbf681f56f0a747a757839de466b56185d1b285699",
+      "git_raw_blob": "387408876b63a3519a7a27823e9641d4cddbd374"
+    },
+    "logs/ci/2026-11-04/b-route-story-2-2-build/windows-run2-method-results.json": {
+      "bytes": 29584,
+      "sha256": "7941bd5828fb3cdbb3a836a50828e4222e8f5251bf71bb39645a0ed5defd5846",
+      "git_raw_blob": "ce52a88804f0e37ead86dbb2c0bf11957a623957"
+    },
+    "logs/ci/2026-11-04/b-route-story-2-2-build/code-bundle-manifest-run2.json": {
+      "bytes": 3447,
+      "sha256": "1e2f4a658a97eb52acec16fcadd696fb1762b6c8561f845052e55a4653099cca",
+      "git_raw_blob": "d6f31042f4dce366572fa66603077f4ceea9280f"
+    },
+    "logs/ci/2026-11-04/b-route-story-2-2-build/actual-model-backend-blocker.json": {
+      "bytes": 2505,
+      "sha256": "3b0beb36e5dec003346dca3127f322cc6786a308013aa63b495333c9c0acf700",
+      "git_raw_blob": "38770e2ac1091927b3093f279eda9adf403ad895"
+    },
+    "logs/ci/2026-11-04/b-route-story-2-2-build/model-backend-init-path-diagnostic/result.json": {
+      "bytes": 523,
+      "sha256": "38e5e48449fa20f459b2fb3aa95a991d974f07eca5b32be0853b62b687bb0edf",
+      "git_raw_blob": "3f99a64dc98f01aa7d728c3835628a62231d2283"
+    },
+    "logs/ci/2026-11-04/b-route-story-2-2-build/model-backend-probe-approved-execution/result.json": {
+      "bytes": 266,
+      "sha256": "f277cf09a3c3358db79e24dbd0093cfb23596ff984eada7f2410a705b9d01a9c",
+      "git_raw_blob": "e8c751c42df0f62145c35c233e5941edbcca45a1"
+    },
+    "logs/ci/2026-11-04/b-route-story-2-2-build/root-final-verification/summary.json": {
+      "bytes": 1100,
+      "sha256": "bc8326701ddfd7bb071fae95dfbd245d33ec65715848e6c4a5155d7bf0a9fddb",
+      "git_raw_blob": "9aedcae90843c6026f1ef3dfae1906723a234e9d"
+    },
+    "logs/ci/2026-11-04/b-route-story-2-2-build/root-final-verification/linux-relevant-suites.stdout": {
+      "bytes": 57689,
+      "sha256": "e2ee6130f07252e53c6efa1afd4d9a9de4d20c8c3d4f3e7522c6c1a2af356723",
+      "git_raw_blob": "9c65d888f55bb73741b10a0eaf5edd4b0f6fb632"
+    },
+    "logs/ci/2026-11-04/b-route-story-2-2-build/root-final-verification/linux-relevant-suites.stderr": {
+      "bytes": 33240,
+      "sha256": "0e1acee095ba4df2ef809319e7b39b44a3e77f71f060c9783a5f5d69625f635a",
+      "git_raw_blob": "7fbad014b52f68f32d39a8018f27f3d74aa7204b"
+    },
+    "logs/ci/2026-11-04/b-route-story-2-2-build/root-final-verification/cli-v2.stdout": {
+      "bytes": 61,
+      "sha256": "6b22ed50b7dfc0127cb4f591cdba9f35f44f7e6688bd963e5de83c1c48ca5ee0",
+      "git_raw_blob": "8a166b631c2236821a6e9da6ae93d234d7732fcb"
+    },
+    "logs/ci/2026-11-04/b-route-story-2-2-build/root-final-verification/cli-v2.stderr": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "git_raw_blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"
+    },
+    "logs/ci/2026-11-04/b-route-story-2-2-build/root-baseline-attribution/result-root-path-fixed.json": {
+      "bytes": 2132,
+      "sha256": "9390d724afefd9367aee4dd692926d2fb5ea249a7e437f1029a089ad22b76d1e",
+      "git_raw_blob": "ce1dd21407e96c40a8943662bc1c07b4fc8b247c"
+    },
+    "logs/ci/2026-11-04/b-route-story-2-2-build/root-baseline-attribution/current-root-path-fixed.stdout": {
+      "bytes": 647,
+      "sha256": "53230e1efdbf030cce5995aeeaa550276365fdb0339add92d5210d82f41dbf17",
+      "git_raw_blob": "fabece365fbafcbb02d0937624090368f4fdd0ca"
+    },
+    "logs/ci/2026-11-04/b-route-story-2-2-build/root-baseline-attribution/current-root-path-fixed.stderr": {
+      "bytes": 3103,
+      "sha256": "ccec5b7f4a95691825e18853bf260c11a7f9a0b06e6ef0510b5dea31dd2dee3c",
+      "git_raw_blob": "c982070ac87139324c33d5ee120ed30485a82684"
+    },
+    "logs/ci/2026-11-04/b-route-story-2-2-build/root-baseline-attribution/original-root-path-fixed.stdout": {
+      "bytes": 747,
+      "sha256": "6dba83ceac7b1dcb3e629a4e0d186706d18b0a06fc553b87275e682464b0029e",
+      "git_raw_blob": "4cae73b13666165d4b5849a3f4dab260b78d5a73"
+    },
+    "logs/ci/2026-11-04/b-route-story-2-2-build/root-baseline-attribution/original-root-path-fixed.stderr": {
+      "bytes": 3103,
+      "sha256": "5fe17c57e4cf7e25c1b870f17526e59f57ad1fff16253103389244a9036e4d74",
+      "git_raw_blob": "923f618ef0a96f3ffd844bfbeaf2a0999a6e8116"
+    },
+    "logs/ci/2026-11-04/b-route-story-2-2-build/independent-synthetic-cli.py": {
+      "bytes": 6927,
+      "sha256": "a6cd9048b5fafd7dedfd28c0c3f501a5fd65d71ec59051d5bf6fdbee605fdd22",
+      "git_raw_blob": "0083e3e455725738e8bf58898d74d00d1baf2a2e"
+    },
+    "logs/ci/2026-11-04/b-route-story-2-2-build/root-final-verification.py": {
+      "bytes": 3123,
+      "sha256": "b43405687ba5a587ae9a4ae7cf23d688a90b3fcf535554222514bbf9dca74b38",
+      "git_raw_blob": "e054a5b2e287ca1ec6aa20b2e2a97c51a067af8e"
+    },
+    "logs/ci/2026-11-04/b-route-story-2-1-build/native-step5-completion.json": {
+      "bytes": 721,
+      "sha256": "f6e68534345e5dd335f95f76e5014f806c31a2773f70fc31bc47ab02d2d75391",
+      "git_raw_blob": "e461eea8a1995911a118ce5f9979a9715856986b"
+    }
+  },
+  "source_file_count": 71,
+  "source_bytes": 1087221,
+  "frozen_intent_sha256": "9454a00ff8d169a1f540eff43b33ed742d01249b87a78b0742ea2797ce0e5192",
+  "native_step": 3,
+  "story_status": "in-progress",
+  "actual_model_acceptance": false,
+  "evidence_scan": {
+    "credential_pattern_candidates": 0,
+    "inspection_limits": 0,
+    "excluded": "All home state, credentials, auth stores, sessions, unrelated evidence, private recovery archives, all-ref Git bundles and private Library IDs/links."
+  },
+  "limitations": [
+    "Selected original proof files are preserved byte-for-byte, not regenerated or presented as tests performed in a new instance.",
+    "This is a migration commit based on the public candidate, not the original local commit history.",
+    "Only the active Build snapshot and installation configuration are included; this does not constitute a full BMAD installation.",
+    "Prior Story evidence, preimage directories and complete synthetic fixture/proof directories remain in the original private checkpoint; source references to omitted proof are not assertions of their presence.",
+    "Absolute paths in archived evidence refer to the original worktree. Do not rewrite frozen evidence to make it current.",
+    "Story2.2 stays at Step3 until actual-model acceptance and native review complete.",
+    "Public commits may remain recoverable after deleting files or the branch."
+  ]
+}

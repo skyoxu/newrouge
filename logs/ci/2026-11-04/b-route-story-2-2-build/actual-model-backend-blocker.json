@@ -1,0 +1,50 @@
+{
+  "observed_at": "2026-11-04T11:22:24.437098+00:00",
+  "cli_state_directory": "/home/agent/.codex",
+  "filesystem_reports_readonly": true,
+  "cli_available": true,
+  "cli_login_status": "Logged in using ChatGPT",
+  "attempts": [
+    {
+      "path": "model-backend-probe/result.json",
+      "result": "app-server initialization EROFS before output"
+    },
+    {
+      "path": "model-backend-probe-ephemeral/result.json",
+      "result": "documented ephemeral option same EROFS"
+    },
+    {
+      "path": "model-backend-init-path-diagnostic/result.json",
+      "result": "file paths only: state_5.sqlite, installation_id; no credential buffers inspected"
+    },
+    {
+      "path": "model-backend-probe-state-permission/result.json",
+      "result": "one narrow noncredential state path permission attempt; command executed, same EROFS"
+    }
+  ],
+  "openai_backend_available": false,
+  "openai_backend_missing": [
+    "openai SDK",
+    "OPENAI_API_KEY binding"
+  ],
+  "actual_model_output_observed": false,
+  "model_dispatch_count": "unknown; no completed model output or semantic receipt",
+  "network_policy_modified": false,
+  "credentials_copied_or_printed": false,
+  "codex_home_relocated": false,
+  "blocks": "Story2.2 actual independent model semantic acceptance; deterministic/synthetic/Windows work continues",
+  "automatic_approval_rejection": false,
+  "next_safe_action": "finish implementation/synthetic/Windows proofs; retain actual-model AC incomplete until a supported runner can initialize within its sanctioned writable state scope",
+  "last_observed_at": "2026-11-04T11:37:24.137597+00:00",
+  "approved_execution": {
+    "result_ref": "model-backend-probe-approved-execution/result.json",
+    "outer_filesystem_initialization_passed": true,
+    "timed_out_seconds": 45,
+    "model_output_observed": false,
+    "network_failure": "HTTP CONNECT 403 via inherited proxy for wss://chatgpt.com/backend-api/codex/responses; runner automatically attempted HTTPS fallback and remained disconnected",
+    "automatic_transport_retries_observed": "2/5 through 5/5, then HTTPS reconnects",
+    "no_further_probe_after_explicit_proxy_denial": true
+  },
+  "remaining_required_capability": "Supported approved network configuration for the logged-in Codex backend, plus sanctioned writable client state; or an already approved isolated backend. No proxy/TLS/DNS bypass, no credential relocation.",
+  "current_external_process": "none; probe process group terminated at its recorded 45-second limit"
+}

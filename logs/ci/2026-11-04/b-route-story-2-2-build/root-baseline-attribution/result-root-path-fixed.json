@@ -1,0 +1,44 @@
+{
+  "results": [
+    {
+      "mode": "current",
+      "exit_code": 1,
+      "elapsed_seconds": 0.7953104190019076,
+      "summary": {
+        "mode": "current",
+        "tests": 3,
+        "failures": [
+          "test_existing_manifest_implementation_is_copied_by_prepare (test_planning_main_audit_fixes.PlanningMainAuditFixesTests.test_existing_manifest_implementation_is_copied_by_prepare)",
+          "test_explicit_existing_test_is_prepared_and_drift_blocks (test_planning_main_audit_fixes.PlanningMainAuditFixesTests.test_explicit_existing_test_is_prepared_and_drift_blocks)"
+        ],
+        "errors": [
+          "test_manifest_and_milestone_checkout_eol_keep_binding_but_real_edit_blocks (test_planning_main_audit_fixes.PlanningMainAuditFixesTests.test_manifest_and_milestone_checkout_eol_keep_binding_but_real_edit_blocks)"
+        ],
+        "skipped": []
+      },
+      "stderr_sha256": "ccec5b7f4a95691825e18853bf260c11a7f9a0b06e6ef0510b5dea31dd2dee3c"
+    },
+    {
+      "mode": "original",
+      "exit_code": 1,
+      "elapsed_seconds": 0.7284403159974318,
+      "summary": {
+        "mode": "original",
+        "tests": 3,
+        "failures": [
+          "test_existing_manifest_implementation_is_copied_by_prepare (test_planning_main_audit_fixes.PlanningMainAuditFixesTests.test_existing_manifest_implementation_is_copied_by_prepare)",
+          "test_explicit_existing_test_is_prepared_and_drift_blocks (test_planning_main_audit_fixes.PlanningMainAuditFixesTests.test_explicit_existing_test_is_prepared_and_drift_blocks)"
+        ],
+        "errors": [
+          "test_manifest_and_milestone_checkout_eol_keep_binding_but_real_edit_blocks (test_planning_main_audit_fixes.PlanningMainAuditFixesTests.test_manifest_and_milestone_checkout_eol_keep_binding_but_real_edit_blocks)"
+        ],
+        "skipped": []
+      },
+      "stderr_sha256": "5fe17c57e4cf7e25c1b870f17526e59f57ad1fff16253103389244a9036e4d74"
+    }
+  ],
+  "raw_logs_preserved": true,
+  "not_a_pass": true,
+  "first_driver_attempt": "import failed before tests; retained, corrected only sys.path root",
+  "scope": "only three reported MVG cases"
+}

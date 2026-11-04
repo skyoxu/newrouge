@@ -1752,3 +1752,11 @@ Helper modules below are referenced directly by at least two included entry scri
 - `scripts/python/compile_task_triplet.py`: emits v2 explicit task operations and an affected-id export file for lossless Taskmaster export.
 
 - `dev-cli run-single-task-chapter6`: forwards `--milestone-handoff` and `--milestone-regression-summary`; consumes regression evidence only for current HEAD and a clean worktree.
+
+## B 路线只读预检入口增量
+
+`scripts/python/preflight_b_route_migration.py` 是 `dev_cli.py b-route-preflight` 的直接 owner；显式 `--root / --epics / --protection-input / --candidate / --intents / --run-id`，仅全新 logs。直接依赖 `_b_route_preflight.py`；复用 `_b_route_codec.py / _b_route_records.py / _b_route_protection.py / _b_route_inventory.py / _b_route_record_owners.py` 与累计防削弱规则。候选逻辑路径覆盖层复用 `_mvg_manifest.py / build_source_ledger.py` 的原生静态规则和模式解析，报告末尾重采当前与候选依赖闭包，不调用旧 compiler 或写者。退出 0／1／2、Windows 正负样本及恢复边界见[owner 说明](b-route-migration-preflight.md)。
+
+## B 路线 3A 来源记账 owner
+
+`scripts/python/account_b_route_sources.py` 是 `dev_cli.py b-route-sources` 的直接入口；`_b_route_sources.py` 唯一拥有 prepare／account 编排。`--stage audit|verify` 交给唯一 `_b_route_source_audit.py` owner；两步独立性、真实／synthetic 证明、持久预算及只读复验见[来源审计说明](b-route-source-audit.md)。复用原生累计解析、语义分批／编译／投影及无损传输，仅写全新 logs。显式声明／提议、路径、原字节归档、退出码、不可变事件及验证限制见[owner 说明](b-route-source-accounting.md)。来源注册、Task、manifest、旧 proof 和正式规划记录保持原状；准备、完整记账、独立审计和正式采纳分别判断，现行 A 有效。

@@ -1,0 +1,216 @@
+{
+  "document_version": "newrouge.b-route-protection-input.v1",
+  "input_id": "b-route-mature-protection-2026-11-03",
+  "revision": 1,
+  "purpose": "已审保护候选与冻结A输入；保留阻断，不是正式保护认证或生效策略",
+  "captured_head": "fc9fd0d62dedf4dc70660074c453f4bf420c8650",
+  "captured_branch": "refs/heads/build/b-route-story-1-5-2026-11-03",
+  "code_test_candidate": "23e8a9d145637547e3ad2e9b17e92825e4da2596",
+  "definition": {
+    "projection_codec": "newrouge.b-route-task-definition.v1",
+    "content_codec": "newrouge.b-route-json.v1",
+    "mutable_allowlist": [
+      "Task.status",
+      "Task.subtasks[].status"
+    ],
+    "all_other_fields_and_order": "完整保留；包括未知字段、history和更深层status",
+    "status_authority": ".taskmaster/tasks/tasks.json",
+    "per_task_set_digest": "sha256:9db876811ef66342e6eabbdaba6b48f8552c3f49063e65bd73dd731c158c49b5"
+  },
+  "inventory_ref": {
+    "owner": "frozen_a_inventory",
+    "ref": "logs/ci/2026-11-03/b-route-protection/implementation-current-20261103T202524Z/inventory.json",
+    "files": [
+      {
+        "path": "logs/ci/2026-11-03/b-route-protection/implementation-current-20261103T202524Z/inventory.json",
+        "raw_digest": "sha256:df04472278fbaa77cdf642f9c142b2447ffbc5422254d835bad7f7e2f5c40605"
+      }
+    ]
+  },
+  "snapshot_ref": {
+    "owner": "frozen_a_inventory",
+    "ref": "logs/ci/2026-11-03/b-route-protection/implementation-current-20261103T202524Z/snapshot.json",
+    "files": [
+      {
+        "path": "logs/ci/2026-11-03/b-route-protection/implementation-current-20261103T202524Z/snapshot.json",
+        "raw_digest": "sha256:ffbc5f0330ab36d66ed817d6fe5dc58999dfa2ea4987549435b9c5beec5870be"
+      }
+    ]
+  },
+  "task_definitions_ref": {
+    "owner": "frozen_a_inventory",
+    "ref": "logs/ci/2026-11-03/b-route-protection/implementation-current-20261103T202524Z/snapshot.json#/tasks",
+    "files": [
+      {
+        "path": "logs/ci/2026-11-03/b-route-protection/implementation-current-20261103T202524Z/snapshot.json",
+        "raw_digest": "sha256:ffbc5f0330ab36d66ed817d6fe5dc58999dfa2ea4987549435b9c5beec5870be"
+      }
+    ]
+  },
+  "triplet_definition_ref": {
+    "owner": "frozen_a_inventory",
+    "ref": "logs/ci/2026-11-03/b-route-protection/implementation-current-20261103T202524Z/snapshot.json#/triplet/definition",
+    "files": [
+      {
+        "path": "logs/ci/2026-11-03/b-route-protection/implementation-current-20261103T202524Z/snapshot.json",
+        "raw_digest": "sha256:ffbc5f0330ab36d66ed817d6fe5dc58999dfa2ea4987549435b9c5beec5870be"
+      }
+    ]
+  },
+  "raw_archive_index_ref": {
+    "owner": "frozen_a_inventory",
+    "ref": "logs/ci/2026-11-03/b-route-protection/implementation-current-20261103T202524Z/snapshot.json#/raw_files",
+    "files": [
+      {
+        "path": "logs/ci/2026-11-03/b-route-protection/implementation-current-20261103T202524Z/snapshot.json",
+        "raw_digest": "sha256:ffbc5f0330ab36d66ed817d6fe5dc58999dfa2ea4987549435b9c5beec5870be"
+      }
+    ]
+  },
+  "frozen_a_candidates_ref": {
+    "owner": "frozen_a_inventory",
+    "ref": "logs/ci/2026-11-03/b-route-protection/implementation-current-20261103T202524Z/snapshot.json#/frozen_a/candidates",
+    "files": [
+      {
+        "path": "logs/ci/2026-11-03/b-route-protection/implementation-current-20261103T202524Z/snapshot.json",
+        "raw_digest": "sha256:ffbc5f0330ab36d66ed817d6fe5dc58999dfa2ea4987549435b9c5beec5870be"
+      }
+    ]
+  },
+  "historical_inventory_ref": {
+    "owner": "frozen_a_inventory",
+    "ref": "logs/ci/2026-11-03/b-route-baseline-inventory/final-20261103T105723Z-a/inventory.json",
+    "files": [
+      {
+        "path": "logs/ci/2026-11-03/b-route-baseline-inventory/final-20261103T105723Z-a/inventory.json",
+        "raw_digest": "sha256:d2e665a2fd12bc8c4f96c8e09deba7d79d9270f284b396a87fe6de7231794815"
+      }
+    ]
+  },
+  "manifest_refs": [
+    {
+      "owner": "manifest",
+      "ref": "docs/testing/mvg/m1-critical.json",
+      "files": [
+        {
+          "path": "docs/testing/mvg/m1-critical.json",
+          "raw_digest": "sha256:9cdf22eb5a57381af037471252602c7cabf512137925d9c3fc1d6f7154e7de7a"
+        }
+      ]
+    },
+    {
+      "owner": "manifest",
+      "ref": "docs/testing/mvg/m1-full.json",
+      "files": [
+        {
+          "path": "docs/testing/mvg/m1-full.json",
+          "raw_digest": "sha256:83ea0ea5c0433028804d1ef9e10293b09488d4788f8e4fddac6f5c5e0e1b5d56"
+        }
+      ]
+    },
+    {
+      "owner": "manifest",
+      "ref": "docs/testing/mvg/reward-pilot.json",
+      "files": [
+        {
+          "path": "docs/testing/mvg/reward-pilot.json",
+          "raw_digest": "sha256:1b16b9e3a4cbfc43097be8aeabcdc026a8867f238f4be42978deeb09b23700c4"
+        }
+      ]
+    }
+  ],
+  "rules_refs": [
+    {
+      "path": "scripts/python/_b_route_protection.py",
+      "raw_digest": "sha256:d3e5cf661e7ad168fd00acf14150b57d905817617122e7c38bac0bc392120bff",
+      "git_blob": "1c697f9270322216c845b73dbd134b2093ad8dac"
+    },
+    {
+      "path": "scripts/python/_b_route_codec.py",
+      "raw_digest": "sha256:57b83b6ed9c69676bd721b5a515581df882b12e961e00bf7a4aec33ae6bc0697",
+      "git_blob": "1344fdedca0e81a7d229823afa796c1a72a6679b"
+    },
+    {
+      "path": "scripts/python/_b_route_records.py",
+      "raw_digest": "sha256:0eaed2014652240e75962456230ef96d192964de4d2f47504c84dd65403c7721",
+      "git_blob": "62bce881bd795817179ba061a5b0cd496be1f312"
+    },
+    {
+      "path": "scripts/python/_b_route_inventory.py",
+      "raw_digest": "sha256:e9e4f5f446a7355189118b644ce297c7b7d2fda8dc9b64000e07237fe6147273",
+      "git_blob": "bb976d4a5247792faff23a7046ff754ac0049939"
+    },
+    {
+      "path": "scripts/python/update_mvg_baseline.py",
+      "raw_digest": "sha256:a43f21089fd40f0ef5d9ebca72e3bb2d6005d3b4d83894e6573c22106e78e67d",
+      "git_blob": "a612bcba0d23d7bef9f225d6e0a745f6f3305482"
+    }
+  ],
+  "scope_summary": {
+    "task_counts": {
+      "master": 133,
+      "back": 89,
+      "gameplay": 124
+    },
+    "master_states": {
+      "done": 127,
+      "cancelled": 6
+    },
+    "frozen_candidate_count": 133,
+    "all_frozen_candidates_blocked": true,
+    "blocker_counts": {
+      "committed_reverse_governance_not_proven": 133,
+      "historical_evidence_not_proven": 87,
+      "task_source_scope_not_proven": 6
+    }
+  },
+  "review": {
+    "result": "保护候选及引用技术审阅、原生三层评审与六组补丁收口完成；Linux46与Windows194项通过、零跳过；历史及A资格阻断保留",
+    "authority": "用户明确委托代理持续完成全部Story并自行作常规技术与审阅选择；未声称用户逐项人工验收",
+    "reviewer": "delegated technical coordinator",
+    "evidence_ref": {
+      "owner": "frozen_a_inventory",
+      "ref": "logs/ci/2026-11-03/b-route-story-1-5-build-201113Z/root-material-review.json",
+      "files": [
+        {
+          "path": "logs/ci/2026-11-03/b-route-story-1-5-build-201113Z/root-material-review.json",
+          "raw_digest": "sha256:7aee614e70b7d29bac6210227cdc2a110aa955aa48aece011b992a073f2e3077"
+        }
+      ]
+    },
+    "windows_run": 41788129017,
+    "windows_status": "verified194pass0skip; formal protection/A qualification still blocked"
+  },
+  "unresolved": [
+    {
+      "id": "T108-required-original-missing",
+      "path": "logs/ci/2026-05-06/sc-build-tdd/summary.json",
+      "constraint": "必需历史原件缺失；不补造、不改称optional、不以新测试或旧done替代；正式保护认证仍阻断"
+    },
+    {
+      "id": "frozen-a-qualification-unproven",
+      "count": 133,
+      "constraint": "未证明完整已提交policy/catalog/origins反向关系；逐项source scope、旧操作候选及原始依据见frozen_a_candidates_ref；全部A资格blocked"
+    },
+    {
+      "id": "other-historical-and-source-limitations",
+      "historical_candidate_count": 87,
+      "source_scope_candidate_count": 6,
+      "constraint": "保留原pointer与unknown/template诊断，不把这些汇总统称实际missing文件或运行失败"
+    }
+  ],
+  "epic2_bootstrap_conditions": [
+    "重验本文件引用、完整归档与当前适用定义/来源/累计义务；缺失、损坏或漂移保留阻断",
+    "T108等历史限制必须如实保留；不可采纳capture不能认证正式保护基准",
+    "按所属Story交付共享提交服务与受治理bootstrap；本材料不绕过journal/receipt/catalog",
+    "对各Task的A资格另证完整已提交反向关系、冻结定义/source scope及允许原操作；未知不得放行",
+    "启用前显式A入口仍依原有效范围；本材料不切默认B、不退役A、不创建新Task或新状态权威"
+  ],
+  "authorization": {
+    "formal_protection_baseline": false,
+    "frozen_a": false,
+    "write": false,
+    "policy_bootstrap": false,
+    "target_projection_verified": false
+  }
+}

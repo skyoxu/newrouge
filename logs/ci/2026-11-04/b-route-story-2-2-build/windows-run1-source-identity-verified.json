@@ -1,0 +1,107 @@
+{
+  "environment": "windows-run1-environment.json",
+  "checked": [
+    {
+      "path": "scripts/python/_b_route_source_audit.py",
+      "git_blob_verified": true,
+      "raw_verified": true,
+      "workflow_checkout_crlf_allowed": false
+    },
+    {
+      "path": "scripts/python/_b_route_sources.py",
+      "git_blob_verified": true,
+      "raw_verified": true,
+      "workflow_checkout_crlf_allowed": false
+    },
+    {
+      "path": "scripts/python/_planning_skill_common.py",
+      "git_blob_verified": true,
+      "raw_verified": true,
+      "workflow_checkout_crlf_allowed": false
+    },
+    {
+      "path": "scripts/python/account_b_route_sources.py",
+      "git_blob_verified": true,
+      "raw_verified": true,
+      "workflow_checkout_crlf_allowed": false
+    },
+    {
+      "path": "scripts/python/dev_cli.py",
+      "git_blob_verified": true,
+      "raw_verified": true,
+      "workflow_checkout_crlf_allowed": false
+    },
+    {
+      "path": "scripts/python/tests/test_b_route_source_audit.py",
+      "git_blob_verified": true,
+      "raw_verified": true,
+      "workflow_checkout_crlf_allowed": false
+    },
+    {
+      "path": "scripts/python/tests/fixtures/b_route_audit_synthetic_runner.py",
+      "git_blob_verified": true,
+      "raw_verified": true,
+      "workflow_checkout_crlf_allowed": false
+    },
+    {
+      "path": "scripts/python/tests/test_b_route_sources.py",
+      "git_blob_verified": true,
+      "raw_verified": true,
+      "workflow_checkout_crlf_allowed": false
+    },
+    {
+      "path": "scripts/python/build_source_ledger.py",
+      "git_blob_verified": true,
+      "raw_verified": true,
+      "workflow_checkout_crlf_allowed": false
+    },
+    {
+      "path": "scripts/python/project_semantics_from_sources.py",
+      "git_blob_verified": true,
+      "raw_verified": true,
+      "workflow_checkout_crlf_allowed": false
+    },
+    {
+      "path": "scripts/python/validate_semantic_conservation.py",
+      "git_blob_verified": true,
+      "raw_verified": true,
+      "workflow_checkout_crlf_allowed": false
+    },
+    {
+      "path": "scripts/python/_b_route_codec.py",
+      "git_blob_verified": true,
+      "raw_verified": true,
+      "workflow_checkout_crlf_allowed": false
+    },
+    {
+      "path": "scripts/python/_b_route_inventory.py",
+      "git_blob_verified": true,
+      "raw_verified": true,
+      "workflow_checkout_crlf_allowed": false
+    },
+    {
+      "path": "scripts/python/_mvg_evidence_transport.py",
+      "git_blob_verified": true,
+      "raw_verified": true,
+      "workflow_checkout_crlf_allowed": false
+    },
+    {
+      "path": "scripts/python/_capability_input_integrity.py",
+      "git_blob_verified": true,
+      "raw_verified": true,
+      "workflow_checkout_crlf_allowed": false
+    },
+    {
+      "path": "scripts/python/requirements-b-route.txt",
+      "git_blob_verified": true,
+      "raw_verified": true,
+      "workflow_checkout_crlf_allowed": false
+    },
+    {
+      "path": ".github/workflows/story-2-2-windows.yml",
+      "git_blob_verified": true,
+      "raw_verified": true,
+      "workflow_checkout_crlf_allowed": true
+    }
+  ]
+}

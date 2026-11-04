@@ -1,0 +1,331 @@
+{
+  "document_version": "newrouge.b-route-epic1-handoff.v1",
+  "purpose": "Epic1预检与保护能力交接；外部依据载体，不是第七类正式记录或生效策略",
+  "review_status": "技术及原生Build审阅完成；仅Epic1只读预检/保护工具能力，不授正式保护/采纳/默认B资格",
+  "local_baseline": "952b1d8658e5e3c328ec4cc5b7948bffe77e418a",
+  "code_test_candidate": "c665651d0d5742b33ac968a9ad410114b608c32f",
+  "inputs": {
+    "historical_baseline": {
+      "owner": "frozen_a_inventory",
+      "ref": "logs/ci/2026-11-03/b-route-baseline-inventory/final-20261103T105723Z-a/inventory.json",
+      "files": [
+        {
+          "path": "logs/ci/2026-11-03/b-route-baseline-inventory/final-20261103T105723Z-a/inventory.json",
+          "raw_digest": "sha256:d2e665a2fd12bc8c4f96c8e09deba7d79d9270f284b396a87fe6de7231794815"
+        }
+      ]
+    },
+    "current_consumer_matrix": {
+      "owner": "other_verification",
+      "ref": "logs/ci/2026-11-04/b-route-story-1-6-build/current-consumer-matrix-patch1.json",
+      "files": [
+        {
+          "path": "logs/ci/2026-11-04/b-route-story-1-6-build/current-consumer-matrix-patch1.json",
+          "raw_digest": "sha256:691af3d2540d61df8d7a2181dcdc6bba24d2af05e19f6f3ca0f72b0cfea6bf4c"
+        }
+      ]
+    },
+    "governance": {
+      "owner": "authority",
+      "ref": "docs/adr/ADR-0040-b-route-stages-authority-and-activation.md",
+      "files": [
+        {
+          "path": "docs/adr/ADR-0040-b-route-stages-authority-and-activation.md",
+          "raw_digest": "sha256:8887f7bb93fc4d001940ad95e920b1938848d7dd8ded9ae4a5681f2d4ed8da72"
+        }
+      ]
+    },
+    "codec": {
+      "owner": "authority",
+      "ref": "scripts/python/_b_route_codec.py",
+      "files": [
+        {
+          "path": "scripts/python/_b_route_codec.py",
+          "raw_digest": "sha256:57b83b6ed9c69676bd721b5a515581df882b12e961e00bf7a4aec33ae6bc0697"
+        }
+      ]
+    },
+    "validator": {
+      "owner": "authority",
+      "ref": "scripts/python/_b_route_records.py",
+      "files": [
+        {
+          "path": "scripts/python/_b_route_records.py",
+          "raw_digest": "sha256:0eaed2014652240e75962456230ef96d192964de4d2f47504c84dd65403c7721"
+        }
+      ]
+    },
+    "protection_input": {
+      "owner": "frozen_a_inventory",
+      "ref": "docs/planning/b-route/protection-input.v1.json",
+      "files": [
+        {
+          "path": "docs/planning/b-route/protection-input.v1.json",
+          "raw_digest": "sha256:d17666096acb6bd706e41ce894a49d016fd7f629ec4c3bb871885c14b994874f"
+        }
+      ]
+    },
+    "actual_preflight": {
+      "owner": "other_verification",
+      "ref": "logs/ci/2026-11-04/b-route-preflight/epic1-patch1-current-20261104T091227Z/report.json",
+      "files": [
+        {
+          "path": "logs/ci/2026-11-04/b-route-preflight/epic1-patch1-current-20261104T091227Z/report.json",
+          "raw_digest": "sha256:9d6c0dbcf5e2c75c38675a4067206e18d66311dca4ffbdde2551f1b25c72cf78"
+        }
+      ]
+    },
+    "current_preview_protection_input": {
+      "owner": "other_verification",
+      "ref": "logs/ci/2026-11-04/b-route-story-1-6-build/actual-inputs-patch1-current/protection-input.json",
+      "files": [
+        {
+          "path": "logs/ci/2026-11-04/b-route-story-1-6-build/actual-inputs-patch1-current/protection-input.json",
+          "raw_digest": "sha256:9eb22dc28f04e28d4b04cb26ef82c677714437c9128cfd70780ff932a91756bb"
+        }
+      ]
+    }
+  },
+  "formal_schema_refs": [
+    {
+      "owner": "authority",
+      "ref": "docs/planning/b-route/schemas/policy.schema.json",
+      "files": [
+        {
+          "path": "docs/planning/b-route/schemas/policy.schema.json",
+          "raw_digest": "sha256:a62c01172e3cb6cf56d113c59ed32d395d225d5e4417f4cd5188d48c48320473"
+        }
+      ]
+    },
+    {
+      "owner": "authority",
+      "ref": "docs/planning/b-route/schemas/plan.schema.json",
+      "files": [
+        {
+          "path": "docs/planning/b-route/schemas/plan.schema.json",
+          "raw_digest": "sha256:85e609de1bbe69d7de83014ba8902db7e001ede3e286561b5b19d1b9d31b79ef"
+        }
+      ]
+    },
+    {
+      "owner": "authority",
+      "ref": "docs/planning/b-route/schemas/binding.schema.json",
+      "files": [
+        {
+          "path": "docs/planning/b-route/schemas/binding.schema.json",
+          "raw_digest": "sha256:8bf46415ccb663f38647b7d54941f4b8b6cc68aef14ecfeacc71ae637fc07c34"
+        }
+      ]
+    },
+    {
+      "owner": "authority",
+      "ref": "docs/planning/b-route/schemas/origins.schema.json",
+      "files": [
+        {
+          "path": "docs/planning/b-route/schemas/origins.schema.json",
+          "raw_digest": "sha256:1a386af16e772c79413cc17ad29333b6a9bafdce4f35ba0ba2eb057014bca67a"
+        }
+      ]
+    },
+    {
+      "owner": "authority",
+      "ref": "docs/planning/b-route/schemas/commit.schema.json",
+      "files": [
+        {
+          "path": "docs/planning/b-route/schemas/commit.schema.json",
+          "raw_digest": "sha256:dd00b87b67580ac352a308404d3be4616fd62876c46e5752aac344efc6d716c1"
+        }
+      ]
+    },
+    {
+      "owner": "authority",
+      "ref": "docs/planning/b-route/schemas/catalog.schema.json",
+      "files": [
+        {
+          "path": "docs/planning/b-route/schemas/catalog.schema.json",
+          "raw_digest": "sha256:db21d33a7ce196dcf0d3698709760634cdb03ec306e13f0b0945ac37347aa036"
+        }
+      ]
+    }
+  ],
+  "shared_schema_ref": {
+    "owner": "authority",
+    "ref": "docs/planning/b-route/schemas/common.schema.json",
+    "files": [
+      {
+        "path": "docs/planning/b-route/schemas/common.schema.json",
+        "raw_digest": "sha256:981e2ee2b0f65319bc2e68ddcb20649e50d7273e5ad43bcff2e09ff37835ff64"
+      }
+    ]
+  },
+  "current_preflight": {
+    "exit_code": 1,
+    "stable": true,
+    "governance": {
+      "state": "explicitly_not_enabled",
+      "authority_ref": "docs/adr/ADR-0040-b-route-stages-authority-and-activation.md",
+      "governance_traces": [],
+      "committed_verified": false,
+      "activation_authorized": false
+    },
+    "pending": {
+      "state": "absent",
+      "scope": null,
+      "resume_ref": null
+    },
+    "authorization": {
+      "formal_protection_baseline": false,
+      "frozen_a": false,
+      "write": false,
+      "policy_bootstrap": false,
+      "target_projection_verified": false
+    },
+    "code_candidate": "c665651d0d5742b33ac968a9ad410114b608c32f",
+    "scope": "full current/candidate native closure and bound current-rule external preview input",
+    "diagnostic_reasons": [
+      "identity_unprovable",
+      "file_not_found",
+      "file_not_found",
+      "file_not_found",
+      "file_not_found",
+      "file_not_found"
+    ],
+    "unique_missing_paths": [
+      "logs/ci/2026-05-06/sc-build-tdd/summary.json"
+    ],
+    "interpretation": "本轮显式无变更候选稳定；唯一缺失原件T108仍必需，另有capture不完整阻断，不能采纳。原1.5 input_stale反例另行保留。"
+  },
+  "verification": {
+    "linux_methods_passed": 59,
+    "linux_skips": 0,
+    "windows_run": 41805193575,
+    "windows_status": "verified59preflight+31native-owner-default pass0skip; eight CLI/native short path/junction/no-B source guard passed",
+    "native_review_status": "three native layers complete; three minimum patch groups verified on exact current source; no deferred findings",
+    "historical_windows_runs": [
+      {
+        "candidate": "7f43da0bc11b37a3c9a586ff318d709232294e78",
+        "run_id": 41793345175,
+        "result": "failure:34pass/4fail/1error/0skip; not timeout",
+        "raw_sha256": "12529dc9a60ab12fe02d5773ce70ccb821fd76ddcee8dda7d506acfba378abfd"
+      },
+      {
+        "candidate": "c0498a581ec5c5e56a0c277482505b386d8e9f78",
+        "run_id": 41795092245,
+        "result": "verified43pass0skip; eight independent CLI cases; native short path and junction checks passed",
+        "raw_sha256": "5ff916b2b3960fbf6197598f55d4957b01dbdc5aff5803a61fc12b5c4619299d"
+      },
+      {
+        "candidate": "e2124bbe23e9efedceadab406f241203bddfb989",
+        "run_id": 41800192909,
+        "result": "verified53preflight+31native-owner-default pass0skip; eight CLI and real short path/junction passed",
+        "raw_sha256": "b853c325080f6f026ec427eca8f8a83c07e452ffb9f8c4ee34438fc5231e63b6"
+      }
+    ],
+    "windows_raw_sha256": "7d3a46cefee8c24eb1fff6ca3be9bbb08e6e675ec8e642f2feea90ba67f21304",
+    "required_windows_methods": {
+      "test_root_alias_keeps_nonempty_governance_scan_and_original_diagnostics": true,
+      "test_root_alias_direct_and_public_cli_keep_single_json_and_physical_report_identity": true,
+      "test_real_directory_links_still_block_governance_scan_and_report_output": true
+    },
+    "native_default_linux": {
+      "inventory": 59,
+      "manifest": 25
+    },
+    "root_linux_regression": {
+      "protection": {
+        "ran": 46,
+        "skipped": 0
+      },
+      "codec": {
+        "ran": 55,
+        "skipped": 3
+      },
+      "records": {
+        "ran": 93,
+        "skipped": 3
+      }
+    }
+  },
+  "unresolved": [
+    {
+      "id": "protection-input-rule-identity-stale",
+      "path": "docs/planning/b-route/protection-input.v1.json#/rules_refs/3",
+      "effect": "原规则e9e4f5…与当前37038c…不同；owner重核前不得当当前有效保护输入，不自动修改原hash换绿",
+      "resolution_in_this_story": "Fresh preview-only capture prepared separately; original material and formal qualification remain unchanged."
+    },
+    {
+      "id": "T108-required-original-missing",
+      "path": "logs/ci/2026-05-06/sc-build-tdd/summary.json",
+      "effect": "正式保护认证仍阻断；不补造或改为optional"
+    },
+    {
+      "id": "frozen-a-qualification-unproven",
+      "count": 133,
+      "effect": "全部A候选blocked；逐项来源与反向治理关系须另证，不以旧done或无trace推legacy"
+    },
+    {
+      "id": "semantic-adoption-and-publication-not-delivered",
+      "effect": "publisher/journal/receipt正式提交及语义采纳、Task gate由后续Epic交付；预检结果无应用资格"
+    }
+  ],
+  "epic2_conditions": [
+    "核验每份引用与当前适用来源/定义/累计义务，保全部未决与当前状态",
+    "复用唯一codec与六schema，不复制私有v1语义",
+    "按所属Story交付独立来源审计/采纳/提交与恢复，不借本交接越过journal/receipt/catalog",
+    "不可采纳capture不认证正式保护；各Task冻结A资格需完整真实反向证明",
+    "只报告Epic1能力；不声明游戏运行、Task实施、默认B切换或A退役"
+  ],
+  "authorization": {
+    "formal_protection_baseline": false,
+    "frozen_a": false,
+    "write": false,
+    "policy_bootstrap": false,
+    "target_projection_verified": false
+  },
+  "review": {
+    "authority": "User explicitly delegated ordinary technical review decisions; no separate human vote claimed",
+    "evidence_ref": {
+      "owner": "other_verification",
+      "ref": "logs/ci/2026-11-04/b-route-story-1-6-build/native-review-closure-final.json",
+      "files": [
+        {
+          "path": "logs/ci/2026-11-04/b-route-story-1-6-build/native-review-closure-final.json",
+          "raw_digest": "sha256:d778ea6e1d835de649a13986828f25c2b005e91e432f5a6bc8868c11e14f5b76"
+        }
+      ]
+    }
+  },
+  "historical_actual_preflight": [
+    {
+      "owner": "other_verification",
+      "ref": "logs/ci/2026-11-04/b-route-preflight/epic1-current-final-20261104T075143Z/report.json",
+      "files": [
+        {
+          "path": "logs/ci/2026-11-04/b-route-preflight/epic1-current-final-20261104T075143Z/report.json",
+          "raw_digest": "sha256:e615af470765941c776b1892187fcfec4c16f6b23a913afcad815bc9cb2a8642"
+        }
+      ]
+    },
+    {
+      "owner": "other_verification",
+      "ref": "logs/ci/2026-11-04/b-route-preflight/epic1-loop1-original-20261104T083257Z/report.json",
+      "files": [
+        {
+          "path": "logs/ci/2026-11-04/b-route-preflight/epic1-loop1-original-20261104T083257Z/report.json",
+          "raw_digest": "sha256:b4e198605b8c023792546a00de44acf015b89045d3e57a3ecd1634f17330813b"
+        }
+      ]
+    },
+    {
+      "owner": "other_verification",
+      "ref": "logs/ci/2026-11-04/b-route-preflight/epic1-loop1-current-20261104T084235Z/report.json",
+      "files": [
+        {
+          "path": "logs/ci/2026-11-04/b-route-preflight/epic1-loop1-current-20261104T084235Z/report.json",
+          "raw_digest": "sha256:f89fcb33ffd972639b86f69e37b4ac8cf369a332b3c99212ea89d18c9cb9df06"
+        }
+      ]
+    }
+  ],
+  "protection_input_status": "Original versioned1.5 material preserved as historical; its rule identity is stale. Existing read-only capture explicitly produced fresh current-rule preview input in new logs, raw archive integrity verified; capture remains incomplete/T108 missing. No formal protection or A qualification."
+}

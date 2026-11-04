@@ -1,0 +1,93 @@
+{
+  "files": [
+    {
+      "path": "scripts/python/_b_route_source_audit.py",
+      "bytes": 62261,
+      "raw_sha256": "e159c9225c76cd6942ba551c5538a68e888845f70d887c9073e9eda0a4776c28",
+      "git_blob_sha": "9a59dfa40e4778f3716e52bf85bcac5e7c0ec610",
+      "char_count": 62261
+    },
+    {
+      "path": "scripts/python/_b_route_sources.py",
+      "bytes": 41011,
+      "raw_sha256": "e3f8e251592f5426859575d32ba30939789e234b83853d918069b393089b94ba",
+      "git_blob_sha": "00551fa36b0142c9ad704d3f6292e288d67d63f1",
+      "char_count": 41011
+    },
+    {
+      "path": "scripts/python/_planning_skill_common.py",
+      "bytes": 27107,
+      "raw_sha256": "87033aad915e1ebd3fc40f4e1eeaf74edbb42680faff0a9be40be33745aba93a",
+      "git_blob_sha": "4ef0e45ad71aca0321164f0c59c6b35bf79e7092",
+      "char_count": 27099
+    },
+    {
+      "path": "scripts/python/account_b_route_sources.py",
+      "bytes": 245,
+      "raw_sha256": "4f98d2337f015c77e213a26f7f6d2a4873ec4daf2b1ba14b973256855aede1a6",
+      "git_blob_sha": "5e038fba9c18f0489e76dcac222a921fb73aa669",
+      "char_count": 245
+    },
+    {
+      "path": "scripts/python/dev_cli.py",
+      "bytes": 50512,
+      "raw_sha256": "59daf83a02a1697210c0ba0768a0be10f9501e9ae6e39ad6e02195754fc0d565",
+      "git_blob_sha": "cb6d89ef2bebd16f89a68842ccb500e10a531176",
+      "char_count": 50288
+    },
+    {
+      "path": "scripts/python/tests/test_b_route_source_audit.py",
+      "bytes": 43532,
+      "raw_sha256": "6b3f0761140aefe4b4b285097b5bbaf223ca9658d2c48e7db1f2749d6ae98070",
+      "git_blob_sha": "af4749544c9b44ecaff5c64b112a995b9d4d5be6",
+      "char_count": 43532
+    },
+    {
+      "path": "scripts/python/tests/test_b_route_sources.py",
+      "bytes": 40754,
+      "raw_sha256": "21f3cff53e2aef7885ece9bf3cae3c590ee08ce0d8009937857728a28d437063",
+      "git_blob_sha": "f7587b0c854b1f75ca48142fe19ea20cf0932994",
+      "char_count": 40754
+    },
+    {
+      "path": "scripts/python/tests/fixtures/b_route_audit_synthetic_runner.py",
+      "bytes": 7641,
+      "raw_sha256": "4156a89da7b0439af7f3ab778d7826ac2987ede3adf8b96ed5a9f7bf68e6d6b4",
+      "git_blob_sha": "e4cadd74ddd595c52a8dbbd101cf36f7e2332128",
+      "char_count": 7641
+    },
+    {
+      "path": "docs/workflows/b-route-source-audit.md",
+      "bytes": 8766,
+      "raw_sha256": "989a79ba6fb449214b6dc97c9cade8675c447e152f7acb9be8216ddeb825a61b",
+      "git_blob_sha": "04cd5a74a7cb2548e88844364a1e67ecf71292ea",
+      "char_count": 5340
+    },
+    {
+      "path": "docs/workflows/b-route-source-accounting.md",
+      "bytes": 7633,
+      "raw_sha256": "5eb4ca3c188e5ec7449c0d861c48e46fe891c34f11ce36f0b618d4c82094026b",
+      "git_blob_sha": "50b2f5ad0f131b2bf39d092fdcfbede0e8a70f0d",
+      "char_count": 4583
+    },
+    {
+      "path": ".github/workflows/story-2-2-windows.yml",
+      "bytes": 16581,
+      "raw_sha256": "73c964cde124f99fd37135bff7d9e92ce5a170fc44faadcaea8d6cd8d90e95db",
+      "git_blob_sha": "cbe320273f39dd25a3054116d5a48288c4f133ab",
+      "char_count": 16581
+    }
+  ],
+  "credential_pattern_findings": [],
+  "only_code_tests_owner_docs_dedicated_workflow": true,
+  "excluded": [
+    "internal spec",
+    "Sprint",
+    "raw logs",
+    "full local history"
+  ],
+  "base_commit": "a5863e84e4484b98bbdb903b59136c1e780122e5",
+  "branch": "test/b-route-story-2-2-windows-2026-11-04",
+  "not_published_yet": true,
+  "run2_only_changed_path": "scripts/python/tests/test_b_route_source_audit.py"
+}

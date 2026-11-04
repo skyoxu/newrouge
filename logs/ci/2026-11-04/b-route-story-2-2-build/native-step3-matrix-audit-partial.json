@@ -1,0 +1,81 @@
+{
+  "native_step": 3,
+  "matrix_rows": [
+    {
+      "row": "unprojected_handoff",
+      "linux_synthetic_methods_passed": [
+        "test_unprojected_handoff_multifile_and_conflict_are_blocking",
+        "test_full_files_and_empty_file_denominators"
+      ],
+      "evidence_class": "synthetic OS orchestration, not actual model semantics"
+    },
+    {
+      "row": "conflict_unknown_deferral",
+      "linux_synthetic_methods_passed": [
+        "test_unprojected_handoff_multifile_and_conflict_are_blocking",
+        "test_original_unresolved_survives_synthetic_acceptance",
+        "test_invalid_output_receipt_and_dispositions_fail_closed",
+        "test_supported_deferred_obligation_keeps_explicit_review"
+      ],
+      "evidence_class": "synthetic OS orchestration, not actual model semantics"
+    },
+    {
+      "row": "completed_reuse",
+      "linux_synthetic_methods_passed": [
+        "test_complete_reuse_zero_dispatch_and_unrelated_state",
+        "test_damaged_proof_rejected_without_rerun"
+      ],
+      "evidence_class": "synthetic OS orchestration, not actual model semantics"
+    },
+    {
+      "row": "relevant_dependency_changes",
+      "linux_synthetic_methods_passed": [
+        "test_source_changes_reuse_only_unchanged_extraction_and_global_reruns",
+        "test_projection_only_change_reuses_all_extractions",
+        "test_runner_and_expected_model_changes_reject_reuse",
+        "test_rule_schema_and_parser_change_do_not_reuse_old_conclusions"
+      ],
+      "evidence_class": "synthetic OS orchestration, not actual model semantics"
+    },
+    {
+      "row": "capacity_budget_execution",
+      "linux_synthetic_methods_passed": [
+        "test_capacity_zero_dispatch_and_persistent_budget_cannot_increase",
+        "test_budget_across_attempt_and_date_failure_not_refunded",
+        "test_budget_deletion_and_corruption_fail_closed_without_rewriting_history",
+        "test_concurrent_budget_permits_cannot_overspend",
+        "test_actual_timeout_kills_runner_and_retains_unknown_reservation"
+      ],
+      "evidence_class": "synthetic OS orchestration, not actual model semantics"
+    },
+    {
+      "row": "safety_drift_replay",
+      "linux_synthetic_methods_passed": [
+        "test_complete_zero_task_os_lifecycle_verify_and_exact_replay",
+        "test_source_and_glob_drift_fail_before_dispatch",
+        "test_terminal_event_conflict_partial_and_argument_rejection",
+        "test_disk_failure_and_end_read_drift_never_claim_completion",
+        "test_os_runner_workspace_drift_blocks_fresh_completion_with_verify_reuse_control",
+        "test_fresh_execution_proof_is_validated_before_completion"
+      ],
+      "evidence_class": "synthetic OS orchestration, not actual model semantics"
+    },
+    {
+      "row": "downstream_readonly_verification",
+      "linux_synthetic_methods_passed": [
+        "test_complete_zero_task_os_lifecycle_verify_and_exact_replay",
+        "test_complete_reuse_zero_dispatch_and_unrelated_state",
+        "test_rehashed_proof_with_bad_quote_is_still_rejected"
+      ],
+      "evidence_class": "synthetic OS orchestration, not actual model semantics"
+    }
+  ],
+  "linux_evidence": "root-final-verification/linux-relevant-suites.stderr",
+  "linux_evidence_sha256": "0e1acee095ba4df2ef809319e7b39b44a3e77f71f060c9783a5f5d69625f635a",
+  "windows_status": "run41831324047/job126578946400 raw verified:175 PASS,1 POSIX skip; both mandatory Windows methods PASS;29 CLI PASS",
+  "real_model_semantics": "unverified: explicit inherited-proxy CONNECT403, no further attempts",
+  "all_acceptance_satisfied": false,
+  "native_step4_started": false,
+  "source_read_not_just_agent_claim": true,
+  "windows_evidence": "windows-run2-verified.json"
+}

@@ -1,0 +1,11 @@
+{
+  "returncode": -9,
+  "timed_out": true,
+  "elapsed_seconds": 45.01273273699917,
+  "output_exists": false,
+  "requested_model": "gpt-6.1-sol",
+  "requested_reasoning": "high",
+  "runner_process_dispatches": 1,
+  "semantic_acceptance": false,
+  "ephemeral": true
+}

@@ -551,3 +551,11 @@ Use them directly when you are isolating one failing stage or intentionally bypa
 `dev-cli run-single-task-chapter6` forwards both `--milestone-handoff` and `--milestone-regression-summary` to the lane. Regression evidence requires the exact current HEAD/manifest and a clean current worktree.
 
 These are additive modes of the existing Chapter workflow, not a second milestone framework.
+
+## B 路线只读迁移预检
+
+稳定入口：`py -3 -B scripts/python/dev_cli.py b-route-preflight --root <root> --epics <epics> --protection-input <input> --candidate <carrier> --intents <intents> --run-id <fresh-id>`。直接 owner 为 `scripts/python/preflight_b_route_migration.py`，参数相同。单 JSON stdout，0 为可审阅机器预览、1 为输入／迁移阻断、2 为参数／新输出目录失败；无 apply，仅全新 logs，不创建 pycache。明确候选原 bytes、三联及累计义务、语义未核验与真实未启用边界见[owner 说明](b-route-migration-preflight.md)。旧 pending 仍导航原 Capability apply，预检不会执行恢复。
+
+## B 路线 3A 来源准备与记账
+
+`py -3 scripts/python/dev_cli.py b-route-sources --stage prepare|account` 与直接入口 `scripts/python/account_b_route_sources.py` 共用唯一 owner。必须显式提供 root／run／scope／attempt；prepare 另需 source-set，account 另需 prepared／candidate。两者只输出单个 JSON，退出码为 0／1／2，禁止字节码写入，仅排他创建全新 logs。独立审计／复验沿用此入口的 `--stage audit|verify`，分别显式消费 accounted／audit-ref，均需 runner／expected-model；执行、语义阻断、synthetic 与真实证明、持久预算及复用合同见[来源审计 owner](b-route-source-audit.md)。准备和完整记账均不授予独立审计或正式采纳；现行 A 有效。载体、原字节身份、容量、漂移、事件及 Windows 验证见[来源记账 owner](b-route-source-accounting.md)。

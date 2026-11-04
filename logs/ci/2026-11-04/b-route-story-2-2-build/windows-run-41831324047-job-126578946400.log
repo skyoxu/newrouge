@@ -1,0 +1,1144 @@
+﻿2026-11-04T12:40:41.1619557Z Current runner version: '2.338.2'
+2026-11-04T12:40:41.1645887Z ##[group]Runner Image Provisioner
+2026-11-04T12:40:41.1646665Z Hosted Compute Agent
+2026-11-04T12:40:41.1647749Z Version: 20261021.618
+2026-11-04T12:40:41.1648383Z Commit: 21505ad2541d5be6135ed84fc33697146cf75b8e
+2026-11-04T12:40:41.1649129Z Build Date: 2026-10-21T00:45:21Z
+2026-11-04T12:40:41.1649810Z Worker ID: {6c0521d7-11b7-4e3a-9c88-dcf1620748e8}
+2026-11-04T12:40:41.1650464Z Region: eastus
+2026-11-04T12:40:41.1650997Z Cloud: Azure
+2026-11-04T12:40:41.1651555Z ##[endgroup]
+2026-11-04T12:40:41.1652970Z ##[group]Operating System
+2026-11-04T12:40:41.1653639Z Microsoft Windows Server 2025
+2026-11-04T12:40:41.1654280Z 10.0.26100
+2026-11-04T12:40:41.1654822Z Datacenter
+2026-11-04T12:40:41.1655339Z ##[endgroup]
+2026-11-04T12:40:41.1655969Z ##[group]Runner Image
+2026-11-04T12:40:41.1656553Z Image: windows-2025-vs2026
+2026-11-04T12:40:41.1657149Z Version: 20261030.294.1
+2026-11-04T12:40:41.1658739Z Included Software: https://github.com/actions/runner-images/blob/win25-vs2026/20261030.294/images/windows/Windows2025-VS2026-Readme.md
+2026-11-04T12:40:41.1661303Z Image Release: https://github.com/actions/runner-images/releases/tag/win25-vs2026%2F20261030.294
+2026-11-04T12:40:41.1662892Z ##[endgroup]
+2026-11-04T12:40:41.1664661Z ##[group]GITHUB_TOKEN Permissions
+2026-11-04T12:40:41.1667761Z Contents: read
+2026-11-04T12:40:41.1668730Z Metadata: read
+2026-11-04T12:40:41.1669686Z ##[endgroup]
+2026-11-04T12:40:41.1672605Z Secret source: Actions
+2026-11-04T12:40:41.1674180Z Cache mode: write
+2026-11-04T12:40:41.1675331Z Prepare workflow directory
+2026-11-04T12:40:41.2138207Z Prepare all required actions
+2026-11-04T12:40:41.2188579Z Getting action download info
+2026-11-04T12:40:41.4084448Z Download action repository 'actions/checkout@v4' (SHA:11d5960a326750d5838078e36cf38b85af677262)
+2026-11-04T12:40:41.5467134Z Download action repository 'actions/setup-python@v5' (SHA:a26af69be951a213d495a4c3e4e4022e16d87065)
+2026-11-04T12:40:41.7081690Z Download action repository 'actions/upload-artifact@v4' (SHA:ea165f8d65b6e75b540449e92b4886f43607fa02)
+2026-11-04T12:40:42.0770391Z Complete job name: source-audit
+2026-11-04T12:40:42.3101039Z ##[group]Run actions/checkout@v4
+2026-11-04T12:40:42.3102271Z with:
+2026-11-04T12:40:42.3102754Z   ref: 18f54b10a4a2811eb8c167bc6289791d43c2c3e5
+2026-11-04T12:40:42.3103532Z   persist-credentials: false
+2026-11-04T12:40:42.3104419Z   repository: skyoxu/newrouge
+2026-11-04T12:40:42.3108857Z   token: ***
+2026-11-04T12:40:42.3109284Z   ssh-strict: true
+2026-11-04T12:40:42.3109703Z   ssh-user: git
+2026-11-04T12:40:42.3110100Z   clean: true
+2026-11-04T12:40:42.3110516Z   sparse-checkout-cone-mode: true
+2026-11-04T12:40:42.3111016Z   fetch-depth: 1
+2026-11-04T12:40:42.3111433Z   fetch-tags: false
+2026-11-04T12:40:42.3111852Z   show-progress: true
+2026-11-04T12:40:42.3112288Z   lfs: false
+2026-11-04T12:40:42.3112677Z   submodules: false
+2026-11-04T12:40:42.3113104Z   set-safe-directory: true
+2026-11-04T12:40:42.3113609Z   allow-unsafe-pr-checkout: false
+2026-11-04T12:40:42.3114435Z env:
+2026-11-04T12:40:42.3114817Z   PYTHONUTF8: 1
+2026-11-04T12:40:42.3115278Z   PYTHONIOENCODING: utf-8
+2026-11-04T12:40:42.3115742Z ##[endgroup]
+2026-11-04T12:40:42.4746167Z Syncing repository: skyoxu/newrouge
+2026-11-04T12:40:42.4748003Z ##[group]Getting Git version info
+2026-11-04T12:40:42.4749131Z Working directory is 'D:\a\newrouge\newrouge'
+2026-11-04T12:40:42.5846985Z [command]"C:\Program Files\Git\bin\git.exe" version
+2026-11-04T12:40:43.0036135Z git version 2.56.0.windows.4
+2026-11-04T12:40:43.0082410Z ##[endgroup]
+2026-11-04T12:40:43.0100665Z Temporarily overriding HOME='D:\a\_temp\0b6af743-a37d-4f9e-95f5-66d9441a7f8a' before making global git config changes
+2026-11-04T12:40:43.0102514Z Adding repository directory to the temporary git global config as a safe directory
+2026-11-04T12:40:43.0110950Z [command]"C:\Program Files\Git\bin\git.exe" config --global --add safe.directory D:\a\newrouge\newrouge
+2026-11-04T12:40:43.0888794Z Deleting the contents of 'D:\a\newrouge\newrouge'
+2026-11-04T12:40:43.0890926Z ##[group]Initializing the repository
+2026-11-04T12:40:43.0893899Z [command]"C:\Program Files\Git\bin\git.exe" init D:\a\newrouge\newrouge
+2026-11-04T12:40:43.1906658Z Initialized empty Git repository in D:/a/newrouge/newrouge/.git/
+2026-11-04T12:40:43.1955330Z [command]"C:\Program Files\Git\bin\git.exe" remote add origin https://github.com/skyoxu/newrouge
+2026-11-04T12:40:43.2631518Z ##[endgroup]
+2026-11-04T12:40:43.2632582Z ##[group]Disabling automatic garbage collection
+2026-11-04T12:40:43.2639997Z [command]"C:\Program Files\Git\bin\git.exe" config --local gc.auto 0
+2026-11-04T12:40:43.3000424Z ##[endgroup]
+2026-11-04T12:40:43.3001610Z ##[group]Setting up auth
+2026-11-04T12:40:43.3011644Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp core\.sshCommand
+2026-11-04T12:40:43.3382094Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "sh -c \"git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :\""
+2026-11-04T12:40:44.8742641Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-04T12:40:44.9110662Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "sh -c \"git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :\""
+2026-11-04T12:40:45.4602849Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-04T12:40:45.4968854Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "git config --local --show-origin --name-only --get-regexp remote.origin.url"
+2026-11-04T12:40:46.0348316Z [command]"C:\Program Files\Git\bin\git.exe" config --local http.https://github.com/.extraheader "AUTHORIZATION: basic ***"
+2026-11-04T12:40:46.0726923Z ##[endgroup]
+2026-11-04T12:40:46.0727527Z ##[group]Fetching the repository
+2026-11-04T12:40:46.0741231Z [command]"C:\Program Files\Git\bin\git.exe" -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin 18f54b10a4a2811eb8c167bc6289791d43c2c3e5
+2026-11-04T12:40:48.6978343Z From https://github.com/skyoxu/newrouge
+2026-11-04T12:40:48.6979117Z  * branch            18f54b10a4a2811eb8c167bc6289791d43c2c3e5 -> FETCH_HEAD
+2026-11-04T12:40:48.7018642Z ##[endgroup]
+2026-11-04T12:40:48.7019043Z ##[group]Determining the checkout info
+2026-11-04T12:40:48.7022109Z ##[endgroup]
+2026-11-04T12:40:48.7037444Z [command]"C:\Program Files\Git\bin\git.exe" sparse-checkout disable
+2026-11-04T12:40:48.7593408Z [command]"C:\Program Files\Git\bin\git.exe" config --local --unset-all extensions.worktreeConfig
+2026-11-04T12:40:48.7962562Z ##[group]Checking out the ref
+2026-11-04T12:40:48.7963152Z [command]"C:\Program Files\Git\bin\git.exe" checkout --progress --force 18f54b10a4a2811eb8c167bc6289791d43c2c3e5
+2026-11-04T12:40:49.9224824Z Updating files:  73% (2527/3452)
+2026-11-04T12:40:49.9927971Z Updating files:  74% (2555/3452)
+2026-11-04T12:40:50.0557831Z Updating files:  75% (2589/3452)
+2026-11-04T12:40:50.1314669Z Updating files:  76% (2624/3452)
+2026-11-04T12:40:50.1434000Z Updating files:  77% (2659/3452)
+2026-11-04T12:40:50.1555343Z Updating files:  78% (2693/3452)
+2026-11-04T12:40:50.1677512Z Updating files:  79% (2728/3452)
+2026-11-04T12:40:50.1793232Z Updating files:  80% (2762/3452)
+2026-11-04T12:40:50.1888994Z Updating files:  81% (2797/3452)
+2026-11-04T12:40:50.1994647Z Updating files:  82% (2831/3452)
+2026-11-04T12:40:50.2089945Z Updating files:  83% (2866/3452)
+2026-11-04T12:40:50.2189656Z Updating files:  84% (2900/3452)
+2026-11-04T12:40:50.2305832Z Updating files:  85% (2935/3452)
+2026-11-04T12:40:50.2407444Z Updating files:  86% (2969/3452)
+2026-11-04T12:40:50.2517136Z Updating files:  87% (3004/3452)
+2026-11-04T12:40:50.2625917Z Updating files:  88% (3038/3452)
+2026-11-04T12:40:50.2740532Z Updating files:  89% (3073/3452)
+2026-11-04T12:40:50.2844554Z Updating files:  90% (3107/3452)
+2026-11-04T12:40:50.2943068Z Updating files:  91% (3142/3452)
+2026-11-04T12:40:50.3036804Z Updating files:  92% (3176/3452)
+2026-11-04T12:40:50.3127202Z Updating files:  93% (3211/3452)
+2026-11-04T12:40:50.3220287Z Updating files:  94% (3245/3452)
+2026-11-04T12:40:50.3312711Z Updating files:  95% (3280/3452)
+2026-11-04T12:40:50.3408091Z Updating files:  96% (3314/3452)
+2026-11-04T12:40:50.3500353Z Updating files:  97% (3349/3452)
+2026-11-04T12:40:50.3608791Z Updating files:  98% (3383/3452)
+2026-11-04T12:40:50.3710461Z Updating files:  99% (3418/3452)
+2026-11-04T12:40:50.3711047Z Updating files: 100% (3452/3452)
+2026-11-04T12:40:50.3711810Z Updating files: 100% (3452/3452), done.
+2026-11-04T12:40:50.3844667Z Note: switching to '18f54b10a4a2811eb8c167bc6289791d43c2c3e5'.
+2026-11-04T12:40:50.3845403Z 
+2026-11-04T12:40:50.3845959Z You are in 'detached HEAD' state. You can look around, make experimental
+2026-11-04T12:40:50.3846663Z changes and commit them, and you can discard any commits you make in this
+2026-11-04T12:40:50.3847143Z state without impacting any branches by switching back to a branch.
+2026-11-04T12:40:50.3847842Z 
+2026-11-04T12:40:50.3848034Z If you want to create a new branch to retain commits you create, you may
+2026-11-04T12:40:50.3848484Z do so (now or later) by using -c with the switch command. Example:
+2026-11-04T12:40:50.3848741Z 
+2026-11-04T12:40:50.3848876Z   git switch -c <new-branch-name>
+2026-11-04T12:40:50.3849048Z 
+2026-11-04T12:40:50.3849141Z Or undo this operation with:
+2026-11-04T12:40:50.3849285Z 
+2026-11-04T12:40:50.3849362Z   git switch -
+2026-11-04T12:40:50.3849467Z 
+2026-11-04T12:40:50.3849729Z Turn off this advice by setting config variable advice.detachedHead to false
+2026-11-04T12:40:50.3850212Z 
+2026-11-04T12:40:50.3850518Z HEAD is now at 18f54b1 test(b-route): canonicalize Windows audit expectations
+2026-11-04T12:40:50.4002856Z ##[endgroup]
+2026-11-04T12:40:50.4537155Z [command]"C:\Program Files\Git\bin\git.exe" log -1 --format=%H
+2026-11-04T12:40:50.4873459Z 18f54b10a4a2811eb8c167bc6289791d43c2c3e5
+2026-11-04T12:40:50.4913321Z ##[group]Removing auth
+2026-11-04T12:40:50.4920815Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp core\.sshCommand
+2026-11-04T12:40:50.5294708Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "sh -c \"git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :\""
+2026-11-04T12:40:51.1305413Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-04T12:40:51.1632005Z http.https://github.com/.extraheader
+2026-11-04T12:40:51.1678996Z [command]"C:\Program Files\Git\bin\git.exe" config --local --unset-all http.https://github.com/.extraheader
+2026-11-04T12:40:51.2090568Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "sh -c \"git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :\""
+2026-11-04T12:40:51.7235136Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-04T12:40:51.7601425Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "git config --local --show-origin --name-only --get-regexp remote.origin.url"
+2026-11-04T12:40:52.3387677Z ##[endgroup]
+2026-11-04T12:40:52.3872908Z ##[group]Run actions/setup-python@v5
+2026-11-04T12:40:52.3873241Z with:
+2026-11-04T12:40:52.3873431Z   python-version: 3.12
+2026-11-04T12:40:52.3873674Z   check-latest: false
+2026-11-04T12:40:52.3876347Z   token: ***
+2026-11-04T12:40:52.3876538Z   update-environment: true
+2026-11-04T12:40:52.3876764Z   allow-prereleases: false
+2026-11-04T12:40:52.3876968Z   freethreaded: false
+2026-11-04T12:40:52.3877360Z env:
+2026-11-04T12:40:52.3877516Z   PYTHONUTF8: 1
+2026-11-04T12:40:52.3877701Z   PYTHONIOENCODING: utf-8
+2026-11-04T12:40:52.3877913Z ##[endgroup]
+2026-11-04T12:40:52.5457187Z ##[group]Installed versions
+2026-11-04T12:40:52.5682024Z (node:6888) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+2026-11-04T12:40:52.5683299Z (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-11-04T12:40:52.5684032Z Successfully set up CPython (3.12.10)
+2026-11-04T12:40:52.5684731Z ##[endgroup]
+2026-11-04T12:40:52.5970943Z ##[group]Run import sys
+2026-11-04T12:40:52.5971881Z [36;1mimport sys[0m
+2026-11-04T12:40:52.5972122Z [36;1msys.dont_write_bytecode = True[0m
+2026-11-04T12:40:52.5972378Z [36;1mimport hashlib[0m
+2026-11-04T12:40:52.5972584Z [36;1mimport json[0m
+2026-11-04T12:40:52.5972770Z [36;1mimport os[0m
+2026-11-04T12:40:52.5972975Z [36;1mimport subprocess[0m
+2026-11-04T12:40:52.5973211Z [36;1mimport time[0m
+2026-11-04T12:40:52.5973419Z [36;1mfrom pathlib import Path[0m
+2026-11-04T12:40:52.5973743Z [36;1mos.environ.pop('PYTHONDONTWRITEBYTECODE', None)[0m
+2026-11-04T12:40:52.5974065Z [36;1mroot = Path.cwd()[0m
+2026-11-04T12:40:52.5974557Z [36;1moutput = root / 'logs/ci/story-2-2-windows' / (os.environ['GITHUB_RUN_ID'] + '-' + os.environ['GITHUB_RUN_ATTEMPT'])[0m
+2026-11-04T12:40:52.5975158Z [36;1moutput.mkdir(parents=True, exist_ok=False)[0m
+2026-11-04T12:40:52.5975452Z [36;1massert os.name == 'nt'[0m
+2026-11-04T12:40:52.5976062Z [36;1mhead = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()[0m
+2026-11-04T12:40:52.5976498Z [36;1massert head == os.environ['GITHUB_SHA'][0m
+2026-11-04T12:40:52.5976994Z [36;1mtracked = [p for p in subprocess.check_output(['git', 'ls-files', '-z']).decode('utf-8').split('\0') if p][0m
+2026-11-04T12:40:52.5977711Z [36;1mbefore = {p: hashlib.sha256((root / p).read_bytes()).hexdigest() for p in tracked if (root / p).is_file()}[0m
+2026-11-04T12:40:52.5978400Z [36;1mbytecode_before = {p.relative_to(root).as_posix() for p in (root / 'scripts').rglob('*.pyc')}[0m
+2026-11-04T12:40:52.5981362Z [36;1mpaths = ['scripts/python/_b_route_source_audit.py', 'scripts/python/_b_route_sources.py', 'scripts/python/_planning_skill_common.py', 'scripts/python/account_b_route_sources.py', 'scripts/python/dev_cli.py', 'scripts/python/tests/test_b_route_source_audit.py', 'scripts/python/tests/fixtures/b_route_audit_synthetic_runner.py', 'scripts/python/tests/test_b_route_sources.py', 'scripts/python/build_source_ledger.py', 'scripts/python/project_semantics_from_sources.py', 'scripts/python/validate_semantic_conservation.py', 'scripts/python/_b_route_codec.py', 'scripts/python/_b_route_inventory.py', 'scripts/python/_mvg_evidence_transport.py', 'scripts/python/_capability_input_integrity.py', 'scripts/python/requirements-b-route.txt', '.github/workflows/story-2-2-windows.yml'][0m
+2026-11-04T12:40:52.5985311Z [36;1menvironment = {'head': head, 'python': sys.version, 'platform': sys.platform, 'synthetic_only': True, 'actual_model_semantics_verified': False, 'subprocess_bytecode_override_present': 'PYTHONDONTWRITEBYTECODE' in os.environ, 'files': {p: {'raw_sha256': hashlib.sha256((root / p).read_bytes()).hexdigest(), 'git_blob': subprocess.check_output(['git', 'rev-parse', 'HEAD:' + p], text=True).strip()} for p in paths}}[0m
+2026-11-04T12:40:52.5987022Z [36;1msummary = {'head': head, 'steps': [], 'exit_code': 0, 'synthetic_only': True, 'actual_model_semantics_verified': False}[0m
+2026-11-04T12:40:52.5987557Z [36;1mdeadline = time.monotonic() + 1600[0m
+2026-11-04T12:40:52.5987810Z [36;1mdef save():[0m
+2026-11-04T12:40:52.5988204Z [36;1m    (output / 'summary.json').write_text(json.dumps(summary, indent=2) + '\n', encoding='utf-8')[0m
+2026-11-04T12:40:52.5988679Z [36;1mdef run(name, command, budget):[0m
+2026-11-04T12:40:52.5989008Z [36;1m    available = min(budget, deadline - time.monotonic())[0m
+2026-11-04T12:40:52.5989557Z [36;1m    started = time.monotonic()[0m
+2026-11-04T12:40:52.5989856Z [36;1m    if available <= 0:[0m
+2026-11-04T12:40:52.5990229Z [36;1m        code, stdout, stderr = 124, '', 'Internal verification budget exhausted'[0m
+2026-11-04T12:40:52.5990594Z [36;1m    else:[0m
+2026-11-04T12:40:52.5990773Z [36;1m        try:[0m
+2026-11-04T12:40:52.5991293Z [36;1m            result = subprocess.run(command, cwd=root, capture_output=True, text=True, encoding='utf-8', errors='replace', timeout=available)[0m
+2026-11-04T12:40:52.5994009Z [36;1m            code, stdout, stderr = result.returncode, result.stdout, result.stderr[0m
+2026-11-04T12:40:52.5994540Z [36;1m        except subprocess.TimeoutExpired as error:[0m
+2026-11-04T12:40:52.5994852Z [36;1m            code = 124[0m
+2026-11-04T12:40:52.5995370Z [36;1m            stdout = error.stdout.decode('utf-8', errors='replace') if isinstance(error.stdout, bytes) else (error.stdout or '')[0m
+2026-11-04T12:40:52.5996204Z [36;1m            stderr = error.stderr.decode('utf-8', errors='replace') if isinstance(error.stderr, bytes) else (error.stderr or '')[0m
+2026-11-04T12:40:52.5996819Z [36;1m    for suffix, value in [('stdout', stdout), ('stderr', stderr)]:[0m
+2026-11-04T12:40:52.5997259Z [36;1m        (output / (name + '.' + suffix)).write_text(value, encoding='utf-8')[0m
+2026-11-04T12:40:52.5997929Z [36;1m    summary['steps'].append({'name': name, 'exit_code': code, 'elapsed_seconds': time.monotonic() - started, 'budget_seconds': available})[0m
+2026-11-04T12:40:52.5998486Z [36;1m    if code:[0m
+2026-11-04T12:40:52.5998693Z [36;1m        summary['exit_code'] = 1[0m
+2026-11-04T12:40:52.5998942Z [36;1m    save()[0m
+2026-11-04T12:40:52.5999133Z [36;1m    print(stdout, flush=True)[0m
+2026-11-04T12:40:52.5999383Z [36;1m    print(stderr, flush=True)[0m
+2026-11-04T12:40:52.5999621Z [36;1m    return code[0m
+2026-11-04T12:40:52.6000053Z [36;1m(output / 'environment.json').write_text(json.dumps(environment, indent=2) + '\n', encoding='utf-8')[0m
+2026-11-04T12:40:52.6000617Z [36;1mprint(json.dumps(environment, indent=2), flush=True)[0m
+2026-11-04T12:40:52.6001555Z [36;1mcode = run('dependencies', [sys.executable, '-B', '-m', 'pip', 'install', '--disable-pip-version-check', '-r', 'scripts/python/requirements-b-route.txt'], 120)[0m
+2026-11-04T12:40:52.6002193Z [36;1mrunner = r'''[0m
+2026-11-04T12:40:52.6002408Z [36;1mimport sys, json, unittest, time[0m
+2026-11-04T12:40:52.6002672Z [36;1msys.dont_write_bytecode = True[0m
+2026-11-04T12:40:52.6002962Z [36;1mclass TimedResult(unittest.TextTestResult):[0m
+2026-11-04T12:40:52.6003268Z [36;1m    def __init__(self, *args, **kwargs):[0m
+2026-11-04T12:40:52.6003556Z [36;1m        super().__init__(*args, **kwargs)[0m
+2026-11-04T12:40:52.6003826Z [36;1m        self.successes = [][0m
+2026-11-04T12:40:52.6004069Z [36;1m    def addSuccess(self, test):[0m
+2026-11-04T12:40:52.6004340Z [36;1m        self.successes.append(test.id())[0m
+2026-11-04T12:40:52.6004620Z [36;1m        super().addSuccess(test)[0m
+2026-11-04T12:40:52.6004869Z [36;1m    def startTest(self, test):[0m
+2026-11-04T12:40:52.6005119Z [36;1m        super().startTest(test)[0m
+2026-11-04T12:40:52.6005389Z [36;1m        self.started = time.monotonic()[0m
+2026-11-04T12:40:52.6005736Z [36;1m        print(json.dumps({'test_started': test.id()}), flush=True)[0m
+2026-11-04T12:40:52.6006076Z [36;1m    def stopTest(self, test):[0m
+2026-11-04T12:40:52.6006576Z [36;1m        print(json.dumps({'test_finished': test.id(), 'elapsed_seconds': time.monotonic() - self.started}), flush=True)[0m
+2026-11-04T12:40:52.6007088Z [36;1m        super().stopTest(test)[0m
+2026-11-04T12:40:52.6007339Z [36;1msuite = unittest.TestSuite()[0m
+2026-11-04T12:40:52.6008170Z [36;1mfor module in ('test_chapter3_semantic_conservation', 'test_milestone_incremental_hotfixes', 'test_mvg_evidence_transport', 'test_b_route_sources', 'test_b_route_source_audit', 'test_codex_isolated_model_runner'):[0m
+2026-11-04T12:40:52.6009868Z [36;1m    suite.addTests(unittest.defaultTestLoader.discover('scripts/python/tests', pattern=module + '.py'))[0m
+2026-11-04T12:40:52.6010928Z [36;1msuite.addTests(unittest.defaultTestLoader.loadTestsFromName('test_planning_main_audit_fixes.PlanningMainAuditFixesTests.test_interrupted_runner_terminates_and_reaps_real_child'))[0m
+2026-11-04T12:40:52.6011961Z [36;1mexpected = suite.countTestCases()[0m
+2026-11-04T12:40:52.6012444Z [36;1mresult = unittest.TextTestRunner(verbosity=2, resultclass=TimedResult).run(suite)[0m
+2026-11-04T12:40:52.6013670Z [36;1mallowed_skips = {'test_b_route_sources.SourceAccountingTests.test_root_source_and_logs_symlinks_are_rejected'}[0m
+2026-11-04T12:40:52.6014326Z [36;1mactual_skips = {test.id() for test, reason in result.skipped}[0m
+2026-11-04T12:40:52.6015259Z [36;1mrequired = {'test_b_route_source_audit.SourceAuditTests.test_windows_audit_real_junction_and_short_path_rejected', 'test_b_route_sources.SourceAccountingTests.test_windows_real_junction_and_short_path'}[0m
+2026-11-04T12:40:52.6016697Z [36;1mrecord = {'expected': expected, 'executed': result.testsRun, 'passed': len(result.successes), 'skipped': sorted(actual_skips), 'required_windows_methods': {name: name in result.successes for name in sorted(required)}}[0m
+2026-11-04T12:40:52.6017651Z [36;1mprint(json.dumps({'test_summary': record}, indent=2), flush=True)[0m
+2026-11-04T12:40:52.6018420Z [36;1mraise SystemExit(0 if result.wasSuccessful() and result.testsRun == expected and actual_skips == allowed_skips and required <= set(result.successes) else 1)[0m
+2026-11-04T12:40:52.6019066Z [36;1m'''[0m
+2026-11-04T12:40:52.6019231Z [36;1mif not code:[0m
+2026-11-04T12:40:52.6019589Z [36;1m    code = run('source-and-native-tests', [sys.executable, '-B', '-c', runner], 1050)[0m
+2026-11-04T12:40:52.6020009Z [36;1mmatrix_runner = r'''[0m
+2026-11-04T12:40:52.6020372Z [36;1m"""Independent synthetic CLI exercise; never actual model semantic evidence."""[0m
+2026-11-04T12:40:52.6020777Z [36;1mimport hashlib[0m
+2026-11-04T12:40:52.6021195Z [36;1mimport json[0m
+2026-11-04T12:40:52.6021376Z [36;1mimport os[0m
+2026-11-04T12:40:52.6021566Z [36;1mfrom pathlib import Path[0m
+2026-11-04T12:40:52.6021798Z [36;1mimport subprocess[0m
+2026-11-04T12:40:52.6021996Z [36;1mimport sys[0m
+2026-11-04T12:40:52.6022175Z [36;1m[0m
+2026-11-04T12:40:52.6022347Z [36;1msys.dont_write_bytecode = True[0m
+2026-11-04T12:40:52.6022611Z [36;1mrepository = Path.cwd()[0m
+2026-11-04T12:40:52.6022868Z [36;1moutput = Path(sys.argv[1]).absolute()[0m
+2026-11-04T12:40:52.6023171Z [36;1moutput.mkdir(parents=True, exist_ok=False)[0m
+2026-11-04T12:40:52.6023444Z [36;1mcases = [][0m
+2026-11-04T12:40:52.6023613Z [36;1m[0m
+2026-11-04T12:40:52.6023763Z [36;1m[0m
+2026-11-04T12:40:52.6023927Z [36;1mdef save(path, value):[0m
+2026-11-04T12:40:52.6024204Z [36;1m    path.parent.mkdir(parents=True, exist_ok=True)[0m
+2026-11-04T12:40:52.6024687Z [36;1m    path.write_text(json.dumps(value, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")[0m
+2026-11-04T12:40:52.6025117Z [36;1m[0m
+2026-11-04T12:40:52.6025263Z [36;1m[0m
+2026-11-04T12:40:52.6025430Z [36;1mdef fixture(name, mode="clean"):[0m
+2026-11-04T12:40:52.6025680Z [36;1m    root = output / name[0m
+2026-11-04T12:40:52.6025929Z [36;1m    (root / "docs").mkdir(parents=True)[0m
+2026-11-04T12:40:52.6026406Z [36;1m    (root / "docs/first.md").write_bytes(b"# Synthetic obligation\r\n\r\nPreserve input order.  \r\n")[0m
+2026-11-04T12:40:52.6027107Z [36;1m    (root / "docs/second.md").write_bytes(b"# Synthetic handoff\r\n\r\nReturn to map when the action completes.\r\n")[0m
+2026-11-04T12:40:52.6027644Z [36;1m    paths = ["docs/first.md", "docs/second.md"][0m
+2026-11-04T12:40:52.6028166Z [36;1m    save(root / "docs/source-set.json", {"schema_version": "chapter3.source-set.v1", "active_patterns": paths,[0m
+2026-11-04T12:40:52.6028733Z [36;1m                                       "active_sources": paths, "retirements": []})[0m
+2026-11-04T12:40:52.6029478Z [36;1m    source = (repository / "scripts/python/tests/fixtures/b_route_audit_synthetic_runner.py").read_text(encoding="utf-8")[0m
+2026-11-04T12:40:52.6030251Z [36;1m    (root / "runner.py").write_text(source.replace('MODE = "clean"', "MODE = " + repr(mode)), encoding="utf-8")[0m
+2026-11-04T12:40:52.6030723Z [36;1m    return root[0m
+2026-11-04T12:40:52.6030913Z [36;1m[0m
+2026-11-04T12:40:52.6031064Z [36;1m[0m
+2026-11-04T12:40:52.6031337Z [36;1mdef call(root, run, stage, attempt, expected, extra, *, public=True):[0m
+2026-11-04T12:40:52.6032103Z [36;1m    before = {p.relative_to(root).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest()[0m
+2026-11-04T12:40:52.6032827Z [36;1m              for p in root.rglob("*") if p.is_file() and not p.relative_to(root).as_posix().startswith("logs/")}[0m
+2026-11-04T12:40:52.6033555Z [36;1m    command = [sys.executable, str(repository / "scripts/python/dev_cli.py"), "b-route-sources"] if public else [[0m
+2026-11-04T12:40:52.6034220Z [36;1m        sys.executable, str(repository / "scripts/python/account_b_route_sources.py")][0m
+2026-11-04T12:40:52.6034924Z [36;1m    command += ["--root", str(root), "--run-id", run, "--scope-id", "synthetic-scope", "--attempt-id", attempt, "--stage", stage, *extra][0m
+2026-11-04T12:40:52.6035772Z [36;1m    proc = subprocess.run(command, cwd=repository, capture_output=True, text=True, encoding="utf-8", errors="strict", timeout=180)[0m
+2026-11-04T12:40:52.6036434Z [36;1m    name = f"{len(cases) + 1:03d}-" + root.name + "-" + stage + "-" + attempt[0m
+2026-11-04T12:40:52.6036898Z [36;1m    (output / (name + ".stdout")).write_text(proc.stdout, encoding="utf-8")[0m
+2026-11-04T12:40:52.6037358Z [36;1m    (output / (name + ".stderr")).write_text(proc.stderr, encoding="utf-8")[0m
+2026-11-04T12:40:52.6037764Z [36;1m    assert proc.stderr == "", (name, proc.stderr)[0m
+2026-11-04T12:40:52.6038155Z [36;1m    assert len(proc.stdout.splitlines()) == 1, (name, proc.stdout)[0m
+2026-11-04T12:40:52.6038530Z [36;1m    value = json.loads(proc.stdout)[0m
+2026-11-04T12:40:52.6039007Z [36;1m    assert proc.returncode == expected and value["exit_code"] == expected, (name, proc.returncode, value)[0m
+2026-11-04T12:40:52.6039675Z [36;1m    assert value["formal_adoption"] is False and value["budget_is_billing"] is False, (name, value)[0m
+2026-11-04T12:40:52.6040146Z [36;1m    if stage in {"audit", "verify"}:[0m
+2026-11-04T12:40:52.6040484Z [36;1m        assert value["planning_eligible"] is False, (name, value)[0m
+2026-11-04T12:40:52.6040863Z [36;1m        count = value["model_dispatch_count"][0m
+2026-11-04T12:40:52.6041741Z [36;1m        assert count == 0 or (count == "unknown" and expected != 0 and not value["execution_complete"] and value["runner_dispatch_count"] > 0), (name, value)[0m
+2026-11-04T12:40:52.6042634Z [36;1m    assert all((root / p).is_file() and hashlib.sha256((root / p).read_bytes()).hexdigest() == h for p, h in before.items()), name[0m
+2026-11-04T12:40:52.6043208Z [36;1m    assert not (root / ".taskmaster").exists(), name[0m
+2026-11-04T12:40:52.6043645Z [36;1m    cases.append({"case": name, "exit_code": proc.returncode, "synthetic_only": True,[0m
+2026-11-04T12:40:52.6044238Z [36;1m                  "original_bytes_unchanged": True, "model_dispatch_count": value["model_dispatch_count"]})[0m
+2026-11-04T12:40:52.6044685Z [36;1m    return value[0m
+2026-11-04T12:40:52.6044880Z [36;1m[0m
+2026-11-04T12:40:52.6045029Z [36;1m[0m
+2026-11-04T12:40:52.6045189Z [36;1mdef accounted(root):[0m
+2026-11-04T12:40:52.6045400Z [36;1m    run = root.name[0m
+2026-11-04T12:40:52.6045834Z [36;1m    prepared = call(root, run, "prepare", "prepare", 0, ["--source-set", "docs/source-set.json"], public=False)[0m
+2026-11-04T12:40:52.6046464Z [36;1m    value = json.loads((root / prepared["output_ref"] / "candidate.json").read_bytes())[0m
+2026-11-04T12:40:52.6046934Z [36;1m    for index, row in enumerate(value["block_results"]):[0m
+2026-11-04T12:40:52.6047730Z [36;1m        row.update(delivery_potential=False, disposition="context", reason="Synthetic context for the independent orchestration fixture.", atoms=[])[0m
+2026-11-04T12:40:52.6048372Z [36;1m        if index == 0:[0m
+2026-11-04T12:40:52.6048721Z [36;1m            row.update(delivery_potential=True, disposition="atomized", atoms=[{[0m
+2026-11-04T12:40:52.6049341Z [36;1m                "proposal_id": "proposal:preserve-order", "kind": "functional", "statement": "Preserve input order.",[0m
+2026-11-04T12:40:52.6050112Z [36;1m                "source_block_ids": [row["block_id"]], "acceptance_intent": "The input order remains observable.",[0m
+2026-11-04T12:40:52.6050650Z [36;1m                "prior_requirement_ids": [], "non_task_sinks": []}])[0m
+2026-11-04T12:40:52.6050996Z [36;1m    for row in value["batch_summaries"]:[0m
+2026-11-04T12:40:52.6051349Z [36;1m        row["output_accounted_count"] = row["input_block_count"][0m
+2026-11-04T12:40:52.6051716Z [36;1m    save(root / "docs/candidate.json", value)[0m
+2026-11-04T12:40:52.6052547Z [36;1m    return call(root, run, "account", "account", 0, ["--prepared", prepared["prepared_ref"]["path"], "--candidate", "docs/candidate.json"])[0m
+2026-11-04T12:40:52.6053119Z [36;1m[0m
+2026-11-04T12:40:52.6053274Z [36;1m[0m
+2026-11-04T12:40:52.6053511Z [36;1mdef audit(root, report, attempt, expected=0, extra=()):[0m
+2026-11-04T12:40:52.6054078Z [36;1m    return call(root, root.name, "audit", attempt, expected, ["--accounted", report["output_ref"] + "/report.json",[0m
+2026-11-04T12:40:52.6054738Z [36;1m        "--runner", "runner.py", "--expected-model", "synthetic/source-audit-v1", *extra])[0m
+2026-11-04T12:40:52.6055140Z [36;1m[0m
+2026-11-04T12:40:52.6055284Z [36;1m[0m
+2026-11-04T12:40:52.6055445Z [36;1mroot = fixture("clean")[0m
+2026-11-04T12:40:52.6055676Z [36;1maccount = accounted(root)[0m
+2026-11-04T12:40:52.6055942Z [36;1mcomplete = audit(root, account, "fresh")[0m
+2026-11-04T12:40:52.6056382Z [36;1massert complete["execution_complete"] and complete["synthetic_dispatch_count"] == 3[0m
+2026-11-04T12:40:52.6056841Z [36;1mref = complete["output_ref"] + "/report.json"[0m
+2026-11-04T12:40:52.6057519Z [36;1mverified = call(root, root.name, "verify", "verify", 0, ["--audit-ref", ref, "--runner", "runner.py", "--expected-model", "synthetic/source-audit-v1"], public=False)[0m
+2026-11-04T12:40:52.6058214Z [36;1massert verified["runner_dispatch_count"] == 0[0m
+2026-11-04T12:40:52.6058592Z [36;1mreused = audit(root, account, "reuse", extra=["--audit-ref", ref])[0m
+2026-11-04T12:40:52.6059211Z [36;1massert reused["runner_dispatch_count"] == 0 and reused["reuse_reason"] == "complete_identity_and_original_proof_match"[0m
+2026-11-04T12:40:52.6059782Z [36;1massert audit(root, account, "fresh") == complete[0m
+2026-11-04T12:40:52.6060501Z [36;1mbad = call(root, root.name, "verify", "missing-proof", 1, ["--audit-ref", "missing/report.json", "--runner", "runner.py", "--expected-model", "synthetic/source-audit-v1"])[0m
+2026-11-04T12:40:52.6061366Z [36;1mcapacity_root = fixture("capacity")[0m
+2026-11-04T12:40:52.6061902Z [36;1mcapacity = audit(capacity_root, accounted(capacity_root), "capacity", 1, ["--transport-max-input-tokens", "20"])[0m
+2026-11-04T12:40:52.6062638Z [36;1massert capacity["runner_dispatch_count"] == 0 and capacity["termination_reason"] == "capacity_blocked"[0m
+2026-11-04T12:40:52.6063244Z [36;1mfor mode in ("omission", "conflict", "bad-quote", "fake-pass", "tools"):[0m
+2026-11-04T12:40:52.6063613Z [36;1m    root = fixture(mode, mode)[0m
+2026-11-04T12:40:52.6063924Z [36;1m    report = audit(root, accounted(root), "negative", 1)[0m
+2026-11-04T12:40:52.6064268Z [36;1m    assert not report["planning_eligible"][0m
+2026-11-04T12:40:52.6064560Z [36;1m    if mode in {"omission", "conflict"}:[0m
+2026-11-04T12:40:52.6064942Z [36;1m        assert report["execution_complete"] and report["semantic_blockers"][0m
+2026-11-04T12:40:52.6065303Z [36;1m    else:[0m
+2026-11-04T12:40:52.6065635Z [36;1m        assert not report["execution_complete"][0m
+2026-11-04T12:40:52.6065918Z [36;1mroot = fixture("budget")[0m
+2026-11-04T12:40:52.6066147Z [36;1maccount = accounted(root)[0m
+2026-11-04T12:40:52.6066641Z [36;1mblocked = audit(root, account, "first", 1, ["--request-budget", "1"])[0m
+2026-11-04T12:40:52.6067218Z [36;1massert blocked["termination_reason"] == "budget_blocked" and blocked["synthetic_dispatch_count"] == 1[0m
+2026-11-04T12:40:52.6067798Z [36;1magain = audit(root, account, "second", 1, ["--request-budget", "1"])[0m
+2026-11-04T12:40:52.6069319Z [36;1massert again["termination_reason"] == "budget_blocked" and again["runner_dispatch_count"] == 0[0m
+2026-11-04T12:40:52.6070339Z [36;1msave(output / "cli-summary.json", {"cases": cases, "passed_cli_invocations": len(cases), "synthetic_only": True,[0m
+2026-11-04T12:40:52.6071030Z [36;1m                                   "actual_model_semantics_verified": False, "production_inputs_used": False})[0m
+2026-11-04T12:40:52.6071842Z [36;1mprint(json.dumps({"passed_cli_invocations": len(cases), "synthetic_only": True}, indent=2))[0m
+2026-11-04T12:40:52.6072280Z [36;1m'''[0m
+2026-11-04T12:40:52.6072448Z [36;1mif not code:[0m
+2026-11-04T12:40:52.6072897Z [36;1m    code = run('independent-synthetic-cli', [sys.executable, '-c', matrix_runner, str(output / 'cli')], 300)[0m
+2026-11-04T12:40:52.6073700Z [36;1mchanged = [p for p, digest in before.items() if not (root / p).is_file() or hashlib.sha256((root / p).read_bytes()).hexdigest() != digest][0m
+2026-11-04T12:40:52.6074447Z [36;1mbytecode_after = {p.relative_to(root).as_posix() for p in (root / 'scripts').rglob('*.pyc')}[0m
+2026-11-04T12:40:52.6075292Z [36;1msummary.update(tracked_files_verified=len(before), tracked_files_changed=changed, new_script_bytecode=sorted(bytecode_after - bytecode_before))[0m
+2026-11-04T12:40:52.6075974Z [36;1mif changed or bytecode_after - bytecode_before:[0m
+2026-11-04T12:40:52.6076273Z [36;1m    summary['exit_code'] = 1[0m
+2026-11-04T12:40:52.6076508Z [36;1msave()[0m
+2026-11-04T12:40:52.6076736Z [36;1mprint(json.dumps(summary, indent=2), flush=True)[0m
+2026-11-04T12:40:52.6077056Z [36;1mraise SystemExit(summary['exit_code'])[0m
+2026-11-04T12:40:52.6132468Z shell: C:\hostedtoolcache\windows\Python\3.12.10\x64\python.EXE {0}
+2026-11-04T12:40:52.6132884Z env:
+2026-11-04T12:40:52.6133078Z   PYTHONUTF8: 1
+2026-11-04T12:40:52.6133303Z   PYTHONIOENCODING: utf-8
+2026-11-04T12:40:52.6133653Z   pythonLocation: C:\hostedtoolcache\windows\Python\3.12.10\x64
+2026-11-04T12:40:52.6134216Z   PKG_CONFIG_PATH: C:\hostedtoolcache\windows\Python\3.12.10\x64/lib/pkgconfig
+2026-11-04T12:40:52.6134759Z   Python_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.12.10\x64
+2026-11-04T12:40:52.6135251Z   Python2_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.12.10\x64
+2026-11-04T12:40:52.6135724Z   Python3_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.12.10\x64
+2026-11-04T12:40:52.6136098Z ##[endgroup]
+2026-11-04T12:40:55.2990384Z {
+2026-11-04T12:40:55.2990901Z   "head": "18f54b10a4a2811eb8c167bc6289791d43c2c3e5",
+2026-11-04T12:40:55.2991655Z   "python": "3.12.10 (tags/v3.12.10:0cc8128, Apr  8 2025, 12:21:36) [MSC v.1943 64 bit (AMD64)]",
+2026-11-04T12:40:55.2992111Z   "platform": "win32",
+2026-11-04T12:40:55.2992327Z   "synthetic_only": true,
+2026-11-04T12:40:55.2992554Z   "actual_model_semantics_verified": false,
+2026-11-04T12:40:55.2992848Z   "subprocess_bytecode_override_present": false,
+2026-11-04T12:40:55.2993109Z   "files": {
+2026-11-04T12:40:55.2993311Z     "scripts/python/_b_route_source_audit.py": {
+2026-11-04T12:40:55.2993724Z       "raw_sha256": "e159c9225c76cd6942ba551c5538a68e888845f70d887c9073e9eda0a4776c28",
+2026-11-04T12:40:55.2994174Z       "git_blob": "9a59dfa40e4778f3716e52bf85bcac5e7c0ec610"
+2026-11-04T12:40:55.2994455Z     },
+2026-11-04T12:40:55.2994641Z     "scripts/python/_b_route_sources.py": {
+2026-11-04T12:40:55.2995022Z       "raw_sha256": "e3f8e251592f5426859575d32ba30939789e234b83853d918069b393089b94ba",
+2026-11-04T12:40:55.2996347Z       "git_blob": "00551fa36b0142c9ad704d3f6292e288d67d63f1"
+2026-11-04T12:40:55.2996631Z     },
+2026-11-04T12:40:55.2996849Z     "scripts/python/_planning_skill_common.py": {
+2026-11-04T12:40:55.2997628Z       "raw_sha256": "87033aad915e1ebd3fc40f4e1eeaf74edbb42680faff0a9be40be33745aba93a",
+2026-11-04T12:40:55.2998115Z       "git_blob": "4ef0e45ad71aca0321164f0c59c6b35bf79e7092"
+2026-11-04T12:40:55.2998405Z     },
+2026-11-04T12:40:55.2998608Z     "scripts/python/account_b_route_sources.py": {
+2026-11-04T12:40:55.2999193Z       "raw_sha256": "4f98d2337f015c77e213a26f7f6d2a4873ec4daf2b1ba14b973256855aede1a6",
+2026-11-04T12:40:55.2999635Z       "git_blob": "5e038fba9c18f0489e76dcac222a921fb73aa669"
+2026-11-04T12:40:55.2999939Z     },
+2026-11-04T12:40:55.3000211Z     "scripts/python/dev_cli.py": {
+2026-11-04T12:40:55.3000728Z       "raw_sha256": "59daf83a02a1697210c0ba0768a0be10f9501e9ae6e39ad6e02195754fc0d565",
+2026-11-04T12:40:55.3001155Z       "git_blob": "cb6d89ef2bebd16f89a68842ccb500e10a531176"
+2026-11-04T12:40:55.3001437Z     },
+2026-11-04T12:40:55.3001653Z     "scripts/python/tests/test_b_route_source_audit.py": {
+2026-11-04T12:40:55.3002086Z       "raw_sha256": "6b3f0761140aefe4b4b285097b5bbaf223ca9658d2c48e7db1f2749d6ae98070",
+2026-11-04T12:40:55.3002757Z       "git_blob": "af4749544c9b44ecaff5c64b112a995b9d4d5be6"
+2026-11-04T12:40:55.3003024Z     },
+2026-11-04T12:40:55.3003285Z     "scripts/python/tests/fixtures/b_route_audit_synthetic_runner.py": {
+2026-11-04T12:40:55.3003770Z       "raw_sha256": "4156a89da7b0439af7f3ab778d7826ac2987ede3adf8b96ed5a9f7bf68e6d6b4",
+2026-11-04T12:40:55.3004198Z       "git_blob": "e4cadd74ddd595c52a8dbbd101cf36f7e2332128"
+2026-11-04T12:40:55.3004465Z     },
+2026-11-04T12:40:55.3004658Z     "scripts/python/tests/test_b_route_sources.py": {
+2026-11-04T12:40:55.3005070Z       "raw_sha256": "21f3cff53e2aef7885ece9bf3cae3c590ee08ce0d8009937857728a28d437063",
+2026-11-04T12:40:55.3005497Z       "git_blob": "f7587b0c854b1f75ca48142fe19ea20cf0932994"
+2026-11-04T12:40:55.3005763Z     },
+2026-11-04T12:40:55.3005944Z     "scripts/python/build_source_ledger.py": {
+2026-11-04T12:40:55.3006333Z       "raw_sha256": "6268a6dcb700b672394dfe047f6ba9bb028a54918514cc90cbd8af9c686c0d1d",
+2026-11-04T12:40:55.3006752Z       "git_blob": "23869bf6cc2445a90623ae3d77b135cf8118d1e9"
+2026-11-04T12:40:55.3007011Z     },
+2026-11-04T12:40:55.3007217Z     "scripts/python/project_semantics_from_sources.py": {
+2026-11-04T12:40:55.3007634Z       "raw_sha256": "90cfed8dbeee610b4361777a50d81b132479c451ae5b7b62b38f84cf908156fc",
+2026-11-04T12:40:55.3008058Z       "git_blob": "25fa1af7c122fb8d145a11008771dc7b98be8150"
+2026-11-04T12:40:55.3008324Z     },
+2026-11-04T12:40:55.3008531Z     "scripts/python/validate_semantic_conservation.py": {
+2026-11-04T12:40:55.3008952Z       "raw_sha256": "56fa8baeb0978462d34efdc28bbcaeb537c9d2473f7d748012671567af925284",
+2026-11-04T12:40:55.3009658Z       "git_blob": "56d397c696b7023fbdb64a0d14283b4a89487eaf"
+2026-11-04T12:40:55.3010159Z     },
+2026-11-04T12:40:55.3010471Z     "scripts/python/_b_route_codec.py": {
+2026-11-04T12:40:55.3011176Z       "raw_sha256": "57b83b6ed9c69676bd721b5a515581df882b12e961e00bf7a4aec33ae6bc0697",
+2026-11-04T12:40:55.3011957Z       "git_blob": "1344fdedca0e81a7d229823afa796c1a72a6679b"
+2026-11-04T12:40:55.3012451Z     },
+2026-11-04T12:40:55.3012779Z     "scripts/python/_b_route_inventory.py": {
+2026-11-04T12:40:55.3013486Z       "raw_sha256": "905be69855ff7a1e2601e1973bf9d2b3b83dabafa3a23d1f0f70527f6ac80957",
+2026-11-04T12:40:55.3014287Z       "git_blob": "0b7a3f40bbe8618e49bf41da760d556d4397d19a"
+2026-11-04T12:40:55.3014769Z     },
+2026-11-04T12:40:55.3015104Z     "scripts/python/_mvg_evidence_transport.py": {
+2026-11-04T12:40:55.3015857Z       "raw_sha256": "e2d0724d50865633858f851a1b2153400540f261191e43bd0c451b89189ade50",
+2026-11-04T12:40:55.3016671Z       "git_blob": "74c39fcf20cc2698ac0bdcb3600b2aa5ee4fa531"
+2026-11-04T12:40:55.3017517Z     },
+2026-11-04T12:40:55.3018779Z     "scripts/python/_capability_input_integrity.py": {
+2026-11-04T12:40:55.3019372Z       "raw_sha256": "f8b0107e6a8c7934930b60a0e3c00ff1d784fd1290a358318c0f13b41afe1e93",
+2026-11-04T12:40:55.3019825Z       "git_blob": "f85aa0ea8d45e6e0ce782e529eb64cf6166b2658"
+2026-11-04T12:40:55.3020103Z     },
+2026-11-04T12:40:55.3020403Z     "scripts/python/requirements-b-route.txt": {
+2026-11-04T12:40:55.3020935Z       "raw_sha256": "9cba6d4508d006391ab899893990d5ac5d03b4811a0f71f152c5883897ee8120",
+2026-11-04T12:40:55.3021353Z       "git_blob": "8790ebe281089c679686d0689ecd59080899c3cb"
+2026-11-04T12:40:55.3021782Z     },
+2026-11-04T12:40:55.3021983Z     ".github/workflows/story-2-2-windows.yml": {
+2026-11-04T12:40:55.3022593Z       "raw_sha256": "30a0ecb32ec517a031b2144cd3cefbd96d0b84700b972a8330f3a63d93437142",
+2026-11-04T12:40:55.3023033Z       "git_blob": "cbe320273f39dd25a3054116d5a48288c4f133ab"
+2026-11-04T12:40:55.3023307Z     }
+2026-11-04T12:40:55.3023452Z   }
+2026-11-04T12:40:55.3023592Z }
+2026-11-04T12:41:03.2014415Z Collecting jsonschema==4.26.0 (from -r scripts/python/requirements-b-route.txt (line 1))
+2026-11-04T12:41:03.2016050Z   Downloading jsonschema-4.26.0-py3-none-any.whl.metadata (7.6 kB)
+2026-11-04T12:41:03.2016621Z Collecting referencing==0.37.0 (from -r scripts/python/requirements-b-route.txt (line 2))
+2026-11-04T12:41:03.2017166Z   Downloading referencing-0.37.0-py3-none-any.whl.metadata (2.8 kB)
+2026-11-04T12:41:03.2017747Z Collecting attrs>=22.2.0 (from jsonschema==4.26.0->-r scripts/python/requirements-b-route.txt (line 1))
+2026-11-04T12:41:03.2018327Z   Downloading attrs-26.1.0-py3-none-any.whl.metadata (8.8 kB)
+2026-11-04T12:41:03.2018959Z Collecting jsonschema-specifications>=2023.03.6 (from jsonschema==4.26.0->-r scripts/python/requirements-b-route.txt (line 1))
+2026-11-04T12:41:03.2019674Z   Downloading jsonschema_specifications-2025.9.1-py3-none-any.whl.metadata (2.9 kB)
+2026-11-04T12:41:03.2020303Z Collecting rpds-py>=0.25.0 (from jsonschema==4.26.0->-r scripts/python/requirements-b-route.txt (line 1))
+2026-11-04T12:41:03.2020888Z   Downloading rpds_py-2026.9.1-cp312-cp312-win_amd64.whl.metadata (4.2 kB)
+2026-11-04T12:41:03.2021518Z Collecting typing-extensions>=4.4.0 (from referencing==0.37.0->-r scripts/python/requirements-b-route.txt (line 2))
+2026-11-04T12:41:03.2022179Z   Downloading typing_extensions-4.16.0-py3-none-any.whl.metadata (3.3 kB)
+2026-11-04T12:41:03.2022641Z Downloading jsonschema-4.26.0-py3-none-any.whl (90 kB)
+2026-11-04T12:41:03.2023018Z Downloading referencing-0.37.0-py3-none-any.whl (26 kB)
+2026-11-04T12:41:03.2023379Z Downloading attrs-26.1.0-py3-none-any.whl (67 kB)
+2026-11-04T12:41:03.2023797Z Downloading jsonschema_specifications-2025.9.1-py3-none-any.whl (18 kB)
+2026-11-04T12:41:03.2024269Z Downloading rpds_py-2026.9.1-cp312-cp312-win_amd64.whl (222 kB)
+2026-11-04T12:41:03.2024693Z Downloading typing_extensions-4.16.0-py3-none-any.whl (45 kB)
+2026-11-04T12:41:03.2025340Z Installing collected packages: typing-extensions, rpds-py, attrs, referencing, jsonschema-specifications, jsonschema
+2026-11-04T12:41:03.2026038Z 
+2026-11-04T12:41:03.2026549Z Successfully installed attrs-26.1.0 jsonschema-4.26.0 jsonschema-specifications-2025.9.1 referencing-0.37.0 rpds-py-2026.9.1 typing-extensions-4.16.0
+2026-11-04T12:41:03.2027178Z 
+2026-11-04T12:41:03.2027193Z 
+2026-11-04T12:47:52.7318415Z {"test_started": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_add_mode_cross_block_semantics_stale_when_any_source_block_changes"}
+2026-11-04T12:47:52.7321127Z {"test_finished": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_add_mode_cross_block_semantics_stale_when_any_source_block_changes", "elapsed_seconds": 0.07800000000000296}
+2026-11-04T12:47:52.7323032Z {"test_started": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_add_mode_preserves_unchanged_ids_when_block_is_inserted"}
+2026-11-04T12:47:52.7324856Z {"test_finished": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_add_mode_preserves_unchanged_ids_when_block_is_inserted", "elapsed_seconds": 0.07899999999999352}
+2026-11-04T12:47:52.7327599Z {"test_started": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_add_mode_reports_changed_and_unchanged_stable_blocks"}
+2026-11-04T12:47:52.7329927Z {"test_finished": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_add_mode_reports_changed_and_unchanged_stable_blocks", "elapsed_seconds": 0.06199999999999761}
+2026-11-04T12:47:52.7332875Z {"test_started": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_add_mode_reuses_only_hash_stable_reviewed_semantics"}
+2026-11-04T12:47:52.7335205Z {"test_finished": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_add_mode_reuses_only_hash_stable_reviewed_semantics", "elapsed_seconds": 0.07800000000000296}
+2026-11-04T12:47:52.7337601Z {"test_started": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_add_source_set_keeps_prior_sources_and_requires_explicit_retirement"}
+2026-11-04T12:47:52.7340053Z {"test_finished": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_add_source_set_keeps_prior_sources_and_requires_explicit_retirement", "elapsed_seconds": 0.0}
+2026-11-04T12:47:52.7342577Z {"test_started": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_add_with_new_source_and_no_source_set_requires_baseline_adoption"}
+2026-11-04T12:47:52.7344951Z {"test_finished": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_add_with_new_source_and_no_source_set_requires_baseline_adoption", "elapsed_seconds": 0.0}
+2026-11-04T12:47:52.7347248Z {"test_started": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_attempt_refresh_failure_has_independent_failure_family"}
+2026-11-04T12:47:52.7349694Z {"test_finished": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_attempt_refresh_failure_has_independent_failure_family", "elapsed_seconds": 0.016000000000005343}
+2026-11-04T12:47:52.7352470Z {"test_started": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_authoritative_source_invalid_utf8_is_fail_fast"}
+2026-11-04T12:47:52.7354764Z {"test_finished": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_authoritative_source_invalid_utf8_is_fail_fast", "elapsed_seconds": 0.0}
+2026-11-04T12:47:52.7357112Z {"test_started": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_blocked_or_stale_task_coverage_cannot_promote_latest_successful"}
+2026-11-04T12:47:52.7359609Z {"test_finished": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_blocked_or_stale_task_coverage_cannot_promote_latest_successful", "elapsed_seconds": 0.0309999999999917}
+2026-11-04T12:47:52.7362113Z {"test_started": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_chapter3_begin_run_writes_attempt_before_closure_artifacts_exist"}
+2026-11-04T12:47:52.7364445Z {"test_finished": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_chapter3_begin_run_writes_attempt_before_closure_artifacts_exist", "elapsed_seconds": 0.0}
+2026-11-04T12:47:52.7366794Z {"test_started": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_chapter3_closure_requires_local_stable_refresh"}
+2026-11-04T12:47:52.7369075Z {"test_finished": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_chapter3_closure_requires_local_stable_refresh", "elapsed_seconds": 0.016000000000005343}
+2026-11-04T12:47:52.7371801Z {"test_started": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_chapter3_stable_promotion_blocks_when_candidate_mapping_is_not_persisted"}
+2026-11-04T12:47:52.7374270Z {"test_finished": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_chapter3_stable_promotion_blocks_when_candidate_mapping_is_not_persisted", "elapsed_seconds": 0.0309999999999917}
+2026-11-04T12:47:52.7376679Z {"test_started": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_chinese_normative_and_implicit_rules_enter_semantic_review_without_keyword_filtering"}
+2026-11-04T12:47:52.7378244Z {"test_finished": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_chinese_normative_and_implicit_rules_enter_semantic_review_without_keyword_filtering", "elapsed_seconds": 0.047000000000011255}
+2026-11-04T12:47:52.7380703Z {"test_started": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_closure_requires_delivery_sink_and_accepts_task_sink"}
+2026-11-04T12:47:52.7382883Z {"test_finished": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_closure_requires_delivery_sink_and_accepts_task_sink", "elapsed_seconds": 0.0}
+2026-11-04T12:47:52.7385156Z {"test_started": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_compact_intents_split_before_complexity_exceeds_seven"}
+2026-11-04T12:47:52.7387379Z {"test_finished": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_compact_intents_split_before_complexity_exceeds_seven", "elapsed_seconds": 0.0}
+2026-11-04T12:47:52.7389716Z {"test_started": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_copy_planning_artifacts_hashes_canonical_lf_bytes"}
+2026-11-04T12:47:52.7392350Z {"test_finished": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_copy_planning_artifacts_hashes_canonical_lf_bytes", "elapsed_seconds": 0.015000000000000568}
+2026-11-04T12:47:52.7394769Z {"test_started": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_coverage_blocks_stale_existing_task_mapping_until_reconciled"}
+2026-11-04T12:47:52.7397250Z {"test_finished": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_coverage_blocks_stale_existing_task_mapping_until_reconciled", "elapsed_seconds": 0.0}
+2026-11-04T12:47:52.7399510Z {"test_started": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_declared_missing_source_is_fail_fast"}
+2026-11-04T12:47:52.7401604Z {"test_finished": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_declared_missing_source_is_fail_fast", "elapsed_seconds": 0.0}
+2026-11-04T12:47:52.7403841Z {"test_started": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_default_source_discovery_includes_optional_bmad_gdd_when_present"}
+2026-11-04T12:47:52.7406357Z {"test_finished": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_default_source_discovery_includes_optional_bmad_gdd_when_present", "elapsed_seconds": 0.046999999999997044}
+2026-11-04T12:47:52.7407797Z {"test_started": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_dev_cli_refresh_hook_fails_on_local_refresh_failure_but_not_deferred_publication"}
+2026-11-04T12:47:52.7409050Z {"local_refresh_status": "failed", "chapter_closure_status": "knowledge_refresh_failed", "publication_status": "deferred", "publication_reason": "knowledge_refresh_failed"}
+2026-11-04T12:47:52.7410207Z {"local_refresh_status": "stable_refreshed", "chapter_closure_status": "passed", "publication_status": "deferred", "publication_reason": "dirty_worktree"}
+2026-11-04T12:47:52.7411171Z {"local_refresh_status": "attempt_refreshed_started", "chapter_closure_status": "concern", "publication_status": "deferred"}
+2026-11-04T12:47:52.7412757Z {"test_finished": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_dev_cli_refresh_hook_fails_on_local_refresh_failure_but_not_deferred_publication", "elapsed_seconds": 0.0}
+2026-11-04T12:47:52.7414042Z {"test_started": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_enrichment_emits_file_overlap_as_advisory_signal"}
+2026-11-04T12:47:52.7415214Z {"test_finished": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_enrichment_emits_file_overlap_as_advisory_signal", "elapsed_seconds": 0.0}
+2026-11-04T12:47:52.7416608Z {"test_started": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_failed_attempt_does_not_overwrite_latest_successful"}
+2026-11-04T12:47:52.7417895Z {"test_finished": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_failed_attempt_does_not_overwrite_latest_successful", "elapsed_seconds": 0.031999999999996476}
+2026-11-04T12:47:52.7419245Z {"test_started": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_failed_closure_never_attempts_canonical_publication"}
+2026-11-04T12:47:52.7420483Z {"test_finished": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_failed_closure_never_attempts_canonical_publication", "elapsed_seconds": 0.015000000000000568}
+2026-11-04T12:47:52.7421743Z {"test_started": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_full_ledger_keeps_chinese_and_long_blocks_before_filtering"}
+2026-11-04T12:47:52.7423024Z {"test_finished": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_full_ledger_keeps_chinese_and_long_blocks_before_filtering", "elapsed_seconds": 0.046999999999997044}
+2026-11-04T12:47:52.7424348Z {"test_started": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_guarded_chapter3_full_run_fails_closed_when_closure_cannot_pass"}
+2026-11-04T12:47:52.7425659Z {"test_finished": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_guarded_chapter3_full_run_fails_closed_when_closure_cannot_pass", "elapsed_seconds": 0.016000000000005343}
+2026-11-04T12:47:52.7426954Z {"test_started": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_guarded_chapter3_run_refreshes_attempt_even_when_child_fails"}
+2026-11-04T12:47:52.7428193Z {"test_finished": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_guarded_chapter3_run_refreshes_attempt_even_when_child_fails", "elapsed_seconds": 0.0}
+2026-11-04T12:47:52.7429432Z {"test_started": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_json_ledger_preserves_exact_source_slice_and_precise_span"}
+2026-11-04T12:47:52.7430680Z {"test_finished": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_json_ledger_preserves_exact_source_slice_and_precise_span", "elapsed_seconds": 0.0}
+2026-11-04T12:47:52.7432335Z {"test_started": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_missing_p1_waiver_never_bypasses_semantic_or_p0_blockers"}
+2026-11-04T12:47:52.7433589Z {"test_finished": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_missing_p1_waiver_never_bypasses_semantic_or_p0_blockers", "elapsed_seconds": 0.0}
+2026-11-04T12:47:52.7434834Z {"test_started": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_multi_capability_grouping_is_preserved_and_shadowed_advisory_only"}
+2026-11-04T12:47:52.7436142Z {"test_finished": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_multi_capability_grouping_is_preserved_and_shadowed_advisory_only", "elapsed_seconds": 0.0}
+2026-11-04T12:47:52.7437505Z {"test_started": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_passed_closure_promotes_planning_topology_without_self_staling_revision"}
+2026-11-04T12:47:52.7438901Z {"test_finished": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_passed_closure_promotes_planning_topology_without_self_staling_revision", "elapsed_seconds": 0.046999999999997044}
+2026-11-04T12:47:52.7440282Z {"test_started": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_persisted_semantic_coverage_blocks_missing_partial_and_missing_ref_mappings"}
+2026-11-04T12:47:52.7441638Z {"test_finished": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_persisted_semantic_coverage_blocks_missing_partial_and_missing_ref_mappings", "elapsed_seconds": 0.0}
+2026-11-04T12:47:52.7443081Z {"test_started": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_planning_refresh_failure_restores_previous_stable_and_artifacts"}
+2026-11-04T12:47:52.7444408Z {"test_finished": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_planning_refresh_failure_restores_previous_stable_and_artifacts", "elapsed_seconds": 0.04600000000000648}
+2026-11-04T12:47:52.7445760Z {"test_started": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_projection_batch_budget_never_truncates_oversized_block"}
+2026-11-04T12:47:52.7446956Z {"test_finished": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_projection_batch_budget_never_truncates_oversized_block", "elapsed_seconds": 0.0}
+2026-11-04T12:47:52.7448122Z {"test_started": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_projection_batches_account_for_every_source_block"}
+2026-11-04T12:47:52.7450038Z {"test_finished": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_projection_batches_account_for_every_source_block", "elapsed_seconds": 0.0}
+2026-11-04T12:47:52.7451406Z {"test_started": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_projection_batches_include_adjacent_context_without_transferring_ownership"}
+2026-11-04T12:47:52.7452774Z {"test_finished": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_projection_batches_include_adjacent_context_without_transferring_ownership", "elapsed_seconds": 0.0}
+2026-11-04T12:47:52.7454091Z {"test_started": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_projection_blocks_stale_semantic_binding_and_duplicate_accounting"}
+2026-11-04T12:47:52.7455432Z {"test_finished": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_projection_blocks_stale_semantic_binding_and_duplicate_accounting", "elapsed_seconds": 0.046999999999997044}
+2026-11-04T12:47:52.7456680Z {"test_started": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_projection_canonicalizes_adr_owned_sink_alias"}
+2026-11-04T12:47:52.7457902Z {"test_finished": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_projection_canonicalizes_adr_owned_sink_alias", "elapsed_seconds": 0.015999999999991132}
+2026-11-04T12:47:52.7459155Z {"test_started": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_projection_compile_rejects_duplicate_primary_batch_ownership"}
+2026-11-04T12:47:52.7460409Z {"test_finished": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_projection_compile_rejects_duplicate_primary_batch_ownership", "elapsed_seconds": 0.0}
+2026-11-04T12:47:52.7461728Z {"test_started": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_projection_compile_rejects_unreviewed_blocks_and_requires_batch_accounting"}
+2026-11-04T12:47:52.7463081Z {"test_finished": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_projection_compile_rejects_unreviewed_blocks_and_requires_batch_accounting", "elapsed_seconds": 0.0}
+2026-11-04T12:47:52.7464410Z {"test_started": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_projection_compile_requires_source_manifest_binding_and_valid_status"}
+2026-11-04T12:47:52.7465721Z {"test_finished": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_projection_compile_requires_source_manifest_binding_and_valid_status", "elapsed_seconds": 0.0}
+2026-11-04T12:47:52.7467116Z {"test_started": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_projection_conservation_blocks_delivery_potential_unresolved"}
+2026-11-04T12:47:52.7468448Z {"test_finished": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_projection_conservation_blocks_delivery_potential_unresolved", "elapsed_seconds": 0.03100000000000591}
+2026-11-04T12:47:52.7470317Z {"test_started": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_projection_conservation_blocks_unresolved_delivery_requirement"}
+2026-11-04T12:47:52.7471614Z {"test_finished": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_projection_conservation_blocks_unresolved_delivery_requirement", "elapsed_seconds": 0.0}
+2026-11-04T12:47:52.7473034Z {"test_started": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_projection_merge_preserves_all_sources_for_duplicate_and_equivalent_atoms"}
+2026-11-04T12:47:52.7474459Z {"test_finished": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_projection_merge_preserves_all_sources_for_duplicate_and_equivalent_atoms", "elapsed_seconds": 0.016000000000005343}
+2026-11-04T12:47:52.7475786Z {"test_started": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_projection_prepare_removes_stale_managed_batch_files"}
+2026-11-04T12:47:52.7477002Z {"test_finished": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_projection_prepare_removes_stale_managed_batch_files", "elapsed_seconds": 0.0}
+2026-11-04T12:47:52.7478227Z {"test_started": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_projection_stage_report_cannot_promote_latest_successful"}
+2026-11-04T12:47:52.7479507Z {"test_finished": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_projection_stage_report_cannot_promote_latest_successful", "elapsed_seconds": 0.015000000000000568}
+2026-11-04T12:47:52.7480811Z {"test_started": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_projection_validation_blocks_invalid_status_and_accounting_links"}
+2026-11-04T12:47:52.7482170Z {"test_finished": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_projection_validation_blocks_invalid_status_and_accounting_links", "elapsed_seconds": 0.046999999999997044}
+2026-11-04T12:47:52.7483466Z {"test_started": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_publication_eligibility_is_trusted_main_and_clean_only"}
+2026-11-04T12:47:52.7484709Z {"test_finished": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_publication_eligibility_is_trusted_main_and_clean_only", "elapsed_seconds": 0.0}
+2026-11-04T12:47:52.7485943Z {"test_started": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_regression_summary_separates_source_semantic_and_task_layers"}
+2026-11-04T12:47:52.7487236Z {"test_finished": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_regression_summary_separates_source_semantic_and_task_layers", "elapsed_seconds": 0.015999999999991132}
+2026-11-04T12:47:52.7488607Z {"test_started": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_semantic_intent_keeps_capability_and_provisional_dependency"}
+2026-11-04T12:47:52.7490216Z {"test_finished": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_semantic_intent_keeps_capability_and_provisional_dependency", "elapsed_seconds": 0.0}
+2026-11-04T12:47:52.7491481Z {"test_started": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_semantic_intent_uses_chinese_heading_without_capability"}
+2026-11-04T12:47:52.7492699Z {"test_finished": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_semantic_intent_uses_chinese_heading_without_capability", "elapsed_seconds": 0.0}
+2026-11-04T12:47:52.7493939Z {"test_started": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_stable_refresh_failure_blocks_chapter_closure_and_publication"}
+2026-11-04T12:47:52.7495259Z {"test_finished": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_stable_refresh_failure_blocks_chapter_closure_and_publication", "elapsed_seconds": 0.03100000000000591}
+2026-11-04T12:47:52.7496677Z {"test_started": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_stable_write_failure_preserves_previous_successful_topology"}
+2026-11-04T12:47:52.7497972Z {"test_finished": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_stable_write_failure_preserves_previous_successful_topology", "elapsed_seconds": 0.03100000000000591}
+2026-11-04T12:47:52.7499262Z {"test_started": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_stale_triplet_attestation_cannot_promote_latest_successful"}
+2026-11-04T12:47:52.7500623Z {"test_finished": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_stale_triplet_attestation_cannot_promote_latest_successful", "elapsed_seconds": 0.031999999999996476}
+2026-11-04T12:47:52.7501911Z {"test_started": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_triplet_attestation_binds_current_task_file_hashes"}
+2026-11-04T12:47:52.7503090Z {"test_finished": "test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_triplet_attestation_binds_current_task_file_hashes", "elapsed_seconds": 0.0}
+2026-11-04T12:47:52.7504283Z {"test_started": "test_milestone_incremental_hotfixes.MilestoneHotfixTests.test_chapter6_regression_consumption_requires_current_manifest_and_passed_ids"}
+2026-11-04T12:47:52.7505531Z {"test_finished": "test_milestone_incremental_hotfixes.MilestoneHotfixTests.test_chapter6_regression_consumption_requires_current_manifest_and_passed_ids", "elapsed_seconds": 0.6869999999999976}
+2026-11-04T12:47:52.7506756Z {"test_started": "test_milestone_incremental_hotfixes.MilestoneHotfixTests.test_export_preserves_existing_master_lifecycle_until_explicit_reopen"}
+2026-11-04T12:47:52.7507938Z {"test_finished": "test_milestone_incremental_hotfixes.MilestoneHotfixTests.test_export_preserves_existing_master_lifecycle_until_explicit_reopen", "elapsed_seconds": 0.0}
+2026-11-04T12:47:52.7509079Z {"test_started": "test_milestone_incremental_hotfixes.MilestoneHotfixTests.test_glob_source_set_requires_explicit_retirement_of_removed_file"}
+2026-11-04T12:47:52.7510286Z source_ledger_error=previous sources disappeared without --retire-source: docs/gdd/old.md
+2026-11-04T12:47:52.7511318Z {"test_finished": "test_milestone_incremental_hotfixes.MilestoneHotfixTests.test_glob_source_set_requires_explicit_retirement_of_removed_file", "elapsed_seconds": 0.046999999999997044}
+2026-11-04T12:47:52.7512491Z {"test_started": "test_milestone_incremental_hotfixes.MilestoneHotfixTests.test_handoff_projection_and_baseline_weakenings_are_rejected"}
+2026-11-04T12:47:52.7513625Z {"test_finished": "test_milestone_incremental_hotfixes.MilestoneHotfixTests.test_handoff_projection_and_baseline_weakenings_are_rejected", "elapsed_seconds": 0.0}
+2026-11-04T12:47:52.7514670Z {"test_started": "test_milestone_incremental_hotfixes.MilestoneHotfixTests.test_intent_ids_survive_ignored_output_deletion"}
+2026-11-04T12:47:52.7515628Z task_intents=C:\Users\runneradmin\AppData\Local\Temp\tmpgpxo1iw4\logs\ci\task-generation\task-intents.normalized.json intents=1 anchors=1
+2026-11-04T12:47:52.7516614Z task_intents=C:\Users\runneradmin\AppData\Local\Temp\tmpgpxo1iw4\logs\ci\task-generation\task-intents.normalized.json intents=2 anchors=2
+2026-11-04T12:47:52.7517696Z {"test_finished": "test_milestone_incremental_hotfixes.MilestoneHotfixTests.test_intent_ids_survive_ignored_output_deletion", "elapsed_seconds": 0.016000000000005343}
+2026-11-04T12:47:52.7518738Z {"test_started": "test_milestone_incremental_hotfixes.MilestoneHotfixTests.test_master_export_rollback_on_second_replace"}
+2026-11-04T12:47:52.7519399Z Tasks to export (string id -> numeric id):
+2026-11-04T12:47:52.7519898Z   GM-6 -> 6
+2026-11-04T12:47:52.7520127Z   NG-6 -> 6
+2026-11-04T12:47:52.7520381Z Tasks to export (string id -> numeric id):
+2026-11-04T12:47:52.7520715Z   GM-6 -> 6
+2026-11-04T12:47:52.7520966Z   NG-6 -> 6
+2026-11-04T12:47:52.7521775Z Wrote Task Master tasks file to: C:\Users\RUNNER~1\AppData\Local\Temp\tmp36c8mv8n\tasks.json
+2026-11-04T12:47:52.7524936Z {"test_finished": "test_milestone_incremental_hotfixes.MilestoneHotfixTests.test_master_export_rollback_on_second_replace", "elapsed_seconds": 0.015000000000000568}
+2026-11-04T12:47:52.7527009Z {"test_started": "test_milestone_incremental_hotfixes.MilestoneHotfixTests.test_public_chapter6_entry_forwards_regression_evidence"}
+2026-11-04T12:47:52.7528679Z {"test_finished": "test_milestone_incremental_hotfixes.MilestoneHotfixTests.test_public_chapter6_entry_forwards_regression_evidence", "elapsed_seconds": 0.17199999999999704}
+2026-11-04T12:47:52.7530015Z {"test_started": "test_milestone_incremental_hotfixes.MilestoneHotfixTests.test_real_task6_export_preserves_done_and_all_subtasks"}
+2026-11-04T12:47:52.7531163Z Tasks to export (string id -> numeric id):
+2026-11-04T12:47:52.7531516Z   GM-0101 -> 1
+2026-11-04T12:47:52.7531752Z   GM-0102 -> 2
+2026-11-04T12:47:52.7532074Z   GM-0106 -> 6
+2026-11-04T12:47:52.7532395Z   NG-0004 -> 6
+2026-11-04T12:47:52.7532809Z Wrote Task Master tasks file to: C:\Users\RUNNER~1\AppData\Local\Temp\tmps9k27ny6\tasks.json
+2026-11-04T12:47:52.7533753Z {"test_finished": "test_milestone_incremental_hotfixes.MilestoneHotfixTests.test_real_task6_export_preserves_done_and_all_subtasks", "elapsed_seconds": 0.046999999999997044}
+2026-11-04T12:47:52.7534859Z {"test_started": "test_milestone_incremental_hotfixes.MilestoneHotfixTests.test_retirement_excludes_existing_glob_match_after_restart"}
+2026-11-04T12:47:52.7535989Z source_ledger=C:\Users\runneradmin\AppData\Local\Temp\tmpewvwl4fj\logs\ci\task-generation\source-blocks.v1.json sources=1 blocks=2 unchanged=0 changed=0 added=2 removed=0
+2026-11-04T12:47:52.7537243Z source_ledger=C:\Users\runneradmin\AppData\Local\Temp\tmpewvwl4fj\logs\ci\task-generation\source-blocks.v1.json sources=1 blocks=2 unchanged=0 changed=0 added=2 removed=0
+2026-11-04T12:47:52.7538489Z {"test_finished": "test_milestone_incremental_hotfixes.MilestoneHotfixTests.test_retirement_excludes_existing_glob_match_after_restart", "elapsed_seconds": 0.07800000000000296}
+2026-11-04T12:47:52.7539630Z {"test_started": "test_milestone_incremental_hotfixes.MilestoneHotfixTests.test_triplet_write_consumes_reviewed_actions_and_rejects_drift"}
+2026-11-04T12:47:52.7540777Z triplet_patch=C:\Users\runneradmin\AppData\Local\Temp\tmpfjhm7qfw\logs\ci\task-generation\task-triplet.patch.json back_candidates=1 gameplay_candidates=0 conflicts=0 write=False
+2026-11-04T12:47:52.7541595Z wrote back_ops=1 gameplay_ops=0
+2026-11-04T12:47:52.7542407Z triplet_patch=C:\Users\runneradmin\AppData\Local\Temp\tmpfjhm7qfw\logs\ci\task-generation\task-triplet.patch.json back_candidates=1 gameplay_candidates=0 conflicts=0 write=True
+2026-11-04T12:47:52.7543699Z {"test_finished": "test_milestone_incremental_hotfixes.MilestoneHotfixTests.test_triplet_write_consumes_reviewed_actions_and_rejects_drift", "elapsed_seconds": 0.03100000000000591}
+2026-11-04T12:47:52.7544840Z {"test_started": "test_mvg_evidence_transport.EvidenceTransportTests.test_adjacent_batch_merge_propagates_non_capacity_probe_errors"}
+2026-11-04T12:47:52.7545913Z {"test_finished": "test_mvg_evidence_transport.EvidenceTransportTests.test_adjacent_batch_merge_propagates_non_capacity_probe_errors", "elapsed_seconds": 0.0}
+2026-11-04T12:47:52.7546969Z {"test_started": "test_mvg_evidence_transport.EvidenceTransportTests.test_adjacent_batches_are_coalesced_only_after_final_probe"}
+2026-11-04T12:47:52.7548052Z {"test_finished": "test_mvg_evidence_transport.EvidenceTransportTests.test_adjacent_batches_are_coalesced_only_after_final_probe", "elapsed_seconds": 0.015999999999991132}
+2026-11-04T12:47:52.7549164Z {"test_started": "test_mvg_evidence_transport.EvidenceTransportTests.test_audit_receipt_must_bind_the_actual_complete_request"}
+2026-11-04T12:47:52.7550182Z {"test_finished": "test_mvg_evidence_transport.EvidenceTransportTests.test_audit_receipt_must_bind_the_actual_complete_request", "elapsed_seconds": 0.0}
+2026-11-04T12:47:52.7551582Z {"test_started": "test_mvg_evidence_transport.EvidenceTransportTests.test_audit_requires_every_part_and_verifiable_quotes"}
+2026-11-04T12:47:52.7552714Z {"test_finished": "test_mvg_evidence_transport.EvidenceTransportTests.test_audit_requires_every_part_and_verifiable_quotes", "elapsed_seconds": 0.0}
+2026-11-04T12:47:52.7553731Z {"test_started": "test_mvg_evidence_transport.EvidenceTransportTests.test_batches_reassemble_every_character_and_preserve_core"}
+2026-11-04T12:47:52.7554915Z {"test_finished": "test_mvg_evidence_transport.EvidenceTransportTests.test_batches_reassemble_every_character_and_preserve_core", "elapsed_seconds": 0.06300000000000239}
+2026-11-04T12:47:52.7556004Z {"test_started": "test_mvg_evidence_transport.EvidenceTransportTests.test_cli_schema_binds_source_line_addresses_to_the_exact_part"}
+2026-11-04T12:47:52.7557054Z {"test_finished": "test_mvg_evidence_transport.EvidenceTransportTests.test_cli_schema_binds_source_line_addresses_to_the_exact_part", "elapsed_seconds": 0.0}
+2026-11-04T12:47:52.7558096Z {"test_started": "test_mvg_evidence_transport.EvidenceTransportTests.test_conflicts_require_exact_requirement_or_flow_addresses"}
+2026-11-04T12:47:52.7559141Z {"test_finished": "test_mvg_evidence_transport.EvidenceTransportTests.test_conflicts_require_exact_requirement_or_flow_addresses", "elapsed_seconds": 0.0}
+2026-11-04T12:47:52.7560125Z {"test_started": "test_mvg_evidence_transport.EvidenceTransportTests.test_core_oversize_blocks_before_any_model_call"}
+2026-11-04T12:47:52.7561110Z {"test_finished": "test_mvg_evidence_transport.EvidenceTransportTests.test_core_oversize_blocks_before_any_model_call", "elapsed_seconds": 0.0}
+2026-11-04T12:47:52.7562124Z {"test_started": "test_mvg_evidence_transport.EvidenceTransportTests.test_core_without_auxiliary_text_still_requires_preflight"}
+2026-11-04T12:47:52.7563149Z {"test_finished": "test_mvg_evidence_transport.EvidenceTransportTests.test_core_without_auxiliary_text_still_requires_preflight", "elapsed_seconds": 0.0}
+2026-11-04T12:47:52.7564231Z {"test_started": "test_mvg_evidence_transport.EvidenceTransportTests.test_empty_source_is_delivered_once_and_duplicate_empty_parts_are_rejected"}
+2026-11-04T12:47:52.7565375Z {"test_finished": "test_mvg_evidence_transport.EvidenceTransportTests.test_empty_source_is_delivered_once_and_duplicate_empty_parts_are_rejected", "elapsed_seconds": 0.0}
+2026-11-04T12:47:52.7566455Z {"test_started": "test_mvg_evidence_transport.EvidenceTransportTests.test_historical_v1_v2_plan_prompt_and_schema_golden_hashes"}
+2026-11-04T12:47:52.7567559Z {"test_finished": "test_mvg_evidence_transport.EvidenceTransportTests.test_historical_v1_v2_plan_prompt_and_schema_golden_hashes", "elapsed_seconds": 0.015000000000000568}
+2026-11-04T12:47:52.7568660Z {"test_started": "test_mvg_evidence_transport.EvidenceTransportTests.test_historical_v1_v2_reject_grouped_order_with_recomputed_parts"}
+2026-11-04T12:47:52.7569724Z {"test_finished": "test_mvg_evidence_transport.EvidenceTransportTests.test_historical_v1_v2_reject_grouped_order_with_recomputed_parts", "elapsed_seconds": 0.0}
+2026-11-04T12:47:52.7571151Z {"test_started": "test_mvg_evidence_transport.EvidenceTransportTests.test_inspection_can_surface_hard_conflict_without_review_verdict"}
+2026-11-04T12:47:52.7572275Z {"test_finished": "test_mvg_evidence_transport.EvidenceTransportTests.test_inspection_can_surface_hard_conflict_without_review_verdict", "elapsed_seconds": 0.016000000000005343}
+2026-11-04T12:47:52.7573432Z {"test_started": "test_mvg_evidence_transport.EvidenceTransportTests.test_inspection_prompt_delivers_only_related_complete_task_rows"}
+2026-11-04T12:47:52.7574555Z {"test_finished": "test_mvg_evidence_transport.EvidenceTransportTests.test_inspection_prompt_delivers_only_related_complete_task_rows", "elapsed_seconds": 0.015000000000000568}
+2026-11-04T12:47:52.7576134Z {"test_started": "test_mvg_evidence_transport.EvidenceTransportTests.test_lossless_encoding_rejects_content_reference_and_identity_pollution"}
+2026-11-04T12:47:52.7578291Z {"test_finished": "test_mvg_evidence_transport.EvidenceTransportTests.test_lossless_encoding_rejects_content_reference_and_identity_pollution", "elapsed_seconds": 0.0}
+2026-11-04T12:47:52.7580686Z {"test_started": "test_mvg_evidence_transport.EvidenceTransportTests.test_lossless_encoding_shares_raw_json_blocks_and_preserves_exact_order"}
+2026-11-04T12:47:52.7582820Z {"test_finished": "test_mvg_evidence_transport.EvidenceTransportTests.test_lossless_encoding_shares_raw_json_blocks_and_preserves_exact_order", "elapsed_seconds": 0.0}
+2026-11-04T12:47:52.7585096Z {"test_started": "test_mvg_evidence_transport.EvidenceTransportTests.test_missing_duplicate_reordered_and_changed_parts_fail_closed"}
+2026-11-04T12:47:52.7586846Z {"test_finished": "test_mvg_evidence_transport.EvidenceTransportTests.test_missing_duplicate_reordered_and_changed_parts_fail_closed", "elapsed_seconds": 0.031999999999996476}
+2026-11-04T12:47:52.7587947Z {"test_started": "test_mvg_evidence_transport.EvidenceTransportTests.test_new_model_source_lines_have_explicit_exact_citation_addresses"}
+2026-11-04T12:47:52.7588993Z {"test_finished": "test_mvg_evidence_transport.EvidenceTransportTests.test_new_model_source_lines_have_explicit_exact_citation_addresses", "elapsed_seconds": 0.0}
+2026-11-04T12:47:52.7590079Z {"test_started": "test_mvg_evidence_transport.EvidenceTransportTests.test_new_transport_binds_encoding_and_historical_prompt_stays_literal"}
+2026-11-04T12:47:52.7591653Z {"test_finished": "test_mvg_evidence_transport.EvidenceTransportTests.test_new_transport_binds_encoding_and_historical_prompt_stays_literal", "elapsed_seconds": 0.0}
+2026-11-04T12:47:52.7592778Z {"test_started": "test_mvg_evidence_transport.EvidenceTransportTests.test_reference_regex_domains_are_shared_without_weakening_validation"}
+2026-11-04T12:47:52.7593898Z {"test_finished": "test_mvg_evidence_transport.EvidenceTransportTests.test_reference_regex_domains_are_shared_without_weakening_validation", "elapsed_seconds": 0.0}
+2026-11-04T12:47:52.7595030Z {"test_started": "test_mvg_evidence_transport.EvidenceTransportTests.test_repeated_complete_schema_objects_share_all_constraints"}
+2026-11-04T12:47:52.7596053Z {"test_finished": "test_mvg_evidence_transport.EvidenceTransportTests.test_repeated_complete_schema_objects_share_all_constraints", "elapsed_seconds": 0.0}
+2026-11-04T12:47:52.7597070Z {"test_started": "test_mvg_evidence_transport.EvidenceTransportTests.test_same_sources_in_another_run_reject_old_audit_and_request_receipt"}
+2026-11-04T12:47:52.7598214Z {"test_finished": "test_mvg_evidence_transport.EvidenceTransportTests.test_same_sources_in_another_run_reject_old_audit_and_request_receipt", "elapsed_seconds": 0.015000000000000568}
+2026-11-04T12:47:52.7599304Z {"test_started": "test_mvg_evidence_transport.EvidenceTransportTests.test_schema_dedup_keeps_exact_validation_constraints"}
+2026-11-04T12:47:52.7600280Z {"test_finished": "test_mvg_evidence_transport.EvidenceTransportTests.test_schema_dedup_keeps_exact_validation_constraints", "elapsed_seconds": 0.0}
+2026-11-04T12:47:52.7601314Z {"test_started": "test_mvg_evidence_transport.EvidenceTransportTests.test_scoped_core_only_transport_needs_no_inspection_union"}
+2026-11-04T12:47:52.7602327Z {"test_finished": "test_mvg_evidence_transport.EvidenceTransportTests.test_scoped_core_only_transport_needs_no_inspection_union", "elapsed_seconds": 0.0}
+2026-11-04T12:47:52.7603339Z {"test_started": "test_mvg_evidence_transport.EvidenceTransportTests.test_scoped_inspector_dependencies_shared_sources_and_explicit_fallback"}
+2026-11-04T12:47:52.7604456Z {"test_finished": "test_mvg_evidence_transport.EvidenceTransportTests.test_scoped_inspector_dependencies_shared_sources_and_explicit_fallback", "elapsed_seconds": 0.0}
+2026-11-04T12:47:52.7605549Z {"test_started": "test_mvg_evidence_transport.EvidenceTransportTests.test_scoped_inspector_keeps_interleaved_views_types_nulls_and_unknown_fields"}
+2026-11-04T12:47:52.7606733Z {"test_finished": "test_mvg_evidence_transport.EvidenceTransportTests.test_scoped_inspector_keeps_interleaved_views_types_nulls_and_unknown_fields", "elapsed_seconds": 0.0}
+2026-11-04T12:47:52.7608014Z {"test_started": "test_mvg_evidence_transport.EvidenceTransportTests.test_scoped_inspector_keeps_unattributed_rows_as_unknown_authority"}
+2026-11-04T12:47:52.7609732Z {"test_finished": "test_mvg_evidence_transport.EvidenceTransportTests.test_scoped_inspector_keeps_unattributed_rows_as_unknown_authority", "elapsed_seconds": 0.0}
+2026-11-04T12:47:52.7610805Z {"test_started": "test_mvg_evidence_transport.EvidenceTransportTests.test_scoped_inspector_machine_checks_union_of_delivered_authority"}
+2026-11-04T12:47:52.7612668Z {"test_finished": "test_mvg_evidence_transport.EvidenceTransportTests.test_scoped_inspector_machine_checks_union_of_delivered_authority", "elapsed_seconds": 0.0}
+2026-11-04T12:47:52.7613779Z {"test_started": "test_mvg_evidence_transport.EvidenceTransportTests.test_scoped_inspector_unknown_dependency_keeps_all_authority"}
+2026-11-04T12:47:52.7614860Z {"test_finished": "test_mvg_evidence_transport.EvidenceTransportTests.test_scoped_inspector_unknown_dependency_keeps_all_authority", "elapsed_seconds": 0.0}
+2026-11-04T12:47:52.7615951Z {"test_started": "test_mvg_evidence_transport.EvidenceTransportTests.test_scoped_synthesis_keeps_original_task_rows_for_exact_lossless_codec"}
+2026-11-04T12:47:52.7617108Z {"test_finished": "test_mvg_evidence_transport.EvidenceTransportTests.test_scoped_synthesis_keeps_original_task_rows_for_exact_lossless_codec", "elapsed_seconds": 0.031999999999996476}
+2026-11-04T12:47:52.7618251Z {"test_started": "test_mvg_evidence_transport.EvidenceTransportTests.test_transmitted_line_addresses_preserve_every_source_character"}
+2026-11-04T12:47:52.7619318Z {"test_finished": "test_mvg_evidence_transport.EvidenceTransportTests.test_transmitted_line_addresses_preserve_every_source_character", "elapsed_seconds": 0.0}
+2026-11-04T12:47:52.7620401Z {"test_started": "test_mvg_evidence_transport.EvidenceTransportTests.test_v3_capacity_splits_advance_inside_each_original_fragment"}
+2026-11-04T12:47:52.7621480Z {"test_finished": "test_mvg_evidence_transport.EvidenceTransportTests.test_v3_capacity_splits_advance_inside_each_original_fragment", "elapsed_seconds": 0.828000000000003}
+2026-11-04T12:47:52.7622550Z {"test_started": "test_mvg_evidence_transport.EvidenceTransportTests.test_v3_checks_original_group_order_and_fragment_boundaries"}
+2026-11-04T12:47:52.7623622Z {"test_finished": "test_mvg_evidence_transport.EvidenceTransportTests.test_v3_checks_original_group_order_and_fragment_boundaries", "elapsed_seconds": 0.03100000000000591}
+2026-11-04T12:47:52.7624713Z {"test_started": "test_mvg_evidence_transport.EvidenceTransportTests.test_v3_colocates_exact_large_blocks_and_keeps_every_path_report"}
+2026-11-04T12:47:52.7625812Z {"test_finished": "test_mvg_evidence_transport.EvidenceTransportTests.test_v3_colocates_exact_large_blocks_and_keeps_every_path_report", "elapsed_seconds": 0.09399999999999409}
+2026-11-04T12:47:52.7626917Z {"test_started": "test_mvg_evidence_transport.EvidenceTransportTests.test_v3_empty_sources_keep_independent_required_reports"}
+2026-11-04T12:47:52.7627920Z {"test_finished": "test_mvg_evidence_transport.EvidenceTransportTests.test_v3_empty_sources_keep_independent_required_reports", "elapsed_seconds": 0.0}
+2026-11-04T12:47:52.7629391Z {"test_started": "test_mvg_evidence_transport.EvidenceTransportTests.test_v3_prefers_longest_raw_block_and_keeps_repeated_offsets_distinct"}
+2026-11-04T12:47:52.7630562Z {"test_finished": "test_mvg_evidence_transport.EvidenceTransportTests.test_v3_prefers_longest_raw_block_and_keeps_repeated_offsets_distinct", "elapsed_seconds": 0.014999999999986358}
+2026-11-04T12:47:52.7631662Z {"test_started": "test_mvg_evidence_transport.EvidenceTransportTests.test_v3_uses_exact_text_and_4096_character_threshold"}
+2026-11-04T12:47:52.7632627Z {"test_finished": "test_mvg_evidence_transport.EvidenceTransportTests.test_v3_uses_exact_text_and_4096_character_threshold", "elapsed_seconds": 0.016000000000019554}
+2026-11-04T12:47:52.7633664Z {"test_started": "test_b_route_sources.SourceAccountingTests.test_account_rejects_rebound_caches_that_omit_a_registered_source"}
+2026-11-04T12:47:52.7634849Z {"test_finished": "test_b_route_sources.SourceAccountingTests.test_account_rejects_rebound_caches_that_omit_a_registered_source", "elapsed_seconds": 0.5619999999999834}
+2026-11-04T12:47:52.7635868Z {"test_started": "test_b_route_sources.SourceAccountingTests.test_all_unresolved_block_even_without_delivery_potential"}
+2026-11-04T12:47:52.7636850Z {"test_finished": "test_b_route_sources.SourceAccountingTests.test_all_unresolved_block_even_without_delivery_potential", "elapsed_seconds": 0.546999999999997}
+2026-11-04T12:47:52.7637935Z {"test_started": "test_b_route_sources.SourceAccountingTests.test_bad_prepared_reference_retains_parsed_failure_snapshot"}
+2026-11-04T12:47:52.7638979Z {"test_finished": "test_b_route_sources.SourceAccountingTests.test_bad_prepared_reference_retains_parsed_failure_snapshot", "elapsed_seconds": 0.6880000000000166}
+2026-11-04T12:47:52.7640068Z {"test_started": "test_b_route_sources.SourceAccountingTests.test_cross_batch_shared_proposal_conflicting_acceptance_intent_is_rejected"}
+2026-11-04T12:47:52.7641188Z {"test_finished": "test_b_route_sources.SourceAccountingTests.test_cross_batch_shared_proposal_conflicting_acceptance_intent_is_rejected", "elapsed_seconds": 0.5619999999999834}
+2026-11-04T12:47:52.7642226Z {"test_started": "test_b_route_sources.SourceAccountingTests.test_cross_stage_source_and_glob_membership_drift"}
+2026-11-04T12:47:52.7643158Z {"test_finished": "test_b_route_sources.SourceAccountingTests.test_cross_stage_source_and_glob_membership_drift", "elapsed_seconds": 0.6570000000000107}
+2026-11-04T12:47:52.7644087Z {"test_started": "test_b_route_sources.SourceAccountingTests.test_duplicate_event_conflict_partial_and_new_attempt"}
+2026-11-04T12:47:52.7645061Z {"test_finished": "test_b_route_sources.SourceAccountingTests.test_duplicate_event_conflict_partial_and_new_attempt", "elapsed_seconds": 0.4679999999999893}
+2026-11-04T12:47:52.7646082Z {"test_started": "test_b_route_sources.SourceAccountingTests.test_empty_file_object_reason_remains_unresolved_with_valid_evidence"}
+2026-11-04T12:47:52.7647145Z {"test_finished": "test_b_route_sources.SourceAccountingTests.test_empty_file_object_reason_remains_unresolved_with_valid_evidence", "elapsed_seconds": 0.5160000000000196}
+2026-11-04T12:47:52.7648187Z {"test_started": "test_b_route_sources.SourceAccountingTests.test_empty_json_is_retained_and_requires_file_disposition"}
+2026-11-04T12:47:52.7649528Z {"test_finished": "test_b_route_sources.SourceAccountingTests.test_empty_json_is_retained_and_requires_file_disposition", "elapsed_seconds": 0.875}
+2026-11-04T12:47:52.7650496Z {"test_started": "test_b_route_sources.SourceAccountingTests.test_event_deduplication_across_utc_dates"}
+2026-11-04T12:47:52.7651389Z {"test_finished": "test_b_route_sources.SourceAccountingTests.test_event_deduplication_across_utc_dates", "elapsed_seconds": 0.29699999999999704}
+2026-11-04T12:47:52.7652365Z {"test_started": "test_b_route_sources.SourceAccountingTests.test_explicit_retirement_and_additions_preserve_registration"}
+2026-11-04T12:47:52.7653346Z {"test_finished": "test_b_route_sources.SourceAccountingTests.test_explicit_retirement_and_additions_preserve_registration", "elapsed_seconds": 0.75}
+2026-11-04T12:47:52.7654330Z {"test_started": "test_b_route_sources.SourceAccountingTests.test_fractional_accounted_count_is_rejected_before_native_coercion"}
+2026-11-04T12:47:52.7655393Z {"test_finished": "test_b_route_sources.SourceAccountingTests.test_fractional_accounted_count_is_rejected_before_native_coercion", "elapsed_seconds": 0.5310000000000059}
+2026-11-04T12:47:52.7656407Z {"test_started": "test_b_route_sources.SourceAccountingTests.test_historical_retirements_are_not_resurrected"}
+2026-11-04T12:47:52.7657311Z {"test_finished": "test_b_route_sources.SourceAccountingTests.test_historical_retirements_are_not_resurrected", "elapsed_seconds": 0.18799999999998818}
+2026-11-04T12:47:52.7658287Z {"test_started": "test_b_route_sources.SourceAccountingTests.test_independent_cli_both_entries_without_B_and_no_bytecode"}
+2026-11-04T12:47:52.7659394Z {"test_finished": "test_b_route_sources.SourceAccountingTests.test_independent_cli_both_entries_without_B_and_no_bytecode", "elapsed_seconds": 2.984000000000009}
+2026-11-04T12:47:52.7660441Z {"test_started": "test_b_route_sources.SourceAccountingTests.test_json_source_decode_errors_locate_exact_input_and_preserve_codec_diagnostic"}
+2026-11-04T12:47:52.7661652Z {"test_finished": "test_b_route_sources.SourceAccountingTests.test_json_source_decode_errors_locate_exact_input_and_preserve_codec_diagnostic", "elapsed_seconds": 0.14099999999999113}
+2026-11-04T12:47:52.7662762Z {"test_started": "test_b_route_sources.SourceAccountingTests.test_missing_intent_preserves_local_proposal_but_blocks"}
+2026-11-04T12:47:52.7663739Z {"test_finished": "test_b_route_sources.SourceAccountingTests.test_missing_intent_preserves_local_proposal_but_blocks", "elapsed_seconds": 0.5620000000000118}
+2026-11-04T12:47:52.7664739Z {"test_started": "test_b_route_sources.SourceAccountingTests.test_nested_addition_conflict_uses_native_retirement_fnmatch"}
+2026-11-04T12:47:52.7665764Z {"test_finished": "test_b_route_sources.SourceAccountingTests.test_nested_addition_conflict_uses_native_retirement_fnmatch", "elapsed_seconds": 0.046999999999997044}
+2026-11-04T12:47:52.7666796Z {"test_started": "test_b_route_sources.SourceAccountingTests.test_normalized_unresolved_status_and_disposition_remain_blocking"}
+2026-11-04T12:47:52.7667870Z {"test_finished": "test_b_route_sources.SourceAccountingTests.test_normalized_unresolved_status_and_disposition_remain_blocking", "elapsed_seconds": 2.0309999999999775}
+2026-11-04T12:47:52.7668889Z {"test_started": "test_b_route_sources.SourceAccountingTests.test_object_statement_is_rejected_without_string_coercion"}
+2026-11-04T12:47:52.7670237Z {"test_finished": "test_b_route_sources.SourceAccountingTests.test_object_statement_is_rejected_without_string_coercion", "elapsed_seconds": 0.5310000000000059}
+2026-11-04T12:47:52.7671183Z {"test_started": "test_b_route_sources.SourceAccountingTests.test_prepare_and_candidate_damage_are_located"}
+2026-11-04T12:47:52.7672095Z {"test_finished": "test_b_route_sources.SourceAccountingTests.test_prepare_and_candidate_damage_are_located", "elapsed_seconds": 3.1410000000000196}
+2026-11-04T12:47:52.7673100Z {"test_started": "test_b_route_sources.SourceAccountingTests.test_previous_explicit_retirement_cannot_disappear_or_reactivate_source"}
+2026-11-04T12:47:52.7674227Z {"test_finished": "test_b_route_sources.SourceAccountingTests.test_previous_explicit_retirement_cannot_disappear_or_reactivate_source", "elapsed_seconds": 4.718999999999994}
+2026-11-04T12:47:52.7675273Z {"test_started": "test_b_route_sources.SourceAccountingTests.test_previous_prepared_stabilizes_ids_for_changed_sources"}
+2026-11-04T12:47:52.7676263Z {"test_finished": "test_b_route_sources.SourceAccountingTests.test_previous_prepared_stabilizes_ids_for_changed_sources", "elapsed_seconds": 1.671999999999997}
+2026-11-04T12:47:52.7677240Z {"test_started": "test_b_route_sources.SourceAccountingTests.test_prior_active_empty_source_disappearance_fails"}
+2026-11-04T12:47:52.7678194Z {"test_finished": "test_b_route_sources.SourceAccountingTests.test_prior_active_empty_source_disappearance_fails", "elapsed_seconds": 0.0619999999999834}
+2026-11-04T12:47:52.7679178Z {"test_started": "test_b_route_sources.SourceAccountingTests.test_real_injected_end_read_drift_and_disk_failure_have_events"}
+2026-11-04T12:47:52.7680248Z {"test_finished": "test_b_route_sources.SourceAccountingTests.test_real_injected_end_read_drift_and_disk_failure_have_events", "elapsed_seconds": 0.2810000000000059}
+2026-11-04T12:47:52.7681323Z {"test_started": "test_b_route_sources.SourceAccountingTests.test_registry_and_candidate_decode_errors_share_located_codec_diagnostic"}
+2026-11-04T12:47:52.7682415Z {"test_finished": "test_b_route_sources.SourceAccountingTests.test_registry_and_candidate_decode_errors_share_located_codec_diagnostic", "elapsed_seconds": 0.7820000000000107}
+2026-11-04T12:47:52.7683536Z {"test_started": "test_b_route_sources.SourceAccountingTests.test_root_source_and_logs_symlinks_are_rejected"}
+2026-11-04T12:47:52.7684410Z {"test_finished": "test_b_route_sources.SourceAccountingTests.test_root_source_and_logs_symlinks_are_rejected", "elapsed_seconds": 0.0}
+2026-11-04T12:47:52.7685393Z {"test_started": "test_b_route_sources.SourceAccountingTests.test_same_event_changed_input_conflicts_without_rewriting"}
+2026-11-04T12:47:52.7686465Z {"test_finished": "test_b_route_sources.SourceAccountingTests.test_same_event_changed_input_conflicts_without_rewriting", "elapsed_seconds": 0.26499999999998636}
+2026-11-04T12:47:52.7687399Z {"test_started": "test_b_route_sources.SourceAccountingTests.test_source_backed_dispositions_and_missing_reason"}
+2026-11-04T12:47:52.7688345Z {"test_finished": "test_b_route_sources.SourceAccountingTests.test_source_backed_dispositions_and_missing_reason", "elapsed_seconds": 2.4690000000000225}
+2026-11-04T12:47:52.7689660Z {"test_started": "test_b_route_sources.SourceAccountingTests.test_strict_json_missing_input_and_parameter_admission"}
+2026-11-04T12:47:52.7690644Z {"test_finished": "test_b_route_sources.SourceAccountingTests.test_strict_json_missing_input_and_parameter_admission", "elapsed_seconds": 0.07799999999997453}
+2026-11-04T12:47:52.7691674Z {"test_started": "test_b_route_sources.SourceAccountingTests.test_whole_long_json_object_transport_and_capacity_rejection"}
+2026-11-04T12:47:52.7692686Z {"test_finished": "test_b_route_sources.SourceAccountingTests.test_whole_long_json_object_transport_and_capacity_rejection", "elapsed_seconds": 0.703000000000003}
+2026-11-04T12:47:52.7693628Z {"test_started": "test_b_route_sources.SourceAccountingTests.test_windows_real_junction_and_short_path"}
+2026-11-04T12:47:52.7694504Z {"test_finished": "test_b_route_sources.SourceAccountingTests.test_windows_real_junction_and_short_path", "elapsed_seconds": 0.2190000000000225}
+2026-11-04T12:47:52.7695478Z {"test_started": "test_b_route_sources.SourceAccountingTests.test_zero_task_complete_and_raw_bytes_are_distinct_from_native_hashes"}
+2026-11-04T12:47:52.7696549Z {"test_finished": "test_b_route_sources.SourceAccountingTests.test_zero_task_complete_and_raw_bytes_are_distinct_from_native_hashes", "elapsed_seconds": 0.5939999999999941}
+2026-11-04T12:47:52.7697640Z {"test_started": "test_b_route_source_audit.SourceAuditTests.test_actual_cli_audit_verify_both_entries_and_negative_without_bytecode"}
+2026-11-04T12:47:52.7698710Z {"test_finished": "test_b_route_source_audit.SourceAuditTests.test_actual_cli_audit_verify_both_entries_and_negative_without_bytecode", "elapsed_seconds": 18.328000000000003}
+2026-11-04T12:47:52.7699777Z {"test_started": "test_b_route_source_audit.SourceAuditTests.test_actual_timeout_kills_runner_and_retains_unknown_reservation"}
+2026-11-04T12:47:52.7700797Z {"test_finished": "test_b_route_source_audit.SourceAuditTests.test_actual_timeout_kills_runner_and_retains_unknown_reservation", "elapsed_seconds": 3.578000000000003}
+2026-11-04T12:47:52.7701846Z {"test_started": "test_b_route_source_audit.SourceAuditTests.test_audit_python_runner_suppresses_bytecode_without_environment_override"}
+2026-11-04T12:47:52.7702971Z {"test_finished": "test_b_route_source_audit.SourceAuditTests.test_audit_python_runner_suppresses_bytecode_without_environment_override", "elapsed_seconds": 14.577999999999975}
+2026-11-04T12:47:52.7704011Z {"test_started": "test_b_route_source_audit.SourceAuditTests.test_budget_across_attempt_and_date_failure_not_refunded"}
+2026-11-04T12:47:52.7704978Z {"test_finished": "test_b_route_source_audit.SourceAuditTests.test_budget_across_attempt_and_date_failure_not_refunded", "elapsed_seconds": 4.406000000000006}
+2026-11-04T12:47:52.7706003Z {"test_started": "test_b_route_source_audit.SourceAuditTests.test_budget_deletion_and_corruption_fail_closed_without_rewriting_history"}
+2026-11-04T12:47:52.7707094Z {"test_finished": "test_b_route_source_audit.SourceAuditTests.test_budget_deletion_and_corruption_fail_closed_without_rewriting_history", "elapsed_seconds": 48.89100000000002}
+2026-11-04T12:47:52.7708280Z {"test_started": "test_b_route_source_audit.SourceAuditTests.test_capacity_zero_dispatch_and_persistent_budget_cannot_increase"}
+2026-11-04T12:47:52.7709649Z {"test_finished": "test_b_route_source_audit.SourceAuditTests.test_capacity_zero_dispatch_and_persistent_budget_cannot_increase", "elapsed_seconds": 2.2809999999999775}
+2026-11-04T12:47:52.7710697Z {"test_started": "test_b_route_source_audit.SourceAuditTests.test_complete_reuse_zero_dispatch_and_unrelated_state"}
+2026-11-04T12:47:52.7711757Z {"test_finished": "test_b_route_source_audit.SourceAuditTests.test_complete_reuse_zero_dispatch_and_unrelated_state", "elapsed_seconds": 14.094000000000023}
+2026-11-04T12:47:52.7712744Z {"test_started": "test_b_route_source_audit.SourceAuditTests.test_complete_zero_task_os_lifecycle_verify_and_exact_replay"}
+2026-11-04T12:47:52.7713741Z {"test_finished": "test_b_route_source_audit.SourceAuditTests.test_complete_zero_task_os_lifecycle_verify_and_exact_replay", "elapsed_seconds": 11.60899999999998}
+2026-11-04T12:47:52.7714733Z {"test_started": "test_b_route_source_audit.SourceAuditTests.test_concurrent_budget_permits_cannot_overspend"}
+2026-11-04T12:47:52.7715652Z {"test_finished": "test_b_route_source_audit.SourceAuditTests.test_concurrent_budget_permits_cannot_overspend", "elapsed_seconds": 0.047000000000025466}
+2026-11-04T12:47:52.7716549Z {"test_started": "test_b_route_source_audit.SourceAuditTests.test_damaged_proof_rejected_without_rerun"}
+2026-11-04T12:47:52.7717419Z {"test_finished": "test_b_route_source_audit.SourceAuditTests.test_damaged_proof_rejected_without_rerun", "elapsed_seconds": 8.406999999999982}
+2026-11-04T12:47:52.7718345Z {"test_started": "test_b_route_source_audit.SourceAuditTests.test_disk_failure_and_end_read_drift_never_claim_completion"}
+2026-11-04T12:47:52.7719332Z {"test_finished": "test_b_route_source_audit.SourceAuditTests.test_disk_failure_and_end_read_drift_never_claim_completion", "elapsed_seconds": 8.187000000000012}
+2026-11-04T12:47:52.7720391Z {"test_started": "test_b_route_source_audit.SourceAuditTests.test_first_initialization_survives_unfunded_concurrent_lock_failure"}
+2026-11-04T12:47:52.7721441Z {"test_finished": "test_b_route_source_audit.SourceAuditTests.test_first_initialization_survives_unfunded_concurrent_lock_failure", "elapsed_seconds": 5.4839999999999804}
+2026-11-04T12:47:52.7722464Z {"test_started": "test_b_route_source_audit.SourceAuditTests.test_fresh_execution_proof_is_validated_before_completion"}
+2026-11-04T12:47:52.7723445Z {"test_finished": "test_b_route_source_audit.SourceAuditTests.test_fresh_execution_proof_is_validated_before_completion", "elapsed_seconds": 2.687999999999988}
+2026-11-04T12:47:52.7724373Z {"test_started": "test_b_route_source_audit.SourceAuditTests.test_full_files_and_empty_file_denominators"}
+2026-11-04T12:47:52.7725249Z {"test_finished": "test_b_route_source_audit.SourceAuditTests.test_full_files_and_empty_file_denominators", "elapsed_seconds": 11.797000000000025}
+2026-11-04T12:47:52.7726211Z {"test_started": "test_b_route_source_audit.SourceAuditTests.test_invalid_output_receipt_and_dispositions_fail_closed"}
+2026-11-04T12:47:52.7727180Z {"test_finished": "test_b_route_source_audit.SourceAuditTests.test_invalid_output_receipt_and_dispositions_fail_closed", "elapsed_seconds": 27.17199999999997}
+2026-11-04T12:47:52.7728176Z {"test_started": "test_b_route_source_audit.SourceAuditTests.test_legacy_partial_dispatch_with_deleted_permits_remains_blocked"}
+2026-11-04T12:47:52.7729210Z {"test_finished": "test_b_route_source_audit.SourceAuditTests.test_legacy_partial_dispatch_with_deleted_permits_remains_blocked", "elapsed_seconds": 2.4840000000000373}
+2026-11-04T12:47:52.7730583Z {"test_started": "test_b_route_source_audit.SourceAuditTests.test_legacy_valid_budget_continues_without_rewriting_old_evidence"}
+2026-11-04T12:47:52.7731621Z {"test_finished": "test_b_route_source_audit.SourceAuditTests.test_legacy_valid_budget_continues_without_rewriting_old_evidence", "elapsed_seconds": 10.327999999999975}
+2026-11-04T12:47:52.7732789Z {"test_started": "test_b_route_source_audit.SourceAuditTests.test_missing_fixed_budget_after_zero_dispatch_cannot_raise_limits"}
+2026-11-04T12:47:52.7733818Z {"test_finished": "test_b_route_source_audit.SourceAuditTests.test_missing_fixed_budget_after_zero_dispatch_cannot_raise_limits", "elapsed_seconds": 2.2660000000000196}
+2026-11-04T12:47:52.7734853Z {"test_started": "test_b_route_source_audit.SourceAuditTests.test_old_prepare_account_request_identity_and_audit_options_rejected"}
+2026-11-04T12:47:52.7735975Z {"test_finished": "test_b_route_source_audit.SourceAuditTests.test_old_prepare_account_request_identity_and_audit_options_rejected", "elapsed_seconds": 0.9060000000000059}
+2026-11-04T12:47:52.7736981Z {"test_started": "test_b_route_source_audit.SourceAuditTests.test_original_unresolved_survives_synthetic_acceptance"}
+2026-11-04T12:47:52.7737924Z {"test_finished": "test_b_route_source_audit.SourceAuditTests.test_original_unresolved_survives_synthetic_acceptance", "elapsed_seconds": 5.375}
+2026-11-04T12:47:52.7738886Z {"test_started": "test_b_route_source_audit.SourceAuditTests.test_orphan_reservation_witness_prevents_refund_before_step_copy"}
+2026-11-04T12:47:52.7739883Z {"test_finished": "test_b_route_source_audit.SourceAuditTests.test_orphan_reservation_witness_prevents_refund_before_step_copy", "elapsed_seconds": 0.625}
+2026-11-04T12:47:52.7740930Z {"test_started": "test_b_route_source_audit.SourceAuditTests.test_os_runner_workspace_drift_blocks_fresh_completion_with_verify_reuse_control"}
+2026-11-04T12:47:52.7742084Z {"test_finished": "test_b_route_source_audit.SourceAuditTests.test_os_runner_workspace_drift_blocks_fresh_completion_with_verify_reuse_control", "elapsed_seconds": 35.327999999999975}
+2026-11-04T12:47:52.7743112Z {"test_started": "test_b_route_source_audit.SourceAuditTests.test_pending_metadata_lock_does_not_dispatch"}
+2026-11-04T12:47:52.7743996Z {"test_finished": "test_b_route_source_audit.SourceAuditTests.test_pending_metadata_lock_does_not_dispatch", "elapsed_seconds": 5.375}
+2026-11-04T12:47:52.7744873Z {"test_started": "test_b_route_source_audit.SourceAuditTests.test_projection_only_change_reuses_all_extractions"}
+2026-11-04T12:47:52.7745791Z {"test_finished": "test_b_route_source_audit.SourceAuditTests.test_projection_only_change_reuses_all_extractions", "elapsed_seconds": 12.01600000000002}
+2026-11-04T12:47:52.7746717Z {"test_started": "test_b_route_source_audit.SourceAuditTests.test_rehashed_proof_with_bad_quote_is_still_rejected"}
+2026-11-04T12:47:52.7747662Z {"test_finished": "test_b_route_source_audit.SourceAuditTests.test_rehashed_proof_with_bad_quote_is_still_rejected", "elapsed_seconds": 8.421999999999969}
+2026-11-04T12:47:52.7748638Z {"test_started": "test_b_route_source_audit.SourceAuditTests.test_rule_schema_and_parser_change_do_not_reuse_old_conclusions"}
+2026-11-04T12:47:52.7750030Z {"test_finished": "test_b_route_source_audit.SourceAuditTests.test_rule_schema_and_parser_change_do_not_reuse_old_conclusions", "elapsed_seconds": 15.312000000000012}
+2026-11-04T12:47:52.7751116Z {"test_started": "test_b_route_source_audit.SourceAuditTests.test_runner_and_expected_model_changes_reject_reuse"}
+2026-11-04T12:47:52.7752065Z {"test_finished": "test_b_route_source_audit.SourceAuditTests.test_runner_and_expected_model_changes_reject_reuse", "elapsed_seconds": 13.328000000000031}
+2026-11-04T12:47:52.7753057Z {"test_started": "test_b_route_source_audit.SourceAuditTests.test_same_sources_and_proposals_new_preparation_time_reuses_global"}
+2026-11-04T12:47:52.7754103Z {"test_finished": "test_b_route_source_audit.SourceAuditTests.test_same_sources_and_proposals_new_preparation_time_reuses_global", "elapsed_seconds": 10.921999999999969}
+2026-11-04T12:47:52.7755102Z {"test_started": "test_b_route_source_audit.SourceAuditTests.test_source_and_glob_drift_fail_before_dispatch"}
+2026-11-04T12:47:52.7756012Z {"test_finished": "test_b_route_source_audit.SourceAuditTests.test_source_and_glob_drift_fail_before_dispatch", "elapsed_seconds": 1.2030000000000314}
+2026-11-04T12:47:52.7757104Z {"test_started": "test_b_route_source_audit.SourceAuditTests.test_source_changes_reuse_only_unchanged_extraction_and_global_reruns"}
+2026-11-04T12:47:52.7758170Z {"test_finished": "test_b_route_source_audit.SourceAuditTests.test_source_changes_reuse_only_unchanged_extraction_and_global_reruns", "elapsed_seconds": 28.452999999999975}
+2026-11-04T12:47:52.7759192Z {"test_started": "test_b_route_source_audit.SourceAuditTests.test_supported_deferred_obligation_keeps_explicit_review"}
+2026-11-04T12:47:52.7760281Z {"test_finished": "test_b_route_source_audit.SourceAuditTests.test_supported_deferred_obligation_keeps_explicit_review", "elapsed_seconds": 8.281999999999982}
+2026-11-04T12:47:52.7761282Z {"test_started": "test_b_route_source_audit.SourceAuditTests.test_terminal_event_conflict_partial_and_argument_rejection"}
+2026-11-04T12:47:52.7762238Z {"test_finished": "test_b_route_source_audit.SourceAuditTests.test_terminal_event_conflict_partial_and_argument_rejection", "elapsed_seconds": 5.625}
+2026-11-04T12:47:52.7763194Z {"test_started": "test_b_route_source_audit.SourceAuditTests.test_transitive_runner_dependency_and_sc_backend_are_bound"}
+2026-11-04T12:47:52.7764167Z {"test_finished": "test_b_route_source_audit.SourceAuditTests.test_transitive_runner_dependency_and_sc_backend_are_bound", "elapsed_seconds": 8.562000000000012}
+2026-11-04T12:47:52.7765151Z {"test_started": "test_b_route_source_audit.SourceAuditTests.test_unprojected_handoff_multifile_and_conflict_are_blocking"}
+2026-11-04T12:47:52.7766159Z {"test_finished": "test_b_route_source_audit.SourceAuditTests.test_unprojected_handoff_multifile_and_conflict_are_blocking", "elapsed_seconds": 19.702999999999975}
+2026-11-04T12:47:52.7767138Z {"test_started": "test_b_route_source_audit.SourceAuditTests.test_windows_audit_real_junction_and_short_path_rejected"}
+2026-11-04T12:47:52.7769230Z {"test_finished": "test_b_route_source_audit.SourceAuditTests.test_windows_audit_real_junction_and_short_path_rejected", "elapsed_seconds": 0.5629999999999882}
+2026-11-04T12:47:52.7770684Z {"test_started": "test_codex_isolated_model_runner.CodexIsolatedRunnerTests.test_command_disables_tools_rules_and_mcp_without_selecting_model"}
+2026-11-04T12:47:52.7771832Z {"test_finished": "test_codex_isolated_model_runner.CodexIsolatedRunnerTests.test_command_disables_tools_rules_and_mcp_without_selecting_model", "elapsed_seconds": 0.0}
+2026-11-04T12:47:52.7772955Z {"test_started": "test_codex_isolated_model_runner.CodexIsolatedRunnerTests.test_description_does_not_claim_identity_already_verified"}
+2026-11-04T12:47:52.7774050Z {"test_finished": "test_codex_isolated_model_runner.CodexIsolatedRunnerTests.test_description_does_not_claim_identity_already_verified", "elapsed_seconds": 0.0}
+2026-11-04T12:47:52.7775073Z {"test_started": "test_codex_isolated_model_runner.CodexIsolatedRunnerTests.test_empty_stdout_never_publishes_output"}
+2026-11-04T12:47:52.7776039Z {"test_finished": "test_codex_isolated_model_runner.CodexIsolatedRunnerTests.test_empty_stdout_never_publishes_output", "elapsed_seconds": 0.0}
+2026-11-04T12:47:52.7777058Z {"test_started": "test_codex_isolated_model_runner.CodexIsolatedRunnerTests.test_json_events_prove_model_and_reject_tool_events"}
+2026-11-04T12:47:52.7778088Z {"test_finished": "test_codex_isolated_model_runner.CodexIsolatedRunnerTests.test_json_events_prove_model_and_reject_tool_events", "elapsed_seconds": 0.0}
+2026-11-04T12:47:52.7779134Z {"test_started": "test_codex_isolated_model_runner.CodexIsolatedRunnerTests.test_json_events_without_session_model_fail_closed"}
+2026-11-04T12:47:52.7780148Z {"test_finished": "test_codex_isolated_model_runner.CodexIsolatedRunnerTests.test_json_events_without_session_model_fail_closed", "elapsed_seconds": 0.0}
+2026-11-04T12:47:52.7781175Z {"test_started": "test_codex_isolated_model_runner.CodexIsolatedRunnerTests.test_parent_wait_includes_independent_synthesis_budget"}
+2026-11-04T12:47:52.7782224Z {"test_finished": "test_codex_isolated_model_runner.CodexIsolatedRunnerTests.test_parent_wait_includes_independent_synthesis_budget", "elapsed_seconds": 0.0}
+2026-11-04T12:47:52.7783443Z {"test_started": "test_codex_isolated_model_runner.CodexIsolatedRunnerTests.test_real_command_execution_event_is_rejected"}
+2026-11-04T12:47:52.7784429Z {"test_finished": "test_codex_isolated_model_runner.CodexIsolatedRunnerTests.test_real_command_execution_event_is_rejected", "elapsed_seconds": 0.0}
+2026-11-04T12:47:52.7785489Z {"test_started": "test_codex_isolated_model_runner.CodexIsolatedRunnerTests.test_runtime_rollout_is_bound_to_thread_and_workspace"}
+2026-11-04T12:47:52.7786602Z {"test_finished": "test_codex_isolated_model_runner.CodexIsolatedRunnerTests.test_runtime_rollout_is_bound_to_thread_and_workspace", "elapsed_seconds": 0.0}
+2026-11-04T12:47:52.7787886Z {"test_started": "test_planning_main_audit_fixes.PlanningMainAuditFixesTests.test_interrupted_runner_terminates_and_reaps_real_child"}
+2026-11-04T12:47:52.7789011Z {"test_finished": "test_planning_main_audit_fixes.PlanningMainAuditFixesTests.test_interrupted_runner_terminates_and_reaps_real_child", "elapsed_seconds": 0.5780000000000882}
+2026-11-04T12:47:52.7789971Z {
+2026-11-04T12:47:52.7790221Z   "test_summary": {
+2026-11-04T12:47:52.7790505Z     "expected": 176,
+2026-11-04T12:47:52.7790757Z     "executed": 176,
+2026-11-04T12:47:52.7790998Z     "passed": 175,
+2026-11-04T12:47:52.7791238Z     "skipped": [
+2026-11-04T12:47:52.7791682Z       "test_b_route_sources.SourceAccountingTests.test_root_source_and_logs_symlinks_are_rejected"
+2026-11-04T12:47:52.7792179Z     ],
+2026-11-04T12:47:52.7792419Z     "required_windows_methods": {
+2026-11-04T12:47:52.7793024Z       "test_b_route_source_audit.SourceAuditTests.test_windows_audit_real_junction_and_short_path_rejected": true,
+2026-11-04T12:47:52.7793769Z       "test_b_route_sources.SourceAccountingTests.test_windows_real_junction_and_short_path": true
+2026-11-04T12:47:52.7794260Z     }
+2026-11-04T12:47:52.7794472Z   }
+2026-11-04T12:47:52.7794670Z }
+2026-11-04T12:47:52.7794814Z 
+2026-11-04T12:47:52.7795579Z test_add_mode_cross_block_semantics_stale_when_any_source_block_changes (test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_add_mode_cross_block_semantics_stale_when_any_source_block_changes) ... ok
+2026-11-04T12:47:52.7797166Z test_add_mode_preserves_unchanged_ids_when_block_is_inserted (test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_add_mode_preserves_unchanged_ids_when_block_is_inserted) ... ok
+2026-11-04T12:47:52.7798635Z test_add_mode_reports_changed_and_unchanged_stable_blocks (test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_add_mode_reports_changed_and_unchanged_stable_blocks) ... ok
+2026-11-04T12:47:52.7800069Z test_add_mode_reuses_only_hash_stable_reviewed_semantics (test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_add_mode_reuses_only_hash_stable_reviewed_semantics) ... ok
+2026-11-04T12:47:52.7801591Z test_add_source_set_keeps_prior_sources_and_requires_explicit_retirement (test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_add_source_set_keeps_prior_sources_and_requires_explicit_retirement) ... ok
+2026-11-04T12:47:52.7803231Z test_add_with_new_source_and_no_source_set_requires_baseline_adoption (test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_add_with_new_source_and_no_source_set_requires_baseline_adoption) ... ok
+2026-11-04T12:47:52.7804771Z test_attempt_refresh_failure_has_independent_failure_family (test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_attempt_refresh_failure_has_independent_failure_family) ... ok
+2026-11-04T12:47:52.7806190Z test_authoritative_source_invalid_utf8_is_fail_fast (test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_authoritative_source_invalid_utf8_is_fail_fast) ... ok
+2026-11-04T12:47:52.7807857Z test_blocked_or_stale_task_coverage_cannot_promote_latest_successful (test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_blocked_or_stale_task_coverage_cannot_promote_latest_successful) ... ok
+2026-11-04T12:47:52.7809588Z test_chapter3_begin_run_writes_attempt_before_closure_artifacts_exist (test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_chapter3_begin_run_writes_attempt_before_closure_artifacts_exist) ... ok
+2026-11-04T12:47:52.7811317Z test_chapter3_closure_requires_local_stable_refresh (test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_chapter3_closure_requires_local_stable_refresh) ... ok
+2026-11-04T12:47:52.7812973Z test_chapter3_stable_promotion_blocks_when_candidate_mapping_is_not_persisted (test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_chapter3_stable_promotion_blocks_when_candidate_mapping_is_not_persisted) ... ok
+2026-11-04T12:47:52.7814894Z test_chinese_normative_and_implicit_rules_enter_semantic_review_without_keyword_filtering (test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_chinese_normative_and_implicit_rules_enter_semantic_review_without_keyword_filtering) ... ok
+2026-11-04T12:47:52.7816578Z test_closure_requires_delivery_sink_and_accepts_task_sink (test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_closure_requires_delivery_sink_and_accepts_task_sink) ... ok
+2026-11-04T12:47:52.7818022Z test_compact_intents_split_before_complexity_exceeds_seven (test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_compact_intents_split_before_complexity_exceeds_seven) ... ok
+2026-11-04T12:47:52.7819458Z test_copy_planning_artifacts_hashes_canonical_lf_bytes (test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_copy_planning_artifacts_hashes_canonical_lf_bytes) ... ok
+2026-11-04T12:47:52.7820936Z test_coverage_blocks_stale_existing_task_mapping_until_reconciled (test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_coverage_blocks_stale_existing_task_mapping_until_reconciled) ... ok
+2026-11-04T12:47:52.7822308Z test_declared_missing_source_is_fail_fast (test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_declared_missing_source_is_fail_fast) ... ok
+2026-11-04T12:47:52.7823739Z test_default_source_discovery_includes_optional_bmad_gdd_when_present (test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_default_source_discovery_includes_optional_bmad_gdd_when_present) ... ok
+2026-11-04T12:47:52.7825459Z test_dev_cli_refresh_hook_fails_on_local_refresh_failure_but_not_deferred_publication (test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_dev_cli_refresh_hook_fails_on_local_refresh_failure_but_not_deferred_publication) ... ok
+2026-11-04T12:47:52.7827067Z test_enrichment_emits_file_overlap_as_advisory_signal (test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_enrichment_emits_file_overlap_as_advisory_signal) ... ok
+2026-11-04T12:47:52.7828689Z test_failed_attempt_does_not_overwrite_latest_successful (test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_failed_attempt_does_not_overwrite_latest_successful) ... ok
+2026-11-04T12:47:52.7830160Z test_failed_closure_never_attempts_canonical_publication (test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_failed_closure_never_attempts_canonical_publication) ... ok
+2026-11-04T12:47:52.7831638Z test_full_ledger_keeps_chinese_and_long_blocks_before_filtering (test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_full_ledger_keeps_chinese_and_long_blocks_before_filtering) ... ok
+2026-11-04T12:47:52.7833193Z test_guarded_chapter3_full_run_fails_closed_when_closure_cannot_pass (test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_guarded_chapter3_full_run_fails_closed_when_closure_cannot_pass) ... ok
+2026-11-04T12:47:52.7834755Z test_guarded_chapter3_run_refreshes_attempt_even_when_child_fails (test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_guarded_chapter3_run_refreshes_attempt_even_when_child_fails) ... ok
+2026-11-04T12:47:52.7836613Z test_json_ledger_preserves_exact_source_slice_and_precise_span (test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_json_ledger_preserves_exact_source_slice_and_precise_span) ... ok
+2026-11-04T12:47:52.7838143Z test_missing_p1_waiver_never_bypasses_semantic_or_p0_blockers (test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_missing_p1_waiver_never_bypasses_semantic_or_p0_blockers) ... ok
+2026-11-04T12:47:52.7839800Z test_multi_capability_grouping_is_preserved_and_shadowed_advisory_only (test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_multi_capability_grouping_is_preserved_and_shadowed_advisory_only) ... ok
+2026-11-04T12:47:52.7841487Z test_passed_closure_promotes_planning_topology_without_self_staling_revision (test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_passed_closure_promotes_planning_topology_without_self_staling_revision) ... ok
+2026-11-04T12:47:52.7845066Z test_persisted_semantic_coverage_blocks_missing_partial_and_missing_ref_mappings (test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_persisted_semantic_coverage_blocks_missing_partial_and_missing_ref_mappings) ... ok
+2026-11-04T12:47:52.7848828Z test_planning_refresh_failure_restores_previous_stable_and_artifacts (test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_planning_refresh_failure_restores_previous_stable_and_artifacts) ... ok
+2026-11-04T12:47:52.7851174Z test_projection_batch_budget_never_truncates_oversized_block (test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_projection_batch_budget_never_truncates_oversized_block) ... ok
+2026-11-04T12:47:52.7852690Z test_projection_batches_account_for_every_source_block (test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_projection_batches_account_for_every_source_block) ... ok
+2026-11-04T12:47:52.7854313Z test_projection_batches_include_adjacent_context_without_transferring_ownership (test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_projection_batches_include_adjacent_context_without_transferring_ownership) ... ok
+2026-11-04T12:47:52.7856308Z test_projection_blocks_stale_semantic_binding_and_duplicate_accounting (test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_projection_blocks_stale_semantic_binding_and_duplicate_accounting) ... ok
+2026-11-04T12:47:52.7857825Z test_projection_canonicalizes_adr_owned_sink_alias (test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_projection_canonicalizes_adr_owned_sink_alias) ... ok
+2026-11-04T12:47:52.7859329Z test_projection_compile_rejects_duplicate_primary_batch_ownership (test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_projection_compile_rejects_duplicate_primary_batch_ownership) ... ok
+2026-11-04T12:47:52.7861012Z test_projection_compile_rejects_unreviewed_blocks_and_requires_batch_accounting (test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_projection_compile_rejects_unreviewed_blocks_and_requires_batch_accounting) ... ok
+2026-11-04T12:47:52.7862738Z test_projection_compile_requires_source_manifest_binding_and_valid_status (test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_projection_compile_requires_source_manifest_binding_and_valid_status) ... ok
+2026-11-04T12:47:52.7864378Z test_projection_conservation_blocks_delivery_potential_unresolved (test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_projection_conservation_blocks_delivery_potential_unresolved) ... ok
+2026-11-04T12:47:52.7866006Z test_projection_conservation_blocks_unresolved_delivery_requirement (test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_projection_conservation_blocks_unresolved_delivery_requirement) ... ok
+2026-11-04T12:47:52.7867680Z test_projection_merge_preserves_all_sources_for_duplicate_and_equivalent_atoms (test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_projection_merge_preserves_all_sources_for_duplicate_and_equivalent_atoms) ... ok
+2026-11-04T12:47:52.7869956Z test_projection_prepare_removes_stale_managed_batch_files (test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_projection_prepare_removes_stale_managed_batch_files) ... ok
+2026-11-04T12:47:52.7871560Z test_projection_stage_report_cannot_promote_latest_successful (test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_projection_stage_report_cannot_promote_latest_successful) ... ok
+2026-11-04T12:47:52.7873139Z test_projection_validation_blocks_invalid_status_and_accounting_links (test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_projection_validation_blocks_invalid_status_and_accounting_links) ... ok
+2026-11-04T12:47:52.7874721Z test_publication_eligibility_is_trusted_main_and_clean_only (test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_publication_eligibility_is_trusted_main_and_clean_only) ... ok
+2026-11-04T12:47:52.7876465Z test_regression_summary_separates_source_semantic_and_task_layers (test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_regression_summary_separates_source_semantic_and_task_layers) ... ok
+2026-11-04T12:47:52.7878291Z test_semantic_intent_keeps_capability_and_provisional_dependency (test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_semantic_intent_keeps_capability_and_provisional_dependency) ... ok
+2026-11-04T12:47:52.7881182Z test_semantic_intent_uses_chinese_heading_without_capability (test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_semantic_intent_uses_chinese_heading_without_capability) ... ok
+2026-11-04T12:47:52.7884048Z test_stable_refresh_failure_blocks_chapter_closure_and_publication (test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_stable_refresh_failure_blocks_chapter_closure_and_publication) ... ok
+2026-11-04T12:47:52.7886913Z test_stable_write_failure_preserves_previous_successful_topology (test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_stable_write_failure_preserves_previous_successful_topology) ... ok
+2026-11-04T12:47:52.7888527Z test_stale_triplet_attestation_cannot_promote_latest_successful (test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_stale_triplet_attestation_cannot_promote_latest_successful) ... ok
+2026-11-04T12:47:52.7890452Z test_triplet_attestation_binds_current_task_file_hashes (test_chapter3_semantic_conservation.Chapter3SemanticConservationTests.test_triplet_attestation_binds_current_task_file_hashes) ... ok
+2026-11-04T12:47:52.7892792Z test_chapter6_regression_consumption_requires_current_manifest_and_passed_ids (test_milestone_incremental_hotfixes.MilestoneHotfixTests.test_chapter6_regression_consumption_requires_current_manifest_and_passed_ids) ... ok
+2026-11-04T12:47:52.7894429Z test_export_preserves_existing_master_lifecycle_until_explicit_reopen (test_milestone_incremental_hotfixes.MilestoneHotfixTests.test_export_preserves_existing_master_lifecycle_until_explicit_reopen) ... ok
+2026-11-04T12:47:52.7895913Z test_glob_source_set_requires_explicit_retirement_of_removed_file (test_milestone_incremental_hotfixes.MilestoneHotfixTests.test_glob_source_set_requires_explicit_retirement_of_removed_file) ... ok
+2026-11-04T12:47:52.7897311Z test_handoff_projection_and_baseline_weakenings_are_rejected (test_milestone_incremental_hotfixes.MilestoneHotfixTests.test_handoff_projection_and_baseline_weakenings_are_rejected) ... ok
+2026-11-04T12:47:52.7898591Z test_intent_ids_survive_ignored_output_deletion (test_milestone_incremental_hotfixes.MilestoneHotfixTests.test_intent_ids_survive_ignored_output_deletion) ... ok
+2026-11-04T12:47:52.7899781Z test_master_export_rollback_on_second_replace (test_milestone_incremental_hotfixes.MilestoneHotfixTests.test_master_export_rollback_on_second_replace) ... ok
+2026-11-04T12:47:52.7901197Z test_public_chapter6_entry_forwards_regression_evidence (test_milestone_incremental_hotfixes.MilestoneHotfixTests.test_public_chapter6_entry_forwards_regression_evidence) ... ok
+2026-11-04T12:47:52.7903485Z test_real_task6_export_preserves_done_and_all_subtasks (test_milestone_incremental_hotfixes.MilestoneHotfixTests.test_real_task6_export_preserves_done_and_all_subtasks) ... ok
+2026-11-04T12:47:52.7905624Z test_retirement_excludes_existing_glob_match_after_restart (test_milestone_incremental_hotfixes.MilestoneHotfixTests.test_retirement_excludes_existing_glob_match_after_restart) ... ok
+2026-11-04T12:47:52.7907158Z test_triplet_write_consumes_reviewed_actions_and_rejects_drift (test_milestone_incremental_hotfixes.MilestoneHotfixTests.test_triplet_write_consumes_reviewed_actions_and_rejects_drift) ... ok
+2026-11-04T12:47:52.7908572Z test_adjacent_batch_merge_propagates_non_capacity_probe_errors (test_mvg_evidence_transport.EvidenceTransportTests.test_adjacent_batch_merge_propagates_non_capacity_probe_errors) ... ok
+2026-11-04T12:47:52.7910396Z test_adjacent_batches_are_coalesced_only_after_final_probe (test_mvg_evidence_transport.EvidenceTransportTests.test_adjacent_batches_are_coalesced_only_after_final_probe) ... ok
+2026-11-04T12:47:52.7911679Z test_audit_receipt_must_bind_the_actual_complete_request (test_mvg_evidence_transport.EvidenceTransportTests.test_audit_receipt_must_bind_the_actual_complete_request) ... ok
+2026-11-04T12:47:52.7913694Z test_audit_requires_every_part_and_verifiable_quotes (test_mvg_evidence_transport.EvidenceTransportTests.test_audit_requires_every_part_and_verifiable_quotes) ... ok
+2026-11-04T12:47:52.7915173Z test_batches_reassemble_every_character_and_preserve_core (test_mvg_evidence_transport.EvidenceTransportTests.test_batches_reassemble_every_character_and_preserve_core) ... ok
+2026-11-04T12:47:52.7917122Z test_cli_schema_binds_source_line_addresses_to_the_exact_part (test_mvg_evidence_transport.EvidenceTransportTests.test_cli_schema_binds_source_line_addresses_to_the_exact_part) ... ok
+2026-11-04T12:47:52.7918891Z test_conflicts_require_exact_requirement_or_flow_addresses (test_mvg_evidence_transport.EvidenceTransportTests.test_conflicts_require_exact_requirement_or_flow_addresses) ... ok
+2026-11-04T12:47:52.7920104Z test_core_oversize_blocks_before_any_model_call (test_mvg_evidence_transport.EvidenceTransportTests.test_core_oversize_blocks_before_any_model_call) ... ok
+2026-11-04T12:47:52.7921326Z test_core_without_auxiliary_text_still_requires_preflight (test_mvg_evidence_transport.EvidenceTransportTests.test_core_without_auxiliary_text_still_requires_preflight) ... ok
+2026-11-04T12:47:52.7922717Z test_empty_source_is_delivered_once_and_duplicate_empty_parts_are_rejected (test_mvg_evidence_transport.EvidenceTransportTests.test_empty_source_is_delivered_once_and_duplicate_empty_parts_are_rejected) ... ok
+2026-11-04T12:47:52.7924131Z test_historical_v1_v2_plan_prompt_and_schema_golden_hashes (test_mvg_evidence_transport.EvidenceTransportTests.test_historical_v1_v2_plan_prompt_and_schema_golden_hashes) ... ok
+2026-11-04T12:47:52.7925448Z test_historical_v1_v2_reject_grouped_order_with_recomputed_parts (test_mvg_evidence_transport.EvidenceTransportTests.test_historical_v1_v2_reject_grouped_order_with_recomputed_parts) ... ok
+2026-11-04T12:47:52.7927253Z test_inspection_can_surface_hard_conflict_without_review_verdict (test_mvg_evidence_transport.EvidenceTransportTests.test_inspection_can_surface_hard_conflict_without_review_verdict) ... ok
+2026-11-04T12:47:52.7928668Z test_inspection_prompt_delivers_only_related_complete_task_rows (test_mvg_evidence_transport.EvidenceTransportTests.test_inspection_prompt_delivers_only_related_complete_task_rows) ... ok
+2026-11-04T12:47:52.7930105Z test_lossless_encoding_rejects_content_reference_and_identity_pollution (test_mvg_evidence_transport.EvidenceTransportTests.test_lossless_encoding_rejects_content_reference_and_identity_pollution) ... ok
+2026-11-04T12:47:52.7931614Z test_lossless_encoding_shares_raw_json_blocks_and_preserves_exact_order (test_mvg_evidence_transport.EvidenceTransportTests.test_lossless_encoding_shares_raw_json_blocks_and_preserves_exact_order) ... ok
+2026-11-04T12:47:52.7933188Z test_missing_duplicate_reordered_and_changed_parts_fail_closed (test_mvg_evidence_transport.EvidenceTransportTests.test_missing_duplicate_reordered_and_changed_parts_fail_closed) ... ok
+2026-11-04T12:47:52.7934558Z test_new_model_source_lines_have_explicit_exact_citation_addresses (test_mvg_evidence_transport.EvidenceTransportTests.test_new_model_source_lines_have_explicit_exact_citation_addresses) ... ok
+2026-11-04T12:47:52.7936056Z test_new_transport_binds_encoding_and_historical_prompt_stays_literal (test_mvg_evidence_transport.EvidenceTransportTests.test_new_transport_binds_encoding_and_historical_prompt_stays_literal) ... ok
+2026-11-04T12:47:52.7937567Z test_reference_regex_domains_are_shared_without_weakening_validation (test_mvg_evidence_transport.EvidenceTransportTests.test_reference_regex_domains_are_shared_without_weakening_validation) ... ok
+2026-11-04T12:47:52.7938947Z test_repeated_complete_schema_objects_share_all_constraints (test_mvg_evidence_transport.EvidenceTransportTests.test_repeated_complete_schema_objects_share_all_constraints) ... ok
+2026-11-04T12:47:52.7940315Z test_same_sources_in_another_run_reject_old_audit_and_request_receipt (test_mvg_evidence_transport.EvidenceTransportTests.test_same_sources_in_another_run_reject_old_audit_and_request_receipt) ... ok
+2026-11-04T12:47:52.7941644Z test_schema_dedup_keeps_exact_validation_constraints (test_mvg_evidence_transport.EvidenceTransportTests.test_schema_dedup_keeps_exact_validation_constraints) ... ok
+2026-11-04T12:47:52.7942890Z test_scoped_core_only_transport_needs_no_inspection_union (test_mvg_evidence_transport.EvidenceTransportTests.test_scoped_core_only_transport_needs_no_inspection_union) ... ok
+2026-11-04T12:47:52.7944298Z test_scoped_inspector_dependencies_shared_sources_and_explicit_fallback (test_mvg_evidence_transport.EvidenceTransportTests.test_scoped_inspector_dependencies_shared_sources_and_explicit_fallback) ... ok
+2026-11-04T12:47:52.7945820Z test_scoped_inspector_keeps_interleaved_views_types_nulls_and_unknown_fields (test_mvg_evidence_transport.EvidenceTransportTests.test_scoped_inspector_keeps_interleaved_views_types_nulls_and_unknown_fields) ... ok
+2026-11-04T12:47:52.7947647Z test_scoped_inspector_keeps_unattributed_rows_as_unknown_authority (test_mvg_evidence_transport.EvidenceTransportTests.test_scoped_inspector_keeps_unattributed_rows_as_unknown_authority) ... ok
+2026-11-04T12:47:52.7949048Z test_scoped_inspector_machine_checks_union_of_delivered_authority (test_mvg_evidence_transport.EvidenceTransportTests.test_scoped_inspector_machine_checks_union_of_delivered_authority) ... ok
+2026-11-04T12:47:52.7950406Z test_scoped_inspector_unknown_dependency_keeps_all_authority (test_mvg_evidence_transport.EvidenceTransportTests.test_scoped_inspector_unknown_dependency_keeps_all_authority) ... ok
+2026-11-04T12:47:52.7951823Z test_scoped_synthesis_keeps_original_task_rows_for_exact_lossless_codec (test_mvg_evidence_transport.EvidenceTransportTests.test_scoped_synthesis_keeps_original_task_rows_for_exact_lossless_codec) ... ok
+2026-11-04T12:47:52.7953230Z test_transmitted_line_addresses_preserve_every_source_character (test_mvg_evidence_transport.EvidenceTransportTests.test_transmitted_line_addresses_preserve_every_source_character) ... ok
+2026-11-04T12:47:52.7954550Z test_v3_capacity_splits_advance_inside_each_original_fragment (test_mvg_evidence_transport.EvidenceTransportTests.test_v3_capacity_splits_advance_inside_each_original_fragment) ... ok
+2026-11-04T12:47:52.7955853Z test_v3_checks_original_group_order_and_fragment_boundaries (test_mvg_evidence_transport.EvidenceTransportTests.test_v3_checks_original_group_order_and_fragment_boundaries) ... ok
+2026-11-04T12:47:52.7957176Z test_v3_colocates_exact_large_blocks_and_keeps_every_path_report (test_mvg_evidence_transport.EvidenceTransportTests.test_v3_colocates_exact_large_blocks_and_keeps_every_path_report) ... ok
+2026-11-04T12:47:52.7959178Z test_v3_empty_sources_keep_independent_required_reports (test_mvg_evidence_transport.EvidenceTransportTests.test_v3_empty_sources_keep_independent_required_reports) ... ok
+2026-11-04T12:47:52.7960535Z test_v3_prefers_longest_raw_block_and_keeps_repeated_offsets_distinct (test_mvg_evidence_transport.EvidenceTransportTests.test_v3_prefers_longest_raw_block_and_keeps_repeated_offsets_distinct) ... ok
+2026-11-04T12:47:52.7961930Z test_v3_uses_exact_text_and_4096_character_threshold (test_mvg_evidence_transport.EvidenceTransportTests.test_v3_uses_exact_text_and_4096_character_threshold) ... ok
+2026-11-04T12:47:52.7963186Z test_account_rejects_rebound_caches_that_omit_a_registered_source (test_b_route_sources.SourceAccountingTests.test_account_rejects_rebound_caches_that_omit_a_registered_source) ... ok
+2026-11-04T12:47:52.7964469Z test_all_unresolved_block_even_without_delivery_potential (test_b_route_sources.SourceAccountingTests.test_all_unresolved_block_even_without_delivery_potential) ... ok
+2026-11-04T12:47:52.7965694Z test_bad_prepared_reference_retains_parsed_failure_snapshot (test_b_route_sources.SourceAccountingTests.test_bad_prepared_reference_retains_parsed_failure_snapshot) ... ok
+2026-11-04T12:47:52.7967035Z test_cross_batch_shared_proposal_conflicting_acceptance_intent_is_rejected (test_b_route_sources.SourceAccountingTests.test_cross_batch_shared_proposal_conflicting_acceptance_intent_is_rejected) ... ok
+2026-11-04T12:47:52.7968728Z test_cross_stage_source_and_glob_membership_drift (test_b_route_sources.SourceAccountingTests.test_cross_stage_source_and_glob_membership_drift) ... ok
+2026-11-04T12:47:52.7969852Z test_duplicate_event_conflict_partial_and_new_attempt (test_b_route_sources.SourceAccountingTests.test_duplicate_event_conflict_partial_and_new_attempt) ... ok
+2026-11-04T12:47:52.7971116Z test_empty_file_object_reason_remains_unresolved_with_valid_evidence (test_b_route_sources.SourceAccountingTests.test_empty_file_object_reason_remains_unresolved_with_valid_evidence) ... ok
+2026-11-04T12:47:52.7972448Z test_empty_json_is_retained_and_requires_file_disposition (test_b_route_sources.SourceAccountingTests.test_empty_json_is_retained_and_requires_file_disposition) ... ok
+2026-11-04T12:47:52.7973540Z test_event_deduplication_across_utc_dates (test_b_route_sources.SourceAccountingTests.test_event_deduplication_across_utc_dates) ... ok
+2026-11-04T12:47:52.7974663Z test_explicit_retirement_and_additions_preserve_registration (test_b_route_sources.SourceAccountingTests.test_explicit_retirement_and_additions_preserve_registration) ... ok
+2026-11-04T12:47:52.7975965Z test_fractional_accounted_count_is_rejected_before_native_coercion (test_b_route_sources.SourceAccountingTests.test_fractional_accounted_count_is_rejected_before_native_coercion) ... ok
+2026-11-04T12:47:52.7977178Z test_historical_retirements_are_not_resurrected (test_b_route_sources.SourceAccountingTests.test_historical_retirements_are_not_resurrected) ... ok
+2026-11-04T12:47:52.7978360Z test_independent_cli_both_entries_without_B_and_no_bytecode (test_b_route_sources.SourceAccountingTests.test_independent_cli_both_entries_without_B_and_no_bytecode) ... ok
+2026-11-04T12:47:52.7979733Z test_json_source_decode_errors_locate_exact_input_and_preserve_codec_diagnostic (test_b_route_sources.SourceAccountingTests.test_json_source_decode_errors_locate_exact_input_and_preserve_codec_diagnostic) ... ok
+2026-11-04T12:47:52.7981088Z test_missing_intent_preserves_local_proposal_but_blocks (test_b_route_sources.SourceAccountingTests.test_missing_intent_preserves_local_proposal_but_blocks) ... ok
+2026-11-04T12:47:52.7982306Z test_nested_addition_conflict_uses_native_retirement_fnmatch (test_b_route_sources.SourceAccountingTests.test_nested_addition_conflict_uses_native_retirement_fnmatch) ... ok
+2026-11-04T12:47:52.7983586Z test_normalized_unresolved_status_and_disposition_remain_blocking (test_b_route_sources.SourceAccountingTests.test_normalized_unresolved_status_and_disposition_remain_blocking) ... ok
+2026-11-04T12:47:52.7985596Z test_object_statement_is_rejected_without_string_coercion (test_b_route_sources.SourceAccountingTests.test_object_statement_is_rejected_without_string_coercion) ... ok
+2026-11-04T12:47:52.7986721Z test_prepare_and_candidate_damage_are_located (test_b_route_sources.SourceAccountingTests.test_prepare_and_candidate_damage_are_located) ... ok
+2026-11-04T12:47:52.7988367Z test_previous_explicit_retirement_cannot_disappear_or_reactivate_source (test_b_route_sources.SourceAccountingTests.test_previous_explicit_retirement_cannot_disappear_or_reactivate_source) ... ok
+2026-11-04T12:47:52.7989829Z test_previous_prepared_stabilizes_ids_for_changed_sources (test_b_route_sources.SourceAccountingTests.test_previous_prepared_stabilizes_ids_for_changed_sources) ... ok
+2026-11-04T12:47:52.7991022Z test_prior_active_empty_source_disappearance_fails (test_b_route_sources.SourceAccountingTests.test_prior_active_empty_source_disappearance_fails) ... ok
+2026-11-04T12:47:52.7992238Z test_real_injected_end_read_drift_and_disk_failure_have_events (test_b_route_sources.SourceAccountingTests.test_real_injected_end_read_drift_and_disk_failure_have_events) ... ok
+2026-11-04T12:47:52.7993585Z test_registry_and_candidate_decode_errors_share_located_codec_diagnostic (test_b_route_sources.SourceAccountingTests.test_registry_and_candidate_decode_errors_share_located_codec_diagnostic) ... ok
+2026-11-04T12:47:52.7995068Z test_root_source_and_logs_symlinks_are_rejected (test_b_route_sources.SourceAccountingTests.test_root_source_and_logs_symlinks_are_rejected) ... skipped 'POSIX symlink counterpart; Windows junction is tested separately'
+2026-11-04T12:47:52.7996452Z test_same_event_changed_input_conflicts_without_rewriting (test_b_route_sources.SourceAccountingTests.test_same_event_changed_input_conflicts_without_rewriting) ... ok
+2026-11-04T12:47:52.7997596Z test_source_backed_dispositions_and_missing_reason (test_b_route_sources.SourceAccountingTests.test_source_backed_dispositions_and_missing_reason) ... ok
+2026-11-04T12:47:52.7998765Z test_strict_json_missing_input_and_parameter_admission (test_b_route_sources.SourceAccountingTests.test_strict_json_missing_input_and_parameter_admission) ... ok
+2026-11-04T12:47:52.7999960Z test_whole_long_json_object_transport_and_capacity_rejection (test_b_route_sources.SourceAccountingTests.test_whole_long_json_object_transport_and_capacity_rejection) ... ok
+2026-11-04T12:47:52.8001068Z test_windows_real_junction_and_short_path (test_b_route_sources.SourceAccountingTests.test_windows_real_junction_and_short_path) ... ok
+2026-11-04T12:47:52.8002232Z test_zero_task_complete_and_raw_bytes_are_distinct_from_native_hashes (test_b_route_sources.SourceAccountingTests.test_zero_task_complete_and_raw_bytes_are_distinct_from_native_hashes) ... ok
+2026-11-04T12:47:52.8003589Z test_actual_cli_audit_verify_both_entries_and_negative_without_bytecode (test_b_route_source_audit.SourceAuditTests.test_actual_cli_audit_verify_both_entries_and_negative_without_bytecode) ... ok
+2026-11-04T12:47:52.8004934Z test_actual_timeout_kills_runner_and_retains_unknown_reservation (test_b_route_source_audit.SourceAuditTests.test_actual_timeout_kills_runner_and_retains_unknown_reservation) ... ok
+2026-11-04T12:47:52.8006310Z test_audit_python_runner_suppresses_bytecode_without_environment_override (test_b_route_source_audit.SourceAuditTests.test_audit_python_runner_suppresses_bytecode_without_environment_override) ... ok
+2026-11-04T12:47:52.8007990Z test_budget_across_attempt_and_date_failure_not_refunded (test_b_route_source_audit.SourceAuditTests.test_budget_across_attempt_and_date_failure_not_refunded) ... ok
+2026-11-04T12:47:52.8009326Z test_budget_deletion_and_corruption_fail_closed_without_rewriting_history (test_b_route_source_audit.SourceAuditTests.test_budget_deletion_and_corruption_fail_closed_without_rewriting_history) ... ok
+2026-11-04T12:47:52.8010724Z test_capacity_zero_dispatch_and_persistent_budget_cannot_increase (test_b_route_source_audit.SourceAuditTests.test_capacity_zero_dispatch_and_persistent_budget_cannot_increase) ... ok
+2026-11-04T12:47:52.8012313Z test_complete_reuse_zero_dispatch_and_unrelated_state (test_b_route_source_audit.SourceAuditTests.test_complete_reuse_zero_dispatch_and_unrelated_state) ... ok
+2026-11-04T12:47:52.8013496Z test_complete_zero_task_os_lifecycle_verify_and_exact_replay (test_b_route_source_audit.SourceAuditTests.test_complete_zero_task_os_lifecycle_verify_and_exact_replay) ... ok
+2026-11-04T12:47:52.8014749Z test_concurrent_budget_permits_cannot_overspend (test_b_route_source_audit.SourceAuditTests.test_concurrent_budget_permits_cannot_overspend) ... ok
+2026-11-04T12:47:52.8015772Z test_damaged_proof_rejected_without_rerun (test_b_route_source_audit.SourceAuditTests.test_damaged_proof_rejected_without_rerun) ... ok
+2026-11-04T12:47:52.8016861Z test_disk_failure_and_end_read_drift_never_claim_completion (test_b_route_source_audit.SourceAuditTests.test_disk_failure_and_end_read_drift_never_claim_completion) ... ok
+2026-11-04T12:47:52.8018163Z test_first_initialization_survives_unfunded_concurrent_lock_failure (test_b_route_source_audit.SourceAuditTests.test_first_initialization_survives_unfunded_concurrent_lock_failure) ... ok
+2026-11-04T12:47:52.8019402Z test_fresh_execution_proof_is_validated_before_completion (test_b_route_source_audit.SourceAuditTests.test_fresh_execution_proof_is_validated_before_completion) ... ok
+2026-11-04T12:47:52.8020490Z test_full_files_and_empty_file_denominators (test_b_route_source_audit.SourceAuditTests.test_full_files_and_empty_file_denominators) ... ok
+2026-11-04T12:47:52.8021574Z test_invalid_output_receipt_and_dispositions_fail_closed (test_b_route_source_audit.SourceAuditTests.test_invalid_output_receipt_and_dispositions_fail_closed) ... ok
+2026-11-04T12:47:52.8022804Z test_legacy_partial_dispatch_with_deleted_permits_remains_blocked (test_b_route_source_audit.SourceAuditTests.test_legacy_partial_dispatch_with_deleted_permits_remains_blocked) ... ok
+2026-11-04T12:47:52.8024134Z test_legacy_valid_budget_continues_without_rewriting_old_evidence (test_b_route_source_audit.SourceAuditTests.test_legacy_valid_budget_continues_without_rewriting_old_evidence) ... ok
+2026-11-04T12:47:52.8025432Z test_missing_fixed_budget_after_zero_dispatch_cannot_raise_limits (test_b_route_source_audit.SourceAuditTests.test_missing_fixed_budget_after_zero_dispatch_cannot_raise_limits) ... ok
+2026-11-04T12:47:52.8026750Z test_old_prepare_account_request_identity_and_audit_options_rejected (test_b_route_source_audit.SourceAuditTests.test_old_prepare_account_request_identity_and_audit_options_rejected) ... ok
+2026-11-04T12:47:52.8028381Z test_original_unresolved_survives_synthetic_acceptance (test_b_route_source_audit.SourceAuditTests.test_original_unresolved_survives_synthetic_acceptance) ... ok
+2026-11-04T12:47:52.8029641Z test_orphan_reservation_witness_prevents_refund_before_step_copy (test_b_route_source_audit.SourceAuditTests.test_orphan_reservation_witness_prevents_refund_before_step_copy) ... ok
+2026-11-04T12:47:52.8031072Z test_os_runner_workspace_drift_blocks_fresh_completion_with_verify_reuse_control (test_b_route_source_audit.SourceAuditTests.test_os_runner_workspace_drift_blocks_fresh_completion_with_verify_reuse_control) ... ok
+2026-11-04T12:47:52.8032324Z test_pending_metadata_lock_does_not_dispatch (test_b_route_source_audit.SourceAuditTests.test_pending_metadata_lock_does_not_dispatch) ... ok
+2026-11-04T12:47:52.8033387Z test_projection_only_change_reuses_all_extractions (test_b_route_source_audit.SourceAuditTests.test_projection_only_change_reuses_all_extractions) ... ok
+2026-11-04T12:47:52.8034466Z test_rehashed_proof_with_bad_quote_is_still_rejected (test_b_route_source_audit.SourceAuditTests.test_rehashed_proof_with_bad_quote_is_still_rejected) ... ok
+2026-11-04T12:47:52.8035603Z test_rule_schema_and_parser_change_do_not_reuse_old_conclusions (test_b_route_source_audit.SourceAuditTests.test_rule_schema_and_parser_change_do_not_reuse_old_conclusions) ... ok
+2026-11-04T12:47:52.8036764Z test_runner_and_expected_model_changes_reject_reuse (test_b_route_source_audit.SourceAuditTests.test_runner_and_expected_model_changes_reject_reuse) ... ok
+2026-11-04T12:47:52.8038453Z test_same_sources_and_proposals_new_preparation_time_reuses_global (test_b_route_source_audit.SourceAuditTests.test_same_sources_and_proposals_new_preparation_time_reuses_global) ... ok
+2026-11-04T12:47:52.8039578Z test_source_and_glob_drift_fail_before_dispatch (test_b_route_source_audit.SourceAuditTests.test_source_and_glob_drift_fail_before_dispatch) ... ok
+2026-11-04T12:47:52.8041148Z test_source_changes_reuse_only_unchanged_extraction_and_global_reruns (test_b_route_source_audit.SourceAuditTests.test_source_changes_reuse_only_unchanged_extraction_and_global_reruns) ... ok
+2026-11-04T12:47:52.8042402Z test_supported_deferred_obligation_keeps_explicit_review (test_b_route_source_audit.SourceAuditTests.test_supported_deferred_obligation_keeps_explicit_review) ... ok
+2026-11-04T12:47:52.8043573Z test_terminal_event_conflict_partial_and_argument_rejection (test_b_route_source_audit.SourceAuditTests.test_terminal_event_conflict_partial_and_argument_rejection) ... ok
+2026-11-04T12:47:52.8044734Z test_transitive_runner_dependency_and_sc_backend_are_bound (test_b_route_source_audit.SourceAuditTests.test_transitive_runner_dependency_and_sc_backend_are_bound) ... ok
+2026-11-04T12:47:52.8045896Z test_unprojected_handoff_multifile_and_conflict_are_blocking (test_b_route_source_audit.SourceAuditTests.test_unprojected_handoff_multifile_and_conflict_are_blocking) ... ok
+2026-11-04T12:47:52.8047036Z test_windows_audit_real_junction_and_short_path_rejected (test_b_route_source_audit.SourceAuditTests.test_windows_audit_real_junction_and_short_path_rejected) ... ok
+2026-11-04T12:47:52.8048660Z test_command_disables_tools_rules_and_mcp_without_selecting_model (test_codex_isolated_model_runner.CodexIsolatedRunnerTests.test_command_disables_tools_rules_and_mcp_without_selecting_model) ... ok
+2026-11-04T12:47:52.8050015Z test_description_does_not_claim_identity_already_verified (test_codex_isolated_model_runner.CodexIsolatedRunnerTests.test_description_does_not_claim_identity_already_verified) ... ok
+2026-11-04T12:47:52.8051169Z test_empty_stdout_never_publishes_output (test_codex_isolated_model_runner.CodexIsolatedRunnerTests.test_empty_stdout_never_publishes_output) ... ok
+2026-11-04T12:47:52.8052261Z test_json_events_prove_model_and_reject_tool_events (test_codex_isolated_model_runner.CodexIsolatedRunnerTests.test_json_events_prove_model_and_reject_tool_events) ... ok
+2026-11-04T12:47:52.8053420Z test_json_events_without_session_model_fail_closed (test_codex_isolated_model_runner.CodexIsolatedRunnerTests.test_json_events_without_session_model_fail_closed) ... ok
+2026-11-04T12:47:52.8054605Z test_parent_wait_includes_independent_synthesis_budget (test_codex_isolated_model_runner.CodexIsolatedRunnerTests.test_parent_wait_includes_independent_synthesis_budget) ... ok
+2026-11-04T12:47:52.8055764Z test_real_command_execution_event_is_rejected (test_codex_isolated_model_runner.CodexIsolatedRunnerTests.test_real_command_execution_event_is_rejected) ... ok
+2026-11-04T12:47:52.8056908Z test_runtime_rollout_is_bound_to_thread_and_workspace (test_codex_isolated_model_runner.CodexIsolatedRunnerTests.test_runtime_rollout_is_bound_to_thread_and_workspace) ... ok
+2026-11-04T12:47:52.8058128Z test_interrupted_runner_terminates_and_reaps_real_child (test_planning_main_audit_fixes.PlanningMainAuditFixesTests.test_interrupted_runner_terminates_and_reaps_real_child) ... ok
+2026-11-04T12:47:52.8058819Z 
+2026-11-04T12:47:52.8058965Z ----------------------------------------------------------------------
+2026-11-04T12:47:52.8059314Z Ran 176 tests in 408.388s
+2026-11-04T12:47:52.8059456Z 
+2026-11-04T12:47:52.8059527Z OK (skipped=1)
+2026-11-04T12:47:52.8059639Z 
+2026-11-04T12:48:45.3218050Z {
+2026-11-04T12:48:45.3218310Z   "passed_cli_invocations": 29,
+2026-11-04T12:48:45.3218588Z   "synthetic_only": true
+2026-11-04T12:48:45.3218941Z }
+2026-11-04T12:48:45.3219082Z 
+2026-11-04T12:48:45.3219451Z 
+2026-11-04T12:48:46.0017620Z {
+2026-11-04T12:48:46.0023058Z   "head": "18f54b10a4a2811eb8c167bc6289791d43c2c3e5",
+2026-11-04T12:48:46.0024094Z   "steps": [
+2026-11-04T12:48:46.0024375Z     {
+2026-11-04T12:48:46.0024657Z       "name": "dependencies",
+2026-11-04T12:48:46.0025037Z       "exit_code": 0,
+2026-11-04T12:48:46.0025372Z       "elapsed_seconds": 7.905999999999992,
+2026-11-04T12:48:46.0025785Z       "budget_seconds": 120
+2026-11-04T12:48:46.0026106Z     },
+2026-11-04T12:48:46.0026346Z     {
+2026-11-04T12:48:46.0026627Z       "name": "source-and-native-tests",
+2026-11-04T12:48:46.0028215Z       "exit_code": 0,
+2026-11-04T12:48:46.0028565Z       "elapsed_seconds": 409.531,
+2026-11-04T12:48:46.0028924Z       "budget_seconds": 1050
+2026-11-04T12:48:46.0029233Z     },
+2026-11-04T12:48:46.0029456Z     {
+2026-11-04T12:48:46.0029736Z       "name": "independent-synthetic-cli",
+2026-11-04T12:48:46.0030135Z       "exit_code": 0,
+2026-11-04T12:48:46.0030445Z       "elapsed_seconds": 52.577999999999975,
+2026-11-04T12:48:46.0030847Z       "budget_seconds": 300
+2026-11-04T12:48:46.0031143Z     }
+2026-11-04T12:48:46.0031369Z   ],
+2026-11-04T12:48:46.0031608Z   "exit_code": 0,
+2026-11-04T12:48:46.0031893Z   "synthetic_only": true,
+2026-11-04T12:48:46.0032248Z   "actual_model_semantics_verified": false,
+2026-11-04T12:48:46.0032668Z   "tracked_files_verified": 3452,
+2026-11-04T12:48:46.0033037Z   "tracked_files_changed": [],
+2026-11-04T12:48:46.0033395Z   "new_script_bytecode": []
+2026-11-04T12:48:46.0033734Z }
+2026-11-04T12:48:46.0341247Z ##[group]Run actions/upload-artifact@v4
+2026-11-04T12:48:46.0341571Z with:
+2026-11-04T12:48:46.0341779Z   name: story-2-2-windows-41831324047-1
+2026-11-04T12:48:46.0342061Z   path: logs/ci/story-2-2-windows/41831324047-1/
+2026-11-04T12:48:46.0342336Z   retention-days: 3
+2026-11-04T12:48:46.0342538Z   if-no-files-found: error
+2026-11-04T12:48:46.0342754Z   compression-level: 6
+2026-11-04T12:48:46.0342952Z   overwrite: false
+2026-11-04T12:48:46.0343166Z   include-hidden-files: false
+2026-11-04T12:48:46.0343381Z env:
+2026-11-04T12:48:46.0343547Z   PYTHONUTF8: 1
+2026-11-04T12:48:46.0343738Z   PYTHONIOENCODING: utf-8
+2026-11-04T12:48:46.0344034Z   pythonLocation: C:\hostedtoolcache\windows\Python\3.12.10\x64
+2026-11-04T12:48:46.0344486Z   PKG_CONFIG_PATH: C:\hostedtoolcache\windows\Python\3.12.10\x64/lib/pkgconfig
+2026-11-04T12:48:46.0344952Z   Python_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.12.10\x64
+2026-11-04T12:48:46.0345391Z   Python2_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.12.10\x64
+2026-11-04T12:48:46.0345826Z   Python3_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.12.10\x64
+2026-11-04T12:48:46.0346144Z ##[endgroup]
+2026-11-04T12:48:46.2268438Z (node:4532) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+2026-11-04T12:48:46.2269428Z (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-11-04T12:48:46.5342886Z With the provided path, there will be 617 files uploaded
+2026-11-04T12:48:46.5348810Z Artifact name is valid!
+2026-11-04T12:48:46.5350340Z Root directory input is valid!
+2026-11-04T12:48:46.7608836Z Beginning upload of artifact content to blob storage
+2026-11-04T12:48:47.2912612Z (node:4532) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+2026-11-04T12:48:47.3356796Z Uploaded bytes 609164
+2026-11-04T12:48:47.3495824Z Finished uploading artifact content to blob storage!
+2026-11-04T12:48:47.3497411Z SHA256 digest of uploaded artifact zip is de332d9dbfc44477ad97b317431a221e3c428e4ba21bd2414e78b633bebe2054
+2026-11-04T12:48:47.3499486Z Finalizing artifact upload
+2026-11-04T12:48:47.7936353Z Artifact story-2-2-windows-41831324047-1.zip successfully finalized. Artifact ID 13322209946
+2026-11-04T12:48:47.7937557Z Artifact story-2-2-windows-41831324047-1 has been successfully uploaded! Final size is 609164 bytes. Artifact ID is 13322209946
+2026-11-04T12:48:47.7947365Z Artifact download URL: https://github.com/skyoxu/newrouge/actions/runs/41831324047/artifacts/13322209946
+2026-11-04T12:48:47.8343655Z Post job cleanup.
+2026-11-04T12:48:47.9776386Z (node:7512) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+2026-11-04T12:48:47.9777259Z (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-11-04T12:48:48.0080207Z Post job cleanup.
+2026-11-04T12:48:48.2520260Z [command]"C:\Program Files\Git\bin\git.exe" version
+2026-11-04T12:48:48.2877640Z git version 2.56.0.windows.4
+2026-11-04T12:48:48.2954912Z Temporarily overriding HOME='D:\a\_temp\ed91746e-ac7e-43de-b930-6b6b5df7f98f' before making global git config changes
+2026-11-04T12:48:48.2956236Z Adding repository directory to the temporary git global config as a safe directory
+2026-11-04T12:48:48.2966860Z [command]"C:\Program Files\Git\bin\git.exe" config --global --add safe.directory D:\a\newrouge\newrouge
+2026-11-04T12:48:48.3371401Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp core\.sshCommand
+2026-11-04T12:48:48.3781631Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "sh -c \"git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :\""
+2026-11-04T12:48:48.9464579Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-04T12:48:48.9849984Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "sh -c \"git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :\""
+2026-11-04T12:48:49.5579930Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-04T12:48:49.5954546Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "git config --local --show-origin --name-only --get-regexp remote.origin.url"
+2026-11-04T12:48:50.1796047Z Cleaning up orphan processes
+2026-11-04T12:48:50.2454777Z ##[warning]Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/checkout@v4, actions/setup-python@v5, actions/upload-artifact@v4. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/

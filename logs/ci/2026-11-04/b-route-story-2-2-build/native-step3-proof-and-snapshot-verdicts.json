@@ -1,0 +1,33 @@
+{
+  "native_step": 3,
+  "full_diff_read": {
+    "path": "/tmp/story22-native-step3-full-v79bfl8z.diff",
+    "sha256": "d4925ed2f8a0c6ac264073a51a884adb22a1c39f0db3fcf9c9c68dc2483b3dc6",
+    "all_lines_read": "1-2504"
+  },
+  "individual_verdicts": [
+    {
+      "id": "ROOT-WORKSPACE-PROOF",
+      "verdict": "medium",
+      "probe": "root-workspace-drift-probe/result.json",
+      "fact": "audit 0 execution_complete=true after input workspace mutated by controlled OS fixture; immediate verify 1, no real model used",
+      "requirement": "frozen actual input/proof revalidation and fail-closed before claiming complete"
+    },
+    {
+      "id": "ROOT-FAILED-SNAPSHOT",
+      "verdict": "medium",
+      "probe": "root-failed-candidate-snapshot-probe/result.json",
+      "fact": "parsed candidate with bad prepared ref: current account1 snapshot absent; exact baseline account1 snapshot present",
+      "requirement": "preserve prepare/account behavior and inspectable failure evidence"
+    },
+    {
+      "id": "ROOT-RUNNER-BYTECODE",
+      "verdict": "medium",
+      "probe": "root-runner-bytecode-probe/result.json",
+      "fact": "audit0/complete after describe/OS runner imported local dependency and created chosen-root __pycache__ outside its logs; inherited override intentionally removed; no real model",
+      "requirement": "new artifacts only logs, no new source-tree bytecode; preserve existing helper defaults"
+    }
+  ],
+  "native_step4_started": false,
+  "preimages": "logs/ci/2026-11-04/b-route-story-2-2-build/workspace-proof-patch-preimage"
+}

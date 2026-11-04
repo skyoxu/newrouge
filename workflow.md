@@ -207,6 +207,8 @@ MVG 集成补充：按 [MVG 集成验收](docs/workflows/mvg-integration-accepta
 
 B 路线治理入口：[ADR-0040（Accepted，治理已采纳，未启用）](docs/adr/ADR-0040-b-route-stages-authority-and-activation.md)。目标职责为 3A 完整来源及独立审计 → 3B 无 Task 正式语义采纳 → 3C 盘点复用／真实缺口与三联承接 → 4–5 具体绑定和同源 readiness → 6 单 Task → 适用 7 → Flow／累计收尾。3B 不要求 Task／readiness／真实场景，3A／3B／3C 不代表三个新公共命令。以下仍是现行 A 实现入口；后续共享记录、消费者门禁和运行证据交付，以及 A 冻结／默认 B／A 退出／补偿操作，分别按 ADR 条件准入，不能由本次文档变更推定生效。
 
+B 路线 3A 的来源准备／显式提议记账入口已实现：`py -3 scripts/python/dev_cli.py b-route-sources --stage prepare|account`。必须显式选择 root／run／scope／attempt 和 source-set 或 prepared／candidate，详见[唯一 owner 说明](docs/workflows/b-route-source-accounting.md)。同入口 `--stage audit|verify` 消费显式 accounted／audit-ref 及 runner／expected-model，完整来源两步独立审计、持久预算／proof 复验详见[来源审计 owner](docs/workflows/b-route-source-audit.md)。prepare、完整记账、独立来源审计、3B 正式采纳分别判断；本入口仅新 logs，不写来源注册／三联／manifest／旧 proof，不刷新 Knowledge，现行 A 有效。
+
 ### 3.0 Choose The Chapter 3 Route First
 
 Do not author `tasks.json` directly. Chapter 3 now uses semantic conservation before coarse task generation while preserving the existing triplet authority:

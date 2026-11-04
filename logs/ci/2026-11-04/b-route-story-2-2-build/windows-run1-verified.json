@@ -1,0 +1,57 @@
+{
+  "run_id": 41828857551,
+  "job_id": 126570514428,
+  "conclusion": "failure",
+  "candidate_sha": "a5863e84e4484b98bbdb903b59136c1e780122e5",
+  "raw_bytes": 158945,
+  "raw_sha256": "92b9d07f1b3eabcc328a3e650a3aa0fb5ef4919567fb41f39cceec60c61dda1e",
+  "test_summary": {
+    "expected": 176,
+    "executed": 176,
+    "passed": 173,
+    "skipped": [
+      "test_b_route_sources.SourceAccountingTests.test_root_source_and_logs_symlinks_are_rejected"
+    ],
+    "required_windows_methods": {
+      "test_b_route_source_audit.SourceAuditTests.test_windows_audit_real_junction_and_short_path_rejected": true,
+      "test_b_route_sources.SourceAccountingTests.test_windows_real_junction_and_short_path": true
+    }
+  },
+  "summary": {
+    "head": "a5863e84e4484b98bbdb903b59136c1e780122e5",
+    "steps": [
+      {
+        "name": "dependencies",
+        "exit_code": 0,
+        "elapsed_seconds": 4.515999999999991,
+        "budget_seconds": 120
+      },
+      {
+        "name": "source-and-native-tests",
+        "exit_code": 1,
+        "elapsed_seconds": 219.23400000000004,
+        "budget_seconds": 1050
+      }
+    ],
+    "exit_code": 1,
+    "synthetic_only": true,
+    "actual_model_semantics_verified": false,
+    "tracked_files_verified": 3452,
+    "tracked_files_changed": [],
+    "new_script_bytecode": []
+  },
+  "actual_model_semantics_verified": false,
+  "independent_cli_not_run": true,
+  "identified_failures": [
+    {
+      "test": "test_audit_python_runner_suppresses_bytecode_without_environment_override",
+      "verdict": "test path expectation uses uncanonicalized legitimate root alias RUNNER~1; actual command has canonical runneradmin as required",
+      "production_assertion_preserved": "-B plus exact canonical existing runner path"
+    },
+    {
+      "test": "test_transitive_runner_dependency_and_sc_backend_are_bound",
+      "verdict": "test compares POSIX suffix to absolute Windows tool label; verify exact backend identity/path and raw hash cross-platform",
+      "production_assertion_preserved": "backend must actually be present and bytes bound"
+    }
+  ]
+}

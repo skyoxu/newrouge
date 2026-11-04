@@ -105,3 +105,7 @@ Before creating the apply journal, validate all alignment decisions and the comp
 ## Upstream correction
 
 If a candidate or reviewer finds a missing/conflicting Requirement, record the source block and affected Requirement/Task. Fix it through the existing Chapter 5 semantic decision and Chapter 3 projection/candidate preview path, then re-check affected Chapter 4/5 surfaces. This Skill never edits the upstream semantic authority itself.
+
+## B 路线只读迁移预检
+
+审阅明确候选时使用 `py -3 -B scripts/python/dev_cli.py b-route-preflight --root <root> --epics <epics> --protection-input <input> --candidate <carrier> --intents <intents> --run-id <fresh-id>`，合同及 Windows 八组实际 CLI 样本见[owner 说明](../../../docs/workflows/b-route-migration-preflight.md)。仅全新 logs；无模型、apply、Task 写入或默认 B 启用。外部 source／review locator 及 digest 可核验，不自报语义批准。旧 pending 原样保留并定位原 Capability apply；原 `--resume-evidence`、completed-only MVG recovery 和 apply journal 边界不变。此预检不改变本 Skill 的现行后置 Chapter 5 正式规划要求。

@@ -1,0 +1,9 @@
+{
+  "returncode": 1,
+  "diagnostic": "file syscall paths only; no credential values or read buffers",
+  "denied_file_operations": [
+    "150634 chmod(\"/home/agent/.codex/tmp/arg0-linux\", 0700) = -1 EROFS (Read-only file system)",
+    "150650 open(\"/home/agent/.codex/state_5.sqlite\", O_RDWR|O_CREAT|O_LARGEFILE|O_NOFOLLOW|O_CLOEXEC, 0644) = -1 EROFS (Read-only file system)",
+    "150642 open(\"/home/agent/.codex/installation_id\", O_RDWR|O_CREAT|O_LARGEFILE|O_CLOEXEC, 0644) = -1 EROFS (Read-only file system)"
+  ]
+}

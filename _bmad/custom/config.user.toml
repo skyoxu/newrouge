@@ -1,0 +1,10 @@
+# Personal overrides for _bmad/config.toml.
+# NOT committed (gitignored) — applies only to your local install.
+# Wins over both base config and team overrides.
+
+[core]
+project_name = "newrouge"
+
+[modules.bmm]
+planning_artifacts = "{project-root}/_bmad-output/planning-artifacts/b-route"
+implementation_artifacts = "{project-root}/_bmad-output/implementation-artifacts/b-route"
