@@ -393,6 +393,7 @@ class PreflightTests(unittest.TestCase):
         doc = self.fixture.load("docs/testing/mvg/fixture.json")
         test = copy.deepcopy(doc["tests"][0]); test["id"] = "new-test"; test["state"] = "planned"
         doc["tests"].append(test)
+        doc["flows"][0]["test_ids"].append("new-test")
         self.fixture.set_candidate({"docs/testing/mvg/fixture.json": encode(doc)})
         report = self.fixture.preview()
         self.assertTrue(report["ok"], report["diagnostics"])
@@ -784,6 +785,251 @@ class PreflightTests(unittest.TestCase):
         valid = self.fixture.preview()
         self.assertTrue(valid["ok"], valid["diagnostics"])
         self.assertEqual(self.fixture.load(source), current)
+
+    def task_candidate(self):
+        return {source: self.fixture.load(source) for source in inventory.TRIPLET.values()}
+
+    def test_candidate_task_required_reference_closure_and_locator_use_native_owner(self):
+        for field, missing in (("source_refs", "registered/candidate-missing.md"),
+                               ("test_refs", "Game.Core.Tests/CandidateMissing.cs"),
+                               ("evidence_refs", "logs/ci/candidate-missing.json")):
+            documents = self.task_candidate()
+            documents[inventory.TRIPLET["back"]][0].setdefault(field, []).append(missing)
+            self.fixture.set_candidate({source: encode(doc) for source, doc in documents.items()})
+            before = self.fixture.bytes()
+            report = self.fixture.preview()
+            self.assert_failed(report, "file_not_found")
+            self.assertTrue(any(row["path"] == missing and not row["exists"] for row in report["observations"]))
+            located = [row for row in report["diagnostics"]
+                       if row["reason_code"] == "file_not_found" and row["entity_id"] == "1"
+                       and row["resume_ref"].startswith(inventory.TRIPLET["back"] + "#/0/" + field)]
+            self.assertTrue(located, report["diagnostics"])
+            self.assertEqual(before, self.fixture.bytes())
+        documents = self.task_candidate()
+        documents[inventory.TRIPLET["back"]][0]["source_refs"].append("docs/source.md:999")
+        self.fixture.set_candidate({source: encode(doc) for source, doc in documents.items()})
+        self.assert_failed(self.fixture.preview(), "unresolved_reference")
+
+    def test_candidate_manifest_missing_dependencies_and_unknown_tests_use_native_rules(self):
+        source = "docs/testing/mvg/fixture.json"
+        for label, missing, mutate in (
+            ("source", "registered/candidate-manifest.md", lambda doc, value: doc["flows"][0]["source_paths"].append(value)),
+            ("contract", "Game.Core/Contracts/CandidateMissing.cs", lambda doc, value: doc["flows"][0]["handoffs"][0].update(contract_ref=value)),
+            ("test", "Game.Core.Tests/CandidateMissing.cs", lambda doc, value: doc["tests"][0].update(path=value)),
+        ):
+            document = self.fixture.load(source)
+            mutate(document, missing)
+            self.fixture.set_candidate({source: encode(document)})
+            before = self.fixture.bytes()
+            report = self.fixture.preview()
+            self.assert_failed(report, "file_not_found")
+            self.assertTrue(any(row["path"] == missing and not row["exists"] for row in report["observations"]), label)
+            self.assertTrue(any(row["resume_ref"].startswith(source + "#/")
+                                and row["reason_code"] == "file_not_found" for row in report["diagnostics"]))
+            self.assertEqual(before, self.fixture.bytes())
+        document = self.fixture.load(source)
+        document["flows"][0]["test_ids"].append("unknown-test")
+        self.fixture.set_candidate({source: encode(document)})
+        report = self.fixture.preview()
+        self.assert_failed(report, "schema_validation_failed")
+        self.assertTrue(any(issue["message"] == "flow: unknown or empty test coverage"
+                            for issue in report["candidate_inventory"]["owning_diagnostics"]))
+        self.assertFalse(any(row["reason_code"] == "file_not_found" for row in report["diagnostics"]))
+
+    def test_candidate_source_set_missing_member_escape_and_membership_mismatch(self):
+        source = inventory.SOURCE_SET
+        document = self.fixture.load(source)
+        missing = "registered/candidate-required.md"
+        document["active_patterns"].append(missing)
+        document["active_sources"].append(missing)
+        self.fixture.set_candidate({source: encode(document)})
+        report = self.fixture.preview()
+        self.assert_failed(report, "file_not_found")
+        self.assertTrue(any(row["resume_ref"] == source + "#/active_sources/1" for row in report["diagnostics"]))
+        for pattern in ("../outside/*.md", "registered/**bad/*.md"):
+            document = self.fixture.load(source)
+            document["active_patterns"].append(pattern)
+            self.fixture.set_candidate({source: encode(document)})
+            report = self.fixture.preview()
+            self.assert_failed(report)
+            self.assertTrue(any(issue["code"] == "invalid-source-set"
+                                for issue in report["candidate_inventory"]["owning_diagnostics"]))
+        document = self.fixture.load(source)
+        document["active_patterns"].append("registered/*.md")
+        self.fixture.set_candidate({source: encode(document), "registered/extra.md": b"# Candidate-only source\n"})
+        report = self.fixture.preview()
+        self.assert_failed(report, "schema_validation_failed")
+        self.assertTrue(any(issue["code"] == "source-set-mismatch"
+                            for issue in report["candidate_inventory"]["owning_diagnostics"]))
+
+    def test_candidate_source_pattern_safety_precedes_resolver_enumeration(self):
+        document = self.fixture.load(inventory.SOURCE_SET)
+        document["active_patterns"] = ["../outside/*.md"]
+        self.fixture.set_candidate({inventory.SOURCE_SET: encode(document)})
+        original = inventory.resolve_sources
+        calls = []
+        def resolver(*args, **kwargs):
+            calls.append(list(args[1]))
+            self.assertNotIn("../outside/*.md", args[1], "Unsafe candidate must never reach enumeration")
+            return original(*args, **kwargs)
+        with patch.object(inventory, "resolve_sources", side_effect=resolver) as checked:
+            report = self.fixture.preview()
+        self.assertTrue(checked.called)
+        self.assertEqual(calls, [["docs/source.md"], ["docs/source.md"]])
+        self.assert_failed(report, "schema_validation_failed")
+
+    def test_candidate_only_dependencies_tasks_manifest_and_planned_missing_are_valid(self):
+        documents = self.task_candidate()
+        documents[inventory.TRIPLET["master"]]["master"]["tasks"].append(
+            {"id": 30, "status": "pending", "title": "Candidate-only task"})
+        documents[inventory.TRIPLET["back"]].append({"id": "BACK-30", "taskmaster_id": 30,
+            "status": "pending", "source_refs": ["registered/new.md:2"],
+            "test_refs": ["Game.Core.Tests/Candidate.cs"], "evidence_refs": ["logs/ci/new-proof.json"]})
+        manifest_path = "docs/testing/mvg/candidate-only.json"
+        manifest = self.fixture.load("docs/testing/mvg/fixture.json")
+        manifest["mvg_id"] = "candidate-only"
+        manifest["coverage"]["blocking_task_ids"] = [30]
+        manifest["flows"][0].update(task_ids=[30], source_paths=["registered/new.md"])
+        manifest["flows"][0]["handoffs"][0].update(producer_task=30, consumer_task=30, owner_task=30,
+            contract_ref="Game.Core/Contracts/Candidate.cs")
+        manifest["tests"][0].update(path="Game.Core.Tests/Candidate.cs", selector="Candidate")
+        planned = copy.deepcopy(manifest["tests"][0])
+        planned.update(id="future-test", state="planned", path="Game.Core.Tests/FutureCandidate.cs")
+        manifest["tests"].append(planned)
+        manifest["flows"][0]["test_ids"].append("future-test")
+        source_set = self.fixture.load(inventory.SOURCE_SET)
+        source_set["active_patterns"].append("registered/**/*.md")
+        source_set["active_sources"].append("registered/new.md")
+        candidates = {source: encode(doc) for source, doc in documents.items()}
+        candidates.update({manifest_path: encode(manifest), inventory.SOURCE_SET: encode(source_set),
+            "registered/new.md": b"# Candidate-only source\nFull requirement.\n",
+            "Game.Core/Contracts/Candidate.cs": b"public interface Candidate {}\n",
+            "Game.Core.Tests/Candidate.cs": b"public class Candidate {}\n",
+            "logs/ci/new-proof.json": b'{"synthetic":true}\n'})
+        self.fixture.set_candidate(candidates)
+        before = self.fixture.bytes()
+        report = self.fixture.preview()
+        self.assertTrue(report["ok"], report["diagnostics"])
+        self.assertEqual(report["candidate_inventory"]["source_set"]["resolved_active_sources"],
+                         ["docs/source.md", "registered/new.md"])
+        self.assertIn(manifest_path, report["candidate_inventory"]["manifest_paths"])
+        self.assertEqual(report["cumulative_changes"][0]["before_digest"], None)
+        self.assertFalse(report["cumulative_changes"][0]["weakening_detected"])
+        references = report["candidate_inventory"]["references"]
+        self.assertTrue(any(row.get("master_id") == 30 and row["path"] == "registered/new.md"
+                            and row["state"] == "present" for row in references))
+        self.assertTrue(any(row["path"] == planned["path"] and row["state"] == "missing" for row in references))
+        self.assertEqual(before, self.fixture.bytes())
+        self.assertTrue(all(not (self.fixture.root / source).exists() for source in candidates
+                            if source not in inventory.TRIPLET.values() and source != inventory.SOURCE_SET))
+        self.assertFalse(report["candidate_inventory"]["runtime_verified"])
+
+    def test_candidate_dependency_actual_post_edit_invalidates_preview(self):
+        source = "registered/candidate-dependency.md"
+        self.fixture.write(source, "# Candidate dependency\nOriginal requirement.\n")
+        documents = self.task_candidate()
+        documents[inventory.TRIPLET["back"]][0]["source_refs"].append(source + ":2")
+        self.fixture.set_candidate({target: encode(doc) for target, doc in documents.items()})
+        valid = self.fixture.preview()
+        self.assertTrue(valid["ok"], valid["diagnostics"])
+        hits = []
+        def edit():
+            hits.append(source)
+            self.fixture.write(source, "# Changed candidate dependency\nEdited requirement.\n")
+        changed = self.fixture.preview(before_reread=edit)
+        self.assertEqual(hits, [source], "The actual candidate dependency edit must execute")
+        self.assert_failed(changed, "file_changed")
+        self.assertFalse(changed["stable"])
+        self.assertFalse(changed["conclusion_valid"])
+        self.assertIn(source, {row["path"] for row in changed["observations"]})
+
+    def test_candidate_source_pattern_late_member_invalidates_preview(self):
+        document = self.fixture.load(inventory.SOURCE_SET)
+        document["active_patterns"].append("registered/**/*.md")
+        document["active_sources"].append("registered/candidate.md")
+        self.fixture.set_candidate({inventory.SOURCE_SET: encode(document),
+                                    "registered/candidate.md": b"# Candidate requirement\n"})
+        valid = self.fixture.preview()
+        self.assertTrue(valid["ok"], valid["diagnostics"])
+        late = "registered/deep/late.md"
+        hits = []
+        def add():
+            hits.append(late)
+            self.fixture.write(late, "# Late candidate pattern member\n")
+        changed = self.fixture.preview(before_reread=add)
+        self.assertEqual(hits, [late], "The actual late pattern member must be created")
+        self.assert_failed(changed, "file_changed")
+        self.assertFalse(changed["stable"])
+        self.assertFalse(changed["conclusion_valid"])
+        self.assertIn(late, {row["path"] for row in changed["observations"]})
+
+    def test_virtual_source_resolver_preserves_native_glob_semantics(self):
+        from build_source_ledger import resolve_sources
+        members = ["registered/a.md", "registered/a.txt", "registered/deep/b.md",
+                   "registered/deep/nested/c.md", "registered/Upper.MD"]
+        for source in members:
+            self.fixture.write(source, "# Synthetic resolver member\n")
+        patterns = ["registered/a.md", "registered/*.md", "registered/**/*.md", "registered/**/**/*.md",
+                    "registered/*/*.md", "registered/[ab].md", "registered/**", "registered/deep"]
+        expected = {pattern: ([path.relative_to(self.fixture.root).as_posix() for path in
+                              resolve_sources(self.fixture.root, [pattern], True)[0]],
+                              resolve_sources(self.fixture.root, [pattern], True)[1]) for pattern in patterns}
+        for source in members:
+            (self.fixture.root / source).unlink()
+        for pattern in patterns:
+            paths, missing = resolve_sources(self.fixture.root, [pattern], True, virtual_files=members)
+            self.assertEqual(([path.relative_to(self.fixture.root).as_posix() for path in paths], missing),
+                             expected[pattern], pattern)
+
+    def test_public_cli_nonempty_top_level_and_item_unresolved_are_independent_blockers(self):
+        original = self.fixture.load(self.fixture.intents_path)
+        self.assertTrue(self.fixture.preview()["ok"])
+        for label in ("top", "item"):
+            value = copy.deepcopy(original)
+            target = value if label == "top" else value["changes"][0]
+            target["unresolved"] = ["Independent unresolved semantic question"]
+            self.fixture.dump(self.fixture.intents_path, value)
+            before = self.fixture.bytes()
+            completed = self.fixture.cli("unresolved-" + label)
+            self.assertEqual(completed.returncode, 1, completed.stdout + completed.stderr)
+            self.assertEqual(completed.stderr, "")
+            report = json.loads(completed.stdout)
+            self.assert_failed(report, "semantic_error")
+            self.assertEqual({row["reason_code"] for row in report["diagnostics"]}, {"semantic_error"})
+            self.assertTrue(report["stable"])
+            self.assertEqual(json.loads(self.fixture.raw(report["report_path"])), report)
+            self.assertTrue(all(self.fixture.bytes().get(source) == raw for source, raw in before.items()))
+
+    def test_public_cli_same_revision_plan_body_conflicts_without_candidate_catalog(self):
+        module = importlib.import_module("test_b_route_records")
+        matrix = module.MatrixFixture()
+        artifacts = matrix.render()
+        for source, raw in artifacts.items():
+            target = self.fixture.root / source
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(raw)
+        self.fixture.set_candidate({"docs/new-source.md": b"# Synthetic new source\n"})
+        baseline = self.fixture.preview()
+        self.assertTrue(baseline["ok"], baseline["diagnostics"])
+        self.assertEqual(baseline["governance"]["state"], "structure_valid_publication_unverified")
+        source = module.plan_path()
+        changed = json.loads(artifacts[source])
+        changed["requirements"][0]["acceptance_intent"] = "Changed content with the same immutable identity"
+        self.fixture.set_candidate({source: encode(changed)})
+        self.assertNotIn(preflight.records.CATALOG_PATH, self.fixture.candidate)
+        before = self.fixture.bytes()
+        completed = self.fixture.cli("same-plan-revision")
+        self.assertEqual(completed.returncode, 1, completed.stdout + completed.stderr)
+        self.assertEqual(completed.stderr, "")
+        report = json.loads(completed.stdout)
+        self.assert_failed(report, "conflict")
+        self.assertEqual({row["reason_code"] for row in report["diagnostics"]}, {"conflict"})
+        self.assertEqual(report["diagnostics"][0]["entity_id"], "p")
+        self.assertEqual(report["diagnostics"][0]["resume_ref"], source)
+        self.assertEqual(report["candidate_validation"]["mode"], "single_records_only")
+        self.assertTrue(report["stable"])
+        self.assertEqual(json.loads(self.fixture.raw(report["report_path"])), report)
+        self.assertTrue(all(self.fixture.bytes().get(target) == raw for target, raw in before.items()))
 
     def existing_root_alias(self):
         if os.name == "nt":

@@ -8,8 +8,10 @@ import fnmatch
 import datetime as dt
 import hashlib
 import json
+import os
 import re
 import subprocess
+import sys
 from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any
@@ -69,20 +71,48 @@ def expand_source_arg(root: Path, value: str) -> list[str]:
     return [value]
 
 
-def resolve_sources(root: Path, patterns: list[str], explicit: bool) -> tuple[list[Path], list[str]]:
+def _source_pattern_matches(source: str, pattern: str) -> bool:
+    """Path.glob component semantics for candidate-only files, including **.
+
+    Ordinary wildcards never cross a slash; ** consumes zero or more complete
+    directories. Native disk enumeration remains Path.glob below.
+    """
+    parts, wanted = Path(source).parts, Path(pattern).parts
+    if any('**' in part and part != '**' for part in wanted):
+        raise ValueError("Invalid pattern: '**' can only be an entire path component")
+    def match(i, j):
+        if j == len(wanted):
+            return i == len(parts)
+        if wanted[j] == '**':
+            # Python 3.13 expanded a trailing ** from directories to files too.
+            if j + 1 == len(wanted):
+                return sys.version_info >= (3, 13)
+            return match(i, j + 1) or i < len(parts) and match(i + 1, j)
+        flags = re.IGNORECASE if os.name == "nt" else re.NOFLAG
+        return (i < len(parts) and re.compile(fnmatch.translate(wanted[j]), flags).match(parts[i]) is not None
+                and match(i + 1, j + 1))
+    return match(0, 0)
+
+
+def resolve_sources(root: Path, patterns: list[str], explicit: bool, *,
+                    virtual_files=()) -> tuple[list[Path], list[str]]:
+    """Resolve native sources with optional in-memory candidate file members."""
+    virtual = {root / source for source in virtual_files}
     files: list[Path] = []
     missing: list[str] = []
     for pattern in patterns:
         matches: list[Path] = []
         direct = Path(pattern)
         candidate = direct if direct.is_absolute() else root / direct
-        if candidate.is_file() and candidate.suffix.lower() in SUPPORTED_SUFFIXES:
+        if (candidate in virtual or candidate.is_file()) and candidate.suffix.lower() in SUPPORTED_SUFFIXES:
             matches.append(candidate)
-        elif not candidate.is_file():
+        elif candidate not in virtual and not candidate.is_file():
             matches.extend(
                 path for path in root.glob(pattern)
                 if path.is_file() and path.suffix.lower() in SUPPORTED_SUFFIXES
             )
+            matches.extend(path for path in virtual if path.suffix.lower() in SUPPORTED_SUFFIXES
+                           and _source_pattern_matches(path.relative_to(root).as_posix(), pattern))
         if explicit and not matches:
             missing.append(pattern)
         files.extend(matches)

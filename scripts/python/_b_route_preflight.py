@@ -590,6 +590,42 @@ def _governance(observations, candidate, documents):
             "governance_traces": traces, "committed_verified": False, "activation_authorized": False}, diagnostics
 
 
+def _native_diagnostics(current, epics, *, lawful_absence, view):
+    """Adapt native findings to the unique six-field diagnostic contract."""
+    diagnostics = []
+    locations = {}
+    for row in current["task_and_manifest_references"]:
+        if row.get("path"):
+            locations.setdefault(row["path"], []).append((row["owner_file"], row["json_pointer"],
+                row.get("master_id") if row.get("master_id") is not None else row.get("task_id")))
+    for index, source in enumerate(current["canonical_inputs"] or []):
+        locations.setdefault(source, []).append((epics, "/frontmatter/inputDocuments/" + str(index), None))
+    source_set = current["source_set"]["document"]
+    if type(source_set) is dict and type(source_set.get("active_sources")) is list:
+        for index, source in enumerate(source_set["active_sources"]):
+            if type(source) is str:
+                locations.setdefault(source, []).append((inventory.SOURCE_SET, "/active_sources/" + str(index), None))
+    for issue in current["diagnostics"]:
+        if issue["severity"] != "error" or lawful_absence and issue["code"] == "missing-manifests":
+            continue
+        reason = {"missing-input": codec.ReasonCode.FILE_NOT_FOUND,
+            "invalid-json": codec.ReasonCode.INVALID_JSON,
+            "invalid-reference": codec.ReasonCode.INVALID_REFERENCE,
+            "invalid-reference-locator": codec.ReasonCode.UNRESOLVED_REFERENCE,
+            "unsafe-or-unreadable-input": codec.ReasonCode.READ_ERROR,
+            "git-drift-within-pass": codec.ReasonCode.FILE_CHANGED}.get(
+                issue["code"], codec.ReasonCode.SCHEMA_VALIDATION_FAILED)
+        source = issue["location"]
+        for owner, pointer, entity in locations.get(source, [(source, "", None)]):
+            diagnostics.append(codec.Diagnostic(reason, codec.Stage.BUNDLE,
+                str(entity) if entity is not None else None,
+                {"path": source, "owner_file": owner, "json_pointer": pointer,
+                 "value": f"valid {view} input under the native owning rules"},
+                {"code": issue["code"], "message": issue["message"]},
+                owner + ("#" + pointer if pointer else "")).to_dict())
+    return diagnostics
+
+
 def _current_inventory(observations, epics, *, zero_task_manifest_absence):
     """Reuse the Story 1.1 owner for the current closure, not the old archive.
 
@@ -607,38 +643,9 @@ def _current_inventory(observations, epics, *, zero_task_manifest_absence):
                 fail(codec.ReasonCode.FILE_CHANGED, row["path"], row["raw_sha256"], actual)
         except codec.CodecError as error:
             diagnostics.append(error.diagnostic.to_dict())
-    locations = {}
-    for row in current["task_and_manifest_references"]:
-        if row.get("path"):
-            locations.setdefault(row["path"], []).append((row["owner_file"], row["json_pointer"],
-                row.get("master_id") if row.get("master_id") is not None else row.get("task_id")))
-    for index, source in enumerate(current["canonical_inputs"] or []):
-        locations.setdefault(source, []).append((epics, "/frontmatter/inputDocuments/" + str(index), None))
-    source_set = current["source_set"]["document"]
-    if type(source_set) is dict and type(source_set.get("active_sources")) is list:
-        for index, source in enumerate(source_set["active_sources"]):
-            if type(source) is str:
-                locations.setdefault(source, []).append((inventory.SOURCE_SET, "/active_sources/" + str(index), None))
     lawful_absence = (zero_task_manifest_absence and not current["manifests"]
         and not protection._join(current["tasks"]["documents"])[0])
-    for issue in current["diagnostics"]:
-        if issue["severity"] != "error" or lawful_absence and issue["code"] == "missing-manifests":
-            continue
-        reason = {"missing-input": codec.ReasonCode.FILE_NOT_FOUND,
-            "invalid-json": codec.ReasonCode.INVALID_JSON,
-            "invalid-reference": codec.ReasonCode.INVALID_REFERENCE,
-            "invalid-reference-locator": codec.ReasonCode.UNRESOLVED_REFERENCE,
-            "unsafe-or-unreadable-input": codec.ReasonCode.READ_ERROR,
-            "git-drift-within-pass": codec.ReasonCode.FILE_CHANGED}.get(
-                issue["code"], codec.ReasonCode.SCHEMA_VALIDATION_FAILED)
-        source = issue["location"]
-        for owner, pointer, entity in locations.get(source, [(source, "", None)]):
-            diagnostics.append(codec.Diagnostic(reason, codec.Stage.BUNDLE,
-                str(entity) if entity is not None else None,
-                {"path": source, "owner_file": owner, "json_pointer": pointer,
-                 "value": "valid current input under the Story 1.1 owning rules"},
-                {"code": issue["code"], "message": issue["message"]},
-                owner + ("#" + pointer if pointer else "")).to_dict())
+    diagnostics.extend(_native_diagnostics(current, epics, lawful_absence=lawful_absence, view="current"))
     closure = {"inputs": [{"path": row["path"], "exists": row["exists"], "raw_digest": row["raw_sha256"]}
                           for row in current["inputs"]],
         "discovery": [list(row) for row in current["discovery"]], "canonical_inputs": current["canonical_inputs"],
@@ -652,6 +659,40 @@ def _current_inventory(observations, epics, *, zero_task_manifest_absence):
         "lawful_absences": ["no cumulative Task manifest in a verified original zero-Task repository"]
             if lawful_absence else [], "owning_diagnostics": current["diagnostics"]}
     return current, summary, diagnostics
+
+
+class CandidateView:
+    """Resolve logical files to complete candidate bytes, then observed disk."""
+    def __init__(self, observations, candidate):
+        self.observations, self.candidate = observations, candidate
+
+    def read(self, source):
+        # Even an overlaid/new target keeps its original presence observation.
+        current = self.observations.read(source, optional=True)
+        return self.candidate.get(source, current)
+
+
+def _candidate_inventory(observations, epics, candidate, current_inventory, *, zero_task_manifest_absence):
+    """Use native owners on the candidate after-image without a shadow tree."""
+    view = CandidateView(observations, candidate)
+    native = inventory.Snapshot(observations.root, epics, read_bytes=view.read, virtual_files=candidate)
+    tasks = native.tasks()
+    source_set = native.source_set()
+    manifest_paths = sorted({source for role, source in current_inventory["discovery"] if role == "manifest"}
+        | {source for source in candidate if source.startswith("docs/testing/mvg/")})
+    manifests = native.manifests(manifest_paths)
+    current = {"inputs": [native.inputs[key] for key in sorted(native.inputs)],
+        "canonical_inputs": [], "tasks": tasks, "source_set": source_set,
+        "manifests": manifests, "task_and_manifest_references": native.references,
+        "diagnostics": native.diagnostics}
+    lawful_absence = zero_task_manifest_absence and not manifest_paths and not protection._join(tasks["documents"])[0]
+    diagnostics = _native_diagnostics(current, epics, lawful_absence=lawful_absence, view="candidate")
+    closure = {"inputs": [{"path": row["path"], "exists": row["exists"], "raw_digest": row["raw_sha256"]}
+                          for row in current["inputs"]],
+        "source_set": source_set, "manifest_paths": manifest_paths, "references": native.references}
+    return {**closure, "content_identity": codec.canonical_digest(closure),
+        "owning_diagnostics": native.diagnostics,
+        "claim": "candidate_native_static_validation_only", "runtime_verified": False}, diagnostics
 
 
 def _pending(observations):
@@ -690,6 +731,8 @@ def preflight(root: Path, epics: str, protection_input: str, candidate_path: str
     """Return a preview; the optional callback is an explicit fault-test seam."""
     observations = Observations(root)
     current_inventory = None
+    candidate = None
+    candidate_inventory = None
     zero_task_manifest_absence = False
     result = {"schema_version": SCHEMA, "ok": False, "claim": "read_only_migration_preview",
         "scope_id": None, "changes": [], "cumulative_changes": [], "protection_to_current": None,
@@ -717,6 +760,10 @@ def preflight(root: Path, epics: str, protection_input: str, candidate_path: str
         current_inventory, summary, diagnostics = _current_inventory(observations, epics,
             zero_task_manifest_absence=zero_task_manifest_absence)
         result["current_inventory"] = summary
+        result["diagnostics"].extend(diagnostics)
+        candidate_inventory, diagnostics = _candidate_inventory(observations, epics, candidate, current_inventory,
+            zero_task_manifest_absence=zero_task_manifest_absence)
+        result["candidate_inventory"] = candidate_inventory
         result["diagnostics"].extend(diagnostics)
         inv_path = value["inventory_ref"]["ref"].split("#", 1)[0]
         scope, reviews, diagnostics = _intents(observations, path(intents_path), epics, protection_input,
@@ -751,6 +798,11 @@ def preflight(root: Path, epics: str, protection_input: str, candidate_path: str
             after_manifests.append({"path": source, "document": after, "canonical_digest": codec.canonical_digest(after)})
         result["cumulative_changes"] = protection._manifest_changes(current_manifests, after_manifests)
         for change in result["cumulative_changes"]:
+            # The baseline owner compares exclusions conservatively even when
+            # there is no before manifest. Its own applicability flag marks
+            # that case as additive: there is no prior obligation to weaken.
+            if not change["source_backed_review_required"]:
+                change["weakening_detected"] = False
             if change["weakening_detected"]:
                 result["diagnostics"].append(codec.Diagnostic(codec.ReasonCode.SEMANTIC_ERROR, codec.Stage.BUNDLE,
                     change["path"], "independent source-backed weakening review; locator alone cannot authorize",
@@ -791,6 +843,15 @@ def preflight(root: Path, epics: str, protection_input: str, candidate_path: str
             final_inventory, final_summary, diagnostics = _current_inventory(observations, epics,
                 zero_task_manifest_absence=zero_task_manifest_absence)
             result["diagnostics"].extend(diagnostics)
+            if candidate_inventory is not None:
+                final_candidate, diagnostics = _candidate_inventory(observations, epics, candidate, final_inventory,
+                    zero_task_manifest_absence=zero_task_manifest_absence)
+                result["diagnostics"].extend(diagnostics)
+                if final_candidate["content_identity"] != candidate_inventory["content_identity"]:
+                    result["diagnostics"].append(codec.Diagnostic(codec.ReasonCode.FILE_CHANGED, codec.Stage.BUNDLE,
+                        expected={"path": candidate_path, "value": candidate_inventory["content_identity"]},
+                        actual={"candidate_content_identity": final_candidate["content_identity"]},
+                        resume_ref=candidate_path).to_dict())
             if final_summary["content_identity"] != result["current_inventory"]["content_identity"]:
                 initial_rows = {row["path"]: row["raw_sha256"] for row in current_inventory["inputs"]}
                 final_rows = {row["path"]: row["raw_sha256"] for row in final_inventory["inputs"]}
@@ -817,7 +878,8 @@ def preflight(root: Path, epics: str, protection_input: str, candidate_path: str
     result["difference_identity"] = codec.canonical_digest({key: result[key] for key in
         ("scope_id", "changes", "cumulative_changes", "protection_to_current", "governance", "pending",
          "candidate_validation", "semantic_review_inputs", "diagnostics", "observations", "stable")}
-        | {"current_inventory": result.get("current_inventory")})
+        | {"current_inventory": result.get("current_inventory"),
+           "candidate_inventory": result.get("candidate_inventory")})
     return result
 
 

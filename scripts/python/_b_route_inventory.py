@@ -309,8 +309,10 @@ def markdown_status_lines(text: str):
 
 
 class Snapshot:
-    def __init__(self, root: Path, epics: str):
+    def __init__(self, root: Path, epics: str, *, read_bytes=None, virtual_files=()):
         self.root, self.epics = root, epics
+        self.read_bytes = read_bytes
+        self.virtual_files = tuple(virtual_files)
         self.inputs: dict[str, dict] = {}
         self.cache: dict[str, bytes | None] = {}
         self.diagnostics: list[dict] = []
@@ -334,7 +336,9 @@ class Snapshot:
                 if self.cache[path] is None and required:
                     self.diagnostic("missing-input", path, "Required file is missing")
                 return self.cache[path]
-            raw = target.read_bytes()
+            raw = target.read_bytes() if self.read_bytes is None else self.read_bytes(path)
+            if raw is None:
+                raise FileNotFoundError(path)
         except (OSError, ValueError) as exc:
             self.diagnostic("missing-input" if isinstance(exc, FileNotFoundError) else "unsafe-or-unreadable-input",
                             path, str(exc).replace(str(self.root), "{root}"),
@@ -520,6 +524,70 @@ class Snapshot:
         return {"documents": documents, "status_authority": TRIPLET["master"], "status_differences": differences,
                 "counts": {name: len(value) if isinstance(value, list) else None for name, value in raw_rows.items()}}
 
+    def source_set(self) -> dict:
+        """Native source declaration, path, resolver and member checks."""
+        source_set = self.json(SOURCE_SET, "source-set")
+        active_sources = []
+        try:
+            if not isinstance(source_set, dict) or source_set.get("schema_version") != "chapter3.source-set.v1":
+                raise ValueError("Unsupported source-set schema")
+            patterns = source_set.get("active_patterns")
+            declared = source_set.get("active_sources")
+            if not isinstance(patterns, list) or not patterns or not isinstance(declared, list):
+                raise ValueError("Source-set requires active_patterns and active_sources arrays")
+            for pattern in patterns:
+                safe_source_pattern(self.root, pattern)
+            for value in declared:
+                canonical_path(value)
+                self.read(value, "declared-active-source")
+            paths, missing = (resolve_sources(self.root, patterns, explicit=True) if not self.virtual_files else
+                resolve_sources(self.root, patterns, explicit=True, virtual_files=self.virtual_files))
+            for pattern in missing:
+                self.diagnostic("missing-source-pattern", SOURCE_SET, pattern)
+            for path in paths:
+                value = path.relative_to(self.root).as_posix()
+                self.read(value, "resolved-active-source")
+                active_sources.append(value)
+            if sorted(declared) != sorted(active_sources):
+                self.diagnostic("source-set-mismatch", SOURCE_SET, "Declared active_sources differ from resolved active_patterns")
+            for retirement in source_set.get("retirements", []):
+                canonical_path(retirement["path"])
+                self.read(retirement["path"], "historical-retired-source", required=False)
+        except (ValueError, TypeError, KeyError, OSError) as exc:
+            self.diagnostic("invalid-source-set", SOURCE_SET, str(exc))
+
+        return {"path": SOURCE_SET, "document": source_set, "resolved_active_sources": active_sources}
+
+    def manifests(self, paths) -> list[dict]:
+        """Native manifest rules and required/planned reference observations."""
+        manifests = []
+        for path in paths:
+            doc = self.json(path, "cumulative-manifest")
+            if not isinstance(doc, dict):
+                self.diagnostic("invalid-manifest", path, "Manifest must be an object")
+                continue
+            try:
+                errors = (validate_manifest(self.root, doc, executable=False) if self.read_bytes is None else
+                    validate_manifest(self.root, doc, executable=False, read_bytes=self.read_bytes))
+                for error in errors:
+                    self.diagnostic("invalid-manifest", path, error)
+                for index, test in enumerate(doc.get("tests", [])):
+                    self.reference(path, f"/tests/{index}/path", test.get("id"), None, "manifest-test", test["path"],
+                                   required=test.get("state") != "planned")
+                for index, flow in enumerate(doc.get("flows", [])):
+                    for si, source in enumerate(flow.get("source_paths", [])):
+                        self.reference(path, f"/flows/{index}/source_paths/{si}", flow.get("id"), None, "manifest-source", source)
+                    for hi, edge in enumerate(flow.get("handoffs", [])):
+                        self.reference(path, f"/flows/{index}/handoffs/{hi}/contract_ref", flow.get("id"), None,
+                                       "manifest-contract", edge["contract_ref"])
+                manifests.append({"path": path, "document": doc, "static_validation_errors": errors,
+                                  "execution_claim": "not-run; static inventory is not runtime evidence"})
+            except (KeyError, TypeError, ValueError, AttributeError, OSError) as exc:
+                self.diagnostic("invalid-manifest", path, str(exc))
+        if not manifests:
+            self.diagnostic("missing-manifests", "docs/testing/mvg", "No cumulative manifest could be inventoried")
+        return manifests
+
     def collect(self) -> dict:
         raw = self.read(self.epics, "epics")
         header = {}
@@ -604,63 +672,9 @@ class Snapshot:
                 except UnicodeError as exc:
                     self.diagnostic("invalid-adr-text", path, str(exc))
 
-        source_set = self.json(SOURCE_SET, "source-set")
-        active_sources = []
-        try:
-            if not isinstance(source_set, dict) or source_set.get("schema_version") != "chapter3.source-set.v1":
-                raise ValueError("Unsupported source-set schema")
-            patterns = source_set.get("active_patterns")
-            declared = source_set.get("active_sources")
-            if not isinstance(patterns, list) or not patterns or not isinstance(declared, list):
-                raise ValueError("Source-set requires active_patterns and active_sources arrays")
-            for pattern in patterns:
-                safe_source_pattern(self.root, pattern)
-            for value in declared:
-                canonical_path(value)
-                self.read(value, "declared-active-source")
-            paths, missing = resolve_sources(self.root, patterns, explicit=True)
-            for pattern in missing:
-                self.diagnostic("missing-source-pattern", SOURCE_SET, pattern)
-            for path in paths:
-                value = path.relative_to(self.root).as_posix()
-                self.read(value, "resolved-active-source")
-                active_sources.append(value)
-            if sorted(declared) != sorted(active_sources):
-                self.diagnostic("source-set-mismatch", SOURCE_SET, "Declared active_sources differ from resolved active_patterns")
-            for retirement in source_set.get("retirements", []):
-                canonical_path(retirement["path"])
-                self.read(retirement["path"], "historical-retired-source", required=False)
-        except (ValueError, TypeError, KeyError, OSError) as exc:
-            self.diagnostic("invalid-source-set", SOURCE_SET, str(exc))
-
+        source_set_summary = self.source_set()
         tasks = self.tasks()
-        manifests = []
-        for role, path in discovered:
-            if role != "manifest":
-                continue
-            doc = self.json(path, "cumulative-manifest")
-            if not isinstance(doc, dict):
-                self.diagnostic("invalid-manifest", path, "Manifest must be an object")
-                continue
-            try:
-                errors = validate_manifest(self.root, doc, executable=False)
-                for error in errors:
-                    self.diagnostic("invalid-manifest", path, error)
-                for index, test in enumerate(doc.get("tests", [])):
-                    self.reference(path, f"/tests/{index}/path", test.get("id"), None, "manifest-test", test["path"],
-                                   required=test.get("state") != "planned")
-                for index, flow in enumerate(doc.get("flows", [])):
-                    for si, source in enumerate(flow.get("source_paths", [])):
-                        self.reference(path, f"/flows/{index}/source_paths/{si}", flow.get("id"), None, "manifest-source", source)
-                    for hi, edge in enumerate(flow.get("handoffs", [])):
-                        self.reference(path, f"/flows/{index}/handoffs/{hi}/contract_ref", flow.get("id"), None,
-                                       "manifest-contract", edge["contract_ref"])
-                manifests.append({"path": path, "document": doc, "static_validation_errors": errors,
-                                  "execution_claim": "not-run; static inventory is not runtime evidence"})
-            except (KeyError, TypeError, ValueError, AttributeError, OSError) as exc:
-                self.diagnostic("invalid-manifest", path, str(exc))
-        if not manifests:
-            self.diagnostic("missing-manifests", "docs/testing/mvg", "No cumulative manifest could be inventoried")
+        manifests = self.manifests(path for role, path in discovered if role == "manifest")
         # These loaded helper implementations and the CLI are part of rule identity.
         rule_files = [Path(__file__), Path(__file__).with_name("inventory_b_route_baseline.py"),
                       Path(__file__).with_name("_planning_skill_common.py"),
@@ -676,7 +690,7 @@ class Snapshot:
                 "declared_input_snapshot": header.get("inputSnapshotCommit"), "epics": self.epics,
                 "canonical_inputs": header.get("inputDocuments"), "discovery": discovered,
                 "inputs": [self.inputs[key] for key in sorted(self.inputs)], "rules": rules,
-                "source_set": {"path": SOURCE_SET, "document": source_set, "resolved_active_sources": active_sources},
+                "source_set": source_set_summary,
                 "tasks": tasks, "task_and_manifest_references": self.references, "adrs": adrs,
                 "manifests": manifests, "consumers": self.consumers, "diagnostics": self.diagnostics}
 

@@ -57,14 +57,22 @@ def _dedicated_integration_owner_task_ids(flows: list[dict]) -> set[int]:
     return (owners - participants) & scoped
 
 
-def validate_manifest(root: Path, doc: dict, executable: bool = False) -> list[str]:
+def validate_manifest(root: Path, doc: dict, executable: bool = False, *, read_bytes=None) -> list[str]:
+    """Validate native rules against disk or an observed, read-only byte view."""
+    def exists(value):
+        target = safe_path(root, value)
+        return target.is_file() if read_bytes is None else read_bytes(value) is not None
+
     errors = []
     try:
         if doc.get('schema_version') != SCHEMA:
             errors.append('Unsupported schema_version')
         if not re.fullmatch(r'[a-z0-9][a-z0-9-]*', doc.get('mvg_id', '')):
             errors.append('Invalid mvg_id')
-        tasks_doc = read_manifest(root, '.taskmaster/tasks/tasks.json')
+        tasks_path = '.taskmaster/tasks/tasks.json'
+        safe_path(root, tasks_path)
+        tasks_doc = (read_manifest(root, tasks_path) if read_bytes is None
+                     else json.loads(read_bytes(tasks_path).decode('utf-8-sig')))
         task_rows = {int(row['id']): row for row in tasks_doc['master']['tasks']}
         tasks = set(task_rows)
         flows, tests = doc['flows'], doc['tests']
@@ -123,12 +131,13 @@ def validate_manifest(root: Path, doc: dict, executable: bool = False) -> list[s
                 errors.append(f'{label}: planned test cannot be executed')
             if test['evidence_level'] not in LEVELS.get(test['kind'], set()):
                 errors.append(f'{label}: invalid evidence level')
-            target = safe_path(root, test['path'])
+            safe_path(root, test['path'])
+            target_exists = exists(test['path']) if read_bytes is not None or test['state'] == 'implemented' else False
             prefix = 'Game.Core.Tests/' if test['kind'] == 'dotnet' else 'Tests.Godot/tests/'
             suffix = '.cs' if test['kind'] == 'dotnet' else '.gd'
             if not test['path'].startswith(prefix) or not test['path'].endswith(suffix):
                 errors.append(f'{label}: invalid test path')
-            if test['state'] == 'implemented' and not target.is_file():
+            if test['state'] == 'implemented' and not target_exists:
                 errors.append(f'{label}: missing implemented test')
             if type(test['min_tests']) is not int or test['min_tests'] < 1:
                 errors.append(f'{label}: min_tests must be positive')
@@ -146,7 +155,7 @@ def validate_manifest(root: Path, doc: dict, executable: bool = False) -> list[s
             if not flow['outcome'].strip() or not flow['source_paths'] or not flow['handoffs']:
                 errors.append(f'{label}: outcome, sources and handoffs are required')
             for path in flow['source_paths']:
-                if not safe_path(root, path).is_file():
+                if not exists(path):
                     errors.append(f'{label}: missing source {path}')
             coverage = set(flow['test_ids'])
             if not coverage or not coverage <= test_ids:
@@ -156,7 +165,7 @@ def validate_manifest(root: Path, doc: dict, executable: bool = False) -> list[s
                 if any(type(edge[key]) is not int or edge[key] not in ids
                        for key in ('producer_task', 'consumer_task', 'owner_task')):
                     errors.append(f'{label}: each handoff needs known producer, consumer and owner tasks')
-                if not safe_path(root, edge['contract_ref']).is_file() or not edge['behavior'].strip():
+                if not exists(edge['contract_ref']) or not edge['behavior'].strip():
                     errors.append(f'{label}: handoff contract and behavior are required')
                 if not edge['test_ids'] or not set(edge['test_ids']) <= coverage:
                     errors.append(f'{label}: uncovered handoff')

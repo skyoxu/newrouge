@@ -46,6 +46,8 @@ $code = $LASTEXITCODE
 
 `path` 是逻辑目标，`source_path` 是完整原始 bytes 的位置，两者独立。重复逻辑目标、大小写别名、根外路径、符号链接／reparse point、Windows 设备别名及损坏 JSON 均阻断。可提供六类记录、Task 三联、累计 manifest、来源集合及明确的原始来源文件；注册来源可在 `docs/**` 外，不另造来源根目录限制。Task 或 manifest 不强套 B schema。提供三联时必须三份完整；未提供三联时使用当前三份原始 bytes，不补 status、不转换 ID、不把 retire 改成 cancelled。
 
+候选通过内存中的逻辑路径到原始 bytes 覆盖层读取，未覆盖项才回退当前原件。Task 的 `source_refs / test_refs / evidence_refs` 及行定位复用盘点 owner；来源集合复用路径安全、原 resolver 的直接路径／`**` 模式和声明成员一致规则；manifest 复用原生 Task／test／Flow／handoff 静态校验，观察来源、契约和测试依赖。候选独有来源／契约／测试及新增 Task 可以互相引用，无需先写到目标树；planned 测试可合法缺失，implemented 测试缺失阻断。预检不会创建仓库外 shadow 结构。
+
 `--protection-input` 必须是 `newrouge.b-route-protection-input.v1`，绑定可重建的 snapshot／inventory／归档、精确投影 codec、原始 review locator 及 manifest 身份。五项 authorization 必须保持 false。保护归档经 1.5 原验证器从 bytes 重建；不能用候选自报 digest 代替原件。归档到当前工作区的差异单独报告，当前到候选的差异另列；status 合法推进不构成定义变化，候选仍必须保留本次读到的每一项状态。
 
 当前仓库的 T108 必需历史原件 `logs/ci/2026-05-06/sc-build-tdd/summary.json` 仍缺失。版本化 1.5 输入也不使其变 optional；归档或原证据缺失时，真实预检保留阻断。完整合成 fixture 证明预检能力，不能认证真实保护基准或 A 资格。
@@ -113,6 +115,8 @@ $code = $LASTEXITCODE
 
 报告列出 `changes`、`cumulative_changes`、`protection_to_current`、`semantic_review_inputs`、`candidate_validation`、`governance`、`pending`、每一观察的原始身份和诊断。确定性的 `difference_identity` 不包含时间及随机 collection；重复预检不生成语义候选。语义字段 `source_semantics_verified / external_review_verified` 始终 false。
 
+`current_inventory` 是本次当前原件闭包，`candidate_inventory` 是按原生 owner 校验的候选后像闭包，两者分别保留引用及内容身份。后者仅证明静态规则，`runtime_verified` 始终 false；不会用当前闭包替代候选依赖检查。候选新增必需引用、未知 manifest `test_ids`、不安全来源模式及声明／解析成员不一致均产生公共诊断。顶层和逐项非空 `unresolved` 均阻断；完整当前治理中，同路径、同 ID、同修订的 plan 改正文仍阻断，即使没有提供候选 catalog。
+
 有候选 catalog 时复用唯一 `validate_bundle`；无 catalog 的前置候选只做单记录 schema／外部引用核验，明确 `relationships_verified: false`，不捏造 receipt 或 catalog。合法零 Task、3B 和 planned 对象不会被要求提供假的 readiness、场景或实现符号。原始空三联和完整归档已核验、且旧盘点唯一错误是 `missing-manifests` 时，预检明确记录无 Task 累计 manifest 的合法缺失；保留旧 capture_complete 的原值，不改写历史采集结果。任何其他采集错误仍阻断。结构结果仍不是正式提交证明。
 
 明确未启用必须能读取 ADR 的 Accepted 正文及明确未启用依据，同时没有相反的当前治理记录或 Task B 痕迹。存在治理痕迹后，必需 policy／catalog／origins 任一缺失、损坏、未知即 `unknown_or_damaged`，不从文件缺失推 legacy，也没有 `schema.enabled` 字段。完整结构可列 `structure_valid_publication_unverified`，不授予提交或启用结论。
@@ -126,6 +130,8 @@ py -3 scripts/python/dev_cli.py plan-capabilities --stage apply --run-id <origin
 这只是恢复定位；预检不会执行它。Capability 模型 `--resume-evidence`、MVG completed-only recovery、原 apply journal 各守自己的恢复边界。
 
 报告形成前重读全部已观察输入、缺失项、保护引用、来源、review、候选原件、当前目标、治理与 pending，并复核治理目录成员。实际后编辑或新增治理痕迹使 `stable / conclusion_valid / ok` 为 false，诊断给出重采位置。双读只能检测观察到的漂移，不能提供文件系统事务隔离，也不能供未来写者直接复用为应用授权。
+
+当前和候选依赖闭包在报告末尾分别重采，包括来源模式的匹配成员；候选依赖后编辑或晚增匹配文件也会废弃结论。专项故障注入断言实际编辑／新增钩子已经命中，不能只写一段建议的守卫代码作为证明。
 
 ## Windows 专项与八组实际 CLI 样本
 

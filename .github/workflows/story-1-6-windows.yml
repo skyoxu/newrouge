@@ -7,7 +7,7 @@ permissions:
 jobs:
   preflight:
     runs-on: windows-latest
-    timeout-minutes: 25
+    timeout-minutes: 30
     env:
       PYTHONUTF8: '1'
       PYTHONIOENCODING: 'utf-8'
@@ -40,10 +40,10 @@ jobs:
           assert head == os.environ['GITHUB_SHA']
           tracked = [p for p in subprocess.check_output(['git', 'ls-files', '-z']).decode('utf-8').split('\0') if p]
           before = {p: hashlib.sha256((root / p).read_bytes()).hexdigest() for p in tracked if (root / p).is_file()}
-          paths = ['scripts/python/_b_route_preflight.py', 'scripts/python/preflight_b_route_migration.py', 'scripts/python/dev_cli.py', 'scripts/python/tests/test_b_route_preflight.py', 'scripts/python/_b_route_codec.py', 'scripts/python/_b_route_records.py', 'scripts/python/_b_route_protection.py', '.github/workflows/story-1-6-windows.yml']
+          paths = ['scripts/python/_b_route_preflight.py', 'scripts/python/preflight_b_route_migration.py', 'scripts/python/dev_cli.py', 'scripts/python/tests/test_b_route_preflight.py', 'scripts/python/_b_route_codec.py', 'scripts/python/_b_route_records.py', 'scripts/python/_b_route_protection.py', 'scripts/python/_b_route_inventory.py', 'scripts/python/_mvg_manifest.py', 'scripts/python/build_source_ledger.py', '.github/workflows/story-1-6-windows.yml']
           environment = {'head': head, 'python': sys.version, 'platform': sys.platform, 'files': {p: {'raw_sha256': hashlib.sha256((root / p).read_bytes()).hexdigest(), 'git_blob': subprocess.check_output(['git', 'rev-parse', 'HEAD:' + p], text=True).strip()} for p in paths}}
           summary = {'head': head, 'steps': [], 'exit_code': 0}
-          deadline = time.monotonic() + 1200
+          deadline = time.monotonic() + 1500
           def save():
               (output / 'summary.json').write_text(json.dumps(summary, indent=2) + '\n', encoding='utf-8')
           def run(name, command, budget):
@@ -85,8 +85,22 @@ jobs:
           result = unittest.TextTestRunner(verbosity=2, resultclass=TimedResult).run(unittest.defaultTestLoader.discover('scripts/python/tests', pattern='test_b_route_preflight.py'))
           raise SystemExit(0 if result.wasSuccessful() else 1)
           '''
+          controls = r'''
+          import sys, unittest
+          sys.dont_write_bytecode = True
+          sys.path.insert(0, 'scripts/python/tests')
+          names = ['test_source_set_bad_path_and_unresolved_glob_fail', 'test_source_pattern_permission_error_is_visible_before_resolver', 'test_manifest_only_reference_closure_has_exact_original_locators_and_raw_identity', 'test_manifest_planned_test_is_preserved_without_runtime_claim', 'test_optional_planned_reference_reparse_and_permission_failures_block', 'test_manifest_invalid_id_and_missing_implemented_test_fail']
+          suite = unittest.defaultTestLoader.loadTestsFromName('test_mvg_acceptance')
+          for name in names:
+              suite.addTests(unittest.defaultTestLoader.loadTestsFromName('test_b_route_inventory.InventoryTests.' + name))
+          expected = suite.countTestCases()
+          result = unittest.TextTestRunner(verbosity=2).run(suite)
+          raise SystemExit(0 if result.wasSuccessful() and result.testsRun == expected and not result.skipped else 1)
+          '''
           if not code:
-              code, stderr = run('preflight-tests', [sys.executable, '-B', '-c', runner], 900)
+              code, _ = run('native-owner-default-controls', [sys.executable, '-B', '-c', controls], 180)
+          if not code:
+              code, stderr = run('preflight-tests', [sys.executable, '-B', '-c', runner], 1100)
               expected = sum(isinstance(node, ast.FunctionDef) and node.name.startswith('test_') for node in ast.walk(ast.parse((root / 'scripts/python/tests/test_b_route_preflight.py').read_text(encoding='utf-8'))))
               count = re.search(r'^Ran ([1-9][0-9]*) tests? in ', stderr, re.MULTILINE)
               clean = bool(count) and int(count.group(1)) == expected and not re.search(r'\.\.\. skipped|^OK \(skipped=', stderr, re.MULTILINE)
