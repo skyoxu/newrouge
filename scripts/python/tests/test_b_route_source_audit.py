@@ -186,9 +186,10 @@ class SourceAuditTests(SourceAccountingTests):
         code, report = cli("audit", "fresh", ["--accounted", accounted])
         self.assertEqual(code, 0, report)
         self.assertTrue(report["execution_complete"])
+        expected_runner = self.root.resolve(strict=True) / self.runner
         for step in ("extract-000001", "compare"):
             execution = self.json(report["output_ref"] + "/steps/" + step + "/execution.json")
-            self.assertEqual(execution["command"][:3], [sys.executable, "-B", str(self.root / self.runner)])
+            self.assertEqual(execution["command"][:3], [sys.executable, "-B", str(expected_runner)])
         ref = report["output_ref"] + "/report.json"
         self.assertEqual(cli("verify", "verify", ["--audit-ref", ref])[0], 0)
         code, reused = cli("audit", "reused", ["--accounted", accounted, "--audit-ref", ref])
@@ -549,7 +550,8 @@ class SourceAuditTests(SourceAccountingTests):
         self.assertEqual(code, 0, original)
         identity = self.json(original["output_ref"] + "/identity.json")
         self.assertIn("runner_dependency.py", identity["tools"])
-        self.assertTrue(any(p.endswith("scripts/sc/_llm_backend.py") for p in identity["tools"]))
+        backend = (Path(audit.__file__).resolve().parents[1] / "sc" / "_llm_backend.py").resolve(strict=True)
+        self.assertEqual(codec.raw_digest(backend.read_bytes()), identity["tools"][str(backend)])
         self.put("runner_dependency.py", b"MARKER = 'changed'\n")
         code, report = self.audit(account, "changed-dependency", ["--audit-ref", original["output_ref"] + "/report.json"])
         self.assertEqual(code, 1, report)
