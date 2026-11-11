@@ -1,0 +1,89 @@
+name: B-route Runtime Deterministic Checks
+
+on:
+  pull_request:
+    branches: [main]
+    types: [synchronize, opened, reopened]
+    paths:
+      - '.github/workflows/b-route-runtime-deterministic.yml'
+      - 'scripts/python/_b_route_*.py'
+      - 'scripts/python/b_route_worker_recovery.py'
+      - 'scripts/python/_planning_*.py'
+      - 'scripts/python/_codex_app_server.py'
+      - 'scripts/python/codex_isolated_model_runner.py'
+      - 'scripts/python/openai_isolated_model_runner.py'
+      - 'scripts/python/_capability_input_integrity.py'
+      - 'scripts/sc/_llm_backend.py'
+      - 'scripts/python/_mvg_*.py'
+      - 'scripts/python/plan_capabilities.py'
+      - 'scripts/python/plan_mvg.py'
+      - 'scripts/python/dev_cli.py'
+      - 'scripts/python/dev_cli_builders.py'
+      - 'scripts/python/run_gate_bundle.py'
+      - 'scripts/python/gate_bundle_retention.py'
+      - 'scripts/ci/prepare_b_route_runtime.ps1'
+      - 'scripts/sc/_delivery_profile.py'
+      - 'scripts/sc/config/delivery_profiles.json'
+      - 'scripts/python/tests/test_b_route_*.py'
+      - 'scripts/python/tests/test_codex_app_server_stdio.py'
+      - 'scripts/python/tests/test_inherited_pipe_cleanup.py'
+      - 'scripts/python/tests/test_mvg_capability_worker.py'
+      - 'scripts/python/tests/test_codex_isolated_model_runner.py'
+      - 'scripts/python/tests/test_capability_input_integrity.py'
+      - 'scripts/python/tests/test_planning_main_audit_fixes.py'
+      - 'scripts/python/tests/fixtures/b_route_*'
+      - 'scripts/python/tests/fixtures/story25_host_fault_base_sources.json'
+      - 'scripts/python/tests/fixtures/story25_loop3_*'
+      - 'scripts/python/tests/fixtures/codex_app_server_stdio_child.py'
+      - 'docs/planning/b-route/schemas/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deterministic-runtime:
+    runs-on: windows-latest
+    timeout-minutes: 60
+    env:
+      PYTHONUTF8: '1'
+      PYTHONIOENCODING: 'utf-8'
+      PYTHONNOUSERSITE: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      NEWROGUE_CODEX_REASONING_EFFORT: high
+      NEWROGUE_B_ROUTE_FIXTURE_REASONING_EFFORT: high
+      GIT_CONFIG_NOSYSTEM: '1'
+      GIT_CONFIG_GLOBAL: NUL
+      GIT_TERMINAL_PROMPT: '0'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Prepare private test dependencies and tokenizer data
+        shell: pwsh
+        run: |
+          ./scripts/ci/prepare_b_route_runtime.ps1
+
+      - name: Run deterministic runtime, recovery and resource checks
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force 'logs/ci/b-route-deterministic' | Out-Null
+          $env:PYTHONPATH = @((Join-Path $env:GITHUB_WORKSPACE 'scripts/python'), (Join-Path $env:GITHUB_WORKSPACE 'scripts/python/tests'), (Join-Path $env:GITHUB_WORKSPACE 'scripts/sc'), $env:GITHUB_WORKSPACE) -join [IO.Path]::PathSeparator
+          & $env:BR_PYTHON -X dev -B scripts/python/run_gate_bundle.py --mode b-route-runtime --out-dir 'logs/ci/b-route-deterministic' --skip-prune-runs 2>&1 | Tee-Object -FilePath 'logs/ci/b-route-deterministic/unit-tests.log'
+          exit $LASTEXITCODE
+
+      - name: Preserve deterministic test and dependency evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: b-route-deterministic-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            logs/ci/b-route-deterministic/**
+            logs/ci/b-route-runtime-environment/**
+            ${{ runner.temp }}/nr-br-runtime/tests/hp-*/**

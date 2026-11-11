@@ -38,9 +38,18 @@
 - ADR-0039: MVG 完成项恢复与独立候选生命周期 — `docs/adr/ADR-0039-mvg-completed-capability-recovery.md`
 - ADR-0040: B 路线阶段、记录权威与迁移启用治理 — [docs/adr/ADR-0040-b-route-stages-authority-and-activation.md](../adr/ADR-0040-b-route-stages-authority-and-activation.md)。治理定义已采纳，当前未启用；后续实现交付和迁移启用另有条件，现行 A 入口继续有效。
 
+- ADR-0041: B 路线审核修复的宿主资源与元数据恢复边界 — [ADR-0041](../adr/ADR-0041-b-route-review-hardening-resource-and-metadata-boundaries.md)。Accepted 宿主政策，R25 已有定向工程证据；正式 Story 审核另行关闭，默认 B 未激活，原模型预算与历史 producer 资格不变。
+
 ---
 
 ## 待采纳（Proposed，未冻结）
+
+- ADR-0043: B 路线完整资源管道预检 — [ADR-0043](../adr/ADR-0043-b-route-resource-pipeline-preallocation.md)。回环2实现及离线工程记录已保存；正式复审与启用条件另计。
+- ADR-0044: B 路线元数据发布与前缀历史 — [ADR-0044](../adr/ADR-0044-b-route-metadata-journal-publication.md)。回环2实现及离线工程记录已保存；正式复审与启用条件另计。
+- ADR-0045: B 路线宿主取消与清理诊断 — [ADR-0045](../adr/ADR-0045-b-route-host-cancellation-diagnostics.md)。回环2实现及离线工程记录已保存；正式复审与启用条件另计。
+- ADR-0046: B 路线精确宿主故障源边界 — [ADR-0046](../adr/ADR-0046-b-route-host-fault-source-boundaries.md)。回环2实现及离线工程记录已保存；正式复审与启用条件另计。
+- ADR-0047: B 路线合法部分修复、路径与CI — [ADR-0047](../adr/ADR-0047-b-route-legacy-progress-paths-and-ci.md)。回环2实现及离线工程记录已保存；正式复审与启用条件另计。
+- ADR-0048: B 路线稳定问题账户及完整资源边界 — [ADR-0048](../adr/ADR-0048-b-route-stable-issues-and-complete-resource-boundaries.md)。回环3必要定向检查已通过；正式审核及启用条件另计。
 
 - ADR-0037: Bounded MVG Integration Evidence — `docs/adr/ADR-0037-mvg-integration-evidence.md`
 
@@ -74,3 +83,11 @@
 
 - ADR-0005 Addendum: Godot+C# 质量门禁补充 — `docs/adr/addenda/ADR-0005-godot-quality-gates-addendum.md`
 - ADR-0006 Addendum: Godot 数据存储补充 — `docs/adr/addenda/ADR-0006-godot-data-storage-addendum.md`
+
+- ADR-0049: B 路线当前必需输入与历史调试附件的角色边界 — [docs/adr/ADR-0049-b-route-reference-roles.md](../adr/ADR-0049-b-route-reference-roles.md)。Accepted：v2 保护引用角色边界，27 项检查及真实只读采集／归档复核已通过；默认 A、正式采纳及迁移启用继续遵守原门禁。
+
+- ADR-0051: Frozen reader Job/gate lifetime, observed extension closure and shared Graph semantics - [decision](../adr/ADR-0051-b-route-reader-lifetime-and-observed-closure.md). Implementation accepted; current Root execution qualification pending; no default B activation.
+
+## R50 初始保护提案（Proposed）
+
+- ADR-0052: 初始空 Task 仓库的 legacy manifest 保护边界 — [ADR-0052](../adr/ADR-0052-b-route-initial-legacy-manifest-protection.md)。v3 collector/archive/live 推导；静态实现待 Root 实测与采纳，全部授权 false，不升级 v1/v2 或改变 ADR-0049 的历史附件角色。

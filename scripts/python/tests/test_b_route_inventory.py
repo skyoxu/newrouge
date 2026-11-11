@@ -152,6 +152,7 @@ class InventoryTests(unittest.TestCase):
         before = self.bytes_before()
         report = self.collect()
         self.assertTrue(report["adoptable"], report["diagnostics"])
+        self.assertEqual(report["rules"], inventory.rule_identity())
         self.assertEqual(report["git"]["head"], self.run_git("rev-parse", "HEAD").strip())
         self.assertEqual(report["declared_code_baseline"], self.head)
         self.assertNotEqual(report["git"]["head"], report["declared_code_baseline"])
@@ -274,6 +275,9 @@ class InventoryTests(unittest.TestCase):
         self.assertIn(row["path"], {r["path"] for r in report["inputs"]})
         historical = next(r for r in refs if r["raw_reference"] == "logs/ci/historical/explicit.json")
         self.assertEqual(historical["state"], "present")
+        self.assertEqual((historical["reference_role"], historical["required"]),
+                         ("historical-debug-attachment", False))
+        self.assertEqual((row["reference_role"], row["required"]), ("current-input", True))
 
     def test_cached_evidence_cannot_be_reused_as_forbidden_test_input(self):
         path = "logs/ci/historical/explicit.json"
@@ -333,13 +337,79 @@ class InventoryTests(unittest.TestCase):
         self.assertEqual(unknown, {"logs/ci/<date>/task.json", "EVENT-001"})
         self.assertNotIn("EVENT-001", {row["path"] for row in report["inputs"]})
 
-    def test_missing_test_and_concrete_evidence_are_not_adoptable(self):
-        for path in ("Game.Core.Tests/Unmanifested.cs", "evidence/existing.json"):
+    def test_missing_current_test_and_source_are_not_adoptable(self):
+        for path in ("Game.Core.Tests/Unmanifested.cs", "docs/source.md"):
             with self.subTest(path=path):
                 original = (self.root / path).read_bytes()
                 (self.root / path).unlink()
                 self.assert_invalid(self.collect(), "missing-input")
                 (self.root / path).write_bytes(original)
+
+    def test_missing_historical_attachment_keeps_original_reference_and_warning(self):
+        path = "logs/ci/historical/explicit.json"
+        (self.root / path).unlink()
+        before = self.bytes_before()
+        report = self.collect()
+        self.assertTrue(report["adoptable"], report["diagnostics"])
+        self.assertEqual(report["schema_version"], "newrouge.b-route-baseline-inventory.v2")
+        row = next(r for r in report["task_and_manifest_references"] if r["raw_reference"] == path)
+        self.assertEqual((row["owner_file"], row["json_pointer"], row["task_id"], row["master_id"]),
+                         (inventory.TRIPLET["back"], "/0/evidence_refs/1", "BACK-9", 1))
+        self.assertEqual((row["reference_role"], row["required"], row["state"], row["raw_sha256"]),
+                         ("historical-debug-attachment", False, "missing", None))
+        self.assertIn("no runtime proof", row["reason"])
+        observed = next(r for r in report["inputs"] if r["path"] == path)
+        self.assertFalse(observed["exists"])
+        self.assertIsNone(observed["raw_sha256"])
+        self.assertTrue(any(d["location"] == path and d["code"] == "missing-input" and d["severity"] == "warning"
+                            for d in report["diagnostics"]))
+        self.assertEqual(before, self.bytes_before())
+
+    def test_historical_role_cannot_make_a_shared_current_input_optional(self):
+        path = "evidence/existing.json"
+        (self.root / path).unlink()
+        for field in ("source_refs", "test_refs"):
+            for first in (True, False):
+                with self.subTest(field=field, current_first=first):
+                    original = self.load(inventory.TRIPLET["back"])
+                    self.edit_task("back", lambda rows: rows[0 if first else 1].setdefault(field, []).append(path))
+                    report = self.collect()
+                    self.assert_invalid(report, "missing-input")
+                    refs = [r for r in report["task_and_manifest_references"] if r["raw_reference"] == path]
+                    self.assertEqual({(r["reference_role"], r["required"]) for r in refs},
+                                     {("historical-debug-attachment", False), ("current-input", True)})
+                    self.assertTrue(any(d["location"] == path and d["severity"] == "error" for d in report["diagnostics"]))
+                    self.dump(inventory.TRIPLET["back"], original)
+
+    def test_missing_historical_attachment_created_between_passes_is_drift(self):
+        path = "logs/ci/historical/explicit.json"
+        (self.root / path).unlink()
+        report = self.collect(between_passes=lambda: self.write(path, '{"debug": "new"}\n'))
+        self.assert_invalid(report, "unstable-inputs")
+        self.assertIn(path, report["drift"]["changed_inputs"])
+
+    def test_unsafe_historical_attachment_is_still_rejected(self):
+        for path in ("../outside.json", "logs/ci/../escape.json", "LOGS/ci/alias.json", ".git/config"):
+            with self.subTest(path=path):
+                original = self.load(inventory.TRIPLET["back"])
+                self.edit_task("back", lambda rows: rows[0]["evidence_refs"].append(path))
+                self.assert_invalid(self.collect(), "unsafe-or-unreadable-input")
+                self.dump(inventory.TRIPLET["back"], original)
+
+    def test_historical_attachment_reparse_boundary_is_still_rejected(self):
+        path = self.root / "logs/ci/historical/explicit.json"
+        original = inventory.no_reparse
+        hits = []
+        def reject_attachment(candidate):
+            if candidate == path:
+                hits.append(candidate)
+                raise ValueError("Synthetic historical attachment reparse point")
+            return original(candidate)
+        before = self.bytes_before()
+        with patch.object(inventory, "no_reparse", reject_attachment):
+            self.assert_invalid(self.collect(), "unsafe-or-unreadable-input")
+        self.assertTrue(hits)
+        self.assertEqual(before, self.bytes_before())
 
     def test_missing_canonical_input_and_unsupported_format(self):
         (self.root / self.sources[0]).unlink()
@@ -610,12 +680,12 @@ class InventoryTests(unittest.TestCase):
             self.assertEqual((outside / "keep.txt").read_text(encoding="utf-8"), "Keep\n")
 
     def test_git_timeout_after_reservation_writes_explicit_failure_evidence(self):
-        run = inventory.subprocess.run
-        def timeout_head(command, *args, **kwargs):
-            if command[0] == "git" and command[4:] == ["rev-parse", "HEAD"]:
-                raise subprocess.TimeoutExpired(command, 30)
-            return run(command, *args, **kwargs)
-        with patch.object(inventory.subprocess, "run", timeout_head):
+        run = inventory.git
+        def timeout_head(root, *args, **kwargs):
+            if args == ("rev-parse", "HEAD"):
+                raise inventory.GitCommandTimeout("Git rev-parse HEAD timed out after 30 seconds")
+            return run(root, *args, **kwargs)
+        with patch.object(inventory, "git", timeout_head):
             self.assertEqual(self.cli(), 1)
         failure = json.loads((self.output() / "failure.json").read_text(encoding="utf-8"))
         self.assertFalse(failure["adoptable"])
@@ -721,6 +791,8 @@ class InventoryTests(unittest.TestCase):
         self.assertIn("pending", text)
         self.assertIn("/master/tasks/0/status", text)
         self.assertIn("historical-reference-template", text)
+        self.assertIn("historical-debug-attachment / False", text)
+        self.assertIn("current-input / True", text)
         self.assertIn("logs/ci/&lt;date&gt;/task.json", text)
         self.assertIn("logs/ci/<date>/task.json", [r["raw_reference"] for r in report["task_and_manifest_references"]])
 

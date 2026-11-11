@@ -23,6 +23,14 @@ import openai_isolated_model_runner as api
 import _capability_input_integrity as integrity
 
 
+def provider_response(**overrides):
+    values = dict(model='fixture-model', object='response', status='completed', tools=[])
+    values.update(overrides)
+    values['output'] = [{'type': 'message', 'role': 'assistant', 'content': [
+        {'type': 'output_text', 'text': values.get('output_text', '{}')}]}]
+    return SimpleNamespace(**values)
+
+
 class CapabilityInputIntegrityTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
@@ -259,23 +267,31 @@ class CapabilityInputIntegrityTests(unittest.TestCase):
             else:
                 atomic_json(output_path, {'fixture': True})
             thread_id = '00000000-0000-4000-8000-000000000001'
-            session_dir = self.root / 'codex-home' / 'sessions' / '2026' / '10' / '21'
-            session_dir.mkdir(parents=True, exist_ok=True)
-            session = session_dir / f'rollout-2026-10-21T00-00-00-{thread_id}.jsonl'
-            session.write_text('\n'.join([
-                json.dumps({'type': 'session_meta', 'payload': {
-                    'id': thread_id, 'session_id': thread_id, 'cwd': str(kwargs['cwd']),
-                    'model_provider': 'fixture-provider'}}),
-                json.dumps({'type': 'turn_context', 'payload': {'model': 'fixture-model'}}),
-            ]), encoding='utf-8')
-            return subprocess.CompletedProcess(command, 0, stdout=json.dumps({
-                'type': 'thread.started', 'thread_id': thread_id}))
+            return subprocess.CompletedProcess(command, 0, stdout='\n'.join([
+                json.dumps({'type': 'thread.started', 'thread_id': thread_id}),
+                json.dumps({'type': 'response.completed', 'response': {
+                    'id': f'resp-fixture-{len(self.codex_inputs)}', 'model': 'fixture-model',
+                    'object': 'response', 'status': 'completed', 'tools': [],
+                    'output': [{'type': 'message', 'role': 'assistant', 'content': [
+                        {'type': 'output_text', 'text': output_path.read_text(encoding='utf-8')}]}]}}),
+            ]))
+        def fake_app_server(executable, **kwargs):
+            from fixtures.codex_app_server_protocol import protocol, encoded
+            from _codex_app_server import replay
+            output = kwargs['cwd'] / 'fixture-output.json'
+            schema = kwargs['cwd'] / 'fixture-schema.json'
+            command = [executable, '--output-last-message', str(output)]
+            if kwargs['schema'] is not None:
+                atomic_json(schema, kwargs['schema'])
+                command.extend(['--output-schema', str(schema)])
+            fake_exec(command, input=kwargs['prompt'])
+            return replay(encoded(protocol(kwargs['cwd'], kwargs['prompt'],
+                output.read_text(encoding='utf-8'), kwargs['schema'])))
         with patch.object(codex, '_codex_executable', return_value='fixture-codex'), \
-             patch.object(codex.subprocess, 'run', side_effect=fake_exec) as executor, \
-             patch.dict(os.environ, {'CODEX_HOME': str(self.root / 'codex-home')}), \
+             patch.object(codex, 'run_app_server_request', side_effect=fake_app_server) as executor, \
              contextlib.redirect_stdout(io.StringIO()) as stdout:
             codex.run(self.args)
-        sent = "\n\n".join(call.kwargs['input'] for call in executor.call_args_list)
+        sent = "\n\n".join(call.kwargs['prompt'] for call in executor.call_args_list)
         return sent, json.loads(stdout.getvalue())
 
     def test_task_acceptance_and_descriptions_reach_exact_sent_payload(self):
@@ -756,7 +772,7 @@ class CapabilityInputIntegrityTests(unittest.TestCase):
             atomic_json(schema_path, {"type": "object", "description": "schema evidence " * 1500})
             args = argparse.Namespace(workspace=str(root), prompt_file=str(prompt), output=str(root / "out.json"),
                 max_bytes=100000, max_input_tokens=100, timeout_sec=1, output_schema=str(schema_path))
-            for module, starter in ((codex, "_codex_executable"), (copilot.shutil, "which"), (api, "run_llm_exec")):
+            for module, starter in ((codex, "_codex_executable"), (copilot.shutil, "which"), (api, "_openai_client")):
                 runner = copilot if module is copilot.shutil else module
                 with self.subTest(runner=runner.__name__), patch.object(module, starter) as start, \
                      patch.object(api, "inspect_llm_backend", return_value={"available": True}), \
@@ -794,6 +810,51 @@ class CapabilityInputIntegrityTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'prompt path must be inside workspace'):
                 api.batched_workspace_parts(self.root, prompt_path=prompt, output_path=self.output)
 
+    def test_api_missing_model_evidence_stops_without_retry_or_publication(self):
+        response = provider_response(id='resp-missing-model', model=None, output_text='{}')
+        self.output.write_text('old', encoding='utf-8')
+        with patch.object(api, '_openai_client', return_value=object()), \
+             patch.object(api, '_response', return_value=response) as dispatch:
+            with self.assertRaisesRegex(ValueError, 'actual_model_identity_missing'):
+                api._run_batched_session(workspace=self.root, prompt_path=self.prompt,
+                    output_path=self.output, timeout_sec=30, max_bytes=1048576,
+                    max_input_tokens=96000)
+        self.assertEqual(1, dispatch.call_count)
+        self.assertEqual('old', self.output.read_text())
+        report = load_json(self.root / integrity.REPORT_NAME)
+        self.assertEqual('failed', report['status'])
+        self.assertEqual(1, report['model_request_count'])
+
+    def test_api_tool_response_stops_without_retry(self):
+        response = provider_response(id='resp-tool', output_text='{}')
+        response.output = [{'type': 'function_call', 'name': 'shell'}]
+        with patch.object(api, '_openai_client', return_value=object()), \
+             patch.object(api, '_response', return_value=response) as dispatch:
+            with self.assertRaisesRegex(ValueError, 'model_tools_observed'):
+                api._run_batched_session(workspace=self.root, prompt_path=self.prompt,
+                    output_path=self.output, timeout_sec=30, max_bytes=1048576,
+                    max_input_tokens=96000)
+        self.assertEqual(1, dispatch.call_count)
+        self.assertFalse(self.output.exists())
+
+    def test_api_changed_response_model_stops_before_final_publication(self):
+        responses = []
+        def model(**kwargs):
+            responses.append(kwargs)
+            batch = load_json(self.analysis / self.index['batches'][0]['path'])
+            return provider_response(id=f'resp-{len(responses)}',
+                model='first-model' if len(responses) == 1 else 'changed-model',
+                output_text=json.dumps(self.batch_fixture_payload(batch)))
+        self.output.write_text('old', encoding='utf-8')
+        with patch.object(api, '_openai_client', return_value=object()), \
+             patch.object(api, '_response', side_effect=model):
+            with self.assertRaisesRegex(ValueError, 'model_identity_changed'):
+                api._run_batched_session(workspace=self.root, prompt_path=self.prompt,
+                    output_path=self.output, timeout_sec=30, max_bytes=1048576,
+                    max_input_tokens=96000)
+        self.assertEqual(2, len(responses))
+        self.assertEqual('old', self.output.read_text())
+
     def test_api_batches_are_independent_and_synthesis_excludes_raw_source(self):
         atomic_json(self.analysis / 'task-views/tasks_gameplay.json', [
             {'taskmaster_id': 7, 'description': 'SYNTHESIS_TASK_CONTEXT',
@@ -808,7 +869,7 @@ class CapabilityInputIntegrityTests(unittest.TestCase):
                 blocks = batch['blocks']
                 requirements = batch['requirements']
                 payload = self.batch_fixture_payload(batch)
-                return SimpleNamespace(id=f'fixture-{len(responses)}', status='completed',
+                return provider_response(id=f'fixture-{len(responses)}', status='completed',
                                        output_text=json.dumps(payload))
             if '===== COMPLETE TASK-VIEW ROWS =====' in responses[-1]['prompt']:
                 payload = {
@@ -827,9 +888,9 @@ class CapabilityInputIntegrityTests(unittest.TestCase):
                                 'verification_signals': ['verification analyzed'],
                                 'requirement_refs': sorted(api._task_view_refs(task)),
                             })
-                return SimpleNamespace(id=f'fixture-{len(responses)}', status='completed',
+                return provider_response(id=f'fixture-{len(responses)}', status='completed',
                                        output_text=json.dumps(payload))
-            return SimpleNamespace(id=f'fixture-{len(responses)}', status='completed', output_text='{}')
+            return provider_response(id=f'fixture-{len(responses)}', status='completed', output_text='{}')
 
         with patch.object(api, '_openai_client', return_value=object()), \
              patch.object(api, '_response', side_effect=model):
@@ -874,7 +935,7 @@ class CapabilityInputIntegrityTests(unittest.TestCase):
                 output_text = json.dumps(payload)
             else:
                 output_text = '{}'
-            return SimpleNamespace(id=f'fixture-{len(responses)}', status='completed', output_text=output_text)
+            return provider_response(id=f'fixture-{len(responses)}', status='completed', output_text=output_text)
 
         with patch.object(api, '_openai_client', return_value=object()), \
              patch.object(api, '_response', side_effect=model):
@@ -913,7 +974,7 @@ class CapabilityInputIntegrityTests(unittest.TestCase):
                 value = self.batch_fixture_payload(batches[1])
             else:
                 value = {}
-            return SimpleNamespace(id=f'fixture-{len(responses)}', status='completed',
+            return provider_response(id=f'fixture-{len(responses)}', status='completed',
                                    output_text=json.dumps(value))
 
         with patch.object(api, '_openai_client', return_value=object()), \
@@ -1026,7 +1087,7 @@ class CapabilityInputIntegrityTests(unittest.TestCase):
             batch_index = (schema.get('properties', {}).get('batch_index', {}).get('enum') or [None])[0]
             value = ({'draft': 'complete result'} if batch_index is None else
                      self.batch_fixture_payload(batches[batch_index - 1]))
-            return SimpleNamespace(id='fixture', output_text=json.dumps(value), status='completed')
+            return provider_response(id='fixture', output_text=json.dumps(value), status='completed')
         with (patch.object(api, '_analysis_output_budget', return_value=1),
               patch.object(api, '_openai_client', return_value=object()),
               patch.object(api, '_response', side_effect=model)):
@@ -1063,7 +1124,7 @@ class CapabilityInputIntegrityTests(unittest.TestCase):
     def test_codex_request_budget_stops_before_next_dispatch_and_preserves_count(self):
         self.args.model_request_budget = 1
         with patch.object(codex, '_codex_executable', return_value='fixture-codex'), \
-             patch.object(codex.subprocess, 'run', return_value=subprocess.CompletedProcess([], 1, stdout='transport failed')) as executor:
+             patch.object(codex, 'run_app_server_request', side_effect=RuntimeError('transport failed')) as executor:
             with self.assertRaisesRegex(ValueError, 'model_request_budget_exhausted'):
                 codex.run(self.args)
         self.assertEqual(1, executor.call_count)
@@ -1081,7 +1142,7 @@ class CapabilityInputIntegrityTests(unittest.TestCase):
             batch_index = (schema.get('properties', {}).get('batch_index', {}).get('enum') or [None])[0]
             value = ({'draft': 'complete result'} if batch_index is None else
                      self.batch_fixture_payload(load_json(self.analysis / self.index['batches'][batch_index - 1]['path'])))
-            return SimpleNamespace(id='fixture', output_text=json.dumps(value), status='completed')
+            return provider_response(id='fixture', output_text=json.dumps(value), status='completed')
         with patch.object(api, '_openai_client', return_value=object()), patch.object(api, '_response', side_effect=model):
             receipt = api._run_batched_session(workspace=self.root, prompt_path=self.prompt,
                 output_path=self.output, timeout_sec=120, max_bytes=1048576, max_input_tokens=30000)
@@ -1289,13 +1350,16 @@ class CapabilityInputIntegrityTests(unittest.TestCase):
                 output = json.dumps(self.batch_fixture_payload(batch))
             else:
                 output = '{}'
-            return SimpleNamespace(id=f'fixture-{len(responses)}', status='completed', output_text=output)
+            return provider_response(id=f'fixture-{len(responses)}', status='completed', output_text=output)
         with patch.object(api, '_openai_client', return_value=object()), \
              patch.object(api, '_response', side_effect=model):
             self.refresh_analysis_index()
             receipt = api._run_batched_session(workspace=self.root, prompt_path=self.prompt,
                 output_path=self.output, timeout_sec=120, max_bytes=8 * 1024 * 1024)
         self.assertEqual(3, receipt['model_request_count'])
+        self.assertEqual('fixture-model', receipt['model_identity'])
+        self.assertIs(True, receipt['model_identity_verified'])
+        self.assertEqual(3, len(receipt['model_identity_evidence']))
         self.assertEqual(2, receipt['input_coverage']['batch_count'])
         self.assertEqual(['SB-1', 'SB-2'], receipt['input_coverage']['source_block_ids'])
         self.assertEqual(['RQ-1', 'RQ-2'], receipt['input_coverage']['requirement_ids'])
@@ -1327,7 +1391,7 @@ class CapabilityInputIntegrityTests(unittest.TestCase):
                               'verification_signals': ['verification analyzed'], 'requirement_refs': ['RQ-1']}]}
             else:
                 output = {}
-            return SimpleNamespace(id=f'fixture-{ordinal}', status='completed', output_text=json.dumps(output))
+            return provider_response(id=f'fixture-{ordinal}', status='completed', output_text=json.dumps(output))
 
         with patch.object(api, '_openai_client', return_value=object()), patch.object(api, '_response', side_effect=model):
             api._run_batched_session(workspace=self.root, prompt_path=self.prompt,
@@ -1344,7 +1408,7 @@ class CapabilityInputIntegrityTests(unittest.TestCase):
 
         def model(**kwargs):
             responses.append(kwargs)
-            return SimpleNamespace(id='fixture-1', status='completed',
+            return provider_response(id='fixture-1', status='completed',
                                    output_text=json.dumps(self.batch_fixture_payload(batches[0])))
 
         with patch.object(api, '_openai_client', return_value=object()), \
@@ -1366,7 +1430,7 @@ class CapabilityInputIntegrityTests(unittest.TestCase):
              patch.object(api, 'inspect_llm_backend', return_value={'available': True}), \
              patch.object(api, 'workspace_payload', return_value='prepared input'), \
              patch.object(api, 'check_workspace_request', return_value={}), \
-             patch.object(api, 'run_llm_exec') as dispatch:
+             patch.object(api, '_openai_client') as dispatch:
             with self.assertRaisesRegex(ValueError, 'model_request_budget_exhausted'):
                 api.run(self.args)
         dispatch.assert_not_called()
@@ -1382,7 +1446,8 @@ class CapabilityInputIntegrityTests(unittest.TestCase):
              patch.object(api, 'inspect_llm_backend', return_value={'available': True}), \
              patch.object(api, 'workspace_payload', return_value='prepared input'), \
              patch.object(api, 'check_workspace_request', return_value={}), \
-             patch.object(api, 'run_llm_exec', side_effect=fail):
+             patch.object(api, '_openai_client', return_value=object()), \
+             patch.object(api, '_response', side_effect=fail):
             with self.assertRaisesRegex(TimeoutError, 'fixture transport timeout'):
                 api.run(self.args)
 
