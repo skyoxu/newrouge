@@ -1,0 +1,48 @@
+Traceback (most recent call last):
+  File "/workspace/newrouge/scripts/python/_b_route_adoption.py", line 761, in checked
+    return function(root, operation_id=operation_id, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/newrouge/scripts/python/_b_route_adoption.py", line 917, in prepare_review
+    return _review_preview(root, request, compensation_delivery=compensation_delivery)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/newrouge/scripts/python/_b_route_adoption.py", line 855, in _review_preview
+    return compensation.review_preview(root, request, seal=seal, delivery=compensation_delivery)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/newrouge/scripts/python/_b_route_compensation.py", line 683, in review_preview
+    return _review_preview_body(root, request, seal=seal, delivery=delivery)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/newrouge/scripts/python/_b_route_compensation.py", line 506, in _review_preview_body
+    snapshot, frozen = build(root, request, allocations=saved['preview']['allocations'] if saved else None)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/newrouge/scripts/python/_b_route_compensation.py", line 278, in build
+    snapshot.compensation_threads, snapshot.compensation_turns = _original_review(snapshot, original)
+                                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/newrouge/scripts/python/_b_route_compensation.py", line 196, in _original_review
+    return qualified.original_review(snapshot, operation)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/newrouge/scripts/python/_b_route_qualified_compensation_review_v2.py", line 202, in original_review
+    handle=history(snapshot.root,original)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/newrouge/scripts/python/_b_route_qualified_compensation_review_v2.py", line 183, in history
+    value=original_host.authenticate(root,original['operation_id'])
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/newrouge/scripts/python/_b_route_qualified_history_router.py", line 15, in authenticate
+    value = owner.authenticate(root, operation_id)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/newrouge/scripts/python/_b_route_qualified_history_host_v3.py", line 111, in authenticate
+    need(type(authority) is dict and authority.get('schema_version') == 'newrouge.b-route-qualified-historical-owner-authority.v2'
+  File "/workspace/newrouge/scripts/python/_b_route_qualified_history_host_v3.py", line 25, in need
+    raise ValueError(expected)
+ValueError: Root must install actual FINAL original owner authority; null is not an observed or approved epoch
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/workspace/newrouge/logs/ci/2026-11-11/cloud-epic2-recovery-09/continue_received_state.py", line 43, in <module>
+    prepare['result']=adoption.prepare_review(COMP,operation_id=prepare['operation_id'],request_ref=prepare['request_ref'],compensation_delivery=prepare['delivery'])
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/newrouge/scripts/python/_b_route_adoption.py", line 771, in checked
+    fail(codec.ReasonCode.IDENTITY_UNPROVABLE, 'complete current adoption evidence',
+  File "/workspace/newrouge/scripts/python/_b_route_adoption.py", line 31, in fail
+    raise codec.CodecError(codec.Diagnostic(reason, codec.Stage.BUNDLE,
+_b_route_codec.CodecError: identity_unprovable

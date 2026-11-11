@@ -1,0 +1,13 @@
+{
+  "exit_code": 1,
+  "stage": "pre-extraction ZIP entry count",
+  "error": "AssertionError: expected360 indexed data files; ZIP contains362 files",
+  "extra_entries": [
+    "FILE_INDEX.json",
+    "MISSING_AND_SCOPE.json"
+  ],
+  "missing_indexed_data_files": [],
+  "extracted_files": 0,
+  "parts_and_archive_hashes_passed": true,
+  "resolution": "Validate two explicit embedded metadata entries byte-exact against transport metadata, then verify/extract360 indexed files without fetching again."
+}

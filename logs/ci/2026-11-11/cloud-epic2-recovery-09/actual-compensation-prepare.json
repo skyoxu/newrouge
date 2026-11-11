@@ -1,0 +1,25 @@
+{
+  "root": "/workspace/newrouge-recovery-data/batch03-05f5fbf9/work/target-compensation-prepare",
+  "operation_id": "NativeV15Origin03Compensation01",
+  "request_ref": "logs/ci/b-route-requests/native-v15-origin03-compensation-01/request.json",
+  "delivery": "newrouge.b-route-qualified-compensation-review-delivery.v2",
+  "entrypoint": "_b_route_adoption.prepare_review (same public owner used by CLI)",
+  "status": "blocked",
+  "error_type": "CodecError",
+  "error": "identity_unprovable",
+  "exception_chain": [
+    {
+      "type": "CodecError",
+      "message": "identity_unprovable"
+    },
+    {
+      "type": "ValueError",
+      "message": "Root must install actual FINAL original owner authority; null is not an observed or approved epoch"
+    }
+  ],
+  "elapsed_seconds": 3.2480193589999544,
+  "changed_existing_files": [],
+  "added_files": [],
+  "model_calls": 0,
+  "old_operation_replayed": false
+}
