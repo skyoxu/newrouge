@@ -10,7 +10,6 @@ import posixpath
 import stat
 from collections.abc import Mapping
 from dataclasses import dataclass
-from functools import lru_cache
 from pathlib import Path, PureWindowsPath
 from typing import Any
 
@@ -115,54 +114,9 @@ def bundle_failure(diagnostic: codec.Diagnostic) -> BundleValidation:
     return BundleValidation(False, diagnostic)
 
 
-def _schema_validator(schema_id: str):
-    try:
-        signature = tuple((name, (SCHEMA_DIRECTORY / (name + ".schema.json")).stat().st_mtime_ns,
-                           (SCHEMA_DIRECTORY / (name + ".schema.json")).stat().st_size)
-                          for name in ("common", "policy", "plan", "binding", "origins", "commit", "catalog"))
-    except OSError:
-        _fail(codec.ReasonCode.SCHEMA_RESOURCE_ERROR, stage=codec.Stage.SCHEMA,
-              expected="seven local schema files", actual="missing schema resource")
-    return _cached_schema_validator(schema_id, str(SCHEMA_DIRECTORY), signature)
-
-
-@lru_cache(maxsize=48)
-def _cached_schema_validator(schema_id: str, directory: str, signature: tuple):
-    # Keep dependency loading out of the existing stdlib-only identity codec.
-    try:
-        from jsonschema import Draft202012Validator, validators
-        from referencing import Registry, Resource
-        from referencing.jsonschema import DRAFT202012
-    except ImportError:
-        _fail(codec.ReasonCode.DEPENDENCY_UNAVAILABLE, stage=codec.Stage.SCHEMA,
-              expected="jsonschema==4.26.0 and referencing==0.37.0", actual="dependency unavailable")
-
-    def reject_retrieve(uri):
-        _fail(codec.ReasonCode.SCHEMA_RESOURCE_ERROR, stage=codec.Stage.SCHEMA,
-              expected="registered local schema resource", actual=uri)
-
-    registry = Registry(retrieve=reject_retrieve)
-    schemas = {}
-    try:
-        for name in ("common", "policy", "plan", "binding", "origins", "commit", "catalog"):
-            document = codec.strict_json_loads((Path(directory) / (name + ".schema.json")).read_bytes())
-            Draft202012Validator.check_schema(document)
-            identity = document["$id"]
-            if identity in schemas:
-                raise ValueError("duplicate schema resource")
-            schemas[identity] = document
-            registry = registry.with_resource(identity, Resource.from_contents(document, default_specification=DRAFT202012))
-        if schema_id not in schemas or schema_id.endswith("common.v1"):
-            _fail(codec.ReasonCode.UNKNOWN_SCHEMA, stage=codec.Stage.SCHEMA,
-                  expected="one of the six public record schemas", actual=schema_id)
-        strict = validators.extend(Draft202012Validator, type_checker=Draft202012Validator.TYPE_CHECKER.redefine(
-            "integer", lambda _checker, value: type(value) is int))
-        return strict(schemas[schema_id], registry=registry)
-    except codec.CodecError:
-        raise
-    except Exception as error:
-        _fail(codec.ReasonCode.SCHEMA_RESOURCE_ERROR, stage=codec.Stage.SCHEMA,
-              expected="valid offline schema resources", actual=type(error).__name__)
+def _schema_validator(schema_id):
+    from _b_route_schema_resources import validator
+    return validator(schema_id, SCHEMA_DIRECTORY)
 
 
 def _validate_schema(value: dict, path: str | None) -> None:
@@ -232,35 +186,59 @@ def _managed_path(value: dict) -> str:
     return BASE + {"policy": "policy.v1.json", "origins": "task-origins.v1.json", "catalog": "catalog.v1.json"}[kind]
 
 
+def plan_relation_checks(value: dict, path: str) -> None:
+    requirements = _unique(value["requirements"], path=path, pointer="/requirements", key=lambda row: row["requirement_id"])
+    domain = set(requirements)
+    verifications = _unique(value["requirement_verification"], path=path, pointer="/requirement_verification", key=lambda row: row["requirement_id"])
+    applicable = _unique(value["applicability"], path=path, pointer="/applicability", key=lambda row: row["requirement_id"])
+    coverage = _unique(value["coverage_table"], path=path, pointer="/coverage_table", key=lambda row: row["requirement_id"])
+    evidence = _unique(value["requirement_evidence"], path=path, pointer="/requirement_evidence", key=lambda row: (row["requirement_id"], row["evidence_id"]))
+    if set(verifications) != domain or set(applicable) != domain or set(coverage) != domain:
+        _fail(codec.ReasonCode.MAPPING_MISMATCH, path=path, expected="complete Requirement domains", actual="different domains")
+    for rid, row in verifications.items():
+        if coverage[rid] != {key: item for key, item in row.items() if key != "evidence_ids"}:
+            _fail(codec.ReasonCode.MAPPING_MISMATCH, path=path, pointer="/coverage_table", expected="complete seven-field projection", actual=rid)
+        if any(row[key] != applicable[rid][key] for key in ("disposition", "rationale")):
+            _fail(codec.ReasonCode.MAPPING_MISMATCH, path=path, pointer="/applicability", expected="matching disposition and rationale", actual=rid)
+        if row["disposition"] == "other_verification" and row["sink_id"] not in requirements[rid]["non_task_sinks"]:
+            _fail(codec.ReasonCode.MAPPING_MISMATCH, path=path, expected="declared Requirement sink", actual=row["sink_id"])
+        for eid in row["evidence_ids"]:
+            if (rid, eid) not in evidence:
+                _fail(codec.ReasonCode.UNRESOLVED_REFERENCE, path=path, expected="same-Requirement evidence", actual=[rid, eid])
+    if any(rid not in domain for rid, _eid in evidence):
+        _fail(codec.ReasonCode.MAPPING_MISMATCH, path=path, expected="known Requirement evidence", actual="unknown Requirement")
+    for plural in ("flows", "commands", "states"):
+        definitions = _unique(value["definitions"][plural], path=path, pointer="/definitions/" + plural, key=lambda row: row["id"], code=codec.ReasonCode.DUPLICATE_OWNER)
+        for definition in definitions.values():
+            if not set(definition["requirement_ids"]) <= domain:
+                _fail(codec.ReasonCode.MAPPING_MISMATCH, path=path, expected="declared Requirement IDs", actual=definition["id"])
+    _unique(value["requirement_route_memberships"], path=path, pointer="/requirement_route_memberships", key=lambda row: (row["requirement_id"], row["flow_id"]))
+
+
+def plan_evidence_checks(plan: dict, path: str) -> None:
+    refs = _unique(plan["evidence_source_refs"], path=path, pointer="/evidence_source_refs", key=lambda row: (row["owner"], row["ref"]))
+    used = set()
+    locators = []
+    for row in plan["requirement_evidence"]:
+        owners = ("implementation_reference", "contract") if row["kind"] == "implementation_reference" else (row["kind"],)
+        locators.append((owners, row["source_ref"]))
+    for row in plan["requirement_verification"]:
+        for field, owner in (("verification_ref", "other_verification"), ("authority_ref", "authority")):
+            if row[field] is not None:
+                locators.append(((owner,), row[field]))
+    for owners, locator in locators:
+        matching = {(owner, locator) for owner in owners if (owner, locator) in refs}
+        if len(matching) != 1:
+            _fail(codec.ReasonCode.UNRESOLVED_REFERENCE, path=path, pointer="/evidence_source_refs", expected="exactly one owner/locator binding", actual=locator)
+        used.update(matching)
+    if used != set(refs):
+        _fail(codec.ReasonCode.MAPPING_MISMATCH, path=path, pointer="/evidence_source_refs", expected="only referenced descriptions", actual=sorted(set(refs) - used))
+
+
 def _local(value: dict, path: str) -> None:
     kind = value["schema_version"]
     if kind.endswith("plan.v1"):
-        requirements = _unique(value["requirements"], path=path, pointer="/requirements", key=lambda row: row["requirement_id"])
-        domain = set(requirements)
-        verifications = _unique(value["requirement_verification"], path=path, pointer="/requirement_verification", key=lambda row: row["requirement_id"])
-        applicable = _unique(value["applicability"], path=path, pointer="/applicability", key=lambda row: row["requirement_id"])
-        coverage = _unique(value["coverage_table"], path=path, pointer="/coverage_table", key=lambda row: row["requirement_id"])
-        evidence = _unique(value["requirement_evidence"], path=path, pointer="/requirement_evidence", key=lambda row: (row["requirement_id"], row["evidence_id"]))
-        if set(verifications) != domain or set(applicable) != domain or set(coverage) != domain:
-            _fail(codec.ReasonCode.MAPPING_MISMATCH, path=path, expected="complete Requirement domains", actual="different domains")
-        for rid, row in verifications.items():
-            if coverage[rid] != {key: item for key, item in row.items() if key != "evidence_ids"}:
-                _fail(codec.ReasonCode.MAPPING_MISMATCH, path=path, pointer="/coverage_table", expected="complete seven-field projection", actual=rid)
-            if any(row[key] != applicable[rid][key] for key in ("disposition", "rationale")):
-                _fail(codec.ReasonCode.MAPPING_MISMATCH, path=path, pointer="/applicability", expected="matching disposition and rationale", actual=rid)
-            if row["disposition"] == "other_verification" and row["sink_id"] not in requirements[rid]["non_task_sinks"]:
-                _fail(codec.ReasonCode.MAPPING_MISMATCH, path=path, expected="declared Requirement sink", actual=row["sink_id"])
-            for eid in row["evidence_ids"]:
-                if (rid, eid) not in evidence:
-                    _fail(codec.ReasonCode.UNRESOLVED_REFERENCE, path=path, expected="same-Requirement evidence", actual=[rid, eid])
-        if any(rid not in domain for rid, _eid in evidence):
-            _fail(codec.ReasonCode.MAPPING_MISMATCH, path=path, expected="known Requirement evidence", actual="unknown Requirement")
-        for plural in ("flows", "commands", "states"):
-            definitions = _unique(value["definitions"][plural], path=path, pointer="/definitions/" + plural, key=lambda row: row["id"], code=codec.ReasonCode.DUPLICATE_OWNER)
-            for definition in definitions.values():
-                if not set(definition["requirement_ids"]) <= domain:
-                    _fail(codec.ReasonCode.MAPPING_MISMATCH, path=path, expected="declared Requirement IDs", actual=definition["id"])
-        _unique(value["requirement_route_memberships"], path=path, pointer="/requirement_route_memberships", key=lambda row: (row["requirement_id"], row["flow_id"]))
+        plan_relation_checks(value, path)
         previous = value["lineage"]["previous_plan_ref"]
         if previous is not None and (previous["entity_id"] != value["plan_id"] or previous["revision"] >= value["revision"]):
             _fail(codec.ReasonCode.REVISION_MISMATCH, path=path, pointer="/lineage/previous_plan_ref", expected="same plan, older revision", actual=previous)
@@ -963,23 +941,7 @@ class _Bundle:
                 _fail(codec.ReasonCode.UNRESOLVED_REFERENCE, path=path, expected="ledger block IDs", actual=requirement["source_block_ids"])
 
     def evidence(self, plan: dict, path: str) -> None:
-        refs = _unique(plan["evidence_source_refs"], path=path, pointer="/evidence_source_refs", key=lambda row: (row["owner"], row["ref"]))
-        used = set()
-        locators = []
-        for row in plan["requirement_evidence"]:
-            owners = ("implementation_reference", "contract") if row["kind"] == "implementation_reference" else (row["kind"],)
-            locators.append((owners, row["source_ref"]))
-        for row in plan["requirement_verification"]:
-            for field, owner in (("verification_ref", "other_verification"), ("authority_ref", "authority")):
-                if row[field] is not None:
-                    locators.append(((owner,), row[field]))
-        for owners, locator in locators:
-            matching = {(owner, locator) for owner in owners if (owner, locator) in refs}
-            if len(matching) != 1:
-                _fail(codec.ReasonCode.UNRESOLVED_REFERENCE, path=path, pointer="/evidence_source_refs", expected="exactly one owner/locator binding", actual=locator)
-            used.update(matching)
-        if used != set(refs):
-            _fail(codec.ReasonCode.MAPPING_MISMATCH, path=path, pointer="/evidence_source_refs", expected="only referenced descriptions", actual=sorted(set(refs) - used))
+        plan_evidence_checks(plan, path)
         for proof in plan["adoption_proof_refs"]:
             target = self.bytes.lookup(proof["ref"].partition("#")[0])
             commit_dir = self.bytes.lookup(BASE + "commits")

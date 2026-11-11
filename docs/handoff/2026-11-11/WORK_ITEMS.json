@@ -1,0 +1,128 @@
+{
+  "baseline_snapshots": {
+    "r59": "fe175b49e668551b175f8d5c53a91d6c53ef59f2",
+    "r61": "e831cbc6437f1b8e70899d3bf3750b2507745c8d",
+    "r62": "2a40ec535e57e94dd7bbc8721f06a45e676db048",
+    "r64": "329a9071a3043651206212eb859ae5bdacd9cd7b",
+    "r65": "99380cc99a7b28a697872b4d8872ba8035921d5a",
+    "r47": "4d0aa32195b10347d92370b82c673043e550224b",
+    "r56": "22162e2a15e344ddcf0cbab0f8b1d0d5a1834b77",
+    "r22": "6d4ab1c3cba67bebe98f75c9462af613bf9d739a",
+    "r60": "dacd713984f91deed4ad80826d22459b819ffc06",
+    "r5": "988022094381c2b190b30c7702ed77aadda3805a"
+  },
+  "scope": [
+    "Epic 2 / Stories 2.1-2.10",
+    "approved Capability/MVG segmentation"
+  ],
+  "completed": [
+    {
+      "item": "2.1-2.5",
+      "status": "Historical completion records retained; not newly rerun or requalified. 2.2 historical Windows 175 pass/1 skip had actual_model_semantics_verified=false; use only its covered scope.",
+      "commits": {
+        "2.1": "2f7d36bdb6e1e0f9f3201a3df3c38bfb2dab6624",
+        "2.2": "2d3d3ba7e81dd21ca559614f599e8c633e65945b",
+        "2.3": "1339eb6a40413bf37491eac0a2f793c68dafec3c",
+        "2.4": "9bc2738111354e708ecfde7c8be0b3f2eba44ff0",
+        "2.5": "f216480fcf181f228aab8ddaaca9bbfe401d6023"
+      }
+    },
+    {
+      "item": "2.6",
+      "status": "Original R47 Step5 formal acceptance; scope limited to frozen operation AC1-5."
+    },
+    {
+      "item": "2.7",
+      "status": "Original apply/verify/publish/read and native Step4/5 closed; runtime/readiness/default-B remain false."
+    },
+    {
+      "item": "R23 metadata09",
+      "status": "Original natural OS0/quiescent; metadata-only composition passed, 66 original metadata children and 486-file manifest. Not paid or formal segmented qualification."
+    },
+    {
+      "item": "2.9 targeted checks",
+      "status": "Retained-tail passed; preserve original 10 local calls and prior failures. Formal acceptance remains pending 2.8."
+    },
+    {
+      "item": "2.10 targeted checks",
+      "status": "Committed CLI/entry integration and six focused checks passed; not formal Epic 2 acceptance."
+    }
+  ],
+  "in_progress": [
+    {
+      "item": "Migration",
+      "status": "Source snapshots prepared for public non-main push. No tests/new development/model calls."
+    }
+  ],
+  "pending": [
+    {
+      "item": "2.8",
+      "status": "Original prepare11 terminated naturally OS2 at 2026-11-11T14:31:16Z. Genuine render completed 166939774/170000000 local work; final request estimated 101371 input + 2000 reserve exceeds current 70000 gate. No model call. Capacity profile investigation/approval is not implementation or acceptance.",
+      "next_commit_goal": "Resolve the reproduced final compensation-request capacity issue with minimum sufficient scope, then finish real prepare/reserve/apply/publish/verify and native acceptance.",
+      "not_started": "No metadata probe file exists; its reported draft directory was empty. No metadata-only Codex probe or larger compensation profile has run."
+    },
+    {
+      "item": "2.9",
+      "dependencies": [
+        "2.3",
+        "2.5",
+        "2.7",
+        "2.8"
+      ],
+      "status": "Formal close pending prerequisite 2.8. Original R60 Root-02 has started-only evidence and no known terminal result; do not blindly repeat."
+    },
+    {
+      "item": "2.10",
+      "dependencies": [
+        "2.1",
+        "2.2",
+        "2.3",
+        "2.4",
+        "2.5",
+        "2.6",
+        "2.7",
+        "2.8",
+        "2.9"
+      ],
+      "status": "Current r64 contains tested r65 mode repairs, but not all latest r62 local-work/capacity fixes. Integration and original Epic 2 acceptance pending; do not confuse migration snapshots with a merged implementation."
+    },
+    {
+      "item": "Capability/MVG segmentation",
+      "status": "Shared source/fiscal foundation committed; metadata09 passed. Finish approved minimal fiscal interface and bounded real segmented validation within original budget. All stages must use complete serialized input <=70000 plus reserved output within total gate. Unknown reservations stay occupied."
+    },
+    {
+      "item": "Cloud continuation material",
+      "status": "Public source snapshots do not convey Windows host authority, private raw proofs/financial journals, original post-base Git history, temporary retained fixtures, environments, tokenizer packages/cache, or credentials. Establish legitimate cloud authority/dependencies and obtain required evidence safely; do not manufacture or silently requalify historical results."
+    }
+  ],
+  "canceled": [
+    {
+      "item": "Independent carrier/registry/seal prerequisite",
+      "status": "Rejected by independent Astra review. Reuse existing budget owner/allocation/journal boundaries; approved minimal interface and real validation are not canceled."
+    },
+    {
+      "item": "Epic 3-5",
+      "status": "Outside this iteration, not deleted requirements."
+    },
+    {
+      "item": "Nonblocking performance prerequisites",
+      "status": "Deferred; do not delay Story delivery."
+    }
+  ],
+  "constraints": {
+    "main_merge": false,
+    "force_push": false,
+    "reasoning": "high",
+    "speed": "normal; Fast prohibited; no claim that UI mode was read",
+    "budget_last_reported": {
+      "paid_or_unknown": 83,
+      "overlapping_guard_occupancy": 181,
+      "campaign_cap": 290,
+      "released": 0,
+      "interpretation": "Historical reporting, not a fresh reconciliation. Guard occupancy overlaps; never add it to 83 as independent spend."
+    },
+    "unknown": "Preserve all original unknown outcomes/reservations; no blind replays.",
+    "scope_changes": "Additional scope or defensive blockers require a clean Astra max assessment; continue independent work.",
+    "tests": "Reuse applicable covered evidence; failed items need independent passing evidence before justified full rerun; bounded transient recovery retains every attempt."
+  }
+}

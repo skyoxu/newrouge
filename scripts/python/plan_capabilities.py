@@ -2410,6 +2410,8 @@ def main(argv: list[str] | None = None) -> int:
 
     p = sub.add_parser("prepare")
     p.add_argument("--run-id", required=True)
+    p.add_argument("--input-stage", choices=("legacy", "3b"), default="legacy")
+    p.add_argument("--planning-contract")
     p.add_argument("--task-id", action="append", default=[])
     p.add_argument("--allow-unready-draft", action="store_true")
     p.add_argument("--source-manifest", default="logs/ci/task-generation/source-manifest.v1.json")
@@ -2448,13 +2450,40 @@ def main(argv: list[str] | None = None) -> int:
     p_validate = sub.add_parser("validate-candidate")
     p_validate.add_argument("--run-id", required=True)
     p_validate.add_argument("--candidate", required=True)
+    p_validate.add_argument("--input-stage", choices=("legacy", "3b"), default="legacy")
+    p_validate.add_argument("--prepared-ref")
 
     p_status = sub.add_parser("status")
     p_status.add_argument("--run-id", required=True)
 
+    p_verify = sub.add_parser("verify-selection")
+    p_verify.add_argument("--run-id", required=True)
+    for runtime_name in ("generate", "review", "status", "verify-selection"):
+        runtime_parser = sub.choices[runtime_name]
+        runtime_parser.add_argument("--input-stage", choices=("legacy", "3b"), default="legacy")
+        runtime_parser.add_argument("--prepared-ref")
+        runtime_parser.add_argument("--planning-profile")
+
     args = parser.parse_args(argv)
-    root = Path(args.repo_root).resolve()
+    root = Path(args.repo_root).absolute()
     try:
+        from _b_route_planning_runtime import cli_stage
+        runtime_result = cli_stage(args, planner="capabilities")
+        if runtime_result is not None:
+            print(json.dumps(runtime_result, ensure_ascii=False, indent=2))
+            return 0
+        if args.command == "validate-candidate":
+            from _b_route_candidate import from_cli
+            stage_result = from_cli(args, planner="capabilities")
+            if stage_result is not None:
+                print(json.dumps(stage_result, ensure_ascii=False, indent=2))
+                return stage_result["exit_code"]
+        if args.command == "prepare":
+            from _b_route_planning_input import prepare_from_cli
+            stage_result = prepare_from_cli(root, args, planner="capabilities")
+            if stage_result is not None:
+                print(json.dumps(stage_result, ensure_ascii=False, indent=2))
+                return stage_result["exit_code"]
         if args.command == "prepare":
             result = prepare(
                 root,
