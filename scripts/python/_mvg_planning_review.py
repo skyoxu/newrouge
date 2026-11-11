@@ -274,6 +274,9 @@ def semantic_review_errors(state: dict[str, Any], proposal: dict[str, Any], revi
 
 def review_execution_errors(state: dict[str, Any], proposal: dict[str, Any], execution: dict[str, Any],
                             review: dict[str, Any]) -> list[str]:
+    from _b_route_planning_runtime import enabled, execution_errors
+    if enabled(state):
+        return execution_errors(state, proposal, execution, review)
     from _planning_skill_common import validate_runner_description
     if review.get("schema_version") == "newrouge.mvg-capability-admission.v1":
         from _mvg_capability_generation import append_execution_errors

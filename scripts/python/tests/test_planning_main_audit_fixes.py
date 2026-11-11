@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import sys
 import tempfile
+import time
 import unittest
 from copy import deepcopy
 import shutil
@@ -180,32 +181,56 @@ class PlanningMainAuditFixesTests(unittest.TestCase):
 
     def test_interrupted_runner_terminates_and_reaps_real_child(self):
         runner = self.root / "sleeping-runner.py"
-        runner.write_text("import time\ntime.sleep(30)\n", encoding="utf-8")
+        ready = self.root / "runner-ready.txt"
+        runner.write_text("import time\nfrom pathlib import Path\nprint('partial runner output', flush=True)\n"
+                          + "Path(" + repr(str(ready)) + ").write_text('ready')\ntime.sleep(3)\n", encoding="utf-8")
         real_popen = common.subprocess.Popen
         children = []
+        readers = []
+        def interrupt(proc):
+            deadline = time.monotonic() + 2
+            while not ready.exists() and time.monotonic() < deadline:
+                time.sleep(0.01)
+            self.assertTrue(ready.exists())
+            self.assertIsNone(proc.poll())
+            raise KeyboardInterrupt("interrupt a live runner at its actual wait boundary")
         def launch(command, **kwargs):
             proc = real_popen(command, **kwargs)
             if command[0] != sys.executable:
                 return proc
             children.append(proc)
             self.addCleanup(lambda: common._terminate_process_tree(proc))
-            communicate = proc.communicate
-            calls = 0
-            def interrupt_once(*args, **kw):
-                nonlocal calls
-                calls += 1
-                if calls == 1:
-                    self.assertIsNone(proc.poll())
-                    raise KeyboardInterrupt("interrupt a live runner")
-                return communicate(*args, **kw)
-            proc.communicate = interrupt_once
+            if common.os.name != "nt":
+                communicate = proc.communicate
+                calls = [0]
+                def interrupt_once(*args, **kw):
+                    calls[0] += 1
+                    if calls[0] == 1:
+                        interrupt(proc)
+                    return communicate(*args, **kw)
+                proc.communicate = interrupt_once
             return proc
-        with patch.object(common.subprocess, "Popen", side_effect=launch):
+        def windows_wait(capture, timeout):
+            readers.append(capture)
+            deadline = time.monotonic() + 2
+            while not capture.parts and time.monotonic() < deadline:
+                time.sleep(0.01)
+            self.assertTrue(capture.parts)
+            interrupt(capture.proc)
+        log = self.root / "interrupted-host.json"
+        with patch.object(common.subprocess, "Popen", side_effect=launch), \
+             patch.object(common._WindowsRunnerOutput, "communicate", windows_wait):
             with self.assertRaises(KeyboardInterrupt):
                 common.run_isolated_model(runner, workspace=self.root,
-                    prompt_path=self.root / "prompt.txt", output_path=self.root / "output.json", timeout_sec=10)
+                    prompt_path=self.root / "prompt.txt", output_path=self.root / "output.json", timeout_sec=10,
+                    execution_log=log)
         self.assertEqual(1, len(children))
         self.assertIsNotNone(children[0].poll())
+        self.assertTrue(all(not reader.worker.is_alive() for reader in readers))
+        report = load_json(log)
+        self.assertEqual(report["status"], "interrupted")
+        self.assertEqual(report["original_error"]["type"], "KeyboardInterrupt")
+        self.assertIn("partial runner output", report["stdout"])
 
     def test_process_loss_keeps_reservation_and_consumes_attempt(self):
         prepare_cap(self.root)

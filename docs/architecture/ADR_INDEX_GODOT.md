@@ -38,9 +38,19 @@
 - ADR-0039: MVG 完成项恢复与独立候选生命周期 — `docs/adr/ADR-0039-mvg-completed-capability-recovery.md`
 - ADR-0040: B 路线阶段、记录权威与迁移启用治理 — [docs/adr/ADR-0040-b-route-stages-authority-and-activation.md](../adr/ADR-0040-b-route-stages-authority-and-activation.md)。治理定义已采纳，当前未启用；后续实现交付和迁移启用另有条件，现行 A 入口继续有效。
 
+- ADR-0041: B 路线审核修复的宿主资源与元数据恢复边界 — [ADR-0041](../adr/ADR-0041-b-route-review-hardening-resource-and-metadata-boundaries.md)。Accepted 宿主政策，R25 已有定向工程证据；正式 Story 审核另行关闭，默认 B 未激活，原模型预算与历史 producer 资格不变。
+- ADR-0042: Capability/MVG 共用分段协议与有界无损传输 — [ADR-0042](../adr/ADR-0042-shared-segmented-planning-protocol.md)。Accepted 技术合同；opt-in 实现交付、真实资格和默认启用分别准入，不据本索引授予正式采纳或默认 B 启用。
+
 ---
 
 ## 待采纳（Proposed，未冻结）
+
+- ADR-0043: B 路线完整资源管道预检 — [ADR-0043](../adr/ADR-0043-b-route-resource-pipeline-preallocation.md)。回环2实现及离线工程记录已保存；正式复审与启用条件另计。
+- ADR-0044: B 路线元数据发布与前缀历史 — [ADR-0044](../adr/ADR-0044-b-route-metadata-journal-publication.md)。回环2实现及离线工程记录已保存；正式复审与启用条件另计。
+- ADR-0045: B 路线宿主取消与清理诊断 — [ADR-0045](../adr/ADR-0045-b-route-host-cancellation-diagnostics.md)。回环2实现及离线工程记录已保存；正式复审与启用条件另计。
+- ADR-0046: B 路线精确宿主故障源边界 — [ADR-0046](../adr/ADR-0046-b-route-host-fault-source-boundaries.md)。回环2实现及离线工程记录已保存；正式复审与启用条件另计。
+- ADR-0047: B 路线合法部分修复、路径与CI — [ADR-0047](../adr/ADR-0047-b-route-legacy-progress-paths-and-ci.md)。回环2实现及离线工程记录已保存；正式复审与启用条件另计。
+- ADR-0048: B 路线稳定问题账户及完整资源边界 — [ADR-0048](../adr/ADR-0048-b-route-stable-issues-and-complete-resource-boundaries.md)。回环3必要定向检查已通过；正式审核及启用条件另计。
 
 - ADR-0037: Bounded MVG Integration Evidence — `docs/adr/ADR-0037-mvg-integration-evidence.md`
 
@@ -74,3 +84,18 @@
 
 - ADR-0005 Addendum: Godot+C# 质量门禁补充 — `docs/adr/addenda/ADR-0005-godot-quality-gates-addendum.md`
 - ADR-0006 Addendum: Godot 数据存储补充 — `docs/adr/addenda/ADR-0006-godot-data-storage-addendum.md`
+
+- ADR-0049: B 路线当前必需输入与历史调试附件的角色边界 — [docs/adr/ADR-0049-b-route-reference-roles.md](../adr/ADR-0049-b-route-reference-roles.md)。Accepted：v2 保护引用角色边界，27 项检查及真实只读采集／归档复核已通过；默认 A、正式采纳及迁移启用继续遵守原门禁。
+- ADR-0050: B 路线补偿审阅的版本化语义材料与原 owner 证明 — [docs/adr/ADR-0050-b-route-compensation-review-materials.md](../adr/ADR-0050-b-route-compensation-review-materials.md)。Accepted 技术决定：完整 host 原像与历史语义 DAG、新辅助 proof/presentation 合同、同 policy v1 精确重放及跨 policy 严格拒绝；新源码实际验证待 Root 执行，不代表正式采纳或启用通过。
+
+
+## Proposed implementation follow-up; no acceptance inferred
+
+- ADR-0053: Historical adoption-proof-v3 original-owner authentication and explicit public history — [ADR-0053](../adr/ADR-0053-b-route-historical-v3-original-owner.md). Proposed; R57 source-integrated route with null authority default, legacy routes retained, and genuine proof3/public-history/compensation positives not yet executed. No formal Story acceptance or default-B activation.
+
+
+## Accepted supplementary DATA contract; no financial activation
+
+- ADR-0054: Segmented financial-prefix DATA validation - [ADR-0054](../adr/ADR-0054-segmented-financial-prefix-data.md). Accepted for supplied-byte consistency only; no actual allocation, grant, paid dispatch, native qualification or default-B activation.
+
+- ADR-0055: B 路线固定工作政策的实测校准 — [ADR-0055](../adr/ADR-0055-b-route-fixed-work-policy-calibration.md)。Accepted 本地技术政策：依据完整 DATA 组件计量将当前同账工作界显式定为170M／resource-pipeline.v4；只局部 supersede 原100M，不改变其他资源、模型预算或原生验收门。

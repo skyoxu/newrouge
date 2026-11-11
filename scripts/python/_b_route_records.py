@@ -10,7 +10,6 @@ import posixpath
 import stat
 from collections.abc import Mapping
 from dataclasses import dataclass
-from functools import lru_cache
 from pathlib import Path, PureWindowsPath
 from typing import Any
 
@@ -115,54 +114,9 @@ def bundle_failure(diagnostic: codec.Diagnostic) -> BundleValidation:
     return BundleValidation(False, diagnostic)
 
 
-def _schema_validator(schema_id: str):
-    try:
-        signature = tuple((name, (SCHEMA_DIRECTORY / (name + ".schema.json")).stat().st_mtime_ns,
-                           (SCHEMA_DIRECTORY / (name + ".schema.json")).stat().st_size)
-                          for name in ("common", "policy", "plan", "binding", "origins", "commit", "catalog"))
-    except OSError:
-        _fail(codec.ReasonCode.SCHEMA_RESOURCE_ERROR, stage=codec.Stage.SCHEMA,
-              expected="seven local schema files", actual="missing schema resource")
-    return _cached_schema_validator(schema_id, str(SCHEMA_DIRECTORY), signature)
-
-
-@lru_cache(maxsize=48)
-def _cached_schema_validator(schema_id: str, directory: str, signature: tuple):
-    # Keep dependency loading out of the existing stdlib-only identity codec.
-    try:
-        from jsonschema import Draft202012Validator, validators
-        from referencing import Registry, Resource
-        from referencing.jsonschema import DRAFT202012
-    except ImportError:
-        _fail(codec.ReasonCode.DEPENDENCY_UNAVAILABLE, stage=codec.Stage.SCHEMA,
-              expected="jsonschema==4.26.0 and referencing==0.37.0", actual="dependency unavailable")
-
-    def reject_retrieve(uri):
-        _fail(codec.ReasonCode.SCHEMA_RESOURCE_ERROR, stage=codec.Stage.SCHEMA,
-              expected="registered local schema resource", actual=uri)
-
-    registry = Registry(retrieve=reject_retrieve)
-    schemas = {}
-    try:
-        for name in ("common", "policy", "plan", "binding", "origins", "commit", "catalog"):
-            document = codec.strict_json_loads((Path(directory) / (name + ".schema.json")).read_bytes())
-            Draft202012Validator.check_schema(document)
-            identity = document["$id"]
-            if identity in schemas:
-                raise ValueError("duplicate schema resource")
-            schemas[identity] = document
-            registry = registry.with_resource(identity, Resource.from_contents(document, default_specification=DRAFT202012))
-        if schema_id not in schemas or schema_id.endswith("common.v1"):
-            _fail(codec.ReasonCode.UNKNOWN_SCHEMA, stage=codec.Stage.SCHEMA,
-                  expected="one of the six public record schemas", actual=schema_id)
-        strict = validators.extend(Draft202012Validator, type_checker=Draft202012Validator.TYPE_CHECKER.redefine(
-            "integer", lambda _checker, value: type(value) is int))
-        return strict(schemas[schema_id], registry=registry)
-    except codec.CodecError:
-        raise
-    except Exception as error:
-        _fail(codec.ReasonCode.SCHEMA_RESOURCE_ERROR, stage=codec.Stage.SCHEMA,
-              expected="valid offline schema resources", actual=type(error).__name__)
+def _schema_validator(schema_id):
+    from _b_route_schema_resources import validator
+    return validator(schema_id, SCHEMA_DIRECTORY)
 
 
 def _validate_schema(value: dict, path: str | None) -> None:
@@ -232,39 +186,103 @@ def _managed_path(value: dict) -> str:
     return BASE + {"policy": "policy.v1.json", "origins": "task-origins.v1.json", "catalog": "catalog.v1.json"}[kind]
 
 
+def plan_relation_checks(value: dict, path: str) -> None:
+    requirements = _unique(value["requirements"], path=path, pointer="/requirements", key=lambda row: row["requirement_id"])
+    domain = set(requirements)
+    verifications = _unique(value["requirement_verification"], path=path, pointer="/requirement_verification", key=lambda row: row["requirement_id"])
+    applicable = _unique(value["applicability"], path=path, pointer="/applicability", key=lambda row: row["requirement_id"])
+    coverage = _unique(value["coverage_table"], path=path, pointer="/coverage_table", key=lambda row: row["requirement_id"])
+    evidence = _unique(value["requirement_evidence"], path=path, pointer="/requirement_evidence", key=lambda row: (row["requirement_id"], row["evidence_id"]))
+    if set(verifications) != domain or set(applicable) != domain or set(coverage) != domain:
+        _fail(codec.ReasonCode.MAPPING_MISMATCH, path=path, expected="complete Requirement domains", actual="different domains")
+    for rid, row in verifications.items():
+        if coverage[rid] != {key: item for key, item in row.items() if key != "evidence_ids"}:
+            _fail(codec.ReasonCode.MAPPING_MISMATCH, path=path, pointer="/coverage_table", expected="complete seven-field projection", actual=rid)
+        if any(row[key] != applicable[rid][key] for key in ("disposition", "rationale")):
+            _fail(codec.ReasonCode.MAPPING_MISMATCH, path=path, pointer="/applicability", expected="matching disposition and rationale", actual=rid)
+        if row["disposition"] == "other_verification" and row["sink_id"] not in requirements[rid]["non_task_sinks"]:
+            _fail(codec.ReasonCode.MAPPING_MISMATCH, path=path, expected="declared Requirement sink", actual=row["sink_id"])
+        for eid in row["evidence_ids"]:
+            if (rid, eid) not in evidence:
+                _fail(codec.ReasonCode.UNRESOLVED_REFERENCE, path=path, expected="same-Requirement evidence", actual=[rid, eid])
+    if any(rid not in domain for rid, _eid in evidence):
+        _fail(codec.ReasonCode.MAPPING_MISMATCH, path=path, expected="known Requirement evidence", actual="unknown Requirement")
+    for plural in ("flows", "commands", "states"):
+        definitions = _unique(value["definitions"][plural], path=path, pointer="/definitions/" + plural, key=lambda row: row["id"], code=codec.ReasonCode.DUPLICATE_OWNER)
+        for definition in definitions.values():
+            if not set(definition["requirement_ids"]) <= domain:
+                _fail(codec.ReasonCode.MAPPING_MISMATCH, path=path, expected="declared Requirement IDs", actual=definition["id"])
+    _unique(value["requirement_route_memberships"], path=path, pointer="/requirement_route_memberships", key=lambda row: (row["requirement_id"], row["flow_id"]))
+
+
+def plan_graph_checks(value: dict, path: str) -> None:
+    """Reuse native topology checks; historical text-only Flows stay eligible.
+
+    This local adapter has no source ledger context. External owner authority
+    remains a bundle responsibility. Local declared endpoints, boundary
+    correspondence, reachability and SCC exits share the native graph owner.
+    """
+    graph_flows = [row for row in value['definitions']['flows'] if 'graph' in row]
+    if not graph_flows:
+        return
+    from _b_route_flow_graph import check_graph, flow_local_predicates
+    owners = {(kind, row['id']): (('existing', value['plan_id'], value['revision']), row)
+              for kind, plural in (('flow', 'flows'), ('command', 'commands'), ('state', 'states'))
+              for row in value['definitions'][plural]}
+    def resolve(use, expected_kind=None):
+        if expected_kind is not None and use['kind'] != expected_kind:
+            _fail(codec.ReasonCode.UNRESOLVED_REFERENCE, path=path,
+                  expected=expected_kind, actual=use['kind'])
+        if use.get('owner_plan_id') == value['plan_id'] and use.get('owner_revision') == value['revision']:
+            key = use['kind'], use['definition_id']
+            if key not in owners:
+                _fail(codec.ReasonCode.UNRESOLVED_REFERENCE, path=path,
+                      expected='declared local logical owner', actual=use['definition_id'])
+            return owners[key][1]
+        # External LogicalDefinitionUse integrity is already checked by the
+        # complete bundle owner; text-only external plans fabricate no nodes.
+        return None
+    def unique(rows, key, label):
+        return _unique(rows, path=path, pointer='/' + label, key=key)
+    check_graph({'definitions': {'flows': graph_flows}}, owners, resolve, unique=unique,
+        flow_predicates=lambda flow, resolver: flow_local_predicates(flow, resolver, unique=unique))
+
+
+def plan_evidence_checks(plan: dict, path: str) -> None:
+    refs = _unique(plan["evidence_source_refs"], path=path, pointer="/evidence_source_refs", key=lambda row: (row["owner"], row["ref"]))
+    used = set()
+    locators = []
+    for row in plan["requirement_evidence"]:
+        owners = ("implementation_reference", "contract") if row["kind"] == "implementation_reference" else (row["kind"],)
+        locators.append((owners, row["source_ref"]))
+    for row in plan["requirement_verification"]:
+        for field, owner in (("verification_ref", "other_verification"), ("authority_ref", "authority")):
+            if row[field] is not None:
+                locators.append(((owner,), row[field]))
+    for owners, locator in locators:
+        matching = {(owner, locator) for owner in owners if (owner, locator) in refs}
+        if len(matching) != 1:
+            _fail(codec.ReasonCode.UNRESOLVED_REFERENCE, path=path, pointer="/evidence_source_refs", expected="exactly one owner/locator binding", actual=locator)
+        used.update(matching)
+    if used != set(refs):
+        _fail(codec.ReasonCode.MAPPING_MISMATCH, path=path, pointer="/evidence_source_refs", expected="only referenced descriptions", actual=sorted(set(refs) - used))
+
+
 def _local(value: dict, path: str) -> None:
     kind = value["schema_version"]
     if kind.endswith("plan.v1"):
-        requirements = _unique(value["requirements"], path=path, pointer="/requirements", key=lambda row: row["requirement_id"])
-        domain = set(requirements)
-        verifications = _unique(value["requirement_verification"], path=path, pointer="/requirement_verification", key=lambda row: row["requirement_id"])
-        applicable = _unique(value["applicability"], path=path, pointer="/applicability", key=lambda row: row["requirement_id"])
-        coverage = _unique(value["coverage_table"], path=path, pointer="/coverage_table", key=lambda row: row["requirement_id"])
-        evidence = _unique(value["requirement_evidence"], path=path, pointer="/requirement_evidence", key=lambda row: (row["requirement_id"], row["evidence_id"]))
-        if set(verifications) != domain or set(applicable) != domain or set(coverage) != domain:
-            _fail(codec.ReasonCode.MAPPING_MISMATCH, path=path, expected="complete Requirement domains", actual="different domains")
-        for rid, row in verifications.items():
-            if coverage[rid] != {key: item for key, item in row.items() if key != "evidence_ids"}:
-                _fail(codec.ReasonCode.MAPPING_MISMATCH, path=path, pointer="/coverage_table", expected="complete seven-field projection", actual=rid)
-            if any(row[key] != applicable[rid][key] for key in ("disposition", "rationale")):
-                _fail(codec.ReasonCode.MAPPING_MISMATCH, path=path, pointer="/applicability", expected="matching disposition and rationale", actual=rid)
-            if row["disposition"] == "other_verification" and row["sink_id"] not in requirements[rid]["non_task_sinks"]:
-                _fail(codec.ReasonCode.MAPPING_MISMATCH, path=path, expected="declared Requirement sink", actual=row["sink_id"])
-            for eid in row["evidence_ids"]:
-                if (rid, eid) not in evidence:
-                    _fail(codec.ReasonCode.UNRESOLVED_REFERENCE, path=path, expected="same-Requirement evidence", actual=[rid, eid])
-        if any(rid not in domain for rid, _eid in evidence):
-            _fail(codec.ReasonCode.MAPPING_MISMATCH, path=path, expected="known Requirement evidence", actual="unknown Requirement")
-        for plural in ("flows", "commands", "states"):
-            definitions = _unique(value["definitions"][plural], path=path, pointer="/definitions/" + plural, key=lambda row: row["id"], code=codec.ReasonCode.DUPLICATE_OWNER)
-            for definition in definitions.values():
-                if not set(definition["requirement_ids"]) <= domain:
-                    _fail(codec.ReasonCode.MAPPING_MISMATCH, path=path, expected="declared Requirement IDs", actual=definition["id"])
-        _unique(value["requirement_route_memberships"], path=path, pointer="/requirement_route_memberships", key=lambda row: (row["requirement_id"], row["flow_id"]))
+        plan_relation_checks(value, path)
+        plan_graph_checks(value, path)
+        # The shared graph schema also serves native proposals. Formal records
+        # must resolve every proposed owner even in graph/handoff nested uses.
+        for child in _walk(value):
+            if "proposed_owner_key" in child:
+                _fail(codec.ReasonCode.UNRESOLVED_REFERENCE, path=path,
+                      expected="fully resolved formal logical owner", actual=child.get("definition_id"))
         previous = value["lineage"]["previous_plan_ref"]
         if previous is not None and (previous["entity_id"] != value["plan_id"] or previous["revision"] >= value["revision"]):
             _fail(codec.ReasonCode.REVISION_MISMATCH, path=path, pointer="/lineage/previous_plan_ref", expected="same plan, older revision", actual=previous)
-        for proof in value["adoption_proof_refs"]:
+        for proof in [*value["adoption_proof_refs"], *([value["native_candidate_ref"]] if "native_candidate_ref" in value else [])]:
             proof_path = _path(proof["ref"].partition("#")[0])
             if proof_path.startswith(BASE + "commits/") or proof_path == CATALOG_PATH:
                 _fail(codec.ReasonCode.DIGEST_CYCLE, path=path, expected="independent planning proof", actual=proof_path)
@@ -693,6 +711,23 @@ class _Bundle:
                 for child in _walk(value):
                     if set(child) == {"path", "schema_version", "entity_id", "revision", "digest", "verification_mode", "codec_version"}:
                         self.reference(child)
+                if value['schema_version'] == 'newrouge.b-route-commit.v1':
+                    for pin in value['authority']:
+                        name = _path(pin['path'])
+                        if (not name.casefold().startswith((BASE + 'commits/').casefold())
+                                or pin['after_digest'] is None):
+                            continue
+                        if pin['before_digest'] != pin['after_digest']:
+                            _fail(codec.ReasonCode.CONFLICT, path=name,
+                                  expected='unchanged original receipt authority', actual='different images')
+                        data = self.bytes.read(name)
+                        if codec.raw_digest(data) != pin['after_digest']:
+                            _fail(codec.ReasonCode.DIGEST_MISMATCH, path=name,
+                                  expected=pin['after_digest'], actual=codec.raw_digest(data))
+                        receipt = self.load(name)
+                        if receipt['schema_version'] != 'newrouge.b-route-commit.v1':
+                            _fail(codec.ReasonCode.SCHEMA_MISMATCH, path=name,
+                                  expected='original formal receipt', actual=receipt['schema_version'])
 
     def external(self, paths: set[str]) -> None:
         from _b_route_record_owners import resolve_owned_ref
@@ -924,6 +959,11 @@ class _Bundle:
                     actual = self.refset(row[field], self.catalog_path, "/" + label + "/" + field)
                     if actual != expected[task_id][field]:
                         _fail(codec.ReasonCode.MAPPING_MISMATCH, path=self.catalog_path, expected="exact current binding reverse projection", actual=[label, task_id, field])
+        for row in task_maps:
+            _unique(row["view_refs"], path=self.catalog_path, pointer="/view_refs", key=lambda item: item["view"])
+        self._task_joins(task_maps)
+
+    def _task_joins(self, task_maps) -> None:
         if task_maps:
             if type(self.task_join) is not TaskJoinContext:
                 _fail(codec.ReasonCode.UNRESOLVED_REFERENCE, expected="TaskJoinContext for nonempty mappings", actual="missing join context")
@@ -931,7 +971,6 @@ class _Bundle:
             for row in task_maps:
                 if row["task_id"] not in master:
                     _fail(codec.ReasonCode.MAPPING_MISMATCH, expected="mapped master Task", actual=row["task_id"])
-                _unique(row["view_refs"], path=self.catalog_path, pointer="/view_refs", key=lambda item: item["view"])
                 for view in row["view_refs"]:
                     if views[view["view"]].get(view["business_id"]) != row["task_id"]:
                         _fail(codec.ReasonCode.MAPPING_MISMATCH, expected="exact master/view business join", actual=view)
@@ -961,25 +1000,16 @@ class _Bundle:
         for requirement in plan["requirements"]:
             if not set(requirement["source_block_ids"]) <= set(block_ids):
                 _fail(codec.ReasonCode.UNRESOLVED_REFERENCE, path=path, expected="ledger block IDs", actual=requirement["source_block_ids"])
+        from _b_route_flow_graph import flow_source_predicate
+        for flow in plan['definitions']['flows']:
+            if 'graph' in flow:
+                valid, identity, expected = flow_source_predicate(flow, block_ids)
+                if not valid:
+                    _fail(codec.ReasonCode.UNRESOLVED_REFERENCE, path=path,
+                          expected=expected, actual={'flow_id': identity, 'source_block_ids': flow['source_block_ids']})
 
     def evidence(self, plan: dict, path: str) -> None:
-        refs = _unique(plan["evidence_source_refs"], path=path, pointer="/evidence_source_refs", key=lambda row: (row["owner"], row["ref"]))
-        used = set()
-        locators = []
-        for row in plan["requirement_evidence"]:
-            owners = ("implementation_reference", "contract") if row["kind"] == "implementation_reference" else (row["kind"],)
-            locators.append((owners, row["source_ref"]))
-        for row in plan["requirement_verification"]:
-            for field, owner in (("verification_ref", "other_verification"), ("authority_ref", "authority")):
-                if row[field] is not None:
-                    locators.append(((owner,), row[field]))
-        for owners, locator in locators:
-            matching = {(owner, locator) for owner in owners if (owner, locator) in refs}
-            if len(matching) != 1:
-                _fail(codec.ReasonCode.UNRESOLVED_REFERENCE, path=path, pointer="/evidence_source_refs", expected="exactly one owner/locator binding", actual=locator)
-            used.update(matching)
-        if used != set(refs):
-            _fail(codec.ReasonCode.MAPPING_MISMATCH, path=path, pointer="/evidence_source_refs", expected="only referenced descriptions", actual=sorted(set(refs) - used))
+        plan_evidence_checks(plan, path)
         for proof in plan["adoption_proof_refs"]:
             target = self.bytes.lookup(proof["ref"].partition("#")[0])
             commit_dir = self.bytes.lookup(BASE + "commits")
@@ -1056,3 +1086,272 @@ def validate_bundle(records: Mapping[str, bytes], *, root: Path | None = None,
     except (OSError, RuntimeError, ValueError, RecursionError) as error:
         return bundle_failure(codec.Diagnostic(codec.ReasonCode.INVALID_ARGUMENT, codec.Stage.BUNDLE,
             expected="readable supported candidate input", actual=type(error).__name__))
+
+
+class _PublicationHistory(_Bundle):
+    """Formal publication facts, without later external source or Task freshness."""
+    def external(self, paths):
+        # Formal identities, immutable targets and relationships are checked
+        # by the unchanged bundle owner, not by current external locators.
+        return
+
+    def _task_joins(self, task_maps):
+        # tasks() still validates formal mappings and reverse indexes.
+        return
+
+
+def _publication_history(root, *, catalog_raw, receipt_ref):
+    """Validate actual formal evidence for a separately proven catalog lineage."""
+    bundle = _PublicationHistory({CATALOG_PATH: catalog_raw}, Path(root), CATALOG_PATH, None, None)
+    catalog = bundle.load(CATALOG_PATH)
+    # A superseded operation must retain its own real immutable receipt and
+    # target closure even when no current head selects that receipt anymore.
+    bundle.reference(receipt_ref)
+    bundle.expand()
+    bundle.relationships(catalog)
+    bundle.bytes.stable()
+
+
+class _PublishedBundle(_Bundle):
+    """Committed proof interpretation, separate from strict candidate admission.
+
+    Only historical log locators sealed by an actual formal target/receipt may
+    be consumed without those local logs. All formal typed references, actual
+    targets and relevant non-log source/authority bytes remain mandatory.
+    """
+    def select(self, catalog, scope_ids):
+        heads = _unique(catalog['scope_heads'], path=self.catalog_path,
+                        pointer='/scope_heads', key=lambda row: row['scope_id'])
+        selected = set(heads) if scope_ids is None else set(scope_ids)
+        if not selected or not selected <= set(heads):
+            _fail(codec.ReasonCode.UNPUBLISHED, expected='published requested scopes', actual=sorted(selected))
+        owners = {(row['kind'], row['definition_id']): row for row in catalog['definition_owners']}
+        while True:
+            refs = [ref for key in selected for ref in heads[key]['plan_refs']]
+            bindings = [ref for key in selected for ref in heads[key]['binding_refs']]
+            refs += [self.reference(ref)['plan_ref'] for ref in bindings]
+            related = self.closure(refs, bindings, owners, self.catalog_path)
+            refs += [row['plan_ref'] for row in related.values()]
+            ids = {row['entity_id'] for row in refs}
+            task_rows = [row for row in catalog['task_index']
+                         if ids & {ref['entity_id'] for ref in row['plan_refs']}]
+            ids.update(ref['entity_id'] for row in task_rows for ref in row['plan_refs'])
+            expanded = selected | {key for key, head in heads.items()
+                if ids & {ref['entity_id'] for ref in head['plan_refs'] + head['binding_refs']}}
+            if expanded == selected:
+                break
+            selected = expanded
+        self.selected_scopes = sorted(selected)
+        self.related_paths = {self.bytes.lookup(ref['path']) for ref in refs + bindings}
+        self.related_paths.update(self.bytes.lookup(heads[key]['receipt_ref']['path']) for key in selected)
+        self.related_paths.update(self.bytes.lookup(catalog[key]['path']) for key in ('policy_ref', 'origins_ref'))
+        self.authority_observations = {}
+        self.semantic_frame = {'heads': [heads[key] for key in sorted(selected)],
+            'owners': [row for row in catalog['definition_owners'] if row['plan_ref']['entity_id'] in ids],
+            'task_index': task_rows, 'policy_ref': catalog['policy_ref']}
+
+    def external(self, paths):
+        from _b_route_record_owners import resolve_owned_ref
+        receipts = [(path, value) for path, value in self.records.items()
+                    if value['schema_version'] == 'newrouge.b-route-commit.v1']
+        for path in sorted(paths & self.related_paths):
+            value = self.load(path)
+            sealing = [receipt for _, receipt in receipts if any(
+                self.bytes.lookup(row['path']) == path and row['verification_mode'] == 'immutable_bytes'
+                and row['after_digest'] == codec.raw_digest(self.bytes.read(path))
+                for row in receipt['targets'])]
+            for child in _walk(value):
+                if set(child) != {'owner', 'ref', 'files'}:
+                    continue
+                log_files = [row for row in child['files'] if _path(row['path']).startswith('logs/')]
+                if not log_files:
+                    resolve_owned_ref(child, read_bytes=self.bytes.read,
+                                      contract_sources=self.bytes.contracts, path_key=self.bytes.lookup)
+                    continue
+                # The complete original locator and file set are already inside
+                # the unchanged formal target. Every historical byte must also
+                # be sealed in that target's receipt, never caller-attested.
+                if not any(all(any(self.bytes.lookup(pin['path']) == self.bytes.lookup(row['path'])
+                    and pin['after_digest'] == row['raw_digest'] for pin in receipt['authority'])
+                    for row in child['files']) for receipt in sealing):
+                    _fail(codec.ReasonCode.UNRESOLVED_REFERENCE, path=path,
+                          expected='receipt-sealed historical locator closure', actual=child['ref'])
+                for row in child['files']:
+                    if not _path(row['path']).startswith('logs/'):
+                        actual = codec.raw_digest(self.bytes.read(row['path']))
+                        if actual != row['raw_digest']:
+                            _fail(codec.ReasonCode.INPUT_STALE, path=row['path'],
+                                  expected=row['raw_digest'], actual=actual)
+            if value['schema_version'] == 'newrouge.b-route-plan.v1':
+                source = value['source_identity']
+                if not any(_path(row['path']).startswith('logs/') for key in ('manifest_ref', 'ledger_ref')
+                           for row in source[key]['files']):
+                    self.source(value, path)
+                self.evidence(value, path)
+        for path, receipt in receipts:
+            if path not in self.related_paths:
+                continue
+            for pin in receipt['authority']:
+                name = _path(pin['path'])
+                if name == CATALOG_PATH or name.startswith('logs/') or pin['after_digest'] is None:
+                    continue
+                if any(self.bytes.lookup(row['path']) == self.bytes.lookup(name)
+                       and row['verification_mode'] == 'task_definition_projection' for row in receipt['targets']):
+                    # receipt() re-proves this declared existing projection;
+                    # lawful Task status progress is not a raw authority edit.
+                    continue
+                actual = codec.raw_digest(self.bytes.read(name))
+                if actual != pin['after_digest']:
+                    _fail(codec.ReasonCode.INPUT_STALE, path=name,
+                          expected=pin['after_digest'], actual=actual)
+                self.authority_observations[name] = actual
+
+    def receipt(self, receipt, path, active):
+        super().receipt(receipt, path, active)
+        for row in receipt['targets']:
+            if row['verification_mode'] != 'task_definition_projection':
+                continue
+            if row['codec_version'] != codec.PROJECTION_CODEC:
+                _fail(codec.ReasonCode.UNKNOWN_CODEC_VERSION, path=row['path'],
+                      expected=codec.PROJECTION_CODEC, actual=row['codec_version'])
+            actual = task_document_digest(row['path'], self.bytes.read(row['path']))
+            if actual != row['projection_digest']:
+                _fail(codec.ReasonCode.INPUT_STALE, path=row['path'], expected=row['projection_digest'], actual=actual)
+
+    def protection_scopes(self):
+        """Canonical selected business resources; catalog labels stay public.
+
+        Shared catalog/origins/policy/receipt containers are not whole-file
+        pending claims for every Task. Their full byte/reference validation is
+        unchanged; protection follows the actual selected semantic closure.
+        """
+        from _b_route_operation_scope import resource_scopes
+        plans = [value for path, value in self.records.items()
+                 if path in self.related_paths and value['schema_version'] == 'newrouge.b-route-plan.v1']
+        bindings = [value for path, value in self.records.items()
+                    if path in self.related_paths and value['schema_version'] == 'newrouge.b-route-binding.v1']
+        scopes = resource_scopes(
+            target_paths=[_managed_path(value) for value in [*plans, *bindings]],
+            plan_ids={value['plan_id'] for value in plans + bindings},
+            requirement_ids={row['requirement_id'] for value in plans for row in value['requirements']},
+            flow_ids={row['id'] for value in plans for row in value['definitions']['flows']},
+            command_ids={row['id'] for value in plans for row in value['definitions']['commands']},
+            state_ids={row['id'] for value in plans for row in value['definitions']['states']},
+            task_ids={row['task_id'] for row in self.semantic_frame['task_index']}
+                | {row['task_id'] for value in bindings for row in value['task_mappings']})
+        return sorted(set(self.selected_scopes) | set(scopes))
+
+
+
+def task_document_digest(path, raw):
+    """Existing Task projection applied only to the three actual Task containers.
+
+    No arbitrary nested status is ignored; root metadata, row order, definition
+    fields and direct subtask fields retain their original owner semantics.
+    """
+    from copy import deepcopy
+    from _b_route_protection import task_definition_projection
+    value = deepcopy(codec.strict_json_loads(raw))
+    name = _path(path).casefold()
+    if name == '.taskmaster/tasks/tasks.json':
+        if type(value) is not dict or type(value.get('master')) is not dict or type(value['master'].get('tasks')) is not list:
+            _fail(codec.ReasonCode.INVALID_TYPE, path=path, expected='original master task container', actual='invalid container')
+        value['master']['tasks'] = [task_definition_projection(row) for row in value['master']['tasks']]
+    elif name in ('.taskmaster/tasks/tasks_back.json', '.taskmaster/tasks/tasks_gameplay.json'):
+        if type(value) is not list:
+            _fail(codec.ReasonCode.INVALID_TYPE, path=path, expected='original business Task array', actual='invalid container')
+        value = [task_definition_projection(row) for row in value]
+    else:
+        _fail(codec.ReasonCode.INVALID_REFERENCE, path=path, expected='actual Task triplet path', actual=path)
+    return codec.canonical_digest(value)
+
+
+def validate_compensation_sources(frozen, *, candidates, root, task_join, verify_tasks=True):
+    """Re-prove the selected existing semantics through typed formal sources.
+
+    This supplements normal six-schema bundle validation. It never disables
+    source/evidence checks or treats a caller's desired payload as authority.
+    """
+    from copy import deepcopy
+    from _b_route_adoption_review import SHARED
+    if root is None:
+        _fail(codec.ReasonCode.UNRESOLVED_REFERENCE, expected='actual compensation source repository', actual=None)
+    material = frozen['compensation']
+    source_bundle = _Bundle({}, root, CATALOG_PATH, None, task_join)
+    source = source_bundle.reference(material['source_plan_ref'])
+    plans = [row['after_payload'] for row in frozen['targets'] if row['schema_version'] == codec.PLAN_SCHEMA]
+    if len(plans) != 1:
+        _fail(codec.ReasonCode.MAPPING_MISMATCH, expected='one existing-semantics plan revision', actual=len(plans))
+    plan = plans[0]
+    normalized = deepcopy(source)
+    for child in _walk(normalized):
+        if child.get('owner_plan_id') == plan['plan_id'] and 'owner_revision' in child:
+            child['owner_revision'] = plan['revision']
+    if (plan['plan_id'] != source['plan_id']
+            or any(plan[field] != normalized[field] for field in SHARED)
+            or plan['adoption_proof_refs'] != source['adoption_proof_refs']
+            or plan.get('native_candidate_ref') != source.get('native_candidate_ref')):
+        _fail(codec.ReasonCode.SEMANTIC_ERROR, expected='exact existing formal semantics with new revision references',
+              actual=material['source_plan_ref']['path'])
+    source_ref = material['source_binding_ref']
+    bindings = [row['after_payload'] for row in frozen['targets']
+                if row['schema_version'] == 'newrouge.b-route-binding.v1']
+    if bool(bindings) != (source_ref is not None) or len(bindings) > 1:
+        _fail(codec.ReasonCode.MAPPING_MISMATCH, expected='exact existing binding source', actual=source_ref)
+    if bindings:
+        binding_source = source_bundle.reference(source_ref)
+        actual = bindings[0]
+        if any(actual[field] != binding_source[field] for field in binding_source
+               if field not in ('binding_revision', 'plan_ref')):
+            _fail(codec.ReasonCode.SEMANTIC_ERROR, expected='preserved selected formal binding meaning', actual=source_ref['path'])
+    for field in ('retained_plan_refs', 'retained_binding_refs'):
+        for ref in material[field]:
+            source_bundle.reference(ref)
+    pins = {row['path']: row['raw_digest'] for row in frozen['authority_refs']}
+    for ref in [material['source_plan_ref'], *([source_ref] if source_ref is not None else [])]:
+        if pins.get(ref['path']) != codec.raw_digest(source_bundle.bytes.read(ref['path'])):
+            _fail(codec.ReasonCode.DIGEST_MISMATCH, expected='reviewed exact semantic source byte pin', actual=ref['path'])
+    if verify_tasks:
+        for name, digest in material['task_document_digests'].items():
+            if task_document_digest(name, source_bundle.bytes.read(name)) != digest:
+                _fail(codec.ReasonCode.INPUT_STALE, expected=digest, actual=name)
+    source_bundle.bytes.stable()
+
+
+def published_bundle(root, *, catalog_raw=None, scope_ids=None, task_join=None, _protection=False):
+    """Validate committed records without treating local producer logs as authority.
+
+    Caller owns protection/pending and catalog-before/after checks. This API
+    grants no runtime/readiness or default-route activation. Candidate callers
+    continue to use validate_bundle with its unchanged strict external checks.
+    """
+    candidates = {} if catalog_raw is None else {CATALOG_PATH: catalog_raw}
+    bundle = _PublishedBundle(candidates, Path(root), CATALOG_PATH, None, task_join)
+    catalog = bundle.load(CATALOG_PATH)
+    bundle.select(catalog, scope_ids)
+    bundle.expand()
+    bundle.relationships(catalog)
+    bundle.bytes.stable()
+    origins = bundle.reference(catalog['origins_ref'])
+    tasks = {row['task_id'] for row in bundle.semantic_frame['task_index']}
+    bundle.semantic_frame['origins'] = [row for row in origins['tasks'] if row['task_id'] in tasks]
+    bundle.semantic_frame['authority'] = bundle.authority_observations
+    from _b_route_schema_resources import resources, FORMAL
+    bundle.semantic_frame['rules'] = {'reader': 'newrouge.b-route-published-reader.v1',
+        'codec': codec.CODEC_VERSION, 'schemas': {name: codec.raw_digest(data) for name, data in resources() if name in FORMAL}}
+    if tasks:
+        from _b_route_protection import task_definition_projection
+        master, _ = task_join.indexes()
+        bundle.semantic_frame['task_definitions'] = {str(key): {
+            'master': task_definition_projection(master[key]),
+            'back': [task_definition_projection(row) for row in task_join.back if row['taskmaster_id'] == key],
+            'gameplay': [task_definition_projection(row) for row in task_join.gameplay if row['taskmaster_id'] == key]}
+            for key in sorted(tasks)}
+    result = {'scope_ids': bundle.selected_scopes,
+            'input_set_digest': codec.canonical_digest(bundle.semantic_frame),
+            'catalog_raw_digest': codec.raw_digest(bundle.bytes.read(CATALOG_PATH)),
+            'formal_paths': sorted(bundle.records),
+            'historical_targets_not_revalidated': bundle.historical_targets_not_revalidated}
+    if _protection:
+        result['_protection_scope_ids'] = bundle.protection_scopes()
+    return result

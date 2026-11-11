@@ -27,6 +27,15 @@ import capture_b_route_protection as cli
 
 DIAGNOSTIC_FIELDS = {"reason_code", "stage", "entity_id", "expected", "actual", "resume_ref"}
 AUTHORIZATION_FIELDS = {"formal_protection_baseline", "frozen_a", "write", "policy_bootstrap", "target_projection_verified"}
+# Independently pinned pre-v2 rule bytes at the frozen base; synthetic archive
+# fixtures below never copy a real historical Task or capture.
+LEGACY_V1_RULES = {
+    "_b_route_inventory.py": "sha256:905be69855ff7a1e2601e1973bf9d2b3b83dabafa3a23d1f0f70527f6ac80957",
+    "inventory_b_route_baseline.py": "sha256:fc5549ecdc968cbced61b399ed04f8ea48e689ce788ea42584b13a0092aaf95d",
+    "_planning_skill_common.py": "sha256:f44235ae7dc1bd8c7078abf260b6a4262a76a59c282997fb9db37114fc452e19",
+    "build_source_ledger.py": "sha256:6268a6dcb700b672394dfe047f6ba9bb028a54918514cc90cbd8af9c686c0d1d",
+    "_mvg_manifest.py": "sha256:36c8d74add9dac6cfe4edef4b4f86bc73ac53c6a1963adb975971f9df5f63572",
+}
 
 
 def documents() -> dict:
@@ -369,23 +378,35 @@ class ProtectionTests(unittest.TestCase):
         self.assert_no_authorization(removed.report)
 
     def test_missing_historical_summary_is_explicit_and_never_formal_protection(self):
-        missing = "logs/ci/historical/task-108/summary.json"
+        missing = "logs/ci/historical/past-task/summary.json"
         self.fixture.edit_task("back", lambda rows: rows[0]["evidence_refs"].append(missing))
+        before = self.all_bytes()
         capture = self.collect()
-        self.assertFalse(capture.snapshot["capture_complete"])
+        self.assertEqual(before, self.all_bytes())
+        self.assertTrue(capture.snapshot["capture_complete"], capture.snapshot["diagnostics"])
+        self.assertEqual(capture.snapshot["schema_version"], "newrouge.b-route-protection-snapshot.v2")
         self.assertNotIn(missing, capture.raw_files)
         self.assertIn(missing, json.dumps(capture.snapshot))
+        ref = next(r for r in capture.snapshot["tasks"][0]["source_test_history_references"] if r["raw_reference"] == missing)
+        self.assertEqual((ref["reference_role"], ref["required"], ref["state"], ref["raw_sha256"]),
+                         ("historical-debug-attachment", False, "missing", None))
+        absent = next(r for r in capture.snapshot["raw_files"] if r["path"] == missing)
+        self.assertEqual({key: absent[key] for key in ("exists", "raw_digest", "canonical_digest", "size_bytes", "artifact")},
+                         {"exists": False, "raw_digest": None, "canonical_digest": None, "size_bytes": None, "artifact": None})
+        candidate = capture.snapshot["frozen_a"]["candidates"][0]
+        self.assertIn("historical_evidence_not_proven", candidate["blocking_reasons"])
+        self.assertIs(candidate["a_eligible"], False)
         self.assert_no_authorization(capture.snapshot)
         output = self.archive(capture)
         verified = protection.verify_protection(self.root, self.snapshot_path(output))
         self.assertTrue(verified["ok"], verified["diagnostics"])
         self.assertEqual(verified["claim"], "protection_archive_integrity_only")
-        self.assertFalse(verified["capture_complete"])
+        self.assertTrue(verified["capture_complete"])
         self.assert_no_authorization(verified)
 
     def test_resigned_missing_inventory_envelope_cannot_claim_complete(self):
-        missing = "logs/ci/historical/task-108/summary.json"
-        self.fixture.edit_task("back", lambda rows: rows[0]["evidence_refs"].append(missing))
+        missing = "Game.Core.Tests/RequiredMissing.cs"
+        self.fixture.edit_task("back", lambda rows: rows[0]["test_refs"].append(missing))
         capture = self.collect()
         output = self.archive(capture)
         snapshot_path = self.snapshot_path(output)
@@ -416,9 +437,188 @@ class ProtectionTests(unittest.TestCase):
         self.assertFalse((self.root / missing).exists())
         self.assertEqual((self.root / inventory.TRIPLET["back"]).read_bytes(), original_task)
 
+    def test_resigned_archive_cannot_erase_missing_attachment_observation(self):
+        missing = "logs/ci/historical/explicit.json"
+        (self.root / missing).unlink()
+        capture = self.collect()
+        self.assertTrue(capture.snapshot["capture_complete"])
+        output = self.archive(capture)
+        report, snapshot = copy.deepcopy(capture.inventory), copy.deepcopy(capture.snapshot)
+        self.assertTrue(any(d["location"] == missing and d["severity"] == "warning" for d in report["diagnostics"]))
+        report["diagnostics"] = [d for d in report["diagnostics"] if d["location"] != missing]
+        self.write_resigned_archive(output, snapshot, report)
+        verified = protection.verify_protection(self.root, self.snapshot_path(output))
+        self.assertFalse(verified["ok"], "Completeness does not permit erasing a historical missing observation")
+        self.assert_public_diagnostics(verified)
+        self.assertFalse((self.root / missing).exists())
+
+    def test_shared_missing_attachment_still_blocks_its_current_input_role(self):
+        missing = "evidence/existing.json"
+        self.fixture.edit_task("back", lambda rows: rows[1]["test_refs"].append(missing))
+        (self.root / missing).unlink()
+        capture = self.collect()
+        self.assertFalse(capture.snapshot["capture_complete"])
+        refs = [r for r in capture.inventory["task_and_manifest_references"] if r["raw_reference"] == missing]
+        self.assertEqual({(r["reference_role"], r["required"]) for r in refs},
+                         {("historical-debug-attachment", False), ("current-input", True)})
+        output = self.archive(capture)
+        verified = protection.verify_protection(self.root, self.snapshot_path(output))
+        self.assertTrue(verified["ok"], verified["diagnostics"])
+        self.assertFalse(verified["capture_complete"])
+        self.assert_no_authorization(verified)
+
+    def test_resigned_archive_cannot_downgrade_current_reference_role(self):
+        capture = self.collect()
+        output = self.archive(capture)
+        report, snapshot = copy.deepcopy(capture.inventory), copy.deepcopy(capture.snapshot)
+        ref = next(r for r in report["task_and_manifest_references"] if r["field"] == "test_refs")
+        ref.update(reference_role="historical-debug-attachment", required=False)
+        self.write_resigned_archive(output, snapshot, report)
+        verified = protection.verify_protection(self.root, self.snapshot_path(output))
+        self.assertFalse(verified["ok"], "Reference roles must be rebuilt from the original owning field")
+        self.assertTrue(any(d["reason_code"] == "digest_mismatch" and "reference closure" in json.dumps(d)
+                            for d in verified["diagnostics"]), verified["diagnostics"])
+
+    def test_v1_snapshot_and_inventory_are_not_reinterpreted_as_v2(self):
+        capture = self.collect()
+        output = self.archive(capture)
+        for old_owner in ("snapshot", "inventory"):
+            with self.subTest(old_owner=old_owner):
+                report, snapshot = copy.deepcopy(capture.inventory), copy.deepcopy(capture.snapshot)
+                if old_owner == "snapshot":
+                    snapshot["schema_version"] = "newrouge.b-route-protection-snapshot.v1"
+                else:
+                    report["schema_version"] = "newrouge.b-route-baseline-inventory.v1"
+                self.write_resigned_archive(output, snapshot, report)
+                before = self.all_bytes()
+                verified = protection.verify_protection(self.root, self.snapshot_path(output))
+                self.assertFalse(verified["ok"])
+                self.assertTrue(any(d["reason_code"] == "unknown_schema" for d in verified["diagnostics"]), verified["diagnostics"])
+                self.assertEqual(before, self.all_bytes(), "Old artifacts retain their original bytes and interpretation")
+        historical = "logs/ci/historical/v1-inventory.json"
+        old_report = copy.deepcopy(capture.inventory)
+        old_report["schema_version"] = "newrouge.b-route-baseline-inventory.v1"
+        self.dump(historical, old_report)
+        historical_bytes = (self.root / historical).read_bytes()
+        rejected = self.collect(historical_inventory=historical)
+        self.assertFalse(rejected.snapshot["capture_complete"])
+        self.assertFalse(rejected.snapshot["historical_inventory"]["integrity_verified"])
+        self.assertTrue(any(d["reason_code"] == "unknown_schema" for d in rejected.snapshot["diagnostics"]),
+                        rejected.snapshot["diagnostics"])
+        self.assertEqual((self.root / historical).read_bytes(), historical_bytes)
+
+    def test_fully_resigned_v2_conversion_with_legacy_rules_is_rejected(self):
+        capture = self.collect()
+        self.assertNotEqual(capture.inventory["rules"], LEGACY_V1_RULES)
+        legacy_report, legacy_snapshot = copy.deepcopy(capture.inventory), copy.deepcopy(capture.snapshot)
+        legacy_report.update(schema_version="newrouge.b-route-baseline-inventory.v1", rules=copy.deepcopy(LEGACY_V1_RULES))
+        legacy_snapshot["schema_version"] = "newrouge.b-route-protection-snapshot.v1"
+        def remove_v2_roles(value):
+            if type(value) is dict:
+                if "raw_reference" in value and "field" in value:
+                    value.pop("reference_role", None)
+                    value.pop("required", None)
+                for child in value.values():
+                    remove_v2_roles(child)
+            elif type(value) is list:
+                for child in value:
+                    remove_v2_roles(child)
+        remove_v2_roles(legacy_report)
+        remove_v2_roles(legacy_snapshot)
+        legacy_output = self.archive(capture, name="synthetic-legacy-rules")
+        self.write_resigned_archive(legacy_output, legacy_snapshot, legacy_report)
+        original_legacy_bytes = {p.relative_to(legacy_output).as_posix(): p.read_bytes()
+                                 for p in legacy_output.rglob("*") if p.is_file()}
+
+        # Model a complete offline conversion: both v2 labels and all current
+        # role/material projections are correct, with every checksum re-signed.
+        # Only the old rule identity and collection event are retained.
+        report, snapshot = copy.deepcopy(capture.inventory), copy.deepcopy(capture.snapshot)
+        report["rules"] = copy.deepcopy(legacy_report["rules"])
+        self.assertEqual(report["collection"], legacy_report["collection"])
+        self.assertEqual(snapshot["collection"], legacy_snapshot["collection"])
+        converted_output = self.archive(capture, name="synthetic-converted-rules")
+        self.write_resigned_archive(converted_output, snapshot, report)
+        verified = protection.verify_protection(self.root, self.snapshot_path(converted_output))
+        self.assertFalse(verified["ok"], "Correct v2 shape and re-signed hashes cannot make legacy rules supported")
+        self.assertTrue(any(d["reason_code"] == "unknown_codec_version" and "supported_inventory_rules" in json.dumps(d)
+                            for d in verified["diagnostics"]), verified["diagnostics"])
+        self.assertEqual(original_legacy_bytes, {p.relative_to(legacy_output).as_posix(): p.read_bytes()
+                                               for p in legacy_output.rglob("*") if p.is_file()})
+
+    def test_resigned_inventory_rules_missing_deleted_changed_or_replaced_are_rejected(self):
+        capture = self.collect()
+        output = self.archive(capture)
+        supported = protection.verify_protection(self.root, self.snapshot_path(output))
+        self.assertTrue(supported["ok"], supported["diagnostics"])
+        self.assertEqual(capture.inventory["rules"], inventory.rule_identity())
+        mutations = (
+            ("missing-rules", lambda report: report.pop("rules")),
+            ("empty-rules", lambda report: report.update(rules={})),
+            ("deleted-owner", lambda report: report["rules"].pop("_b_route_inventory.py")),
+            ("changed-owner", lambda report: report["rules"].update({"_b_route_inventory.py": "sha256:" + "0" * 64})),
+            ("changed-helper", lambda report: report["rules"].update({"_mvg_manifest.py": "sha256:" + "0" * 64})),
+            ("extra-rule", lambda report: report["rules"].update({"caller-policy.py": "sha256:" + "0" * 64})),
+            ("replaced-rules", lambda report: report.update(rules={"caller-policy.py": "sha256:" + "0" * 64})),
+            ("wrong-type", lambda report: report.update(rules=[])),
+        )
+        for label, mutate in mutations:
+            with self.subTest(case=label):
+                report, snapshot = copy.deepcopy(capture.inventory), copy.deepcopy(capture.snapshot)
+                mutate(report)
+                self.write_resigned_archive(output, snapshot, report)
+                before = self.all_bytes()
+                verified = protection.verify_protection(self.root, self.snapshot_path(output))
+                self.assertFalse(verified["ok"], "A report cannot choose its own supported rule set")
+                self.assertTrue(any(d["reason_code"] == "unknown_codec_version" for d in verified["diagnostics"]),
+                                verified["diagnostics"])
+                self.assertEqual(before, self.all_bytes())
+
+    def test_missing_attachment_comparison_keeps_history_without_blocking_current_capture(self):
+        missing = "logs/ci/historical/explicit.json"
+        baseline = self.archive()
+        (self.root / missing).unlink()
+        before = self.all_bytes()
+        compared = self.compare(baseline)
+        self.assertEqual(before, self.all_bytes())
+        self.assertTrue(compared.report["ok"], compared.report["diagnostics"])
+        self.assertTrue(compared.current.snapshot["capture_complete"])
+        changes = compared.report["changes"]
+        self.assertIn(missing, changes["raw_files"]["changed"])
+        self.assertEqual(changes["task_definitions"]["changed"], [])
+        self.assertEqual(changes["source_test_history_references_changed"]["changed"], [1])
+        self.assert_no_authorization(compared.report)
+
+    def test_missing_attachment_created_during_capture_remains_drift(self):
+        missing = "logs/ci/historical/explicit.json"
+        (self.root / missing).unlink()
+        capture = self.collect(between_reads=lambda: self.fixture.write(missing, '{"debug": "created"}\n'))
+        self.assertFalse(capture.snapshot["capture_complete"])
+        self.assertFalse(capture.snapshot["stable"])
+        self.assertTrue(any(d["reason_code"] == "file_changed" and missing in json.dumps(d)
+                            for d in capture.snapshot["diagnostics"]), capture.snapshot["diagnostics"])
+
+    def test_unreadable_historical_attachment_is_still_a_capture_error(self):
+        missing = "logs/ci/historical/explicit.json"
+        target = (self.root / missing).resolve()
+        original = Path.read_bytes
+        calls = []
+        def denied(path):
+            if path.resolve() == target:
+                calls.append(path)
+                raise PermissionError(13, "Synthetic attachment read denied", str(path))
+            return original(path)
+        with patch.object(Path, "read_bytes", denied):
+            capture = self.collect()
+        self.assertTrue(calls)
+        self.assertFalse(capture.snapshot["capture_complete"])
+        self.assertTrue(any(d["code"] == "unsafe-or-unreadable-input" and d["location"] == missing and d["severity"] == "error"
+                            for d in capture.inventory["diagnostics"]))
+        self.assert_no_authorization(capture.snapshot)
+
     def test_resigned_deleted_required_missing_diagnostic_cannot_claim_complete(self):
-        missing = "logs/ci/historical/required-still-missing.json"
-        self.fixture.edit_task("back", lambda rows: rows[0]["evidence_refs"].append(missing))
+        missing = "Game.Core.Tests/RequiredStillMissing.cs"
+        self.fixture.edit_task("back", lambda rows: rows[0]["test_refs"].append(missing))
         capture = self.collect()
         output = self.archive(capture)
         original = protection.verify_protection(self.root, self.snapshot_path(output))
@@ -448,6 +648,8 @@ class ProtectionTests(unittest.TestCase):
         self.assertFalse((self.root / planned).exists())
         self.assertTrue(capture.snapshot["capture_complete"], capture.snapshot["diagnostics"])
         self.assertTrue(any(row["path"] == planned and row["exists"] is False for row in capture.snapshot["raw_files"]))
+        ref = next(r for r in capture.inventory["task_and_manifest_references"] if r["raw_reference"] == planned)
+        self.assertEqual((ref["reference_role"], ref["required"]), ("planned-input", False))
         output = self.archive(capture)
         verified = protection.verify_protection(self.root, self.snapshot_path(output))
         self.assertTrue(verified["ok"], verified["diagnostics"])
@@ -455,9 +657,9 @@ class ProtectionTests(unittest.TestCase):
         self.assert_no_authorization(verified)
 
     def test_historical_report_envelope_and_original_metadata_are_rebuilt(self):
-        missing = "logs/ci/historical/task-108/summary.json"
+        missing = "Game.Core.Tests/RequiredHistoricalInput.cs"
         historical = "logs/ci/historical/missing-inventory.json"
-        self.fixture.edit_task("back", lambda rows: rows[0]["evidence_refs"].append(missing))
+        self.fixture.edit_task("back", lambda rows: rows[0]["test_refs"].append(missing))
         old = inventory.collect_inventory(self.root, self.epics)
         self.dump(historical, old)
         capture = self.collect(historical_inventory=historical)

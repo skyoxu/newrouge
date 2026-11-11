@@ -1,0 +1,295 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "newrouge.b-route-compensation-operation.v2",
+  "title": "Reviewed current-image compensation; auxiliary v2 producer",
+  "$defs": {
+    "Relation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "operation_id": {
+          "$ref": "newrouge.b-route-adoption-operation.v1#/$defs/String"
+        },
+        "frozen_digest": {
+          "$ref": "newrouge.b-route-adoption-operation.v1#/$defs/Digest"
+        },
+        "request_raw_digest": {
+          "$ref": "newrouge.b-route-adoption-operation.v1#/$defs/Digest"
+        },
+        "effects_digest": {
+          "$ref": "newrouge.b-route-adoption-operation.v1#/$defs/Digest"
+        }
+      },
+      "required": [
+        "operation_id",
+        "frozen_digest",
+        "request_raw_digest",
+        "effects_digest"
+      ]
+    },
+    "Request": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "newrouge.b-route-compensation-request.v2"
+        },
+        "producer": {
+          "const": "compensation"
+        },
+        "operation_id": {
+          "$ref": "newrouge.b-route-adoption-operation.v1#/$defs/String"
+        },
+        "compensates": {
+          "$ref": "#/$defs/Relation"
+        },
+        "selection": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "plan_ref": {
+              "$ref": "newrouge.b-route-common.v1#/$defs/PlanRef"
+            },
+            "binding_ref": {
+              "anyOf": [
+                {
+                  "$ref": "newrouge.b-route-common.v1#/$defs/BindingRef"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "plan_ref",
+            "binding_ref"
+          ]
+        },
+        "reason": {
+          "$ref": "newrouge.b-route-adoption-operation.v1#/$defs/String"
+        },
+        "host_review_ref": {
+          "$ref": "newrouge.b-route-adoption-operation.v1#/$defs/Reference"
+        }
+      },
+      "required": [
+        "schema_version",
+        "producer",
+        "operation_id",
+        "compensates",
+        "selection",
+        "reason"
+      ]
+    },
+    "Compensation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "relation": {
+          "$ref": "#/$defs/Relation"
+        },
+        "current_catalog_digest": {
+          "$ref": "newrouge.b-route-adoption-operation.v1#/$defs/Digest"
+        },
+        "current_frame_digest": {
+          "$ref": "newrouge.b-route-adoption-operation.v1#/$defs/Digest"
+        },
+        "old_scope_ids": {
+          "$ref": "newrouge.b-route-adoption-operation.v1#/$defs/ScopeIds"
+        },
+        "current_scope_ids": {
+          "$ref": "newrouge.b-route-adoption-operation.v1#/$defs/ScopeIds"
+        },
+        "source_plan_ref": {
+          "$ref": "newrouge.b-route-common.v1#/$defs/PlanRef"
+        },
+        "source_binding_ref": {
+          "anyOf": [
+            {
+              "$ref": "newrouge.b-route-common.v1#/$defs/BindingRef"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "retained_plan_refs": {
+          "type": "array",
+          "items": {
+            "$ref": "newrouge.b-route-common.v1#/$defs/PlanRef"
+          }
+        },
+        "retained_binding_refs": {
+          "type": "array",
+          "items": {
+            "$ref": "newrouge.b-route-common.v1#/$defs/BindingRef"
+          }
+        },
+        "task_document_digests": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "newrouge.b-route-adoption-operation.v1#/$defs/Digest"
+          }
+        },
+        "task_raw_digests": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "newrouge.b-route-adoption-operation.v1#/$defs/Digest"
+          }
+        }
+      },
+      "required": [
+        "relation",
+        "current_catalog_digest",
+        "current_frame_digest",
+        "old_scope_ids",
+        "current_scope_ids",
+        "source_plan_ref",
+        "source_binding_ref",
+        "retained_plan_refs",
+        "retained_binding_refs",
+        "task_document_digests",
+        "task_raw_digests"
+      ]
+    },
+    "Frozen": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "producer": {
+          "const": "compensation"
+        },
+        "request": {
+          "$ref": "#/$defs/Request"
+        },
+        "allocations": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "plan_id": {
+              "$ref": "newrouge.b-route-adoption-operation.v1#/$defs/String"
+            },
+            "plan_revision": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "binding_revision": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "requirements": {
+              "type": "object",
+              "additionalProperties": {
+                "$ref": "newrouge.b-route-adoption-operation.v1#/$defs/String"
+              }
+            },
+            "flows": {
+              "type": "object",
+              "additionalProperties": {
+                "$ref": "newrouge.b-route-adoption-operation.v1#/$defs/String"
+              }
+            },
+            "task_definitions": {
+              "type": "object",
+              "additionalProperties": {
+                "$ref": "newrouge.b-route-adoption-operation.v1#/$defs/Digest"
+              }
+            }
+          },
+          "required": [
+            "plan_id",
+            "plan_revision",
+            "binding_revision",
+            "requirements",
+            "flows",
+            "task_definitions"
+          ]
+        },
+        "scope_ids": {
+          "$ref": "newrouge.b-route-adoption-operation.v1#/$defs/ScopeIds"
+        },
+        "authority_refs": {
+          "$ref": "newrouge.b-route-adoption-operation.v1#/$defs/References"
+        },
+        "targets": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "newrouge.b-route-adoption-operation.v1#/$defs/Target"
+          }
+        },
+        "compensation": {
+          "$ref": "#/$defs/Compensation"
+        }
+      },
+      "required": [
+        "producer",
+        "request",
+        "allocations",
+        "scope_ids",
+        "authority_refs",
+        "targets",
+        "compensation"
+      ]
+    },
+    "String": {
+      "$ref": "newrouge.b-route-adoption-operation.v1#/$defs/String"
+    },
+    "Digest": {
+      "$ref": "newrouge.b-route-adoption-operation.v1#/$defs/Digest"
+    }
+  },
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "newrouge.b-route-compensation-operation.v2"
+    },
+    "codec_version": {
+      "type": "string"
+    },
+    "operation_id": {
+      "$ref": "#/$defs/String"
+    },
+    "state": {
+      "enum": [
+        "prepared",
+        "reserved"
+      ]
+    },
+    "request_raw_base64": {
+      "type": "string"
+    },
+    "request_raw_digest": {
+      "$ref": "#/$defs/Digest"
+    },
+    "request_digest": {
+      "$ref": "#/$defs/Digest"
+    },
+    "frozen": {
+      "$ref": "#/$defs/Frozen"
+    },
+    "frozen_digest": {
+      "$ref": "#/$defs/Digest"
+    }
+  },
+  "required": [
+    "schema_version",
+    "codec_version",
+    "operation_id",
+    "state",
+    "request_raw_base64",
+    "request_raw_digest",
+    "request_digest",
+    "frozen",
+    "frozen_digest"
+  ]
+}

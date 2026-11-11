@@ -220,3 +220,14 @@ py -3 -m unittest discover -s scripts/python/tests -p test_milestone_two_stage_i
 This two-stage fixture exercises source accumulation, task preview/apply/export, sparse overlays, Chapter 5 reconciliation and handoff, cumulative baseline updates, and regression evidence consumption. It preserves the old done task and subtasks, blocks planned tests, proves that a passing new shop test cannot hide a failing old reward regression, and accepts both only after correction on one committed revision. Replaying a stale task preview is rejected without changing the triplet.
 
 The fixture replaces the engine adapter with deterministic subprocess assertions and actual TRX parsing in git snapshots. It validates workflow integration, not Godot gameplay or the real next-milestone GDD. Actual milestone acceptance still requires the manifest's real engine/domain tests and human obligations. Chapter 6 rejects previously passed evidence when the current worktree has tracked or untracked changes, even if HEAD is unchanged.
+
+## 显式 Task 无关 3B 规划
+
+Story 2.5 仅向现有 append、OS worker、admission、协调器与原子 checkpoint
+owner 接入明确的输入/profile 数据服务，默认仍为 legacy。使用
+`--input-stage 3b --planning-profile 3b-mvg-v1 --prepared-ref ...` 调用
+`generate`、`review`、`verify-selection` 或 `status`；Capability planner 使用
+`3b-capabilities-v1`，保留其独立的原请求及时间默认预算。
+不生成伪造的 Task、readiness 或 manifest。候选结构读取保持独立；已提交的 selected
+不授予 B catalog 采纳或运行资格。完整合同、离线证据类别及真实验收缺口见
+[Story 2.5 验证说明](../testing/story-2-5-independent-admission-selection.md)。

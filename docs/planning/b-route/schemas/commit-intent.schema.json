@@ -1,0 +1,219 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "newrouge.b-route-commit-intent.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "newrouge.b-route-commit-intent.v1"
+    },
+    "operation_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "frozen_digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "policy_identity": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "phase": {
+      "enum": [
+        "intent",
+        "applied",
+        "verified",
+        "publishing",
+        "published",
+        "complete"
+      ]
+    },
+    "before_files": {
+      "type": "object",
+      "additionalProperties": {
+        "anyOf": [
+          {
+            "type": "null"
+          },
+          {
+            "type": "string"
+          }
+        ]
+      }
+    },
+    "files": {
+      "type": "object",
+      "additionalProperties": {
+        "anyOf": [
+          {
+            "type": "null"
+          },
+          {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          }
+        ]
+      }
+    },
+    "directories": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "uniqueItems": true
+      }
+    },
+    "trees": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "uniqueItems": true
+      }
+    },
+    "receipt": {
+      "$ref": "newrouge.b-route-commit.v1"
+    },
+    "catalog_before": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "string"
+        }
+      ]
+    },
+    "catalog_after": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "string"
+        }
+      ]
+    },
+    "publication_base": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "string"
+        }
+      ]
+    },
+    "catalog_attempts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "base",
+          "after"
+        ],
+        "properties": {
+          "base": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "after": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "catalog_frame": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "policy_ref",
+            "heads",
+            "owners",
+            "tasks",
+            "origins"
+          ],
+          "properties": {
+            "policy_ref": {
+              "type": "object"
+            },
+            "heads": {
+              "type": "array"
+            },
+            "owners": {
+              "type": "array"
+            },
+            "tasks": {
+              "type": "array"
+            },
+            "origins": {
+              "type": "array"
+            }
+          }
+        }
+      ]
+    },
+    "intent_digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "catalog_after_digest": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        }
+      ]
+    },
+    "origins_before": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "string"
+        }
+      ]
+    }
+  },
+  "required": [
+    "schema_version",
+    "operation_id",
+    "frozen_digest",
+    "policy_identity",
+    "phase",
+    "before_files",
+    "files",
+    "directories",
+    "trees",
+    "receipt",
+    "catalog_before",
+    "catalog_after",
+    "publication_base",
+    "catalog_attempts",
+    "catalog_frame",
+    "intent_digest",
+    "catalog_after_digest",
+    "origins_before"
+  ]
+}

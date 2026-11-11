@@ -1,0 +1,229 @@
+"""Real-file tests for auxiliary prepared/reserved operation persistence."""
+import base64
+from copy import deepcopy
+import json
+import os
+from pathlib import Path
+import sys
+import tempfile
+import unittest
+from unittest.mock import patch
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import _b_route_codec as codec
+import _planning_apply_journal as journal
+from _planning_skill_common import atomic_json
+
+
+class AdoptionJournalTests(unittest.TestCase):
+    def setUp(self):
+        self.temporary = tempfile.TemporaryDirectory(dir=os.environ.get('ADOPTION_TEST_TEMP'))
+        self.addCleanup(self.temporary.cleanup)
+        self.root = Path(self.temporary.name)
+        self.target = self.root / 'data/target.json'
+        self.target.parent.mkdir()
+        self.target.write_bytes(b'{"old":true}\n')
+        ref = {'path': 'proof/input.json', 'schema_version': 'fixture.v1',
+               'raw_digest': codec.raw_digest(b'original')}
+        self.request = {'schema_version': 'newrouge.b-route-adoption-request.v1',
+            'operation_id': 'OP-1', 'material': {'planner': 'mvg', 'run_id': 'fixture',
+                'handoff_ref': ref, 'protection_ref': ref, 'authority_refs': [ref],
+                'identity_alignment': {'plan': {}, 'binding': {}, 'requirements': [], 'flows': [], 'tasks': []},
+                'target_templates': [{'payload': {'preserve': [True, 1, '1']}}], 'lineage_refs': []},
+            'review_ref': ref}
+        self.raw = (json.dumps(self.request, ensure_ascii=False, indent=2) + '\n').encode()
+        payload = {'new': True, 'text': '\u03c0'}
+        self.frozen = {'request': deepcopy(self.request), 'allocations': {'plan_id': 'PLAN-1', 'revision': 1},
+            'scope_ids': ['plan:PLAN-1'], 'authority_refs': [ref], 'targets': [{
+                'path': 'data/target.json', 'schema_version': 'fixture.v1',
+                'before_raw_digest': codec.raw_digest(self.target.read_bytes()), 'after_payload': payload,
+                'after_raw_digest': codec.raw_digest((json.dumps(payload, ensure_ascii=False, indent=2) + '\n').encode()),
+                'verification_mode': 'immutable_bytes'}]}
+
+    def prepare(self):
+        return journal.prepare_operation(self.root, operation_id='OP-1', request_raw=self.raw,
+                                         frozen=deepcopy(self.frozen))
+
+    def operation_path(self):
+        key = codec.raw_digest(b'OP-1').split(':')[1]
+        return self.root / 'logs/ci/b-route-operations/operations' / key / 'operation.json'
+
+    def index_path(self):
+        return self.root / 'logs/ci/b-route-operations/pending.json'
+
+    def snapshot(self):
+        return {p.relative_to(self.root).as_posix(): p.read_bytes()
+                for p in self.root.rglob('*') if p.is_file()}
+
+    def assert_reject_unchanged(self, function, *args, **kwargs):
+        before = self.snapshot()
+        with self.assertRaises(codec.CodecError):
+            function(*args, **kwargs)
+        self.assertEqual(before, self.snapshot())
+
+    def test_empty_inspection_and_full_prepare_replay_preserve_original_bytes(self):
+        (self.root / 'logs/ci/b-route-operations/locks/metadata').mkdir(parents=True)
+        (self.root / 'logs/ci/b-route-operations/locks/metadata/capability-coordinator.lock').write_bytes(b'0')
+        self.assertEqual([], journal.operation_inventory(self.root))
+        self.assert_reject_unchanged(journal.read_operation, self.root, operation_id='OP-1')
+        self.assertFalse((self.root / 'logs/ci/b-route-operations/operations').exists())
+        target_before = self.target.read_bytes()
+        result = self.prepare()
+        self.assertEqual('prepared', result['state'])
+        self.assertEqual(self.raw, base64.b64decode(result['request_raw_base64']))
+        old = self.snapshot()
+        equivalent = json.dumps(self.request, separators=(',', ':'), sort_keys=True).encode()
+        replacement = deepcopy(self.frozen)
+        replacement['allocations']['plan_id'] = 'MUST-NOT-ALLOCATE-AGAIN'
+        self.assertEqual(result, journal.prepare_operation(self.root, operation_id='OP-1',
+            request_raw=equivalent, frozen=replacement))
+        self.assertEqual(old, self.snapshot())
+        self.assertEqual(target_before, self.target.read_bytes())
+        self.assertEqual([result], journal.operation_inventory(self.root))
+
+    def test_same_id_changed_complete_request_and_unsafe_freeze_reject_before_write(self):
+        self.prepare()
+        changed = deepcopy(self.request)
+        changed['material']['target_templates'][0]['payload']['preserve'].reverse()
+        self.assert_reject_unchanged(journal.prepare_operation, self.root, operation_id='OP-1',
+            request_raw=json.dumps(changed).encode(), frozen=self.frozen)
+        for path in ('../outside.json', 'data/CON.json', 'data/bad.json.', 'C:/outside.json'):
+            with self.subTest(path=path):
+                frozen = deepcopy(self.frozen)
+                frozen['targets'][0]['path'] = path
+                frozen['request']['operation_id'] = 'OP-2'
+                self.assert_reject_unchanged(journal.prepare_operation, self.root, operation_id='OP-2',
+                    request_raw=self.raw.replace(b'OP-1', b'OP-2'), frozen=frozen)
+
+    def test_existing_tampered_envelopes_are_never_rebuilt(self):
+        original = self.prepare()
+        for key, value in (('request_raw_digest', 'sha256:' + '0' * 64),
+                           ('request_digest', 'sha256:' + '0' * 64),
+                           ('frozen_digest', 'sha256:' + '0' * 64),
+                           ('codec_version', 'unknown'), ('state', 'complete'),
+                           ('request_raw_base64', 'not-base64!')):
+            with self.subTest(field=key):
+                tampered = deepcopy(original)
+                tampered[key] = value
+                atomic_json(self.operation_path(), tampered)
+                self.assert_reject_unchanged(journal.read_operation, self.root, operation_id='OP-1')
+                self.assert_reject_unchanged(journal.prepare_operation, self.root, operation_id='OP-1',
+                    request_raw=self.raw, frozen=self.frozen)
+                atomic_json(self.operation_path(), original)
+
+    def test_index_missing_or_mismatched_and_orphan_directory_block_inventory(self):
+        self.prepare()
+        index = self.index_path().read_bytes()
+        self.index_path().unlink()
+        self.assert_reject_unchanged(journal.operation_inventory, self.root)
+        self.index_path().write_bytes(index)
+        value = codec.strict_json_loads(index)
+        value['operations'][0]['state'] = 'reserved'
+        atomic_json(self.index_path(), value)
+        self.assert_reject_unchanged(journal.operation_inventory, self.root)
+        self.index_path().write_bytes(index)
+        orphan = self.operation_path().parent.parent / ('f' * 64)
+        orphan.mkdir()
+        self.assert_reject_unchanged(journal.operation_inventory, self.root)
+
+    def test_reserve_is_monotone_byte_stable_and_never_applies_targets(self):
+        before = self.prepare()
+        target_before = self.target.read_bytes()
+        result = journal.reserve_operation(self.root, operation_id='OP-1')
+        self.assertEqual({**before, 'state': 'reserved'}, result)
+        snapshot = self.snapshot()
+        self.assertEqual(result, journal.reserve_operation(self.root, operation_id='OP-1'))
+        self.assertEqual(snapshot, self.snapshot())
+        self.assertEqual(target_before, self.target.read_bytes())
+
+    def test_index_write_failure_is_retained_and_blocks_later_replay(self):
+        original_write = journal.atomic_json
+        def fail_index(path, payload):
+            if path == self.index_path():
+                raise OSError('controlled index failure')
+            return original_write(path, payload)
+        with patch.object(journal, 'atomic_json', side_effect=fail_index):
+            with self.assertRaises(codec.CodecError):
+                self.prepare()
+        self.assertTrue(self.operation_path().is_file())
+        self.assertFalse(self.index_path().exists())
+        self.assert_reject_unchanged(journal.prepare_operation, self.root, operation_id='OP-1',
+            request_raw=self.raw, frozen=self.frozen)
+
+    def test_reserved_envelope_with_old_index_is_not_silently_repaired(self):
+        original = self.prepare()
+        original_write = journal.atomic_json
+        def fail_index(path, payload):
+            if path == self.index_path():
+                raise OSError('controlled reserve index failure')
+            return original_write(path, payload)
+        with patch.object(journal, 'atomic_json', side_effect=fail_index):
+            with self.assertRaises(codec.CodecError):
+                journal.reserve_operation(self.root, operation_id='OP-1')
+        actual = codec.strict_json_loads(self.operation_path().read_bytes())
+        self.assertEqual({**original, 'state': 'reserved'}, actual)
+        self.assert_reject_unchanged(journal.reserve_operation, self.root, operation_id='OP-1')
+
+    def test_long_windows_operation_root_rejects_before_creating_store(self):
+        root = self.root / ('long-fixture-' + 'x' * 40)
+        root.mkdir()
+        before = list(root.iterdir())
+        with self.assertRaises(codec.CodecError):
+            journal.prepare_operation(root, operation_id='OP-1', request_raw=self.raw, frozen=self.frozen)
+        self.assertEqual(before, list(root.iterdir()))
+
+    def test_frozen_digest_scope_order_target_alias_and_after_bytes_are_checked(self):
+        for mutation in ('unsorted', 'duplicate_scope', 'target_alias', 'target_case_alias', 'after_digest', 'unknown_field'):
+            with self.subTest(mutation=mutation):
+                value = deepcopy(self.frozen)
+                if mutation == 'unsorted':
+                    value['scope_ids'] = ['z', 'a']
+                elif mutation == 'duplicate_scope':
+                    value['scope_ids'] *= 2
+                elif mutation == 'target_alias':
+                    value['targets'].append({**value['targets'][0], 'path': 'data/./target.json'})
+                elif mutation == 'target_case_alias':
+                    value['targets'].append({**value['targets'][0], 'path': 'DATA/TARGET.JSON'})
+                elif mutation == 'after_digest':
+                    value['targets'][0]['after_raw_digest'] = 'sha256:' + '0' * 64
+                else:
+                    value['new_private_interpretation'] = True
+                self.assert_reject_unchanged(journal.prepare_operation, self.root, operation_id='OP-1',
+                    request_raw=self.raw, frozen=value)
+
+    def test_hardlinked_record_and_aliased_formal_target_are_not_accepted(self):
+        self.prepare()
+        alias = self.root / 'record-alias.json'
+        os.link(self.operation_path(), alias)
+        self.assert_reject_unchanged(journal.read_operation, self.root, operation_id='OP-1')
+        alias.unlink()
+        os.link(self.target, self.root / 'data/alias.json')
+        request = deepcopy(self.request)
+        request['operation_id'] = 'OP-2'
+        frozen = deepcopy(self.frozen)
+        frozen['request'] = request
+        frozen['targets'].append({**frozen['targets'][0], 'path': 'data/alias.json'})
+        self.assert_reject_unchanged(journal.prepare_operation, self.root, operation_id='OP-2',
+            request_raw=json.dumps(request).encode(), frozen=frozen)
+
+    def test_digest_with_final_newline_rejects_before_any_store_write(self):
+        for ordinal, field in enumerate(('before', 'authority_ref', 'request_ref'), start=1):
+            with self.subTest(field=field):
+                operation_id = 'OP-DIGEST-' + str(ordinal)
+                request = deepcopy(self.request)
+                request['operation_id'] = operation_id
+                frozen = deepcopy(self.frozen)
+                if field == 'before':
+                    frozen['targets'][0]['before_raw_digest'] += '\n'
+                elif field == 'authority_ref':
+                    frozen['authority_refs'][0]['raw_digest'] += '\n'
+                else:
+                    request['material']['handoff_ref']['raw_digest'] += '\n'
+                frozen['request'] = request
+                self.assert_reject_unchanged(journal.prepare_operation, self.root,
+                    operation_id=operation_id, request_raw=json.dumps(request).encode(), frozen=frozen)
+        self.assertFalse((self.root / 'logs').exists())
+
+
+if __name__ == '__main__':
+    unittest.main(verbosity=2)
