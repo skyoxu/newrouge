@@ -865,7 +865,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_mvg_plan = sub.add_parser(
         "plan-mvg",
-        help="run independent MVG planning from an explicit Capability version",
+        help="plan from an explicit Capability version or an explicit task-free 3B contract",
     )
     p_mvg_plan.add_argument(
         "--stage",
@@ -888,7 +888,8 @@ def build_parser() -> argparse.ArgumentParser:
     p_mvg_plan.add_argument("--run-invocation-limit", type=int, default=None)
     p_mvg_plan.add_argument("--timeout-sec", type=int, default=1800)
     p_mvg_plan.add_argument("--llm-backend", default="codex-cli")
-    p_mvg_plan.add_argument("--runner", default="scripts/python/openai_isolated_model_runner.py")
+    p_mvg_plan.add_argument("--runner", default=None,
+        help="isolated runner; defaults to Codex for explicit 3B and OpenAI for legacy review")
     p_mvg_plan.add_argument("--confirm", action="store_true")
     p_mvg_plan.add_argument("--change-plan", default="")
     p_mvg_plan.add_argument("--handoff-out", default="")

@@ -115,7 +115,8 @@ If a candidate or reviewer finds a missing/conflicting Requirement, record the s
 The existing A workflow above remains its own route. For explicit B-route
 operation inspection or published plan/revision context, use
 `py -3 scripts/python/dev_cli.py b-route-adoption --stage inspect|read --operation-id <original-id> --context`.
-See `docs/workflows/b-route-adoption.md` and `b-route-native-planning-status.md`.
+See [adoption owner](../../../docs/workflows/b-route-adoption.md) and
+[native planning/status](../../../docs/workflows/b-route-native-planning-status.md).
 Formal no-Task 3B depends on its original qualified source/native/review owners;
 this link does not require inventing a Task, authorize a model call, or activate
 B by default. Completed-unit reuse/epoch/reopen is unsupported through this context observation entrypoint.

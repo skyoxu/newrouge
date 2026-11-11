@@ -1,0 +1,13 @@
+{
+  "label": "story210-cli-01",
+  "tests_run": 27,
+  "passed": 27,
+  "failures": [],
+  "errors": [],
+  "skipped": [],
+  "successful": true,
+  "elapsed_seconds": 3.4511484709999536,
+  "finished_utc": "2026-11-11T16:37:16.991283+00:00",
+  "new_provider_calls": 0,
+  "qualification": "Focused offline unit/CLI checks only; no provider, Windows durability or formal Story acceptance claim."
+}

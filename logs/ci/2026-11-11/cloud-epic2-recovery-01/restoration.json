@@ -1,0 +1,50 @@
+{
+  "schema": "newrouge.cloud-source-restoration.v1",
+  "created_utc": "2026-11-11T16:34:24.939916+00:00",
+  "restored_branch": "build/cloud-epic2-recovery-20261111",
+  "baseline": "e568f1ff1c8a4a57ba7e511102ed6177481d836b",
+  "snapshot_refs": [
+    {
+      "branch": "migration/newrogue-20261111/r59-segmented-fiscal",
+      "commit": "99ae295cd672a6c126400d21933aa85dad191032",
+      "tree": "fd22b16bcfea8333df6c4b5cdb51ecd20d574e08",
+      "expected_commit_match": true
+    },
+    {
+      "branch": "migration/newrogue-20261111/r61-story27",
+      "commit": "ac15f0c294064361508c876ebf55edc46b0a36b0",
+      "tree": "b875af153c104b82e01825b77befb818994fcff3",
+      "expected_commit_match": true
+    },
+    {
+      "branch": "migration/newrogue-20261111/r62-story28",
+      "commit": "e568f1ff1c8a4a57ba7e511102ed6177481d836b",
+      "tree": "b0e5cd7a6dbea1bea510eff446a4f9c5526ebf44",
+      "expected_commit_match": true
+    },
+    {
+      "branch": "migration/newrogue-20261111/r64-story210",
+      "commit": "10923f400bc7ff5f1d81e0f50a3f2039129a41a7",
+      "tree": "33b6b6bb0580701620f1184cd2e697af3373bd91",
+      "expected_commit_match": true
+    },
+    {
+      "branch": "migration/newrogue-20261111/r65-story29",
+      "commit": "53e41b084f7bcdb1805b5659a7e61d7fe08dde2b",
+      "tree": "559cec69be720e9ddcffe177a103ea1f784226ee",
+      "expected_commit_match": true
+    }
+  ],
+  "handoff_sha256": {
+    "README.md": "b3d1e19327f53eeb2b178c1914a04ba05642eee39e33f1c4e81e766474fe3f2a",
+    "MIGRATION_MANIFEST.json": "0c9ee669535c34620b3ca7ba58ff3cb4010b46b35ec262e02d7bee4db85e030b",
+    "WORK_ITEMS.json": "f2739444db3b34c82650d0d05976fe56d60d04926145f2a39d0138a30d33966a"
+  },
+  "original_private_proofs_restored": false,
+  "original_fiscal_ledger_restored": false,
+  "models_cache_present": false,
+  "new_model_calls": 0,
+  "remote_writes": 0,
+  "main_merges": 0,
+  "note": "Git objects match supplied public snapshot commits. Original post-base source-history and private runtime evidence are not conveyed by these public snapshots."
+}

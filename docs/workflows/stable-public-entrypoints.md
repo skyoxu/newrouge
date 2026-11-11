@@ -15,7 +15,8 @@ Use `docs/workflows/script-entrypoints-index.md` when you need the full executab
 
 ## B Route Governance (Accepted; Not Enabled)
 
-[ADR-0040: B route stages, authority and activation](../adr/ADR-0040-b-route-stages-authority-and-activation.md) is Accepted following independent source review under the user’s explicit delegation after the full proposal was presented. Governance adoption, implementation delivery and migration activation have separate admission conditions. The current commands below remain the implemented A entrypoints.
+[ADR-0040: B route stages, authority and activation](../adr/ADR-0040-b-route-stages-authority-and-activation.md) is Accepted following independent source review under the user’s explicit delegation after the full proposal was presented. Governance adoption, implementation delivery and migration activation have separate admission conditions. 现有 A 入口保持有效；显式 B 的来源、原生规划、审计和 operation 阶段见
+[原生规划导航](b-route-native-planning-status.md)，不由此切换默认路线。
 
 The target order is 3A source audit, 3B formal adoption without Task/readiness/real scenes, 3C Task handoff, 4–5 binding/readiness, 6 one Task, applicable 7, then Flow/cumulative closeout. These are responsibilities, not three new commands. Default B waits for later consumers, recovery counterexamples and real reward evidence from both paths. A freeze, final A exit and reviewed compensation each follow the ADR conditions; this navigation does not activate them.
 

@@ -1,0 +1,17 @@
+# Epic 2 cloud recovery
+
+Scope: Stories 2.1–2.10 only. No Fast, main merge, remote write, unknown release, budget increase, historical proof replacement or archive script execution.
+
+1. [x] Fetch the migration snapshots; match all five supplied commits and trees; restore five local migration branches and create `build/cloud-epic2-recovery-20261111` from r62. Read README, manifest, work items and repository workflow routes.
+2. [blocked] Story 2.8 actual compensation recovery/capacity. Preserve complete materials, 170M work policy and 70k gate. The inherited cloud CODEX_HOME has no models_cache.json; official CLI 0.163.0 exits 1 before initialization because SQLite cannot initialize under its read-only home. A metadata-only attempt made no thread/start or turn/start. No applicable capacity evidence supports a dedicated allowance yet. Original private authority/proofs/fiscal journals and original post-base commit history remain absent.
+3. [x] Integrate r61→r65 Story 2.9 and selected r65→r64 Story 2.10 deltas. Keep all 17 r62-specific files exact, combine the CI registration, and preserve formal pending status. Twenty-five imported files initially match saved r64 Git blobs. Three older empty-tail conflicts retain r62 content.
+4. [x] Run focused checks and preserve every attempt: 81 test executions; 75 pass executions, five Windows-initialization errors, one fixture failure. The fixture omitted checkpoint_strategy, so the existing non-adoptable legacy path returned early. Add only that field; its one-method rerun passed. The earlier failure is retained. Across 80 distinct selected methods, 75 have passing results and five remain blocked on Windows.
+5. [x] Reconcile gaps in `logs/ci/2026-11-11/cloud-epic2-recovery-01/REPORT.md`. Required local hard-check entry attempted once with --skip-project-health and stopped before launching its first gate because Linux lacks py. No full suite was rerun and no hard-check success is claimed.
+
+All focused results are offline unit/CLI evidence, not provider, Windows durability or formal Story acceptance. The six CompletedCoordinatorTests were not started because the shared run initializer explicitly requires Windows. R60 Root-02's unknown outcome and original unknown reservations were not replayed or released. R59 source remains separately restored; its fixed original Root issuer/lease integration was not transplanted as cloud authority. The current r62 already retains the accepted pure financial-prefix helper.
+
+The public snapshots share cb55bb592a5027c1f39768ca08b1c7e49346b3d9; they do not contain original private source-history/proof chains. Capacity policy changes still require the evidence and explicit compensation-only policy decision described by the archived independent assessment. Capability/MVG input ≤70,000 and input+output ≤96,000 remain unchanged. The historical 83 paid-or-unknown / 181 overlapping guard / cap 290 / released 0 figures are not a fresh reconciliation.
+
+The tokenizer package (tiktoken 0.14.0) was installed in `/workspace/newrouge-tools/python-env`; both official encoding downloads were denied by the enforced network policy for `openaipublic.blob.core.windows.net`. No alternative route or copied cache was used. Focused tests used the existing base Python and do not claim real encoding qualification.
+
+`workflow.md` has identical raw bytes to the r62 Git blob, but Git reports CRLF normalization noise under its current attributes. It is deliberately excluded from the integration checkpoint. No status-suppression flag is applied.

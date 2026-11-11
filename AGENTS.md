@@ -153,7 +153,8 @@ B 路线目标为 3A 来源审计 → 3B 无 Task 正式采纳 → 3C 任务承�
 The existing A workflows remain their own routes. For explicit B-route
 operation inspection or published plan/revision context, use
 `py -3 scripts/python/dev_cli.py b-route-adoption --stage inspect|read --operation-id <original-id> --context`.
-See `docs/workflows/b-route-adoption.md` and `b-route-native-planning-status.md`.
+See [adoption owner](docs/workflows/b-route-adoption.md) and
+[native planning/status](docs/workflows/b-route-native-planning-status.md).
 Formal no-Task 3B depends on its original qualified source/native/review owners;
 this link does not require inventing a Task, authorize a model call, or activate
 B by default. Completed-unit reuse/epoch/reopen is unsupported through this context observation entrypoint.

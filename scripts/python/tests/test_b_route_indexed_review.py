@@ -47,6 +47,65 @@ class IndexedReviewTests(unittest.TestCase):
     def schema(self, policy=runtime.REVIEW_SOURCE_POLICY):
         return runtime.review_producer_schema(self.state, self.proposal, self.frozen, policy=policy)
 
+    def install_generation_two_context(self):
+        # Schema-only synthetic data; the real reopen-context reader is used.
+        scope_id = self.frozen["inputs"]["contract"]["scope"]["scope_id"]
+        self.state["capability_selection"] = {"generation": 2, "order": [scope_id]}
+        self.state["reopen_contexts"] = {"2": {
+            "generation": 2,
+            "plan": {"path": "synthetic-reopen-plan.json", "sha256": "sha256:" + "4" * 64},
+            "conflicts": [{"id": "synthetic-conflict"}],
+            "replacement_order": [scope_id], "resolution_boundaries": {"synthetic-conflict": 0}}}
+
+    def test_original_generation_schema_survives_later_reopen_context(self):
+        original_schema = self.schema()
+        original_bytes = runtime.canonical_sha(original_schema)
+        self.install_generation_two_context()
+        materials = {"phase": "independent_admission", "proposal": self.proposal,
+            "generation": 1, "review_source_policy": runtime.REVIEW_SOURCE_POLICY}
+        runtime.check_review_producer_schema(self.state, self.frozen, materials, original_schema)
+        self.assertEqual(runtime.canonical_sha(original_schema), original_bytes)
+        self.assertNotIn("reopen_reviews", original_schema["required"])
+        self.assertIn("reopen_reviews", self.schema()["required"])
+
+    def test_current_generation_keeps_exact_reopen_schema_and_generation_binding(self):
+        original_schema = self.schema()
+        self.install_generation_two_context()
+        materials = {"phase": "independent_admission", "proposal": self.proposal,
+            "generation": 2, "review_source_policy": runtime.REVIEW_SOURCE_POLICY}
+        with self.assertRaisesRegex(ValueError, "review_producer_schema_changed"):
+            runtime.check_review_producer_schema(self.state, self.frozen, materials, original_schema)
+        current_schema = self.schema()
+        runtime.check_review_producer_schema(self.state, self.frozen, materials, current_schema)
+        with self.assertRaisesRegex(ValueError, "review_producer_schema_changed"):
+            runtime.check_review_producer_schema(self.state, self.frozen,
+                {**materials, "generation": 1}, current_schema)
+        with self.assertRaisesRegex(ValueError, "reopen_context_missing"):
+            runtime.check_review_producer_schema(self.state, self.frozen,
+                {**materials, "generation": 3}, current_schema)
+
+    def test_reopen_blocked_is_semantic_feedback_but_wrong_plan_or_missing_ids_reject(self):
+        review=self.decode()
+        self.install_generation_two_context()
+        directive=runtime.reopen_directive(self.state,self.frozen)
+        review.update(verdict='blocked',findings=['Unresolved source boundary'],reopen_reviews=[{
+            'conflict_id':'synthetic-conflict','plan_sha256':directive['plan']['sha256'],
+            'verdict':'blocked','rationale':'Unresolved source boundary'}])
+        issues=runtime.review_issues(self.state,self.proposal,self.frozen,review)
+        self.assertEqual(len(issues),1)
+        self.assertTrue(issues[0]['code'].startswith('semantic_review_blocked:'))
+        self.assertIn('synthetic-conflict',issues[0]['detail'])
+        for kind in ('wrong-plan','missing','duplicate'):
+            changed=deepcopy(review)
+            if kind=='wrong-plan':changed['reopen_reviews'][0]['plan_sha256']='sha256:'+'9'*64
+            elif kind=='missing':changed['reopen_reviews']=[]
+            else:changed['reopen_reviews']*=2
+            with self.subTest(kind=kind),self.assertRaises(ValueError):
+                runtime.review_issues(self.state,self.proposal,self.frozen,changed)
+        review['verdict']='approved';review['findings']=[]
+        review['reopen_reviews'][0]['verdict']='resolved'
+        self.assertEqual([],runtime.review_issues(self.state,self.proposal,self.frozen,review))
+
     def test_exact_codebooks_map_without_sorting_or_changing_original_fields(self):
         before = deepcopy(self.raw)
         expected = deepcopy(self.raw)
@@ -192,7 +251,7 @@ class IndexedReviewTests(unittest.TestCase):
         seed = {"synthetic_seed": True}
         record = {"scope": scope, "base_sha256": runtime.canonical_sha(seed),
             "proposal_sha256": runtime.canonical_sha(self.proposal), "context": 1,
-            "delta": {"generation_calls": [], "lineage": {"context": 1, "identity": "synthetic-lineage"}},
+            "delta": {"generation_calls": [], "lineage": {"context": 1, "identity": "synthetic-lineage", "generation": 1}},
             "proof": {"review": self.decode(), "runtime_identity": self.state["runtime_identity"],
                 "obligations": self.rows, "lineage_context": 1}, "execution": {"synthetic_raw_binding": True}}
         materials = {"phase": "independent_admission", "review_source_policy": runtime.REVIEW_SOURCE_POLICY,

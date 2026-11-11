@@ -754,15 +754,19 @@ def dispatch_request_identity(run_dir, runner, *, workspace, prompt_path, output
     return identity
 
 
-def verify_dispatch_receipts(run_dir, calls):
+def verify_dispatch_receipts(run_dir, calls, *, state=None, check_originals=True):
     """The coordinator owns request and outcome identity; sidecars are projections."""
     from _planning_skill_common import repo_path
     from _capability_input_integrity import REPORT_NAME
+    generations = {}
     for row in calls:
         request = row.get("request_identity")
         if isinstance(request, dict) and request.get("planning_profile"):
-            from _b_route_planning_runtime import verify_reserved_call
-            verify_reserved_call(run_dir, row)
+            from _b_route_planning_runtime import verify_reserved_call, _reserved_state
+            attempt = row.get("generation", 1)
+            if attempt not in generations:
+                generations[attempt] = _reserved_state(run_dir, row, state)
+            verify_reserved_call(run_dir, row, state=generations[attempt], check_originals=check_originals)
             continue
         if request is None:
             continue  # Historical calls remain read-only and retain their original identity.

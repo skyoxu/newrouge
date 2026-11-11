@@ -723,6 +723,11 @@ def _runtime_arguments(args, cmd):
 
 def build_plan_mvg_cmd(args) -> list[str]:
     _planning_stage_arguments(args)
+    runner = args.runner
+    if runner is None:
+        runner = (str(Path(__file__).resolve().with_name("codex_isolated_model_runner.py"))
+                  if getattr(args, "input_stage", "legacy") == "3b"
+                  else "scripts/python/openai_isolated_model_runner.py")
     if getattr(args, "candidate", "") and args.stage != "validate":
         raise ValueError("--candidate is limited to explicit 3b MVG validate")
     cmd = [sys.executable, str(Path(__file__).resolve().with_name("plan_mvg.py")), "--repo-root", args.repo_root, args.stage]
@@ -752,9 +757,9 @@ def build_plan_mvg_cmd(args) -> list[str]:
     elif args.stage == "generate":
         cmd += ["--timeout-sec", str(args.timeout_sec), "--llm-backend", args.llm_backend]
         if getattr(args, "input_stage", "legacy") == "3b":
-            cmd += ["--runner", args.runner]
+            cmd += ["--runner", runner]
     elif args.stage == "review":
-        cmd += ["--timeout-sec", str(args.timeout_sec), "--runner", args.runner]
+        cmd += ["--timeout-sec", str(args.timeout_sec), "--runner", runner]
     elif args.stage == "apply" and args.confirm:
         cmd.append("--confirm")
     elif args.stage in {"audit", "reopen-plan", "reopen"}:

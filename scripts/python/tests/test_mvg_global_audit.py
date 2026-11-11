@@ -32,10 +32,11 @@ class GlobalAuditTests(unittest.TestCase):
             with self.subTest(stage=stage):
                 parsed = dev_cli.build_parser().parse_args(["plan-mvg", "--stage", stage, "--run-id", "exact-run"] + arguments)
                 command = build_plan_mvg_cmd(parsed)
-                self.assertEqual(["py", "-3", "scripts/python/plan_mvg.py", "--repo-root", ".", stage,
-                                  "--run-id", "exact-run"] + arguments, command)
+                self.assertEqual(sys.executable, command[0])
+                self.assertEqual(Path(plan_mvg.__file__).resolve(), Path(command[1]))
+                self.assertEqual(["--repo-root", ".", stage, "--run-id", "exact-run"] + arguments, command[2:])
                 with patch.object(global_audit, "operate", return_value={"status": "offline"}) as operation, redirect_stdout(io.StringIO()):
-                    self.assertEqual(0, plan_mvg.main(command[3:]))
+                    self.assertEqual(0, plan_mvg.main(command[2:]))
                 self.assertEqual("exact-run", operation.call_args.kwargs["run_id"])
                 self.assertEqual(stage, operation.call_args.kwargs["operation"])
                 for key, value in expected.items():

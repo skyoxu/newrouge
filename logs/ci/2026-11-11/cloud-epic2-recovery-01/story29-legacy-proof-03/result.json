@@ -1,0 +1,15 @@
+{
+  "label": "story29-legacy-proof-03",
+  "tests_run": 5,
+  "passed": 4,
+  "failures": [
+    "test_uncommitted_state_cannot_enter_registry (test_mvg_capability_recovery.RecoveryIdentityTests.test_uncommitted_state_cannot_enter_registry)"
+  ],
+  "errors": [],
+  "skipped": [],
+  "successful": false,
+  "elapsed_seconds": 0.29478482100000747,
+  "finished_utc": "2026-11-11T16:41:20.826849+00:00",
+  "new_provider_calls": 0,
+  "qualification": "Focused offline unit/CLI checks only; no provider, Windows durability or formal Story acceptance claim."
+}

@@ -1,0 +1,19 @@
+{
+  "label": "story29-data-01",
+  "tests_run": 26,
+  "passed": 21,
+  "failures": [],
+  "errors": [
+    "test_declared_present_context_uses_frozen_raw_and_citations_without_authorizing_unlisted_evidence (test_b_route_completed_reuse.FollowupFrozenOwnerTests.test_declared_present_context_uses_frozen_raw_and_citations_without_authorizing_unlisted_evidence)",
+    "test_historical_prefix_never_disables_persistent_recovery_epoch_check (test_b_route_completed_reuse.FollowupFrozenOwnerTests.test_historical_prefix_never_disables_persistent_recovery_epoch_check)",
+    "test_historical_read_keeps_actual_planning_rules_comparison (test_b_route_completed_reuse.FollowupFrozenOwnerTests.test_historical_read_keeps_actual_planning_rules_comparison)",
+    "test_resigned_runtime_rules_do_not_authorize_historical_read_or_prefix_or_proof (test_b_route_completed_reuse.FollowupFrozenOwnerTests.test_resigned_runtime_rules_do_not_authorize_historical_read_or_prefix_or_proof)",
+    "test_unsupported_old_transition_uses_real_owner_and_never_falls_back_to_current_json (test_b_route_completed_reuse.FollowupFrozenOwnerTests.test_unsupported_old_transition_uses_real_owner_and_never_falls_back_to_current_json)"
+  ],
+  "skipped": [],
+  "successful": false,
+  "elapsed_seconds": 4.110188839999978,
+  "finished_utc": "2026-11-11T16:37:17.649826+00:00",
+  "new_provider_calls": 0,
+  "qualification": "Focused offline unit/CLI checks only; no provider, Windows durability or formal Story acceptance claim."
+}

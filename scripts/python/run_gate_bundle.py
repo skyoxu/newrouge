@@ -110,6 +110,7 @@ B_ROUTE_RUNTIME_DETERMINISTIC_TESTS = (
     "scripts.python.tests.test_codex_isolated_model_runner",
     "scripts.python.tests.test_capability_input_integrity",
     "scripts.python.tests.test_b_route_runtime_ci",
+    "scripts.python.tests.test_b_route_completed_reuse",
     "scripts.python.tests.test_b_route_commit",
     "scripts.python.tests.test_b_route_commit_e1",
     "scripts.python.tests.test_b_route_commit_projection",

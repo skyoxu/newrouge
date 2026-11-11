@@ -20,6 +20,34 @@ from dev_cli_builders import build_plan_capabilities_cmd, build_plan_mvg_cmd
 
 
 class PlanningDevCliTests(unittest.TestCase):
+    def test_explicit_3b_mvg_uses_direct_codex_default_and_keeps_explicit_runner(self):
+        for stage in ("generate", "review"):
+            for runner in (None,"tools/explicit-runner.exe"):
+                argv=["plan-mvg","--stage",stage,"--run-id","b-default","--input-stage","3b",
+                    "--prepared-ref","logs/prepared.json","--planning-profile","3b-mvg-v1"]
+                if runner is not None:
+                    argv += ["--runner",runner]
+                args=dev_cli.build_parser().parse_args(argv)
+                command=build_plan_mvg_cmd(args)
+                expected=str(PYTHON/"codex_isolated_model_runner.py") if runner is None else runner
+                self.assertEqual(command[command.index("--runner")+1],expected)
+                self.assertEqual(args.runner,runner)
+                self.assertEqual(command[command.index("--planning-profile")+1],"3b-mvg-v1")
+
+    def test_legacy_mvg_review_runner_and_generate_backend_keep_existing_defaults(self):
+        for stage in ("generate","review"):
+            args=dev_cli.build_parser().parse_args(["plan-mvg","--stage",stage,"--run-id","legacy-default"])
+            command=build_plan_mvg_cmd(args)
+            if stage=="review":
+                self.assertEqual(command[command.index("--runner")+1],"scripts/python/openai_isolated_model_runner.py")
+            else:
+                self.assertNotIn("--runner",command)
+                self.assertEqual(command[command.index("--llm-backend")+1],"codex-cli")
+        args=dev_cli.build_parser().parse_args(["plan-mvg","--stage","review","--run-id","explicit",
+            "--runner","tools/explicit.exe"])
+        command=build_plan_mvg_cmd(args)
+        self.assertEqual(command[command.index("--runner")+1],"tools/explicit.exe")
+
     def test_3b_both_builders_forward_one_contract(self):
         for command, builder, script in (("plan-capabilities", build_plan_capabilities_cmd, "plan_capabilities.py"),
                                          ("plan-mvg", build_plan_mvg_cmd, "plan_mvg.py")):

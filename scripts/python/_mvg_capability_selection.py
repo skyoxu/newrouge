@@ -223,7 +223,12 @@ def _selected_step(root, run_dir, state, scopes, index, base, prefix, step, *, c
         from _mvg_capability_append import merge_append
         from _mvg_capability_recovery import verify_adoption_record
         record = step["record"]
-        proposal = merge_append(base, record["delta"], scopes[index])
+        if scopes[index].get("unit_kind") == "governed_planning_closure":
+            from _b_route_completed_reuse import replay_delta
+            proposal = replay_delta(root, state, run_dir / "analysis-input", base, record["delta"], scopes[index],
+                check_originals=check_originals)
+        else:
+            proposal = merge_append(base, record["delta"], scopes[index])
         verify_adoption_record(root, state, run_dir / "analysis-input", scopes[index], base,
             proposal, record, check_originals=check_originals)
         if (record.get("scope") != scopes[index] or record.get("base_sha256") != canonical_sha(base)
@@ -267,7 +272,8 @@ def _selected_step(root, run_dir, state, scopes, index, base, prefix, step, *, c
     from _b_route_planning_runtime import enabled, verify_call
     if enabled(state):
         from _b_route_planning_runtime import verify_selector_reservation
-        verify_selector_reservation(run_dir, state, scopes[index], index, step, receipt, comparison_workspace, output)
+        verify_selector_reservation(run_dir, state, scopes[index], index, step, receipt, comparison_workspace, output,
+            check_originals=check_originals)
         if canonical_sha(verify_call(receipt["execution_binding"])) != canonical_sha(selection):
             errors.append("b_route_selector_execution_changed")
     label = aliases.get(selection.get("selected"))
@@ -286,6 +292,9 @@ def verified_prefix(root, run_dir, state, *, verify_history=True, recover_counte
     scopes = frozen_scopes(state, run_dir / "analysis-input")
     seed = seed_proposal(state, run_dir / "analysis-input")
     ledger = state.get("capability_selection") or {}
+    if check_originals and state.get("recovery"):
+        from _mvg_capability_recovery import assert_active_chain
+        assert_active_chain(root, state, run_dir)
     from _mvg_global_audit import verify_reopen_history
     if verify_history:
         verify_reopen_history(root, run_dir, state, check_originals=check_originals)
@@ -318,7 +327,7 @@ def verified_prefix(root, run_dir, state, *, verify_history=True, recover_counte
         from _b_route_selector_recovery import verify_retained_dispatches
         verify_retained_dispatches(root, run_dir, state)
     else:
-        verify_dispatch_receipts(run_dir, calls)
+        verify_dispatch_receipts(run_dir, calls, state=state, check_originals=check_originals)
     from _b_route_planning_runtime import enabled, verify_reservations
     if enabled(state):
         verify_reservations(run_dir, state)
@@ -670,7 +679,7 @@ def _generate_selected_capabilities(root, run_dir, state, *, backend, invoke_fac
         scopes, accepted, prefix = verified_prefix(root, run_dir, state)
         rebuild_replacement_selections(state, scopes)
         persist()
-        register_committed(root, run_dir, state) if not is_3b(state) else None
+        register_committed(root, run_dir, state)
         if ledger.get("terminal") is True:
             if state.get("selection_block_reason") == "run_blocked_budget_exhausted":
                 raise RunBudgetExhausted("run_blocked_budget_exhausted")
@@ -702,17 +711,21 @@ def _generate_selected_capabilities(root, run_dir, state, *, backend, invoke_fac
             state.update(selection_status="pending", phase="generating-capability")
             state.pop("selection_block_reason", None)
             persist()
-            adopted = try_adopt(root, run_dir, state, scope, index, accepted) if selected_checkpoint.enabled(state) and not is_3b(state) else None
+            adopted = try_adopt(root, run_dir, state, scope, index, accepted) if selected_checkpoint.enabled(state) else None
             if adopted is not None:
                 proposal, record, selection = adopted
                 pointer = selected_checkpoint.prepare_checkpoint(run_dir, state,
                     scope["capability_id"], index, accepted, proposal, selection)
                 assert_epoch(root, state)
+                _selected_step(root, run_dir, state, scopes, index, accepted, prefix, selection)
+                checked_scopes, checked_accepted, checked_prefix = verified_prefix(root, run_dir, state)
+                if checked_scopes != scopes or checked_accepted != accepted or checked_prefix != prefix:
+                    raise ValueError("checkpoint_accepted_predecessor_changed")
                 selected_checkpoint.commit_checkpoint(run_dir, state, pointer, selection, proposal, writer=atomic_json)
                 accepted = proposal
                 prefix.append(record)
                 persist()
-                register_committed(root, run_dir, state) if not is_3b(state) else None
+                register_committed(root, run_dir, state)
                 continue
             for label in candidate_labels(state):
                 existing = scope_workspace(run_dir, label, index, generation(state))
@@ -1069,7 +1082,7 @@ def _generate_selected_capabilities(root, run_dir, state, *, backend, invoke_fac
             prefix.append(record)
             rebuild_replacement_selections(state, scopes)
             persist()
-            register_committed(root, run_dir, state) if not is_3b(state) else None
+            register_committed(root, run_dir, state)
         proof = admission_proof(state, seed, scopes, prefix, accepted)
         errors = pm.candidate_admission_errors(root, state, accepted, proof)
         if errors:

@@ -1,0 +1,13 @@
+{
+  "package_version": "0.14.0",
+  "encodings": {
+    "o200k_base": {
+      "loaded": false,
+      "error": "HTTPSConnectionPool(host='openaipublic.blob.core.windows.net', port=443): Max retries exceeded with url: /encodings/o200k_base.tiktoken (Caused by ProxyError('Unable to connect to proxy', OSError('Tunnel connection failed: 403 Forbidden')))"
+    },
+    "cl100k_base": {
+      "loaded": false,
+      "error": "HTTPSConnectionPool(host='openaipublic.blob.core.windows.net', port=443): Max retries exceeded with url: /encodings/cl100k_base.tiktoken (Caused by ProxyError('Unable to connect to proxy', OSError('Tunnel connection failed: 403 Forbidden')))"
+    }
+  }
+}

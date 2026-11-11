@@ -1,0 +1,13 @@
+{
+  "label": "story28-focused-01",
+  "tests_run": 18,
+  "passed": 18,
+  "failures": [],
+  "errors": [],
+  "skipped": [],
+  "successful": true,
+  "elapsed_seconds": 22.29701240899999,
+  "finished_utc": "2026-11-11T16:37:27.076809+00:00",
+  "new_provider_calls": 0,
+  "qualification": "Focused offline unit/CLI checks only; no provider, Windows durability or formal Story acceptance claim."
+}

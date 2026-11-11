@@ -80,16 +80,17 @@ def rules_identity():
         "_planning_execution_binding.py", "_mvg_capability_append.py",
         "_mvg_capability_worker.py", "_mvg_worker_lifetime.py", "_mvg_capability_selection.py",
         "_mvg_capability_checkpoint.py", "_mvg_capability_generation.py", "_planning_skill_common.py",
+        "_mvg_capability_recovery.py", "_b_route_completed_reuse.py",
         "_codex_app_server.py", "openai_isolated_model_runner.py", "codex_isolated_model_runner.py")
     return {"candidate": candidate.rules_identity(), "runtime": {name: file_sha(Path(__file__).with_name(name)) for name in files}}
 
 
-def frozen_input(root, state, *, prepared=None):
+def frozen_input(root, state, *, prepared=None, check_originals=True):
     if state.get("b_route_execution_transition"):
         from _b_route_execution_transition import _verification_transaction
         with _verification_transaction():
-            return _frozen_input_owned(root, state, prepared=prepared)
-    return _frozen_input_owned(root, state, prepared=prepared)
+            return _frozen_input_owned(root, state, prepared=prepared, check_originals=check_originals)
+    return _frozen_input_owned(root, state, prepared=prepared, check_originals=check_originals)
 
 
 def selector_recovery_active(state):
@@ -101,15 +102,21 @@ def selector_recovery_active(state):
     return False
 
 
-def _frozen_input_owned(root, state, *, prepared=None):
+def _frozen_input_owned(root, state, *, prepared=None, check_originals=True):
     desc = descriptor(state)
     if state.get("b_route_execution_transition"):
+        # Only the existing source-transition owner may validate older rules.
+        # It pins real source trees and runs its original read-only verifier;
+        # check_originals never relaxes that owner's contract.
         from _b_route_execution_transition import load_prepared
         frozen = load_prepared(root, state)
     else:
-        frozen = planning.load_prepared(root, desc["prepared_ref"])
-    if (canonical_sha(frozen) != desc["frozen_sha256"] or frozen["input_identity"] != desc["input_identity"]
-            or (not state.get("b_route_execution_transition") and rules_identity() != desc["rules"])):
+        if not same_json(rules_identity(), desc["rules"]):
+            raise ValueError("b_route_runtime_input_or_rules_changed")
+        frozen = planning.load_prepared(root, desc["prepared_ref"], revalidate=check_originals)
+        if not check_originals and not same_json(planning.rules_identity(root), frozen["inputs"]["dependencies"]["rules"]):
+            raise ValueError("b_route_runtime_planning_rules_changed")
+    if canonical_sha(frozen) != desc["frozen_sha256"] or frozen["input_identity"] != desc["input_identity"]:
         raise ValueError("b_route_runtime_input_or_rules_changed")
     if state.get("b_route_review_recovery"):
         from _b_route_review_recovery import validate_recovery
@@ -134,8 +141,8 @@ def _frozen_input_owned(root, state, *, prepared=None):
     return frozen
 
 
-def validate_input(root, workspace, state, **_kwargs):
-    frozen_input(root, state, prepared=workspace / "analysis-input")
+def validate_input(root, workspace, state, *, check_originals=True, **_kwargs):
+    frozen_input(root, state, prepared=workspace / "analysis-input", check_originals=check_originals)
     if state.get("mvg.run_invocation_limit") != descriptor(state)["limits"]["request_limit"]:
         raise ValueError("b_route_runtime_budget_changed")
     if state.get("recovery"):
@@ -150,10 +157,22 @@ def scopes(state, prepared):
     # A scope is an audited planning closure, never a synthesized Capability.
     # Without a separately verified staged contract we conservatively admit the
     # complete governed closure as one unit. Root input identity is unchanged.
+    return [scope_value(frozen)]
+
+
+def scope_value(frozen):
     scope = frozen["inputs"]["contract"]["scope"]
-    return [{"capability_id": scope["scope_id"], "unit_kind": "governed_planning_closure",
+    return {"capability_id": scope["scope_id"], "unit_kind": "governed_planning_closure",
              "scope": deepcopy(scope), "closure": deepcopy(frozen["inputs"]["closure"]),
-             "input_identity": frozen["input_identity"], "cumulative_requirement_ids": []}]
+             "input_identity": frozen["input_identity"], "cumulative_requirement_ids": []}
+
+
+def reopen_directive(state, frozen, attempt=None):
+    from _mvg_global_audit import reopen_context
+    if not state.get("reopen_contexts"):
+        # Fresh readers retain the original generation-one no-reopen contract.
+        return reopen_context(state, {"capability_id": ""}, attempt)
+    return reopen_context(state, scope_value(frozen), attempt)
 
 
 def seed(state, prepared):
@@ -162,8 +181,8 @@ def seed(state, prepared):
         "contexts": deepcopy(frozen["inputs"]["contexts"]), "formal_adoption": False}
 
 
-def machine(root, state, proposal):
-    frozen = frozen_input(root, state)
+def machine(root, state, proposal, *, check_originals=True):
+    frozen = frozen_input(root, state, check_originals=check_originals)
     store = candidate.frozen_bytes(root, descriptor(state)["prepared_ref"], frozen, sources.Observations(root))
     candidate.check_identity(proposal, frozen)
     try:
@@ -295,7 +314,7 @@ def obligations(proposal, frozen):
     return result
 
 
-def review_schema(state, proposal, frozen):
+def review_schema(state, proposal, frozen, *, attempt=None):
     required = obligations(proposal, frozen)
     row = {"type": "object", "properties": {"id": {"type": "string", "enum": [r["id"] for r in required]},
         "verdict": {"type": "string", "enum": ["approved", "blocked"]}, "rationale": {"type": "string", "minLength": 1},
@@ -306,6 +325,18 @@ def review_schema(state, proposal, frozen):
         "runtime_identity": {"type": "string", "const": state["runtime_identity"]}, "proposal_sha256": {"type": "string", "const": canonical_sha(proposal)},
         "verdict": {"type": "string", "enum": ["approved", "blocked"]}, "findings": {"type": "array", "items": {"type": "string", "minLength": 1}},
         "checks": {"type": "array", "items": row, "minItems": len(required), "maxItems": len(required)}}
+    directive = reopen_directive(state, frozen, attempt)
+    if directive is not None:
+        variants = [{"type": "object", "properties": {
+            "conflict_id": {"type": "string", "const": issue["id"]},
+            "plan_sha256": {"type": "string", "const": directive["plan"]["sha256"]},
+            "verdict": {"type": "string", "enum": ["resolved", "blocked"]},
+            "rationale": {"type": "string", "minLength": 1}},
+            "required": ["conflict_id", "plan_sha256", "verdict", "rationale"], "additionalProperties": False}
+            for issue in directive["conflicts"] if issue["id"] in directive["resolution_required_conflict_ids"]]
+        fields["reopen_reviews"] = {"type": "array", "items": {"anyOf": variants} if variants else {
+            "type": "object", "properties": {}, "required": [], "additionalProperties": False},
+            "minItems": len(variants), "maxItems": len(variants)}
     return {"type": "object", "properties": fields, "required": list(fields), "additionalProperties": False}
 
 
@@ -319,8 +350,8 @@ def review_source_policy(materials):
     return policy
 
 
-def review_producer_schema(state, proposal, frozen, *, policy=None):
-    schema = deepcopy(review_schema(state, proposal, frozen))
+def review_producer_schema(state, proposal, frozen, *, policy=None, attempt=None):
+    schema = deepcopy(review_schema(state, proposal, frozen, attempt=attempt))
     # Keep uniqueness in the canonical host gate, outside the conservative wire subset.
     row = schema["properties"]["checks"]["items"]
     row["properties"]["source_block_ids"].pop("uniqueItems")
@@ -375,7 +406,8 @@ def decode_review(state, proposal, frozen, raw, policy=None):
 def check_review_producer_schema(state, frozen, materials, schema):
     policy = review_source_policy(materials)
     if materials["phase"] == "independent_admission" and not same_json(
-            schema, review_producer_schema(state, materials["proposal"], frozen, policy=policy)):
+            schema, review_producer_schema(state, materials["proposal"], frozen, policy=policy,
+                attempt=materials.get("generation", 1))):
         raise ValueError("b_route_review_producer_schema_changed")
 
 
@@ -390,13 +422,26 @@ def review_issues(state, proposal, frozen, review):
            for row in review["checks"]):
         raise ValueError("b_route_independent_review_source_support_invalid")
     blocked = [row for row in review["checks"] if row["verdict"] == "blocked"]
+    reopen_blocked = []
+    directive = reopen_directive(state, frozen)
+    if directive is not None:
+        from _mvg_global_audit import reopen_review_errors
+        reopen_blocked = [row for row in review.get("reopen_reviews", []) if row["verdict"] == "blocked"]
+        unresolved = ["reopen_conflict_unresolved:" + row["conflict_id"] for row in reopen_blocked]
+        if (sorted(reopen_review_errors(directive, review)) != sorted(unresolved)
+                or any(not row["rationale"].strip() for row in reopen_blocked)):
+            raise ValueError("b_route_reopen_conflict_resolution_invalid")
     findings = review["findings"]
-    if (len(set(findings)) != len(findings) or set(findings) != {row["rationale"] for row in blocked}
-            or (review["verdict"] == "blocked") != bool(blocked)):
+    if (len(set(findings)) != len(findings) or set(findings) != {row["rationale"] for row in [*blocked, *reopen_blocked]}
+            or (review["verdict"] == "blocked") != bool(blocked or reopen_blocked)):
         raise ValueError("b_route_independent_review_findings_accounting_invalid")
     return [{"code": "semantic_review_blocked:" + canonical_sha({"obligation": row["id"],
         "sources": sorted(domain[row["id"]]["source_block_ids"]), "finding": row["rationale"]}),
-        "path": "semantic-review", "detail": row["rationale"]} for row in blocked]
+        "path": "semantic-review", "detail": row["rationale"]} for row in blocked] + [
+        {"code": "semantic_review_blocked:" + canonical_sha({"reopen_conflict": row["conflict_id"],
+            "plan": directive["plan"]["sha256"], "finding": row["rationale"]}),
+         "path": "semantic-review", "detail": row["conflict_id"] + ": " + row["rationale"]}
+        for row in reopen_blocked]
 
 
 
@@ -526,13 +571,13 @@ def immutable_candidate_checks(proposal, frozen, byte_store):
     candidate.check_sources(content, frozen, byte_store, plans)
 
 
-def admission_machine(root, state, proposal):
+def admission_machine(root, state, proposal, *, check_originals=True):
     """Versioned admission preflight; historical canonical machine stays exact."""
     if machine_business_policy(state) is not None:
-        frozen = frozen_input(root, state)
+        frozen = frozen_input(root, state, check_originals=check_originals)
         store = candidate.frozen_bytes(root, descriptor(state)["prepared_ref"], frozen, sources.Observations(root))
         immutable_candidate_checks(proposal, frozen, store)
-    return machine(root, state, proposal)
+    return machine(root, state, proposal, check_originals=check_originals)
 
 
 def duplicate_proposed_owner_issue(proposal, issue):
@@ -740,7 +785,7 @@ def check_repair_policy(materials, *, required=False, frozen=None):
         raise ValueError("b_route_repair_scope_metadata_changed")
 
 
-def local_machine_witnesses(root, state, before):
+def local_machine_witnesses(root, state, before, *, check_originals=True):
     """Prove only original local failures; never substitute for strict admission.
 
     Schema, provenance, immutable sources and actual owners are checked first.
@@ -748,7 +793,7 @@ def local_machine_witnesses(root, state, before):
     canonical predicate owner evaluates the untouched original independently of
     its first failure; unrepresented predicates remain unproven and rejected.
     """
-    frozen = frozen_input(root, state)
+    frozen = frozen_input(root, state, check_originals=check_originals)
     store = candidate.frozen_bytes(root, descriptor(state)["prepared_ref"], frozen, sources.Observations(root))
     immutable_candidate_checks(before, frozen, store)
     content = before["content"]
@@ -772,20 +817,21 @@ def local_machine_witnesses(root, state, before):
     return result
 
 
-def machine_repair_errors(root, state, before, after):
+def machine_repair_errors(root, state, before, after, *, check_originals=True):
     """Reject new first failures unless the same original predicate proves them."""
-    old, new = admission_machine(root, state, before), admission_machine(root, state, after)
+    old = admission_machine(root, state, before, check_originals=check_originals)
+    new = admission_machine(root, state, after, check_originals=check_originals)
     from _mvg_capability_append import issue_key
     extra = [row for row in new if issue_key(row) not in {issue_key(value) for value in old}]
     if extra:
-        witnessed = local_machine_witnesses(root, state, before)
+        witnessed = local_machine_witnesses(root, state, before, check_originals=check_originals)
         if any(not any(same_json(row, original) for original in witnessed) for row in extra):
             return ["repair_new_machine_issue"]
     return []
 
 
-def repair_scope_errors(root, state, before, after, issue, *, scope=None):
-    frozen = frozen_input(root, state)
+def repair_scope_errors(root, state, before, after, issue, *, scope=None, check_originals=True):
+    frozen = frozen_input(root, state, check_originals=check_originals)
     try:
         allowed = repair_domain(before, frozen, issue)
     except (KeyError, TypeError, ValueError):
@@ -801,10 +847,10 @@ def repair_scope_errors(root, state, before, after, issue, *, scope=None):
             return len(left) != len(right) or any(changed(a, b, (*path, index)) for index, (a, b) in enumerate(zip(left, right)))
         return not same_json(left, right)
     errors = ["b_route_repair_outside_domain"] if changed(before["content"], after["content"]) else []
-    old = admission_machine(root, state, before)
+    old = admission_machine(root, state, before, check_originals=check_originals)
     if issue.get("path") != "semantic-review" and not any(same_json(row, issue) for row in old):
         errors.append("b_route_repair_issue_not_host_owned")
-    errors += machine_repair_errors(root, state, before, after)
+    errors += machine_repair_errors(root, state, before, after, check_originals=check_originals)
     if same_json(before["content"], after["content"]):
         errors.append("b_route_repair_no_target_progress")
     return errors
@@ -858,7 +904,7 @@ def check_review_origin_frame(materials, generation_frame, *, generation_verifie
         raise ValueError("b_route_review_issue_account_origin_changed")
 
 
-def verify_repair_origin(root, state, frozen, materials, binding, *, seen=None, _work=None):
+def verify_repair_origin(root, state, frozen, materials, binding, *, seen=None, _work=None, check_originals=True):
     """Close repair before/issue against earlier completed paid native outputs.
 
     The current request's hash binds its before/after, but does not by itself
@@ -902,7 +948,7 @@ def verify_repair_origin(root, state, frozen, materials, binding, *, seen=None, 
             if request.get("fresh_lineage_identity") != materials["lineage_identity"]:
                 continue
             _work.spend()
-            retained = verify_reserved_call(run, row)
+            retained = verify_reserved_call(run, row, state=state, check_originals=check_originals)
             data = bound_materials(retained, state, frozen)
             if data.get("lineage_context") == materials["lineage_context"]:
                 earlier.append((retained, data))
@@ -931,9 +977,11 @@ def verify_repair_origin(root, state, frozen, materials, binding, *, seen=None, 
         generation_verified = False
         if final_materials.get("repair_issue") is not None:
             if (final_materials.get("repair_scope_policy") != REPAIR_SCOPE_POLICY or
-                    repair_scope_errors(root, state, final_materials["prior_candidate"], prior, final_materials["repair_issue"])):
+                    repair_scope_errors(root, state, final_materials["prior_candidate"], prior, final_materials["repair_issue"],
+                        check_originals=check_originals)):
                 raise ValueError("b_route_repair_prior_scope_invalid")
-            verify_repair_origin(root, state, frozen, final_materials, final_binding, seen=seen, _work=_work)
+            verify_repair_origin(root, state, frozen, final_materials, final_binding, seen=seen, _work=_work,
+                check_originals=check_originals)
             generation_verified = True
         if issue.get("path") == "semantic-review":
             issues = []
@@ -945,7 +993,7 @@ def verify_repair_origin(root, state, frozen, materials, binding, *, seen=None, 
                     origin = review_account_origin(data, frozen)
                     issues.extend(account_review_issues(state, prior, frozen, review, origin=origin))
         else:
-            issues = admission_machine(root, state, prior)
+            issues = admission_machine(root, state, prior, check_originals=check_originals)
         if not any(same_json(row, issue) for row in issues):
             raise ValueError("b_route_repair_issue_not_original_host_finding")
     finally:
@@ -1177,6 +1225,10 @@ def materials_prompt(payload, *, work=None):
             "Do not generate hashes or substitute positions from any other array. Review every obligation exactly once; "
             "no duplicate checks or source indices. Keep all verdicts, rationale, findings and input metadata exact. "
             "Output the versioned indexed review carrier. Never repair, filter or replace a proposal or finding.")
+    if payload.get("reopen_context") is not None:
+        instruction += (" Independently resolve every source-backed contradiction in reopen_context against the replacement "
+            "and its accepted predecessor. Return exactly one reopen_reviews row per resolution_required_conflict_ids ID. "
+            "An unresolved immutable source contradiction must remain blocked; never certify future replacements.")
     # Preserve the historical instruction and serialization when no policy/delivery is stored.
     return wire.render(instruction.rstrip("\n"), payload, payload.get("wire_delivery"),
                        compact_schema=input_compact_policy(payload), work=work)
@@ -1286,6 +1338,9 @@ def generate_append(root, state, workspace, *, invoke_factory, before_call, chec
         count[0] += 1
         validate_input(root, workspace, state)
         payload["runtime_identity"] = state["runtime_identity"]
+        directive = reopen_directive(state, frozen)
+        if directive is not None:
+            payload["reopen_context"] = directive
         if state.get("b_route_execution_transition"):
             payload["execution_source_transition"] = state["b_route_execution_transition"]["transition_digest"]
         payload.update(run_id=state["run_id"], slot=state["runtime_slot"],
@@ -1361,9 +1416,12 @@ def generate_append(root, state, workspace, *, invoke_factory, before_call, chec
             payload["qualified_sources"] = qualified_sources(proposal, frozen)
             payload["review_source_policy"] = REVIEW_SOURCE_POLICY
             review, execution = dispatch(payload, schema, "semantic", call, work=work)
+        bound = {"review": review, "obligations": payload["obligations"], "runtime_identity": state["runtime_identity"],
+                 "lineage_context": context}
+        if payload.get("reopen_context") is not None:
+            bound["reopen_context"] = payload["reopen_context"]
         return {"issues": account_review_issues(state, proposal, frozen, review, origin=repair_origin[0]),
-            "proof": {"review": review, "obligations": payload["obligations"], "runtime_identity": state["runtime_identity"],
-                "lineage_context": context}, "execution": execution}
+            "proof": bound, "execution": execution}
     recovery_options = {}
     if state.get("b_route_partial_generation_recovery"):
         from _b_route_partial_generation_recovery import resume_propose_attempt
@@ -1408,24 +1466,39 @@ def aggregate_execution(state, proposal, proof, total, lineages=None):
 
 def execution_errors(state, proposal, execution, proof):
     expected = aggregate_execution(state, proposal, proof, execution.get("total_invocations"), execution.get("lineage_invocations"))
-    if canonical_sha(expected) != canonical_sha(execution) or type(execution.get("total_invocations")) is not int or execution["total_invocations"] < 1:
+    adoption_only = bool(proof.get("records")) and all(row.get("kind") == "adoption" for row in proof["records"])
+    if (canonical_sha(expected) != canonical_sha(execution) or type(execution.get("total_invocations")) is not int
+            or execution["total_invocations"] < (0 if adoption_only else 1)):
         return ["b_route_admission_execution_invalid"]
     return []
 
 
-def proof_errors(root, state, proposal, proof):
+def proof_errors(root, state, proposal, proof, *, check_originals=True):
     try:
         if state.get("b_route_execution_history"):
             from _b_route_execution_transition import source_state_for_proof
             state = source_state_for_proof(root, state, proof)
-        frozen = frozen_input(root, state)
-        expected_scopes = [{"capability_id": frozen["inputs"]["contract"]["scope"]["scope_id"], "unit_kind": "governed_planning_closure",
-            "scope": deepcopy(frozen["inputs"]["contract"]["scope"]), "closure": deepcopy(frozen["inputs"]["closure"]),
-            "input_identity": frozen["input_identity"], "cumulative_requirement_ids": []}]
+        frozen = frozen_input(root, state, check_originals=check_originals)
+        expected_scopes = [scope_value(frozen)]
         records = proof["records"]
         if len(records) != 1 or proof["scopes"] != expected_scopes:
             raise ValueError("b_route_admission_scope_invalid")
         record = records[0]
+        if record.get("kind") == "adoption":
+            from _b_route_completed_reuse import replay_delta
+            from _mvg_capability_recovery import verify_adoption_record
+            run_dir = run_location(root, descriptor(state)["planner"], state["run_id"])
+            if (canonical_sha(proof) != canonical_sha(admission_proof(state, proof["seed"], expected_scopes, records, proposal))
+                    or record.get("scope") != expected_scopes[0]
+                    or record.get("base_sha256") != canonical_sha(proof["seed"])
+                    or record.get("proposal_sha256") != canonical_sha(proposal)
+                    or record.get("record_sha256") != canonical_sha({key: value for key, value in record.items() if key != "record_sha256"})
+                    or canonical_sha(replay_delta(root, state, run_dir / "analysis-input", proof["seed"], record["delta"], expected_scopes[0],
+                        check_originals=check_originals)) != canonical_sha(proposal)):
+                raise ValueError("b_route_adoption_chain_changed")
+            verify_adoption_record(root, state, run_dir / "analysis-input", expected_scopes[0], proof["seed"],
+                proposal, record, check_originals=check_originals)
+            return []
         if (canonical_sha(proof) != canonical_sha(admission_proof(state, proof["seed"], expected_scopes, records, proposal))
             or record["scope"] != expected_scopes[0] or record["base_sha256"] != canonical_sha(proof["seed"])
             or record["proposal_sha256"] != canonical_sha(proposal)
@@ -1434,7 +1507,9 @@ def proof_errors(root, state, proposal, proof):
             raise ValueError("b_route_admission_chain_changed")
         if proposal["provenance"]["kind"] != "model_draft":
             raise ValueError("b_route_admission_requires_real_model_draft")
-        verify_proof_reservations(root, state, proof)
+        if record["proof"].get("reopen_context") != reopen_directive(state, frozen, record["delta"]["lineage"]["generation"]):
+            raise ValueError("b_route_admission_reopen_context_changed")
+        verify_proof_reservations(root, state, proof, check_originals=check_originals)
         generation_calls = record["delta"]["generation_calls"]
         drafts = proposal["provenance"]["draft_chain"]
         if len(generation_calls) != len(drafts):
@@ -1455,11 +1530,12 @@ def proof_errors(root, state, proposal, proof):
                 if frame["repair_scope_policy"] != REPAIR_SCOPE_POLICY or not isinstance(frame["prior_candidate"], dict):
                     raise ValueError("b_route_repair_scope_policy_missing")
                 if draft["stage"] != "batch":
-                    errors = repair_scope_errors(root, state, frame["prior_candidate"], proposal, frame["repair_issue"])
+                    errors = repair_scope_errors(root, state, frame["prior_candidate"], proposal, frame["repair_issue"],
+                        check_originals=check_originals)
                     if errors:
                         raise ValueError("b_route_repair_replay_rejected:" + ";".join(errors))
                     if not generation_origin_verified:
-                        verify_repair_origin(root, state, frozen, materials, binding, _work=origin_work)
+                        verify_repair_origin(root, state, frozen, materials, binding, _work=origin_work, check_originals=check_originals)
                         generation_origin_verified = True
             elif frame["prior_candidate"] is not None or frame["repair_scope_policy"] is not None or frame["repair_scope"] is not None:
                 raise ValueError("b_route_generation_unbound_prior_candidate")
@@ -1491,7 +1567,7 @@ def proof_errors(root, state, proposal, proof):
             or not same_json(materials["qualified_sources"], qualified_sources(proposal, frozen))
             or materials["lineage_identity"] != record["delta"]["lineage"]["identity"]):
             raise ValueError("b_route_independent_request_materials_changed")
-        return admission_machine(root, state, proposal) + account_review_issues(state, proposal, frozen, review, origin=origin)
+        return admission_machine(root, state, proposal, check_originals=check_originals) + account_review_issues(state, proposal, frozen, review, origin=origin)
     except (OSError, ValueError, KeyError, TypeError, RuntimeError, IndexError) as exc:
         return ["b_route_admission_invalid:" + str(exc)]
 
@@ -1517,6 +1593,9 @@ def bound_materials(binding, state, frozen, *, allow_failed_review=False):
         raise ValueError("b_route_mvg_synthesis_recovery_materials_unactivated")
     from _b_route_review_recovery import validate_materials_transition
     validate_materials_transition(state, materials, binding, allow_failed_review=allow_failed_review)
+    directive = reopen_directive(state, frozen, materials.get("generation", 1))
+    if materials.get("reopen_context") != directive or (("reopen_context" in materials) != (directive is not None)):
+        raise ValueError("b_route_execution_reopen_context_changed")
     # The transition validator above authenticates the older no-digest binding
     # exception. Its original schema policy remains absent even in a new epoch.
     legacy = state.get("b_route_execution_transition") and "execution_source_transition" not in materials
@@ -1562,6 +1641,8 @@ def bound_materials(binding, state, frozen, *, allow_failed_review=False):
             fields.add("output_schema_policy")
         if "input_compact_policy" in materials:
             fields.add("input_compact_policy")
+        if "reopen_context" in materials:
+            fields.add("reopen_context")
         if recovery_hint is not None:
             fields.add("known_synthesis_schema_recovery")
         if (set(materials) != fields or materials["schema_version"] != PROFILE
@@ -1581,7 +1662,7 @@ def bound_materials(binding, state, frozen, *, allow_failed_review=False):
 
 
 def verify_bound_reservation(run_dir, state, binding, *, candidate_slot, scope_id, phase, generation, execution,
-                             expected_workspace, expected_output, reservation_id=None):
+                             expected_workspace, expected_output, reservation_id=None, check_originals=True):
     """Match proof bytes to the existing charged journal, never to a self-report."""
     if (not expected_workspace.is_relative_to(run_dir) or not expected_output.is_relative_to(run_dir)
         or Path(binding["workspace"]) != expected_workspace or Path(binding["output_path"]) != expected_output):
@@ -1598,16 +1679,18 @@ def verify_bound_reservation(run_dir, state, binding, *, candidate_slot, scope_i
         or (reservation_id is not None and row.get("reservation_id") != reservation_id)
         or row.get("outcome", {}).get("status") != "completed"):
         raise ValueError("b_route_proof_reserved_identity_changed")
-    original = verify_reserved_call(run_dir, row)
+    original = verify_reserved_call(run_dir, row, state=state, check_originals=check_originals)
     if original is None or not same_json(original, binding):
         raise ValueError("b_route_proof_reserved_binding_changed")
     return row
 
 
-def verify_proof_reservations(root, state, proof, *, admission=None):
+def verify_proof_reservations(root, state, proof, *, admission=None, check_originals=True):
     from _mvg_capability_selection import scope_workspace
     run_dir = run_location(root, descriptor(state)["planner"], state["run_id"])
     for index, record in enumerate(proof["records"]):
+        if record.get("kind") == "adoption":
+            continue  # The independent receipt replays historical paid proof.
         line = record["delta"]["lineage"]
         slot, attempt, execution = line["slot"], line["generation"], line["execution"]
         if slot not in labels(state) or (admission is not None and
@@ -1649,7 +1732,7 @@ def verify_proof_reservations(root, state, proof, *, admission=None):
                      "repair" if materials.get("repair_issue") is not None else "generate")
             row = verify_bound_reservation(run_dir, state, binding, candidate_slot=slot,
                 scope_id=record["scope"]["capability_id"], phase=phase, generation=attempt, execution=execution,
-                expected_workspace=sandbox, expected_output=sandbox / "r.json")
+                expected_workspace=sandbox, expected_output=sandbox / "r.json", check_originals=check_originals)
             if (request["execution_binding_path"] != (call_root / f"execution-binding-{number}-r.json").relative_to(run_dir).as_posix()
                 or request.get("fresh_lineage_identity") != expected_lineage
                 or materials.get("lineage_identity") != expected_lineage or materials.get("lineage_context") != record["context"]
@@ -1764,10 +1847,10 @@ def selector_prompt(materials, *, work=None):
                        compact_schema=input_compact_policy(materials), work=work)
 
 
-def check_selector_materials(root, run_dir, state, materials, workspace):
+def check_selector_materials(root, run_dir, state, materials, workspace, *, check_originals=True):
     """Reconstruct complete virtual files from admitted artifacts, never public hashes alone."""
     from _mvg_capability_selection import candidate_artifacts, selection_identity
-    frozen = frozen_input(root, state)
+    frozen = frozen_input(root, state, check_originals=check_originals)
     units = scopes(state, run_dir / "analysis-input")
     index = materials["identity"]["order_index"]
     if type(index) is not int or not 0 <= index < len(units):
@@ -1791,10 +1874,11 @@ def check_selector_materials(root, run_dir, state, materials, workspace):
     base, prefix = seed(state, run_dir / "analysis-input"), []
     for prior_index, prior in enumerate(selected[:index]):
         proposal, proof, _ = candidate_artifacts(root, run_dir, state, units, prior_index, base, prefix,
-            prior["admissions"][prior["selected_candidate"]])
+            prior["admissions"][prior["selected_candidate"]], check_originals=check_originals)
         base = proposal
         prefix.append(proof["records"][-1])
-    proposals = {label: candidate_artifacts(root, run_dir, state, units, index, base, prefix, step["admissions"][label])[0]
+    proposals = {label: candidate_artifacts(root, run_dir, state, units, index, base, prefix, step["admissions"][label],
+        check_originals=check_originals)[0]
                  for label in labels(state)}
     identity = selection_identity(state, units[index], index, base, step["admissions"], aliases)
     public = {key: value for key, value in identity.items() if key != "candidates"}
@@ -1806,12 +1890,13 @@ def check_selector_materials(root, run_dir, state, materials, workspace):
     return expected
 
 
-def verify_selector_reservation(run_dir, state, scope, index, step, receipt, comparison_workspace, output):
+def verify_selector_reservation(run_dir, state, scope, index, step, receipt, comparison_workspace, output, *, check_originals=True):
     binding = receipt["execution_binding"]
     sandbox = comparison_workspace / "llm-sandbox" / f"attempt-{step['attempt']}" / "selection"
     row = verify_bound_reservation(run_dir, state, binding, candidate_slot=None, scope_id=scope["capability_id"],
         phase="selection", generation=step.get("generation", 1), execution=step.get("execution", 1),
-        expected_workspace=sandbox, expected_output=output, reservation_id=step["reservation_id"])
+        expected_workspace=sandbox, expected_output=output, reservation_id=step["reservation_id"],
+        check_originals=check_originals)
     public = {key: value for key, value in step["input_identity"].items() if key != "candidates"}
     public["candidates"] = {alias: {key: value for key, value in candidate.items() if key != "lineage"}
                             for alias, candidate in step["input_identity"]["candidates"].items()}
@@ -1819,7 +1904,7 @@ def verify_selector_reservation(run_dir, state, scope, index, step, receipt, com
     if wire_delivery(state):
         prompt_input = wire.read_prompt(prompt, wire_delivery(state))
         root = run_dir.parents[3]
-        check_selector_materials(root, run_dir, state, prompt_input, comparison_workspace)
+        check_selector_materials(root, run_dir, state, prompt_input, comparison_workspace, check_originals=check_originals)
         if prompt != selector_prompt(prompt_input):
             raise ValueError("b_route_selector_wire_prompt_changed")
         prompt_input = {"scope": prompt_input["scope"], "identity": prompt_input["identity"]}
@@ -1981,7 +2066,29 @@ def prepare_dispatch(root, run_dir, state, runner, workspace, prompt_path, schem
     return request, actual, measurement
 
 
-def verify_reserved_call(run_dir, row):
+def _reserved_state(run_dir, row, state=None):
+    """Use the original archived generation for a retained dispatch receipt."""
+    state = load_json(run_dir / "run.json") if state is None else state
+    attempt = row.get("generation", 1)
+    if state["capability_selection"].get("generation", 1) == attempt:
+        return state
+    from _mvg_global_audit import _artifact
+    entry = next((entry for entry in state.get("reopen_history", [])
+                  if entry["generation"] == attempt + 1), None)
+    if entry is None:
+        raise ValueError("b_route_reserved_generation_history_missing")
+    archive = load_json(_artifact(run_dir, entry["path"], entry["sha256"]))
+    prior = archive["prior_state"]
+    calls = prior["capability_selection"].get("calls", [])
+    number = row["number"]
+    if (prior.get("run_id") != state.get("run_id")
+            or prior["capability_selection"].get("generation", 1) != attempt
+            or not 1 <= number <= len(calls) or calls[number - 1] != row):
+        raise ValueError("b_route_reserved_generation_history_changed")
+    return prior
+
+
+def verify_reserved_call(run_dir, row, *, state=None, check_originals=True):
     from _mvg_capability_selection import _artifact
     request = row["request_identity"]
     if canonical_sha({k: v for k, v in request.items() if k != "request_sha256"}) != request["request_sha256"]:
@@ -2022,7 +2129,7 @@ def verify_reserved_call(run_dir, row):
         raise ValueError("b_route_dispatch_binding_changed")
     raw_value = verify_call(binding)
     instruction = Path(binding["prompt_path"]).read_text(encoding="utf-8")
-    state = load_json(run_dir / "run.json")
+    state = _reserved_state(run_dir, row, state)
     if request.get("wire_delivery") != wire_delivery(state):
         raise ValueError("b_route_reserved_wire_delivery_changed")
     if "selector_transport_policy" in request:
@@ -2046,7 +2153,8 @@ def verify_reserved_call(run_dir, row):
         if materials["phase"] == "selection":
             if selector_recovery_active(state) and request.get("selector_transport_policy") != compact.ATOM_SCHEMA:
                 raise ValueError("b_route_selector_recovery_reserved_policy_missing")
-            check_selector_materials(run_dir.parents[3], run_dir, state, materials, workspace.parents[2])
+            check_selector_materials(run_dir.parents[3], run_dir, state, materials, workspace.parents[2],
+                                     check_originals=check_originals)
             if instruction != selector_prompt(materials) or not same_json(load_json(Path(binding["schema_path"])), selection_schema(state)):
                 raise ValueError("b_route_selector_reserved_schema_or_prompt_changed")
     from _planning_skill_common import _runner_prefix
@@ -2159,8 +2267,12 @@ def operate(root, *, planner, command, run_id, prepared_ref, profile, runner=Non
             pass
     if not sources.checked_path(root, (run_dir / "run.json").relative_to(root).as_posix()).is_file():
         raise ValueError("b_route_runtime_incomplete_or_foreign_run")
-    with coordinator_lock(run_dir):
+    from _mvg_capability_recovery import operation_lock
+    from _mvg_global_audit import assert_no_pending_reopen
+    initial = codec.strict_json_loads((run_dir / "run.json").read_bytes())
+    with operation_lock(root, initial), coordinator_lock(run_dir):
         state = codec.strict_json_loads((run_dir / "run.json").read_bytes())
+        assert_no_pending_reopen(run_dir)
         desc = descriptor(state)
         if desc["planner"] != planner or desc["profile"] != profile or desc["prepared_ref"] != prepared_ref:
             raise ValueError("b_route_runtime_run_binding_changed")
@@ -2283,6 +2395,15 @@ def handoff(root, run_dir, state):
     assert_active_chain(root, state, run_dir)
     comparisons = []
     for step in state["capability_selection"]["selected"]:
+        if step.get("kind") == "adoption":
+            receipt = load_json(sources.checked_path(run_dir, step["receipt_path"]))
+            comparisons.append({"candidate": "reused", "selected": True,
+                "proposal_sha256": step["proposal_sha256"], "reuse_reason": "original_frozen_proof_and_current_dependency_delta_replay",
+                "source": deepcopy(receipt["source"]),
+                "source_transaction_id": step["adoption"]["source_transaction_id"],
+                "receipt_path": step["receipt_path"], "receipt_sha256": step["receipt_sha256"],
+                "new_model_calls": 0, "provider_dispatches": "unknown", "cost": "unknown"})
+            continue
         winner = load_json(sources.checked_path(run_dir, step["admissions"][step["selected_candidate"]]["proposal_path"]))
         for label, admission in step["admissions"].items():
             value = load_json(sources.checked_path(run_dir, admission["proposal_path"]))

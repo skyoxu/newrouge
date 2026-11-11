@@ -1,0 +1,13 @@
+{
+  "label": "story29-uncommitted-fixture-04",
+  "tests_run": 1,
+  "passed": 1,
+  "failures": [],
+  "errors": [],
+  "skipped": [],
+  "successful": true,
+  "elapsed_seconds": 0.025917113999980756,
+  "finished_utc": "2026-11-11T16:41:38.210065+00:00",
+  "new_provider_calls": 0,
+  "qualification": "Focused offline unit/CLI checks only; no provider, Windows durability or formal Story acceptance claim."
+}

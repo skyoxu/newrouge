@@ -1,0 +1,105 @@
+{
+  "schema": "newrouge.cloud-epic2-continuation.v1",
+  "updated_utc": "2026-11-11T16:43:16Z",
+  "branch": "build/cloud-epic2-recovery-20261111",
+  "baseline": "e568f1ff1c8a4a57ba7e511102ed6177481d836b",
+  "focused_test_executions": 81,
+  "passing_executions": 75,
+  "original_failed_executions": 1,
+  "windows_error_executions": 5,
+  "fixture_recheck_passed": true,
+  "distinct_selected_methods": 80,
+  "distinct_methods_with_passing_results": 75,
+  "formal_story28_29_210_acceptance": false,
+  "new_provider_calls": 0,
+  "model_thread_starts": 0,
+  "budget_releases": 0,
+  "remote_writes": 0,
+  "main_merges": 0,
+  "fast_setting_changed": false,
+  "ui_speed_independently_verified": false,
+  "remaining_blockers": [
+    {
+      "action": "Story 2.8 original prepare/reserve/apply/publish/verify and formal recovery",
+      "status": "not_started_on_cloud",
+      "reason": "Original private target/journal/proofs, original owner history and populated authority are absent; do not replace or re-sign them."
+    },
+    {
+      "action": "Compensation-only capacity policy and real review",
+      "status": "blocked",
+      "reason": "No applicable official runtime capacity metadata; same inherited runner exits 1 at read-only CODEX_HOME SQLite initialization; no models_cache.json."
+    },
+    {
+      "action": "Real serialized token measurement",
+      "status": "blocked",
+      "reason": "Official cl100k_base/o200k_base encoding downloads receive proxy 403 for openaipublic.blob.core.windows.net."
+    },
+    {
+      "action": "Five selected Story 2.9 owner controls and six unstarted coordinator tests; Windows formal acceptance",
+      "status": "blocked",
+      "reason": "Production publish_initial_run explicitly rejects non-Windows with b_route_runtime_initialization_requires_windows."
+    },
+    {
+      "action": "Local hard checks",
+      "status": "failed_before_first_gate",
+      "reason": "Original public entry uses py; Linux has no Windows py launcher. No summary.json was emitted; console/events retained."
+    },
+    {
+      "action": "Paid Capability/MVG segmentation",
+      "status": "not_started_on_cloud",
+      "reason": "Original fiscal ledger, claim/lease graph and legitimate Root issuer/authority unavailable. Historical metadata09 passed according to derived handoff only, not paid qualification."
+    },
+    {
+      "action": "R60 Root-02",
+      "status": "original_outcome_unknown",
+      "reason": "No terminal original receipt transferred; not replayed."
+    }
+  ],
+  "additional_repairs": [
+    {
+      "path": "scripts/python/tests/test_mvg_capability_recovery.py",
+      "change": "Declare the existing checkpoint strategy in the uncommitted-state fixture; retain all original assertions; no production change.",
+      "first_result": "story29-legacy-proof-03/result.json",
+      "passing_recheck": "story29-uncommitted-fixture-04/result.json"
+    }
+  ],
+  "workflow_raw_bytes_identical_to_baseline": true,
+  "checks": [
+    {
+      "label": "story210-cli-01",
+      "tests_run": 27,
+      "passed": 27,
+      "successful": true
+    },
+    {
+      "label": "story28-focused-01",
+      "tests_run": 18,
+      "passed": 18,
+      "successful": true
+    },
+    {
+      "label": "story29-data-01",
+      "tests_run": 26,
+      "passed": 21,
+      "successful": false
+    },
+    {
+      "label": "story29-legacy-proof-03",
+      "tests_run": 5,
+      "passed": 4,
+      "successful": false
+    },
+    {
+      "label": "story29-review-cli-02",
+      "tests_run": 4,
+      "passed": 4,
+      "successful": true
+    },
+    {
+      "label": "story29-uncommitted-fixture-04",
+      "tests_run": 1,
+      "passed": 1,
+      "successful": true
+    }
+  ]
+}

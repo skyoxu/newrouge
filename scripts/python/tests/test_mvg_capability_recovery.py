@@ -60,7 +60,7 @@ class RecoveryIdentityTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
             run = root / "logs/ci/mvg-planning/run"
-            state = {"run_id": "run"}
+            state = {"run_id": "run", "checkpoint_strategy": recovery.CHECKPOINT_STRATEGY}
             recovery.bind_epoch(root, state)
             atomic_json(run / "run.json", state)
             pending = deepcopy(state)

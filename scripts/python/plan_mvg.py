@@ -413,7 +413,8 @@ def candidate_admission_errors(root: Path, state: dict[str, Any],
                                check_originals: bool = True) -> list[dict[str, str]]:
     from _b_route_planning_runtime import enabled, machine, proof_errors
     if enabled(state):
-        return machine(root, state, proposal) if semantic_review is None else proof_errors(root, state, proposal, semantic_review)
+        return (machine(root, state, proposal, check_originals=check_originals) if semantic_review is None else
+            proof_errors(root, state, proposal, semantic_review, check_originals=check_originals))
     """Return ordered hard issues that prevent a proposal entering selection."""
     validation = validate_proposal(root, state, proposal, append_requirement_ids=append_requirement_ids,
                                    check_originals=check_originals)
@@ -6727,7 +6728,7 @@ def validate(root: Path, *, run_id: str) -> dict[str, Any]:
 def _validate_input_freshness(root: Path, run_dir: Path, state: dict[str, Any], *, check_originals=True) -> None:
     from _b_route_planning_runtime import enabled, validate_input
     if enabled(state):
-        return validate_input(root, run_dir, state)
+        return validate_input(root, run_dir, state, check_originals=check_originals)
     prepared_index = load_json(run_dir / "analysis-input/analysis-index.json", {})
     for key in ("checkpoint_strategy", "checkpoint_schema_version", "planning_completion_protocol"):
         if prepared_index.get(key) != state.get(key):

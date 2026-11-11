@@ -1,0 +1,20 @@
+{
+  "kind": "local_official_runner_metadata_only",
+  "started_utc": "2026-11-11T16:39:55.069284+00:00",
+  "cli_version": "0.163.0",
+  "model_turns": 0,
+  "rpc_methods": [
+    "initialize"
+  ],
+  "same_inherited_codex_home": true,
+  "models_cache_before": false,
+  "runtime_source": "official CLI app-server response; no provider capacity attestation",
+  "metadata_error": {
+    "type": "RuntimeError",
+    "message": "app_server_stdout_closed"
+  },
+  "process_exit": 1,
+  "pipe_threads_stopped": true,
+  "models_cache_after": false,
+  "finished_utc": "2026-11-11T16:39:55.104275+00:00"
+}

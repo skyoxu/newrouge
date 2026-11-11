@@ -1,0 +1,288 @@
+{
+  "created_utc": "2026-11-11T16:41:21.136771+00:00",
+  "baseline": "r62-story28",
+  "story29_delta": "r61-story27..r65-story29",
+  "story210_delta": "selected r65-story29..r64-story210 entrypoint files",
+  "r62_files": [
+    {
+      "path": "_bmad-output/implementation-artifacts/b-route/spec-2-8-public-recovery.md",
+      "r62_blob": "700253230774b56373888489df4291a93b196025",
+      "integrated_blob": "700253230774b56373888489df4291a93b196025",
+      "preserved": true
+    },
+    {
+      "path": "docs/adr/ADR-0050-b-route-compensation-review-materials.md",
+      "r62_blob": "10787c8308abe4eaf754622f37a1793e59a1b646",
+      "integrated_blob": "10787c8308abe4eaf754622f37a1793e59a1b646",
+      "preserved": true
+    },
+    {
+      "path": "docs/adr/ADR-0053-b-route-historical-v3-original-owner.md",
+      "r62_blob": "80d4f683984f5bbacbe8f2601b8688296f32b5c6",
+      "integrated_blob": "80d4f683984f5bbacbe8f2601b8688296f32b5c6",
+      "preserved": true
+    },
+    {
+      "path": "docs/adr/ADR-0055-b-route-fixed-work-policy-calibration.md",
+      "r62_blob": "cd4a0b5b2b0e4cd250bce0b6980189ab3c4b2566",
+      "integrated_blob": "cd4a0b5b2b0e4cd250bce0b6980189ab3c4b2566",
+      "preserved": true
+    },
+    {
+      "path": "docs/architecture/ADR_INDEX_GODOT.md",
+      "r62_blob": "dc09896dcfe77884bb7b9fba3ed75d22ef17aaad",
+      "integrated_blob": "dc09896dcfe77884bb7b9fba3ed75d22ef17aaad",
+      "preserved": true
+    },
+    {
+      "path": "docs/workflows/story-2-8-public-recovery.md",
+      "r62_blob": "10d20349ee1e8b69e92dfa113e5df38b216bbb18",
+      "integrated_blob": "10d20349ee1e8b69e92dfa113e5df38b216bbb18",
+      "preserved": true
+    },
+    {
+      "path": "scripts/python/_b_route_compact_literal.py",
+      "r62_blob": "aab637dcef6424df412b1db677ec8e9e2ef4e85b",
+      "integrated_blob": "aab637dcef6424df412b1db677ec8e9e2ef4e85b",
+      "preserved": true
+    },
+    {
+      "path": "scripts/python/_b_route_qualified_compensation_materials_v2.py",
+      "r62_blob": "83680d275042cb584219f0b29468f5f3e497bda6",
+      "integrated_blob": "83680d275042cb584219f0b29468f5f3e497bda6",
+      "preserved": true
+    },
+    {
+      "path": "scripts/python/_b_route_qualified_compensation_review_v2.py",
+      "r62_blob": "9a126cad2350e35fe40dcc3c25f55eb75825d682",
+      "integrated_blob": "9a126cad2350e35fe40dcc3c25f55eb75825d682",
+      "preserved": true
+    },
+    {
+      "path": "scripts/python/_b_route_qualified_public_history_v2.py",
+      "r62_blob": "5e3b8446d45ec41c37a23240e35f48bca1122ab1",
+      "integrated_blob": "5e3b8446d45ec41c37a23240e35f48bca1122ab1",
+      "preserved": true
+    },
+    {
+      "path": "scripts/python/run_gate_bundle.py",
+      "r62_blob": "e705623e045fa2642af6d9ecf46b82bc22c006a2",
+      "integrated_blob": "23943134e2acfe82fec2bdec7652e7d65802e042",
+      "preserved": false
+    },
+    {
+      "path": "scripts/python/tests/test_b_route_compensation.py",
+      "r62_blob": "2019aa4fc8f184abfc5de810b979e83b058bb437",
+      "integrated_blob": "2019aa4fc8f184abfc5de810b979e83b058bb437",
+      "preserved": true
+    },
+    {
+      "path": "scripts/python/tests/test_b_route_initial_legacy.py",
+      "r62_blob": "9644b2344629a909ff09573bdb7d875ed0fda66f",
+      "integrated_blob": "9644b2344629a909ff09573bdb7d875ed0fda66f",
+      "preserved": true
+    },
+    {
+      "path": "scripts/python/tests/test_b_route_qualified_historical_v3.py",
+      "r62_blob": "2e5348fe1f84f5c5610e993750ae7e2115b8cfcb",
+      "integrated_blob": "2e5348fe1f84f5c5610e993750ae7e2115b8cfcb",
+      "preserved": true
+    },
+    {
+      "path": "scripts/python/tests/test_b_route_qualified_render_retention_v2.py",
+      "r62_blob": "829472bda0f29d1aa0cd6fab748bf81027f34121",
+      "integrated_blob": "829472bda0f29d1aa0cd6fab748bf81027f34121",
+      "preserved": true
+    },
+    {
+      "path": "scripts/python/tests/test_b_route_share_literal_keys.py",
+      "r62_blob": "de4c7fb096aeb84236de68455f5d74abbe11e996",
+      "integrated_blob": "de4c7fb096aeb84236de68455f5d74abbe11e996",
+      "preserved": true
+    },
+    {
+      "path": "scripts/python/tests/test_b_route_story25_resource_pipeline.py",
+      "r62_blob": "2b8ad573d62865462c6253868285e95fbfd6ad5e",
+      "integrated_blob": "2b8ad573d62865462c6253868285e95fbfd6ad5e",
+      "preserved": true
+    },
+    {
+      "path": "scripts/python/tests/test_b_route_structural_share.py",
+      "r62_blob": "7aab9484b5783fa91a8775fcafe8c879cd0828f0",
+      "integrated_blob": "7aab9484b5783fa91a8775fcafe8c879cd0828f0",
+      "preserved": true
+    }
+  ],
+  "imported_files": [
+    {
+      "path": ".agents/skills/plan-capabilities/SKILL.md",
+      "r64_blob": "ef04e732ee066041714ebee47a100678b6cc8fe3",
+      "integrated_blob": "ef04e732ee066041714ebee47a100678b6cc8fe3",
+      "matches_saved_r64": true
+    },
+    {
+      "path": ".agents/skills/plan-mvg/SKILL.md",
+      "r64_blob": "845bda3fcfb10878b0d8743c8af03462d198772a",
+      "integrated_blob": "845bda3fcfb10878b0d8743c8af03462d198772a",
+      "matches_saved_r64": true
+    },
+    {
+      "path": "AGENTS.md",
+      "r64_blob": "379ea452723d49acaa52d232d4a824184c00d173",
+      "integrated_blob": "379ea452723d49acaa52d232d4a824184c00d173",
+      "matches_saved_r64": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/b-route/deferred-work.md",
+      "r64_blob": "45ca813e8c15ea21ead851932a9274e4c4ececc5",
+      "integrated_blob": "45ca813e8c15ea21ead851932a9274e4c4ececc5",
+      "matches_saved_r64": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/b-route/spec-2-10-formal-entrypoint.md",
+      "r64_blob": "ea80948367d81c1a2decb8fb0b1f7ffb924e76ed",
+      "integrated_blob": "ea80948367d81c1a2decb8fb0b1f7ffb924e76ed",
+      "matches_saved_r64": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/b-route/spec-2-9-completed-planning-reuse.md",
+      "r64_blob": "b18a7a584212516fb282c9721bb4ffa5b81bef5f",
+      "integrated_blob": "b18a7a584212516fb282c9721bb4ffa5b81bef5f",
+      "matches_saved_r64": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/b-route/sprint-status.yaml",
+      "r64_blob": "0a6153fda91d69baaf3eca10550ce8efc6e04292",
+      "integrated_blob": "0a6153fda91d69baaf3eca10550ce8efc6e04292",
+      "matches_saved_r64": true
+    },
+    {
+      "path": "docs/workflows/b-route-adoption.md",
+      "r64_blob": "24fb4e3bb03fcd01282759c5420c73c6b889aced",
+      "integrated_blob": "24fb4e3bb03fcd01282759c5420c73c6b889aced",
+      "matches_saved_r64": true
+    },
+    {
+      "path": "docs/workflows/b-route-native-planning-status.md",
+      "r64_blob": "ff420e58be98f92a74c70e878a203f986c1aa683",
+      "integrated_blob": "ff420e58be98f92a74c70e878a203f986c1aa683",
+      "matches_saved_r64": true
+    },
+    {
+      "path": "docs/workflows/mvg-integration-acceptance.md",
+      "r64_blob": "129a221b72fcdc183806c0d6bfd9b47271c2d2c7",
+      "integrated_blob": "129a221b72fcdc183806c0d6bfd9b47271c2d2c7",
+      "matches_saved_r64": true
+    },
+    {
+      "path": "docs/workflows/script-entrypoints-index.md",
+      "r64_blob": "0ec4ace72ab63337f3316a561e8a33e66e9150b6",
+      "integrated_blob": "0ec4ace72ab63337f3316a561e8a33e66e9150b6",
+      "matches_saved_r64": true
+    },
+    {
+      "path": "docs/workflows/stable-public-entrypoints.md",
+      "r64_blob": "2c548bc89cf6d7f0ba0aa05c2b9aa518e30cd957",
+      "integrated_blob": "2c548bc89cf6d7f0ba0aa05c2b9aa518e30cd957",
+      "matches_saved_r64": true
+    },
+    {
+      "path": "scripts/python/_b_route_completed_reuse.py",
+      "r64_blob": "c0decf916f112f209ecabf97e249ab05208e6aa5",
+      "integrated_blob": "c0decf916f112f209ecabf97e249ab05208e6aa5",
+      "matches_saved_r64": true
+    },
+    {
+      "path": "scripts/python/_b_route_planning_runtime.py",
+      "r64_blob": "11ceea998e0d2d1dd811d5e8fd60bdd566957bb8",
+      "integrated_blob": "11ceea998e0d2d1dd811d5e8fd60bdd566957bb8",
+      "matches_saved_r64": true
+    },
+    {
+      "path": "scripts/python/_mvg_capability_generation.py",
+      "r64_blob": "aa29bb32b8ca9494ef180518a55eaf2591b0bb88",
+      "integrated_blob": "aa29bb32b8ca9494ef180518a55eaf2591b0bb88",
+      "matches_saved_r64": true
+    },
+    {
+      "path": "scripts/python/_mvg_capability_recovery.py",
+      "r64_blob": "d493cd9960196e3ba70da150f9b610efbb01fa57",
+      "integrated_blob": "d493cd9960196e3ba70da150f9b610efbb01fa57",
+      "matches_saved_r64": true
+    },
+    {
+      "path": "scripts/python/_mvg_capability_selection.py",
+      "r64_blob": "60cbe5af76b9d1ccf87e408b0755e24dabbe1ac1",
+      "integrated_blob": "60cbe5af76b9d1ccf87e408b0755e24dabbe1ac1",
+      "matches_saved_r64": true
+    },
+    {
+      "path": "scripts/python/_mvg_global_audit.py",
+      "r64_blob": "27bd0af4c6196c49f9b084c66379b5ae4bad123c",
+      "integrated_blob": "27bd0af4c6196c49f9b084c66379b5ae4bad123c",
+      "matches_saved_r64": true
+    },
+    {
+      "path": "scripts/python/dev_cli.py",
+      "r64_blob": "7b1b13676fe5ef08c4c072c0f923107f20418aef",
+      "integrated_blob": "7b1b13676fe5ef08c4c072c0f923107f20418aef",
+      "matches_saved_r64": true
+    },
+    {
+      "path": "scripts/python/dev_cli_builders.py",
+      "r64_blob": "1fb464cc4d9f2e73044045a020ec8e830fa464df",
+      "integrated_blob": "1fb464cc4d9f2e73044045a020ec8e830fa464df",
+      "matches_saved_r64": true
+    },
+    {
+      "path": "scripts/python/plan_mvg.py",
+      "r64_blob": "eafb06c1ba79618cd711b175d4693172260e1b1d",
+      "integrated_blob": "eafb06c1ba79618cd711b175d4693172260e1b1d",
+      "matches_saved_r64": true
+    },
+    {
+      "path": "scripts/python/tests/test_b_route_completed_reuse.py",
+      "r64_blob": "63f6d05d1bc7615f10808744eb63c929fffb64f0",
+      "integrated_blob": "63f6d05d1bc7615f10808744eb63c929fffb64f0",
+      "matches_saved_r64": true
+    },
+    {
+      "path": "scripts/python/tests/test_b_route_indexed_review.py",
+      "r64_blob": "89d8e172f9e341c5651af353a386217e4b9e6565",
+      "integrated_blob": "89d8e172f9e341c5651af353a386217e4b9e6565",
+      "matches_saved_r64": true
+    },
+    {
+      "path": "scripts/python/tests/test_mvg_global_audit.py",
+      "r64_blob": "14a35def3cb1a4f8e2cf28a3cf0c88f980018f65",
+      "integrated_blob": "14a35def3cb1a4f8e2cf28a3cf0c88f980018f65",
+      "matches_saved_r64": true
+    },
+    {
+      "path": "scripts/python/tests/test_planning_dev_cli.py",
+      "r64_blob": "81ac5a5209754d912b5ea6ac1725593311471784",
+      "integrated_blob": "81ac5a5209754d912b5ea6ac1725593311471784",
+      "matches_saved_r64": true
+    }
+  ],
+  "ci_registration": "one added completed_reuse selector over r62; original r62 selector registrations preserved",
+  "conflict_resolution": "Three empty older tails retained exact r62 content: spec2.8, recovery owning document, historical-v3 tests. No r62 code was downgraded.",
+  "r59_fiscal_candidate_installed": false,
+  "r59_reason": "Candidate depends on original private Root issuer/graph/lease and fixed original Windows path; not a cloud authority. Pure ADR-0054 helper already exists in r62.",
+  "unchanged_workflow_raw_bytes": true,
+  "remote_writes": 0,
+  "model_turns": 0,
+  "formal_acceptance": false,
+  "post_integration_changes": [
+    {
+      "path": "_bmad-output/implementation-artifacts/b-route/sprint-status.yaml",
+      "reason": "Administrative current timestamp only; story statuses remain in-progress."
+    },
+    {
+      "path": "scripts/python/tests/test_mvg_capability_recovery.py",
+      "change": "Declare the existing checkpoint strategy in the uncommitted-state fixture; retain all original assertions; no production change.",
+      "first_result": "story29-legacy-proof-03/result.json",
+      "passing_recheck": "story29-uncommitted-fixture-04/result.json"
+    }
+  ]
+}

@@ -22,3 +22,7 @@
 - source_spec: `_bmad-output/implementation-artifacts/b-route/spec-2-7-public-commit.md`
   summary: G3：defer：历史 OP03 维护覆盖限制
   evidence: 原七方法确实执行过，但不能宣称全部验证成功 binding 构造。当前 2.8 历史消费者不重构旧 binding；不移植旧实现或改冻结 R56。当前 15 方法 DATA/接口适配器已注册并通过，但不充当真实恢复验收。
+
+- source_spec: `spec-2-9-completed-planning-reuse.md`
+  summary: 闭包外新增实际Requirement分母后的自动完成项重基尚未证明属于当前无关元数据复用合同，不新增交付阻塞。
+  evidence: B3为maybe-false/medium；当前完整分母不兼容明确miss/fresh。若扩展，须证明治理闭包、原单项语义和全部验证分母的相容性；不伪称已支持。

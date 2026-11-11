@@ -1,10 +1,10 @@
 # Adoption operation and host review
 
-Story 2.6 exposes owned review preparation/completion and offline operation
-prepare/reserve/inspect. It never applies a formal target, publishes a catalog,
-creates a Task, activates default B, dispatches a model, refunds a reservation or
-recovers an unknown request. Current native 2.5/1.5/1.6 evidence remains required.
-All public results retain formal_adoption/readiness/runtime_verified=false.
+本入口按 stage 使用原 owner：review-prepare/review-complete 和 prepare/reserve/inspect
+保留正式采纳为 false；apply/verify/publish/read 与 recover 沿用 commit owner。只有
+已校验 committed publication 可以返回 formal_adoption=true。当前原生资格与保护证据仍
+必须满足。入口不会创建 Task、启用默认 B、自行执行模型、退还预留或重发未知请求；
+readiness/runtime_verified 始终为 false。完整顺序与恢复见[原生规划导航](b-route-native-planning-status.md)。
 
 ## One public route
 
