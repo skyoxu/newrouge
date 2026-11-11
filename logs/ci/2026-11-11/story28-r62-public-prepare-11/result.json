@@ -1,0 +1,13 @@
+{
+  "utc": "2026-11-11T14:31:16.687910+00:00",
+  "worker_pid": 34572,
+  "held_process_handle": 444,
+  "actual_child_OS_exit": 2,
+  "natural_exit": true,
+  "unit_present": true,
+  "passed": false,
+  "state": "complete",
+  "new_project_model_calls": 0,
+  "formal_story28_acceptance": false,
+  "project_model_budget_unchanged": true
+}

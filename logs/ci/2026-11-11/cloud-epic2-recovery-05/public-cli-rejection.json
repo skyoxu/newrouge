@@ -1,0 +1,169 @@
+{
+  "schema": "newrouge.public-cli-rejection-smoke.v1",
+  "started_utc": "2026-11-11T17:16:47.494031+00:00",
+  "checks": [
+    {
+      "case": "apply-context",
+      "lane": "direct",
+      "exit_code": 2,
+      "result": {
+        "status": "blocked",
+        "operation_id": "UnknownCloudID",
+        "scope_ids": null,
+        "state": null,
+        "formal_adoption": false,
+        "readiness": false,
+        "runtime_verified": false,
+        "diagnostics": [
+          {
+            "reason_code": "invalid_argument",
+            "stage": null,
+            "entity_id": "UnknownCloudID",
+            "expected": "--context on inspect/read only",
+            "actual": "apply",
+            "resume_ref": null
+          }
+        ]
+      },
+      "target_files_after": [],
+      "stderr_empty": true
+    },
+    {
+      "case": "apply-context",
+      "lane": "dev-cli",
+      "exit_code": 2,
+      "result": {
+        "status": "blocked",
+        "operation_id": "UnknownCloudID",
+        "scope_ids": null,
+        "state": null,
+        "formal_adoption": false,
+        "readiness": false,
+        "runtime_verified": false,
+        "diagnostics": [
+          {
+            "reason_code": "invalid_argument",
+            "stage": null,
+            "entity_id": "UnknownCloudID",
+            "expected": "--context on inspect/read only",
+            "actual": "apply",
+            "resume_ref": null
+          }
+        ]
+      },
+      "target_files_after": [],
+      "stderr_empty": true
+    },
+    {
+      "case": "origin-context",
+      "lane": "direct",
+      "exit_code": 2,
+      "result": {
+        "status": "blocked",
+        "operation_id": "UnknownCloudID",
+        "scope_ids": null,
+        "state": null,
+        "formal_adoption": false,
+        "readiness": false,
+        "runtime_verified": false,
+        "diagnostics": [
+          {
+            "reason_code": "invalid_argument",
+            "stage": null,
+            "entity_id": "UnknownCloudID",
+            "expected": "--context on inspect/read only",
+            "actual": "origin-prepare",
+            "resume_ref": null
+          }
+        ]
+      },
+      "target_files_after": [],
+      "stderr_empty": true
+    },
+    {
+      "case": "origin-context",
+      "lane": "dev-cli",
+      "exit_code": 2,
+      "result": {
+        "status": "blocked",
+        "operation_id": "UnknownCloudID",
+        "scope_ids": null,
+        "state": null,
+        "formal_adoption": false,
+        "readiness": false,
+        "runtime_verified": false,
+        "diagnostics": [
+          {
+            "reason_code": "invalid_argument",
+            "stage": null,
+            "entity_id": "UnknownCloudID",
+            "expected": "--context on inspect/read only",
+            "actual": "origin-prepare",
+            "resume_ref": null
+          }
+        ]
+      },
+      "target_files_after": [],
+      "stderr_empty": true
+    },
+    {
+      "case": "invalid-id",
+      "lane": "direct",
+      "exit_code": 2,
+      "result": {
+        "status": "blocked",
+        "operation_id": "../escape",
+        "scope_ids": null,
+        "state": null,
+        "formal_adoption": false,
+        "readiness": false,
+        "runtime_verified": false,
+        "diagnostics": [
+          {
+            "reason_code": "file_not_found",
+            "stage": "path",
+            "entity_id": "../escape",
+            "expected": "existing reference target",
+            "actual": "missing path",
+            "resume_ref": "docs/planning/b-route/commits/../escape.json"
+          }
+        ]
+      },
+      "target_files_after": [],
+      "stderr_empty": true
+    },
+    {
+      "case": "invalid-id",
+      "lane": "dev-cli",
+      "exit_code": 2,
+      "result": {
+        "status": "blocked",
+        "operation_id": "../escape",
+        "scope_ids": null,
+        "state": null,
+        "formal_adoption": false,
+        "readiness": false,
+        "runtime_verified": false,
+        "diagnostics": [
+          {
+            "reason_code": "file_not_found",
+            "stage": "path",
+            "entity_id": "../escape",
+            "expected": "existing reference target",
+            "actual": "missing path",
+            "resume_ref": "docs/planning/b-route/commits/../escape.json"
+          }
+        ]
+      },
+      "target_files_after": [],
+      "stderr_empty": true
+    }
+  ],
+  "status": "passed",
+  "model_calls": 0,
+  "original_operation_accessed": false,
+  "qualification": "Actual fresh CLI processes on an empty temporary target; argument rejection and absence of writes only.",
+  "passed": 6,
+  "elapsed_seconds": 0.747656200000165,
+  "finished_utc": "2026-11-11T17:16:48.241846+00:00"
+}

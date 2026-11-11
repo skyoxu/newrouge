@@ -1,0 +1,11 @@
+{
+  "utc": "2026-11-11T14:31:15.456029+00:00",
+  "scope": "actual genuine Derived owner render return; not final request admission or Story acceptance",
+  "work_limit": 170000000,
+  "work_remaining": 3060226,
+  "work_used": 166939774,
+  "frame_characters": 313388,
+  "frame_bytes": 313388,
+  "source_commit": "b24e1dfd35901389dc6297683cd1fe4b52ce3b58",
+  "new_project_model_calls": 0
+}

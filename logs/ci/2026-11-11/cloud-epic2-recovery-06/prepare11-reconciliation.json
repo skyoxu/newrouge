@@ -1,0 +1,63 @@
+{
+  "schema": "newrouge.prepare11-original-evidence-reconciliation.v1",
+  "created_utc": "2026-11-11T17:20:50.468968+00:00",
+  "original_terminal_verified": {
+    "natural_os_exit": 2,
+    "passed": false,
+    "new_project_model_calls": 0,
+    "elapsed_seconds": 600.2810431999387,
+    "parent_observed_subprocesses": 1
+  },
+  "original_render": {
+    "utc": "2026-11-11T14:31:15.456029+00:00",
+    "scope": "actual genuine Derived owner render return; not final request admission or Story acceptance",
+    "work_limit": 170000000,
+    "work_remaining": 3060226,
+    "work_used": 166939774,
+    "frame_characters": 313388,
+    "frame_bytes": 313388,
+    "source_commit": "b24e1dfd35901389dc6297683cd1fe4b52ce3b58",
+    "new_project_model_calls": 0
+  },
+  "actual_final_request": {
+    "estimated_input_tokens": 101371,
+    "continuation_reserve": 2000,
+    "limit": 70000,
+    "complete_request_chars": 316309,
+    "complete_request_bytes": 316309,
+    "token_counter": "max(o200k_base,cl100k_base)+10_percent"
+  },
+  "arithmetic_only": {
+    "input_plus_output": 103371,
+    "over_original_gate": 33371,
+    "over_shared_96000_default": 7371,
+    "meaning": "Arithmetic lower bound only; no provider capacity, policy increase or dispatch approval."
+  },
+  "original_wrapper_diagnostic": {
+    "reason_code": "identity_unprovable",
+    "stage": "bundle",
+    "entity_id": "NativeV15Origin03Compensation01",
+    "expected": "complete current adoption evidence",
+    "actual": "ValueError",
+    "resume_ref": null
+  },
+  "current_source_has_existing_capacity_translation": true,
+  "current_owner_sha256": "6e8b0fcf0b5e8ebf6327bd5d2cab49ca7fc17f655d48566727556b16e34c0c82",
+  "current_fix_requalified_by_old_failure": false,
+  "published_sources_distinct": "Failure source b24e1dfd; migrated r62 includes subsequent 2a40ec diagnostic translation. Imported failure is not a rerun of current fix.",
+  "exact_next_static_input": "night-handoff/story28_r62_public_prepare11_20261111.py",
+  "next_input_purpose": "Read existing target and request_ref assignments reaching line153; then locate only their actual referenced request/current formal target. Do not execute the driver or repeat prepare.",
+  "missing_from_four_logs": [
+    "actual target root value",
+    "actual request_ref value",
+    "original request bytes",
+    "complete serialized final request or packet bytes",
+    "applicable official cloud context-window metadata",
+    "original fiscal config/ledger liabilities"
+  ],
+  "root02_missing_means_empty": false,
+  "model_turns_started_for_reconciliation": 0,
+  "original_operation_replayed": false,
+  "capacity_limit_changed": false,
+  "formal_story28_acceptance": false
+}

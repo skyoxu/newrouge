@@ -37,3 +37,19 @@ Follow-up evidence: `logs/ci/2026-11-11/cloud-epic2-recovery-02/REPORT.md` and `
 - [x] Reduce the pending material boundary: published read can use actual formal chain/current non-log authority without all historical logs or fiscal data. Original operation compensation/recovery and paid work still need their separate actual inputs.
 
 Evidence: `logs/ci/2026-11-11/cloud-epic2-recovery-03/REPORT.md`. No private materials received, no model turns or full suite rerun. Formal Epic 2 acceptance remains pending.
+
+## Screened Git handoff pending
+
+The user authorized screened necessary recovery logs on a dedicated non-main branch. Stop the failed Library route and wait for the parent-provided verified remote ref; do not repeat the download or change cloud networking. No archive bytes are received yet, so no hash/manifest or private-state claim is made.
+
+Six fresh actual direct/dev-cli argument-rejection checks passed while that branch is prepared; results preserve blocked diagnostics/false qualification flags and leave an empty target unchanged. Evidence: `logs/ci/2026-11-11/cloud-epic2-recovery-05/public-cli-rejection.json`. These checks do not qualify original operations or formal Windows acceptance.
+
+## Batch01 original evidence restored
+
+- [x] Fetch the exact authorized non-main ref recovery-batch01-public and match d656f91071bb7c123948d0eceb6e757842eac88c; no merge or overwrite.
+- [x] Preserve four original prepare11 logs and published manifest/README. All four individual size/SHA256 values match; total4917 raw bytes, non-text Git attributes retain original CRLF.
+- [x] Reconcile the original natural OS2/zero-call failure, genuine render166939774/170M and actual101371+2000>70000 request rejection. Preserve the old identity_unprovable wrapper; current later diagnostic translation is not requalified by that failure.
+- [waiting] Existing `night-handoff/story28_r62_public_prepare11_20261111.py` target/request_ref definitions and their actual referenced request: the four originals identify only the driver/call, not those values or complete request/packet bytes. Static inspection only; do not rerun the driver.
+- [waiting] Root-02 fiscal data was not found in the reported old location. Unknown liabilities remain occupied; absence is not zero spending or an empty ledger.
+
+Evidence: `logs/ci/2026-11-11/cloud-epic2-recovery-06/REPORT.md`, `batch01-verification.json`, `prepare11-reconciliation.json`, and the byte-exact original four logs. No test/model/operation replay was needed or performed for this import.

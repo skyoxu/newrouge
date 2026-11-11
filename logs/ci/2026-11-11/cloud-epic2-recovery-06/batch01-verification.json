@@ -1,0 +1,38 @@
+{
+  "schema": "newrouge.cloud-recovery-batch-verification.v1",
+  "verified_utc": "2026-11-11T17:19:31.680371+00:00",
+  "remote_commit": "d656f91071bb7c123948d0eceb6e757842eac88c",
+  "working_branch": "build/cloud-epic2-recovery-20261111",
+  "source_checkpoint": "2c693a30f05522273a1294ba7cf20451834b8f91",
+  "merge_performed": false,
+  "files": [
+    {
+      "path": "logs/ci/2026-11-11/story28-r62-public-prepare-11/result.json",
+      "size_bytes": 345,
+      "sha256": "ebe968c9a86bb12ad4e46348af6d7a04b9e602d9731ea874b6b7e459142b726c",
+      "matches_manifest": true
+    },
+    {
+      "path": "logs/ci/2026-11-11/story28-r62-public-prepare-11/unit.json",
+      "size_bytes": 728,
+      "sha256": "803dff1ff118c6555eec82e0ecbd6051cd3dd17a020c249934db1885df6c10ef",
+      "matches_manifest": true
+    },
+    {
+      "path": "logs/ci/2026-11-11/story28-r62-public-prepare-11/traceback.txt",
+      "size_bytes": 3447,
+      "sha256": "b376f795d146f4ad56c9a0204500a6e3604ee3357fc1568656715523f4babf39",
+      "matches_manifest": true
+    },
+    {
+      "path": "logs/ci/2026-11-11/story28-r62-public-prepare-11/genuine-render-complete.json",
+      "size_bytes": 397,
+      "sha256": "d2b56db2ccdafa19d4b563b16e4e4e6e0f261659f30ce001b17a9aa55ecebeba",
+      "matches_manifest": true
+    }
+  ],
+  "old_failed_run_requalified": false,
+  "staged_blobs_match_original_sha256": true,
+  "raw_crlf_preserved": true,
+  "whitespace_validation": "Default diff --check flags original CRLF as trailing whitespace; command-scoped core.whitespace adds cr-at-eol for this byte-exact historical evidence. No file bytes or persistent Git config changed."
+}

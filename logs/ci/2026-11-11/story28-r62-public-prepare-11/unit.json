@@ -1,0 +1,28 @@
+{
+  "utc": "2026-11-11T14:31:16.593911+00:00",
+  "pid": 34572,
+  "passed": false,
+  "error_type": "CodecError",
+  "diagnostic": {
+    "reason_code": "identity_unprovable",
+    "stage": "bundle",
+    "entity_id": "NativeV15Origin03Compensation01",
+    "expected": "complete current adoption evidence",
+    "actual": "ValueError",
+    "resume_ref": null
+  },
+  "exception_chain": [
+    {
+      "type": "CodecError",
+      "message": "identity_unprovable"
+    }
+  ],
+  "elapsed_seconds": 600.2810431999387,
+  "observed_parent_Python_events": {
+    "socket_connect": 0,
+    "subprocess": 1
+  },
+  "new_project_model_calls": 0,
+  "formal_story28_acceptance": false,
+  "original_evidence_retained": true
+}
