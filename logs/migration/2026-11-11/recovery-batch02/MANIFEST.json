@@ -1,0 +1,108 @@
+{
+  "schema": "newrouge.public-recovery-request-locator.v1",
+  "prepared_utc": "2026-11-11T17:25:17.954422+00:00",
+  "repository": "https://github.com/skyoxu/newrouge",
+  "branch": "migration/newrogue-20261111/recovery-batch01-public",
+  "parent_recovery_commit": "d656f91071bb7c123948d0eceb6e757842eac88c",
+  "method": "Static file read and AST inspection only. Driver not imported, executed or replayed.",
+  "driver": {
+    "source_relative_path": "night-handoff/story28_r62_public_prepare11_20261111.py",
+    "current_file_size_bytes": 21478,
+    "current_file_sha256": "2cb0b97a9058e5940938a59049a8889df7bd2dc452f79468412788ed0c7616cb",
+    "excerpt_repository_path": "logs/migration/2026-11-11/recovery-batch02/driver-definitions.txt",
+    "original_excerpt_lines": [
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      153,
+      154
+    ],
+    "definition_sources": {
+      "task": {
+        "line": 12,
+        "source": "task = Path(__file__).resolve().parents[1]"
+      },
+      "repo": {
+        "line": 13,
+        "source": "repo = task / 'r62'"
+      },
+      "target": {
+        "line": 14,
+        "source": "target = task / 'story27-r52-v15-empty-target-native01'"
+      },
+      "out": {
+        "line": 15,
+        "source": "out = task / 'logs/ci/2026-11-11/story28-r62-public-prepare-11'"
+      },
+      "head": {
+        "line": 16,
+        "source": "head = 'b24e1dfd35901389dc6297683cd1fe4b52ce3b58'"
+      },
+      "operation": {
+        "line": 17,
+        "source": "operation = 'NativeV15Origin03Compensation01'"
+      },
+      "request_ref": {
+        "line": 18,
+        "source": "request_ref = 'logs/ci/b-route-requests/native-v15-origin03-compensation-01/request.json'"
+      }
+    },
+    "provenance_limit": "Digest describes the currently retained server file, not independent proof that the whole driver is identical to its original execution-time version. No full driver uploaded."
+  },
+  "resolution": {
+    "task_root": "C:\\Users\\Administrator\\Documents\\Codex\\2026-11-05\\task",
+    "target_definition": "target = task / 'story27-r52-v15-empty-target-native01'",
+    "target_absolute": "C:\\Users\\Administrator\\Documents\\Codex\\2026-11-05\\task\\story27-r52-v15-empty-target-native01",
+    "target_exists": true,
+    "request_ref_definition": "request_ref = 'logs/ci/b-route-requests/native-v15-origin03-compensation-01/request.json'",
+    "request_ref": "logs/ci/b-route-requests/native-v15-origin03-compensation-01/request.json",
+    "request_source_absolute": "C:\\Users\\Administrator\\Documents\\Codex\\2026-11-05\\task\\story27-r52-v15-empty-target-native01\\logs\\ci\\b-route-requests\\native-v15-origin03-compensation-01\\request.json",
+    "request_source_task_relative": "story27-r52-v15-empty-target-native01/logs/ci/b-route-requests/native-v15-origin03-compensation-01/request.json",
+    "request_exists": true,
+    "request_repository_path": "logs/ci/b-route-requests/native-v15-origin03-compensation-01/request.json",
+    "placement_note": "Repository path preserves request_ref for static cloud inspection. The original separate target root and its full state have not been restored or made executable."
+  },
+  "request": {
+    "size_bytes": 1158,
+    "sha256": "7dea03af089f46bfd26584a8abb1f8c721b96a664f6b1fd110c62ad78d48ecae",
+    "byte_exact_original": true,
+    "redacted": false,
+    "schema_version": "newrouge.b-route-compensation-request.v2",
+    "operation_id": "NativeV15Origin03Compensation01"
+  },
+  "privacy": {
+    "credentials_found": false,
+    "redactions": [],
+    "necessary_historical_information_retained": [
+      "Windows host/source paths and default Administrator account",
+      "Operation IDs, request/plan references and evidence digests",
+      "Source commit and static invocation arguments"
+    ],
+    "not_published": [
+      "Full driver and observation hooks",
+      "Passwords, tokens, keys, auth.json or sessions",
+      "Referenced plan file, other target state, ledger bodies or unrelated private materials"
+    ]
+  },
+  "applicability": [
+    "Source head declaration is b24e1dfd35901389dc6297683cd1fe4b52ce3b58; this is not a rerun of later diagnostic fixes.",
+    "This request uses compensation-request.v2 and selects an existing plan reference. Referenced plan and old operation evidence are not included in this batch.",
+    "compensates.request_raw_digest binds the earlier NativeV15Origin03 request; it is not the SHA-256 of this compensation request.",
+    "Neither static file presence nor publication proves this complete request was the byte-identical input consumed at execution time.",
+    "No execution authority, candidate acceptance, reservation release, or proof completion is granted. Preserve old unknown outcomes and budget."
+  ],
+  "actions": {
+    "tests_started": 0,
+    "driver_executions": 0,
+    "model_calls": 0,
+    "project_development": false,
+    "source_originals_modified": false,
+    "force_push": false,
+    "main_merge": false,
+    "Fast_enabled": false
+  }
+}

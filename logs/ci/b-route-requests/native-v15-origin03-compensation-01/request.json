@@ -1,0 +1,24 @@
+{
+  "schema_version": "newrouge.b-route-compensation-request.v2",
+  "producer": "compensation",
+  "operation_id": "NativeV15Origin03Compensation01",
+  "compensates": {
+    "operation_id": "NativeV15Origin03",
+    "frozen_digest": "sha256:551ce99d98a546f13cb8e150cf2ef05156e45e4d0f502993cc2533423d86b894",
+    "request_raw_digest": "sha256:9e98ad9d678961111d505d8379824536eea8bdcf4ce91da0df4a574f5c725aa0",
+    "effects_digest": "sha256:6177fd0b0962d2375fcbb0bc54bbc539b7f2babcc165b9e5635c1119ee07570c"
+  },
+  "selection": {
+    "plan_ref": {
+      "path": "docs/planning/b-route/plans/PLAN-bed480ce3e404b2cbaf5514d80a7f941/1.json",
+      "schema_version": "newrouge.b-route-plan.v1",
+      "entity_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+      "revision": 1,
+      "digest": "sha256:965faffefde5731b92e581d30be7ae8854db73844ec5411dd337e0b563e54f20",
+      "verification_mode": "raw",
+      "codec_version": null
+    },
+    "binding_ref": null
+  },
+  "reason": "Preserve the original independently reviewed plan meaning in a new revision and resolve only NativeV15Origin03; retain all existing Task history, obligations and later legitimate changes."
+}

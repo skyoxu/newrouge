@@ -1,0 +1,114 @@
+{
+  "source": "migration/newrogue-20261111/r56-frozen-story27:scripts/python/_b_route_retained_execution.py",
+  "method": "AST literal evaluation; no historical module import",
+  "original_fixed_inputs": [
+    {
+      "task_relative_path": "logs/ci/2026-11-09/story27-r52-atomic-review-prepare-seal-01/config.json",
+      "expected_raw_sha256": "d6f1eec3a9e9bf7dc5b94608db02d069c4f84404625587bfe9ebd7e64658067d",
+      "already_available_exact_archive": false,
+      "priority": "P1-Historical replay only",
+      "purpose": "Original R56 retained-execution owner explicitly reads/pins this original producer support"
+    },
+    {
+      "task_relative_path": "logs/ci/2026-11-09/story27-r52-atomic-review-prepare-01/reader-stdout.bin",
+      "expected_raw_sha256": "57b2c0d883ae6884b090a32d4652e367f22743d467c5d4b0fd6c4982eac2e295",
+      "already_available_exact_archive": false,
+      "priority": "P1-Historical replay only",
+      "purpose": "Original R56 retained-execution owner explicitly reads/pins this original producer support"
+    },
+    {
+      "task_relative_path": "logs/ci/2026-11-09/story27-r52-atomic-review-prepare-01/reader-stderr.bin",
+      "expected_raw_sha256": "ab643f2520346c6a2443c201fd3fe10779da2546ba9e263f563778827c40740e",
+      "already_available_exact_archive": false,
+      "priority": "P1-Historical replay only",
+      "purpose": "Original R56 retained-execution owner explicitly reads/pins this original producer support"
+    },
+    {
+      "task_relative_path": "logs/ci/2026-11-09/story27-r52-atomic-review-prepare-01/actual-native-capture.json",
+      "expected_raw_sha256": "15771c58f9f7f8065b4b03a608d294625c88604a170d0a0d3235f1fd33b0785f",
+      "already_available_exact_archive": false,
+      "priority": "P1-Historical replay only",
+      "purpose": "Original R56 retained-execution owner explicitly reads/pins this original producer support"
+    },
+    {
+      "task_relative_path": "logs/ci/2026-11-09/story27-r52-atomic-review-prepare-01/reader-held-started.json",
+      "expected_raw_sha256": "012731090b820c06579e91ab3a3daf851051fa328da954ebdf29d59155330354",
+      "already_available_exact_archive": false,
+      "priority": "P1-Historical replay only",
+      "purpose": "Original R56 retained-execution owner explicitly reads/pins this original producer support"
+    },
+    {
+      "task_relative_path": "logs/ci/2026-11-09/story27-r52-atomic-review-prepare-01/reader-held-terminal.json",
+      "expected_raw_sha256": "f8ccd45bf89c799692636bf77aa7c5aa8d08c2b0f669a3ed994984a754b66e42",
+      "already_available_exact_archive": false,
+      "priority": "P1-Historical replay only",
+      "purpose": "Original R56 retained-execution owner explicitly reads/pins this original producer support"
+    },
+    {
+      "task_relative_path": "logs/ci/2026-11-09/story27-r52-atomic-review-prepare-01/stop.json",
+      "expected_raw_sha256": "8eeb2cb2399a4706316831564ec1d49042757fe6c02bccd8e485a4fbf2ed7f60",
+      "already_available_exact_archive": false,
+      "priority": "P1-Historical replay only",
+      "purpose": "Original R56 retained-execution owner explicitly reads/pins this original producer support"
+    },
+    {
+      "task_relative_path": "logs/ci/2026-11-09/story27-r52-atomic-review-prepare-supervision-01/result.json",
+      "expected_raw_sha256": "0e43c191bd9da4ec0110f82bece80bf72e547bbc4a8dd894ff533489d64f01ab",
+      "already_available_exact_archive": false,
+      "priority": "P1-Historical replay only",
+      "purpose": "Original R56 retained-execution owner explicitly reads/pins this original producer support"
+    },
+    {
+      "task_relative_path": "night-handoff/story27-r52-public-review-prepare-host-followup02/review_prepare_host.draft.py",
+      "expected_raw_sha256": "3875a5c8865fef7b4297fd8c62393429dea07a63f73b2a8ae051316e11138449",
+      "already_available_exact_archive": false,
+      "priority": "P1-Historical replay only",
+      "purpose": "Original R56 retained-execution owner explicitly reads/pins this original producer support"
+    },
+    {
+      "task_relative_path": "night-handoff/story27-r52-atomic-review-prepare-thin-controls-01/manifest.json",
+      "expected_raw_sha256": "88a551e4a57a09a621990758ae6355d0de70651824a36faabc01ec991810fa25",
+      "already_available_exact_archive": false,
+      "priority": "P1-Historical replay only",
+      "purpose": "Original R56 retained-execution owner explicitly reads/pins this original producer support"
+    },
+    {
+      "task_relative_path": "night-handoff/story27-r52-atomic-review-prepare-thin-controls-01/run_review_prepare.Root-only.py",
+      "expected_raw_sha256": "71e7f9241ae4485a525868060bff75db537fff15e1a6c2d4ce82f5c3fd4916c8",
+      "already_available_exact_archive": false,
+      "priority": "P1-Historical replay only",
+      "purpose": "Original R56 retained-execution owner explicitly reads/pins this original producer support"
+    },
+    {
+      "task_relative_path": "night-handoff/story27-r52-atomic-review-prepare-thin-controls-01/control_common.py",
+      "expected_raw_sha256": "0ea4c7774dec93207fd1b5470ac29232fbcdf0d01b20b06f8db570d85c32ccbe",
+      "already_available_exact_archive": false,
+      "priority": "P1-Historical replay only",
+      "purpose": "Original R56 retained-execution owner explicitly reads/pins this original producer support"
+    },
+    {
+      "task_relative_path": "logs/ci/2026-11-09/story27-r52-atomic-review-prepare-supervision-01/supervisor-started.json",
+      "expected_raw_sha256": "8487cfa42819c94fd8481cc2af5436eecb3d166e42731a432bfe001272f33ab7",
+      "already_available_exact_archive": false,
+      "priority": "P1-Historical replay only",
+      "purpose": "Original R56 retained-execution owner explicitly reads/pins this original producer support"
+    },
+    {
+      "task_relative_path": "logs/ci/2026-11-09/story27-r52-atomic-review-prepare-supervision-01/child-started.json",
+      "expected_raw_sha256": "afc066d65dd521c1ea22375a9f359ed5c76af93b06f74273685c571d53998a8a",
+      "already_available_exact_archive": false,
+      "priority": "P1-Historical replay only",
+      "purpose": "Original R56 retained-execution owner explicitly reads/pins this original producer support"
+    },
+    {
+      "task_relative_path": "logs/ci/2026-11-09/story27-r52-atomic-review-prepare-supervision-01/child-terminal.json",
+      "expected_raw_sha256": "8b44bd98f93be1f9380ed81da84a3f71febfe4e397516ac0a814532b9ffea9a6",
+      "already_available_exact_archive": false,
+      "priority": "P1-Historical replay only",
+      "purpose": "Original R56 retained-execution owner explicitly reads/pins this original producer support"
+    }
+  ],
+  "task_relative_original_request02": "logs/ci/2026-11-09/b-route-requests/native-v15-origin02-request-02/request.json",
+  "target_relative_original_request03": "logs/ci/2026-11-09/b-route-requests/native-v15-origin03-request-01/request.json",
+  "task_relative_execution_ref03": "logs/ci/2026-11-09/story27-r52-atomic-review-prepare-01/actual-native-capture.json"
+}

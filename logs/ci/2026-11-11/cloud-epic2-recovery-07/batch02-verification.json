@@ -1,0 +1,25 @@
+{
+  "remote_commit": "d69cf0a935e9f4078b5ae2f2f746173b88ac3e72",
+  "files": [
+    {
+      "path": "logs/migration/2026-11-11/recovery-batch02/MANIFEST.json",
+      "size_bytes": 5022,
+      "sha256": "b4bb79b84b98b65fa4b21ffafa756df409a7d0483368b3440b4ff0d89bf5d3c9",
+      "integrity_basis": "verified Git commit object; driver is an excerpt, not full original bytes"
+    },
+    {
+      "path": "logs/migration/2026-11-11/recovery-batch02/driver-definitions.txt",
+      "size_bytes": 765,
+      "sha256": "af22a58296f4d1d0cbb71784c562a0a0274b6d0f857dffaad43c68d791df3249",
+      "integrity_basis": "verified Git commit object; driver is an excerpt, not full original bytes"
+    },
+    {
+      "path": "logs/ci/b-route-requests/native-v15-origin03-compensation-01/request.json",
+      "size_bytes": 1158,
+      "sha256": "7dea03af089f46bfd26584a8abb1f8c721b96a664f6b1fd110c62ad78d48ecae",
+      "integrity_basis": "original request SHA256/size in manifest"
+    }
+  ],
+  "driver_executed": false,
+  "execution_time_driver_identity_proven": false
+}

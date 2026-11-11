@@ -1,0 +1,326 @@
+{
+  "schema": "newrouge.consolidated-recovery-material-inventory.v1",
+  "created_utc": "2026-11-11T17:34:21.083692+00:00",
+  "roots": {
+    "Task": "original Task root; absolute location is historical provenance, not cloud authority",
+    "T": "Task/story27-r52-v15-empty-target-native01",
+    "N": "Task/nx",
+    "R": "actual native planner owner root from immutable run/config; never assumed to be T",
+    "Repo": "current fetched/integrated cloud repository"
+  },
+  "items": [
+    {
+      "id": "A0",
+      "priority": "available",
+      "goal": "2.8 failure/locator",
+      "root_alias": "Repo",
+      "paths": [
+        "logs/ci/2026-11-11/story28-r62-public-prepare-11/{result.json,unit.json,traceback.txt,genuine-render-complete.json}",
+        "logs/migration/2026-11-11/recovery-batch02/{driver-definitions.txt,MANIFEST.json}",
+        "logs/ci/b-route-requests/native-v15-origin03-compensation-01/request.json"
+      ],
+      "purpose": "Byte-verified natural OS2/zero-call failure and retained static request/target definitions; do not request again.",
+      "condition": "Required only for the named existing-operation route",
+      "status": "batch01 verified; batch02 request verified, source excerpt has declared provenance limits",
+      "sensitivity": "already screened/public",
+      "recursive_closure": null
+    },
+    {
+      "id": "A1",
+      "priority": "P1",
+      "goal": "2.8 compensation/current formal state; 2.10 published reading",
+      "root_alias": "T",
+      "paths": [
+        "docs/planning/b-route/{catalog.v1.json,policy.v1.json,task-origins.v1.json}",
+        "docs/planning/b-route/plans/PLAN-bed480ce3e404b2cbaf5514d80a7f941/1.json"
+      ],
+      "purpose": "Actual selected original meaning, current formal chain, later revisions and non-log authority.",
+      "condition": "Required only for the named existing-operation route",
+      "status": "not supplied",
+      "sensitivity": "high",
+      "recursive_closure": "Follow actual catalog heads, plan/binding/receipt refs, source/Requirement/Task refs and non-log receipt authority to fixed point. Preserve current bytes and recorded absences; do not substitute journal before images."
+    },
+    {
+      "id": "A2",
+      "priority": "P1",
+      "goal": "2.8 exact operation and pending inventory",
+      "root_alias": "T",
+      "paths": [
+        "logs/ci/b-route-operations/pending.json",
+        "logs/ci/b-route-operations/operations/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/operation.json",
+        "logs/ci/b-route-operations/operations/<all operation IDs in actual inventory>/{operation.json,commit.json,commit.pending.json}"
+      ],
+      "purpose": "Complete index/operation pair and actual partial side effects; code validates this target inventory.",
+      "condition": "Required only for the named existing-operation route",
+      "status": "not supplied",
+      "sensitivity": "high",
+      "recursive_closure": "Include only existing sidecars; include the failed new compensation namespace only if it actually exists. Also follow actual legacy pending/apply-journal refs returned by current inventory, without executing recovery."
+    },
+    {
+      "id": "A3",
+      "priority": "P1",
+      "goal": "2.8 original-v3 cold authentication",
+      "root_alias": "T",
+      "paths": [
+        "logs/ci/b-route-adoption-reviews/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/{review.json,subject.json,request.txt,execution.json,w/prompt.txt,w/schema.json,w/output.json}",
+        "logs/ci/b-route-origin-captures/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/capsule.json",
+        "logs/ci/b-route-retained-executions/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/binding.json",
+        "logs/ci/2026-11-09/b-route-requests/native-v15-origin03-request-01/request.json"
+      ],
+      "purpose": "Original NativeV15Origin03 request, independent review and exact retained native evidence.",
+      "condition": "Required only for the named existing-operation route",
+      "status": "not supplied",
+      "sensitivity": "high",
+      "recursive_closure": "Original operation host_review_ref, proof.files and material.handoff_ref/protection_ref control exact paths. Include only referenced version-specific materials/roles/presentation/historical-auth when that proof family requires them. Execution JSON contains embedded stdout/protocol: no duplicate external files unless actually referenced."
+    },
+    {
+      "id": "A4",
+      "priority": "P1",
+      "goal": "2.8 historical protection and current Task preservation",
+      "root_alias": "T",
+      "paths": [
+        "<original request material.protection_ref.path>",
+        "<snapshot directory>/inventory.json",
+        "<snapshot.raw_files[*].artifact where exists=true>",
+        "<actual current task/master/back/gameplay files and Acceptance/history referenced by formal chain>"
+      ],
+      "purpose": "Full original raw archive versus real current target/Task state.",
+      "condition": "Required only for the named existing-operation route",
+      "status": "not supplied",
+      "sensitivity": "high",
+      "recursive_closure": "Follow snapshot/raw inventory refs to fixed point; preserve complete original bytes and explicit exists=false entries. Current target files must be collected independently of old archive bytes."
+    },
+    {
+      "id": "B1",
+      "priority": "P1",
+      "goal": "2.8 original fixed producer proof",
+      "root_alias": "Task",
+      "paths": [
+        "logs/ci/2026-11-09/story27-r52-atomic-review-prepare-01/* (only 6 pinned members listed separately)",
+        "logs/ci/2026-11-09/story27-r52-atomic-review-prepare-seal-01/config.json",
+        "logs/ci/2026-11-09/b-route-requests/native-v15-origin02-request-02/request.json",
+        "logs/ci/2026-11-09/story27-r52-atomic-review-prepare-supervision-01/<4 pinned JSON files>",
+        "night-handoff/story27-r52-atomic-review-prepare-thin-controls-01/<3 pinned files>",
+        "night-handoff/story27-r52-public-review-prepare-host-followup02/review_prepare_host.draft.py"
+      ],
+      "purpose": "Exact old producer inputs consumed by actual R56 execution03 owner.",
+      "condition": "Required only for the named existing-operation route",
+      "status": "not supplied",
+      "sensitivity": "high",
+      "recursive_closure": "All 15 exact PINS paths and their SHA256 are in historical-producer-fixed-inputs.json. Add original config referenced inputs/source/runtime lists and actually consumed dependency files. Do not execute any Root-only script."
+    },
+    {
+      "id": "B2",
+      "priority": "P1",
+      "goal": "2.8 native/source chain and real completed planning support",
+      "root_alias": "N",
+      "paths": [
+        "logs/ci/mvg-planning/m4/{run.json,handoff.json,accepted-chain/admission-review.json}",
+        "<handoff.original_prepared_ref>",
+        "logs/ci/mvg-planning/m4/recovery/{m1,s1}/record.json",
+        "logs/ci/mvg-recovery/registry.json",
+        "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+        "docs/workflows/chapter3-source-set.json"
+      ],
+      "purpose": "Native capsule/run, source epochs, actual accepted checkpoint/receipt/admission and immutable prepared bytes.",
+      "condition": "Required only for the named existing-operation route",
+      "status": "not supplied",
+      "sensitivity": "high",
+      "recursive_closure": "Collect all paths from native_capture.files/directories, original prepared, run.json, m1/s1 recovery records and their predecessor archives; preserve source and dependency raw pins. No unfinished candidate is reused as completed."
+    },
+    {
+      "id": "B3",
+      "priority": "P1",
+      "goal": "2.8 original qualifications and source support",
+      "root_alias": "Task",
+      "paths": [
+        "logs/ci/2026-11-07/story25-v18-qualification/verify-01/qualified.json",
+        "logs/ci/2026-11-07/story25-r40-formal-closeout/formal-acceptance.json",
+        "logs/ci/2026-11-08/story26-r47-native-step5-close/result.json"
+      ],
+      "purpose": "Finite qualified-origin raw pins; derived whitelist extracts are not these originals.",
+      "condition": "Required only for the named existing-operation route",
+      "status": "not supplied",
+      "sensitivity": "high",
+      "recursive_closure": "Only original-owner qualifications actually present in its QUALIFICATIONS and referenced closure. Two SOURCE_SUPPORT files under logs/ci/2026-11-06/b-route-sources/s25-v15-exclusive-offline/prepare-02/prepare/{source-manifest.json,source-blocks.json} must come from T/archive or exact retained original source root as the original proof says."
+    },
+    {
+      "id": "B4",
+      "priority": "P1",
+      "goal": "2.8 original historical owner",
+      "root_alias": "Task",
+      "paths": [
+        "r62/scripts/python/qualified-historical-owner-authority.v2.json"
+      ],
+      "purpose": "Populated installed authority metadata (not account authentication) with source/schema/interpreter pins.",
+      "condition": "Required only for the named existing-operation route",
+      "status": "not supplied",
+      "sensitivity": "high",
+      "recursive_closure": "Compare r56 source/schema pins against already migrated source first; only missing/mismatched original files need transfer. R52 reader hash already matches public source; do not resend. Fixed R5/R10/R19/R22 Git commit/tree/production-blob/attributes closure is needed only when their original reader actually runs; exact IDs are listed in the report. No whole .git config or full raw log history."
+    },
+    {
+      "id": "C1",
+      "priority": "P1",
+      "goal": "2.9 actual completed-unit reuse and epoch/reopen",
+      "root_alias": "R",
+      "paths": [
+        "logs/ci/{mvg-planning,capability-planning}/<actually selected original run>/run.json",
+        "logs/ci/mvg-recovery/registry.json",
+        "<registry entry.state_path>",
+        "<selected checkpoint/receipt/admission/execution refs>",
+        "<actual run>/analysis-input/<complete immutable prepared inputs>",
+        "<actual run>/{completed-recovery,adoptions,reopen-history}/<referenced members>",
+        "logs/ci/mvg-recovery/clears/epoch-<referenced epoch>.json"
+      ],
+      "purpose": "Original committed completed item, full single-item normalized input, current relevant dependencies and original epoch/revocation/cost history.",
+      "condition": "Required only for the named existing-operation route",
+      "status": "not supplied",
+      "sensitivity": "high",
+      "recursive_closure": "Start from real native run/registry pointers; take checkpoint objects, run-state snapshots, proof/request/schema/output/embedded protocol and actual generation archives to fixed point. SC_MVG_RECOVERY_ROOT or run.recovery.store, if configured, identifies the real store. Do not silently take default empty registry. New legitimate acceptance does not require reusing an old local test fixture."
+    },
+    {
+      "id": "C2",
+      "priority": "P2",
+      "goal": "Reuse prior local checks / settle the old R60 test outcome",
+      "root_alias": "Task",
+      "paths": [
+        "logs/ci/2026-11-11/story29-r63-retained-gen2-01/{result.json,unit.json}",
+        "logs/ci/2026-11-11/story29-r65-retained-tail-01/{result.json,unit.json}",
+        "logs/ci/2026-11-11/story210-r64-entrypoint-focused-01/{result.json,unit.json}",
+        "<actual original R60 Root-02 started/control ref and any existing terminal/held exit receipt>"
+      ],
+      "purpose": "Reuse covered local checks; avoid blindly repeating an unknown old run.",
+      "condition": "Optional for new independent source/fixture checks. Needed only to close/reuse that old run; absence keeps its outcome and liabilities unknown.",
+      "status": "not supplied",
+      "sensitivity": "medium to high",
+      "recursive_closure": "Original R60 Root-02 record basename is not identified by available files; do not invent it or equate it with the separate fiscal HOME Root-02. Follow existing start/control record, not a newly run replacement."
+    },
+    {
+      "id": "D1",
+      "priority": "P1",
+      "goal": "Paid segmented financial owner and outside occupancy",
+      "root_alias": "Task",
+      "paths": [
+        "story29-unit-profile-allocation-Root-02/config.json",
+        "<actual canonical config Root_authority.path>",
+        "<actual canonical config budget_snapshot.path>",
+        "<canonical namespace>/ledger/{000001.json,<all existing contiguous events>,STOP.json}",
+        "<canonical namespace>/prefix-init.json (if existing)",
+        "<original budget owner _closed_chain/_host3_graph/_budget referenced existing namespaces>"
+      ],
+      "purpose": "Actual paid/unknown/overlapping guard graph and campaign liabilities; preserve released0.",
+      "condition": "The already reported absent Root-02 config is a known-missing anchor, not a repeated file request. Collect the actual existing canonical owner/config and its referenced liability graph if it differs; report unresolved locations once. Mandatory before a new paid action only.",
+      "status": "named Root-02 directory/config/ledger reported absent; actual canonical owner location still unresolved",
+      "sensitivity": "high",
+      "recursive_closure": "Read original owner static source and actual config/ref graph in the same collection pass. If the named root is absent, report absence and every existing reference to it plus the real owner graph location; do not make a replacement config/ledger. Copy no active lock/lease as permission."
+    },
+    {
+      "id": "D2",
+      "priority": "P1",
+      "goal": "Paid segmented owner source/control prerequisites",
+      "root_alias": "Task",
+      "paths": [
+        "night-handoff/story29-unit-profile-funding-issuer-followup06/Root_unit_profile_issuer.draft.py",
+        "story29-host2-controller-draft-01/host2_controller.py",
+        "night-handoff/story23-segmented-financial-prefix-store-followup03-draft/segmented_financial_prefix_store.py",
+        "night-handoff/story23-segmented-financial-prefix-validator-draft-01/segmented_financial_prefix.py",
+        "<actual canonical config source_files/input_files/runtime_files refs>"
+      ],
+      "purpose": "Original linked financial implementation/actual role closure; current candidate alone is not live authority.",
+      "condition": "Required only for the named existing-operation route",
+      "status": "not supplied",
+      "sensitivity": "high",
+      "recursive_closure": "Compare any same-named migrated archive using original SHA256 before reuse. Obtain only missing or different original revisions referenced by real config; no arbitrary current-code overwrite, carrier/seal/registry prerequisite or original script execution."
+    },
+    {
+      "id": "D3",
+      "priority": "P1",
+      "goal": "Paid segmented native birth/prefix/journal",
+      "root_alias": "R",
+      "paths": [
+        "logs/ci/{mvg-planning,capability-planning}/<actual segmented run>/run.json",
+        "<actual run>/b/{plan.json,initial-run.json}; <actual born_ref.path>",
+        "<actual run>/q/n<ordinal>/{claim.json,complete-claim.json,result.json,<exact archived request inputs/output/schema/execution>}",
+        "logs/ci/mvg-recovery/registry.json",
+        "logs/ci/mvg-recovery/activity/segmented-journals/<actual referenced journal>.json",
+        "<existing STOP/unknown/held terminal receipt for actual reservation>"
+      ],
+      "purpose": "Cross-check original fiscal intent with native debit/claim/born/paid outcome and exact complete requests.",
+      "condition": "Required only for the named existing-operation route",
+      "status": "not supplied",
+      "sensitivity": "high",
+      "recursive_closure": "Read actual immutable plan, native and registry pointers, all extant unsettled claims and exact journal before/after targets. Collect request input_archive_ref and actual result/protocol dependencies, not arbitrary whole run caches. Before birth, legitimately absent native files remain absent."
+    },
+    {
+      "id": "D4",
+      "priority": "P2",
+      "goal": "Reuse already completed metadata09 checks",
+      "root_alias": "Task",
+      "paths": [
+        "logs/ci/2026-11-11/story23-r59-metadata-role-09/result.json",
+        "night-handoff/story23-metadata-role09-20261111/out/worker/result.json",
+        "<their actual referenced source/dependency manifest and held terminal receipts>",
+        "logs/ci/2026-11-09/story27-r56-zero03-review-prepare-seal-02/config.json"
+      ],
+      "purpose": "Retain metadata09 success within original scope; never call it paid qualification.",
+      "condition": "Optional unless the actual paid host/config explicitly references it. Do not rerun metadata09 or demand all 66 child outputs/486 files for unrelated Story2.8/2.9 work.",
+      "status": "not supplied",
+      "sensitivity": "medium to high",
+      "recursive_closure": null
+    },
+    {
+      "id": "E0",
+      "priority": "P1",
+      "goal": "New real 3B planning and Story2.10 complete source-to-adoption acceptance",
+      "root_alias": "R",
+      "paths": [
+        "<actual complete planning contract path>",
+        "<contract.audit_ref>",
+        "<prepared_ref or handoff.original_prepared_ref>",
+        "<prepare directory>/{inputs.json,raw-index.json,output-schema.json,<frozen batch templates>}",
+        "<actual audit report/bundle/extraction/comparison/step execution refs>",
+        "<complete registered cumulative source files, constraints and declared contexts>"
+      ],
+      "purpose": "The actual prepare owner requires complete real_model independent audit, planning_eligible=true and no semantic blockers; local synthetic results cannot provide it.",
+      "condition": "Needed for new real native planning/full Story2.10 qualification; not needed for published read alone or independent unit/CLI tests. An existing qualified original proof is reused when applicable.",
+      "status": "exact paths resolved by original contract/prepared/audit refs in this same static collection pass",
+      "sensitivity": "high",
+      "recursive_closure": "Follow complete audit/prepare dependencies and raw-proof inventory plus all declared business input bytes. Reuse identical public source first. Historical Story2.2 actual_model_semantics_verified=false evidence remains limited; if no genuine applicable audit exists, report that absence once rather than fabricate an original or make optional local traces a gate."
+    },
+    {
+      "id": "E1",
+      "priority": "P2",
+      "goal": "Capacity investigation shortcuts",
+      "root_alias": "Task",
+      "paths": [
+        "<existing saved complete final request/frame/packet, if ever persisted>",
+        "<existing official capacity-only metadata receipt with CLI version/effective model/provider/context window/cache timestamp>"
+      ],
+      "purpose": "Avoid recomputing full old render and assess an explicit compensation-only policy.",
+      "condition": "Only existing data. A saved full frame is not required if it never existed; original source excerpt is sufficient for target/request location. Current cloud applicability and authorized policy remain separate.",
+      "status": "not supplied",
+      "sensitivity": "medium to high",
+      "recursive_closure": null
+    }
+  ],
+  "old_operation_hash": "98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659",
+  "new_failed_compensation_hash": "f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864",
+  "collection_rule": "One static collection pass: resolve the listed known anchors and all actual typed JSON file refs/captured file maps/config pin arrays to a fixed point, keep original bytes/absence/order, deduplicate by root+relative path+raw digest. No project/driver/model/financial execution. Record missing refs once with their origin pointer. Do not invent filenames or require unrelated globals.",
+  "excluded": [
+    "passwords/tokens/keys/authentication files/session stores/cookies/private SSH keys",
+    "whole user home or whole Task tree",
+    "tokenizer encoding caches as a workaround for the network403",
+    "copied live locks/leases/handle values as cloud permission",
+    "optional traces as mandatory new acceptance requirements"
+  ],
+  "environment_not_file_transfers": [
+    "Supported Windows process/Job/file-identity execution for original native replay and AC6",
+    "Current legitimate cloud authentication for future model calls; local login status previously yielded remote metadata401",
+    "Allowed official encoding/network setup; do not route around403",
+    "Applicable official current runtime capacity evidence and explicit compensation policy before changing70000"
+  ],
+  "already_available_source": "Five primary migration refs; exact R52 reader; most original R56 source/schema. Reuse verified originals first.",
+  "optional_not_blocking": true,
+  "publication": "Inventory metadata only. No newly collected original contents, credentials or budget authority are created.",
+  "historical_budget_limit": "83 paid-or-unknown /181 overlapping guard /campaign cap290 /released0 are historical reports, not a fresh sum or current reconciliation; do not add83+181 as independent spend."
+}

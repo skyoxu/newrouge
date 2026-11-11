@@ -53,3 +53,12 @@ Six fresh actual direct/dev-cli argument-rejection checks passed while that bran
 - [waiting] Root-02 fiscal data was not found in the reported old location. Unknown liabilities remain occupied; absence is not zero spending or an empty ledger.
 
 Evidence: `logs/ci/2026-11-11/cloud-epic2-recovery-06/REPORT.md`, `batch01-verification.json`, `prepare11-reconciliation.json`, and the byte-exact original four logs. No test/model/operation replay was needed or performed for this import.
+
+## Consolidated material collection; batch02 and independent controls
+
+- [x] One full17-group material inventory supersedes earlier incremental requests. Root aliases, exact15 producer pins, JSON-ref closure selectors, purpose/priority/conditions, optional rows and credential exclusions are explicit. Sender resolves references to a fixed point in one static collection pass and reports all remaining misses together.
+- [x] Fetch verified d69cf0a9; request1158 bytes/SHA256 and current request schema pass. Driver excerpt provides the target and request location; do not require the full driver again or claim execution-time source identity.
+- [x] Two additional focused current recovery tests pass for post-edit preservation and source/rule/receipt damage; upstream admission remains synthetic. No full suite or original operation repeated.
+- [waiting] Actual target/current formal and operation/review/protection closure, native/source qualification and real completed/fiscal graph per the consolidated inventory. P2 optional history is not a general blocker; published read does not require all historical logs or financial data.
+
+Current inventory: `logs/ci/2026-11-11/cloud-epic2-recovery-07/RECOVERY_MATERIALS.md` and JSON; exact producer pin list and outcomes are alongside. Known absent financial Root-02 is not an empty ledger and differs from the unknown-outcome R60 test.
