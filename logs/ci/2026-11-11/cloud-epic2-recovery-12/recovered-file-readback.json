@@ -1,0 +1,21 @@
+{
+  "verified_files": [
+    {
+      "original_task_relative_path": "logs/ci/2026-11-09/story27-r52-atomic-review-prepare-01/reader-stdout.bin",
+      "bytes": 178321214,
+      "sha256": "57b2c0d883ae6884b090a32d4652e367f22743d467c5d4b0fd6c4982eac2e295"
+    },
+    {
+      "original_task_relative_path": "logs/ci/2026-11-09/story27-r52-atomic-review-prepare-01/actual-native-capture.json",
+      "bytes": 180700910,
+      "sha256": "15771c58f9f7f8065b4b03a608d294625c88604a170d0a0d3235f1fd33b0785f"
+    },
+    {
+      "original_task_relative_path": "night-handoff/story27-r52-public-review-prepare-host-followup02/review_prepare_host.draft.py",
+      "bytes": 82000,
+      "sha256": "3875a5c8865fef7b4297fd8c62393429dea07a63f73b2a8ae051316e11138449"
+    }
+  ],
+  "old_code_executed": false,
+  "authority_granted": false
+}

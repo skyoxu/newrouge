@@ -1,0 +1,49 @@
+{
+  "schema": "newrouge.source-defined-native-output-reconstruction.v1",
+  "inputs": [
+    {
+      "archive_path": "target/logs/ci/b-route-origin-captures/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/capsule.json",
+      "bytes": 2379892,
+      "sha256": "df8b3c9bc2e0f5e40d1a45c865ae7b959941250c87ff0733eff5bf845311f7d7"
+    },
+    {
+      "archive_path": "nx/logs/ci/mvg-planning/m4/handoff.json",
+      "bytes": 177135565,
+      "sha256": "caea69f6af1d0c7e34f1e098979e38065832e35d8de9219c664f6166d3707cbf"
+    },
+    {
+      "archive_path": "nx/logs/ci/2026-11-06/b-route-planning-input/i4/ca51aa929b8a29089c302f08eb9c0a7bfd0876026b31d5d7b2dee9b7c939fb48/prepared.json",
+      "bytes": 1140425,
+      "sha256": "f84d3d7db59439382992ffdcddf5e9983185bc5f690d55f24ec0169eca421d6b"
+    }
+  ],
+  "native_result_digest_matches_recorded_capsule": true,
+  "results": [
+    {
+      "task_relative_path": "logs/ci/2026-11-09/story27-r52-atomic-review-prepare-01/reader-stdout.bin",
+      "derived_path": "/workspace/newrouge-recovery-data/batch03-05f5fbf9/work/reconstructed-producer-output/reader-stdout.bin",
+      "expected_bytes": 178321214,
+      "actual_bytes": 178321214,
+      "expected_sha256": "57b2c0d883ae6884b090a32d4652e367f22743d467c5d4b0fd6c4982eac2e295",
+      "actual_sha256": "57b2c0d883ae6884b090a32d4652e367f22743d467c5d4b0fd6c4982eac2e295",
+      "exact_original_raw_match": true,
+      "source_rule": "Preserved R52 _main print(json.dumps(result, ensure_ascii=True, separators=comma/colon, allow_nan=False)); original Windows stdout newline",
+      "reconstruction_attempts": 1
+    },
+    {
+      "task_relative_path": "logs/ci/2026-11-09/story27-r52-atomic-review-prepare-01/actual-native-capture.json",
+      "derived_path": "/workspace/newrouge-recovery-data/batch03-05f5fbf9/work/reconstructed-producer-output/actual-native-capture.json",
+      "expected_bytes": 180700910,
+      "actual_bytes": 180700910,
+      "expected_sha256": "15771c58f9f7f8065b4b03a608d294625c88604a170d0a0d3235f1fd33b0785f",
+      "actual_sha256": "15771c58f9f7f8065b4b03a608d294625c88604a170d0a0d3235f1fd33b0785f",
+      "exact_original_raw_match": true,
+      "source_rule": "Referenced host raw_json: ensure_ascii=False, indent=2, allow_nan=False, one LF, binary write_new",
+      "reconstruction_attempts": 1
+    }
+  ],
+  "qualification": "Derived byte candidates only; exact original size/hash match required before use. No old reader, Guard, driver, native or model executed. Does not prove original held process/Job identity or grant authority.",
+  "old_code_executed": false,
+  "new_model_calls": 0,
+  "authority_granted": false
+}

@@ -1,0 +1,36 @@
+{
+  "scope": "Only exact migration archive_source_map entries for the15 required paths; no basename/history-directory search",
+  "candidates": [
+    {
+      "source": "night-handoff/story27-r52-public-review-prepare-host-followup02/review_prepare_host.draft.py",
+      "mapped_archive": "docs/handoff/2026-11-11/archive/night-handoff/story27-r52-public-review-prepare-host-followup02/review_prepare_host.draft.py",
+      "expected": "3875a5c8865fef7b4297fd8c62393429dea07a63f73b2a8ae051316e11138449",
+      "candidates": [
+        {
+          "rule": "working_raw",
+          "bytes": 83397,
+          "sha256": "e01fa7dba6925bc89de74492a05d8829db6f7c8fe56e401b600643f4386f0e36",
+          "matches": false
+        },
+        {
+          "rule": "git_blob",
+          "bytes": 82000,
+          "sha256": "3875a5c8865fef7b4297fd8c62393429dea07a63f73b2a8ae051316e11138449",
+          "matches": true
+        },
+        {
+          "rule": "LF_text",
+          "bytes": 82000,
+          "sha256": "3875a5c8865fef7b4297fd8c62393429dea07a63f73b2a8ae051316e11138449",
+          "matches": true
+        },
+        {
+          "rule": "CRLF_text",
+          "bytes": 83397,
+          "sha256": "e01fa7dba6925bc89de74492a05d8829db6f7c8fe56e401b600643f4386f0e36",
+          "matches": false
+        }
+      ]
+    }
+  ]
+}

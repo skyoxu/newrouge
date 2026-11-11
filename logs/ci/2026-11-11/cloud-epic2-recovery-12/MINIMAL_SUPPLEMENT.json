@@ -1,0 +1,212 @@
+{
+  "schema": "newrouge.bounded-recovery-minimal-supplement.v1",
+  "original_task_root": "C:\\Users\\Administrator\\Documents\\Codex\\2026-11-05\\task",
+  "read_source_snapshot": "55afde57c2898cf214eab136cb868815919828fd",
+  "read_source_relative_path": "scripts/python/_b_route_retained_execution.py",
+  "read_source_raw_sha256": "e8d863e7f21e790cc6c3cfb2ca4d5b51e74733e6f367f7ed19931766cb7c8563",
+  "fixed_producer_inputs_total": 15,
+  "already_resolved": {
+    "logs/ci/2026-11-09/story27-r52-atomic-review-prepare-01/reader-stdout.bin": {
+      "path": "/workspace/newrouge-recovery-data/batch03-05f5fbf9/work/reconstructed-producer-output/reader-stdout.bin",
+      "sha256": "57b2c0d883ae6884b090a32d4652e367f22743d467c5d4b0fd6c4982eac2e295",
+      "bytes": 178321214,
+      "kind": "source-defined exact-byte reconstruction"
+    },
+    "logs/ci/2026-11-09/story27-r52-atomic-review-prepare-01/actual-native-capture.json": {
+      "path": "/workspace/newrouge-recovery-data/batch03-05f5fbf9/work/reconstructed-producer-output/actual-native-capture.json",
+      "sha256": "15771c58f9f7f8065b4b03a608d294625c88604a170d0a0d3235f1fd33b0785f",
+      "bytes": 180700910,
+      "kind": "source-defined exact-byte reconstruction"
+    },
+    "night-handoff/story27-r52-public-review-prepare-host-followup02/review_prepare_host.draft.py": {
+      "path": "/workspace/newrouge-recovery-data/batch03-05f5fbf9/work/recovered-producer-control-source/review_prepare_host.draft.py",
+      "sha256": "3875a5c8865fef7b4297fd8c62393429dea07a63f73b2a8ae051316e11138449",
+      "bytes": 82000,
+      "kind": "exact preserved Git blob"
+    }
+  },
+  "required_remaining_producer_inputs": [
+    {
+      "original_task_relative_path": "logs/ci/2026-11-09/story27-r52-atomic-review-prepare-seal-01/config.json",
+      "original_absolute_path": "C:\\Users\\Administrator\\Documents\\Codex\\2026-11-05\\task\\logs\\ci\\2026-11-09\\story27-r52-atomic-review-prepare-seal-01\\config.json",
+      "read_source": "frozen R56 scripts/python/_b_route_retained_execution.py",
+      "read_point": "_original_controls:182 -> _fixed_json:156; _original_controls:188-205",
+      "expected_sha256": "d6f1eec3a9e9bf7dc5b94608db02d069c4f84404625587bfe9ebd7e64658067d",
+      "expected_bytes": null,
+      "size_status": "Not recorded in selected fixed source/index/decoded references; measure original bytes during collection, never infer zero.",
+      "why_this_route_needs_it": "Original closed source885 config, parent/prerequisite pins, historical request/source epoch and exact original dependency input contract.",
+      "cloud_status": "Not mapped by FILE_INDEX; no indexed raw match; no exact bytes found in19 selected original records and32 decoded carriers."
+    },
+    {
+      "original_task_relative_path": "logs/ci/2026-11-09/story27-r52-atomic-review-prepare-01/reader-stderr.bin",
+      "original_absolute_path": "C:\\Users\\Administrator\\Documents\\Codex\\2026-11-05\\task\\logs\\ci\\2026-11-09\\story27-r52-atomic-review-prepare-01\\reader-stderr.bin",
+      "read_source": "frozen R56 scripts/python/_b_route_retained_execution.py",
+      "read_point": "_execution:244-248",
+      "expected_sha256": "ab643f2520346c6a2443c201fd3fe10779da2546ba9e263f563778827c40740e",
+      "expected_bytes": null,
+      "size_status": "Not recorded in selected fixed source/index/decoded references; measure original bytes during collection, never infer zero.",
+      "why_this_route_needs_it": "Original stderr bytes and raw identity alongside exact stdout/archive; cannot regenerate diagnostic timing or replace with new output.",
+      "cloud_status": "Not mapped by FILE_INDEX; no indexed raw match; no exact bytes found in19 selected original records and32 decoded carriers."
+    },
+    {
+      "original_task_relative_path": "logs/ci/2026-11-09/story27-r52-atomic-review-prepare-01/reader-held-started.json",
+      "original_absolute_path": "C:\\Users\\Administrator\\Documents\\Codex\\2026-11-05\\task\\logs\\ci\\2026-11-09\\story27-r52-atomic-review-prepare-01\\reader-held-started.json",
+      "read_source": "frozen R56 scripts/python/_b_route_retained_execution.py",
+      "read_point": "_original_controls:183-187; _execution:212,220-222",
+      "expected_sha256": "012731090b820c06579e91ab3a3daf851051fa328da954ebdf29d59155330354",
+      "expected_bytes": null,
+      "size_status": "Not recorded in selected fixed source/index/decoded references; measure original bytes during collection, never infer zero.",
+      "why_this_route_needs_it": "Original held reader PID/birth/image/handle and Popen/CreateProcess observations.",
+      "cloud_status": "Not mapped by FILE_INDEX; no indexed raw match; no exact bytes found in19 selected original records and32 decoded carriers."
+    },
+    {
+      "original_task_relative_path": "logs/ci/2026-11-09/story27-r52-atomic-review-prepare-01/reader-held-terminal.json",
+      "original_absolute_path": "C:\\Users\\Administrator\\Documents\\Codex\\2026-11-05\\task\\logs\\ci\\2026-11-09\\story27-r52-atomic-review-prepare-01\\reader-held-terminal.json",
+      "read_source": "frozen R56 scripts/python/_b_route_retained_execution.py",
+      "read_point": "_original_controls:183-187; _execution:213,223-231",
+      "expected_sha256": "f8ccd45bf89c799692636bf77aa7c5aa8d08c2b0f669a3ed994984a754b66e42",
+      "expected_bytes": null,
+      "size_status": "Not recorded in selected fixed source/index/decoded references; measure original bytes during collection, never infer zero.",
+      "why_this_route_needs_it": "Original exact held reader OS0, matching start identity, Job empty/closed observations; original execution identity is not inferred from data output.",
+      "cloud_status": "Not mapped by FILE_INDEX; no indexed raw match; no exact bytes found in19 selected original records and32 decoded carriers."
+    },
+    {
+      "original_task_relative_path": "logs/ci/2026-11-09/story27-r52-atomic-review-prepare-01/stop.json",
+      "original_absolute_path": "C:\\Users\\Administrator\\Documents\\Codex\\2026-11-05\\task\\logs\\ci\\2026-11-09\\story27-r52-atomic-review-prepare-01\\stop.json",
+      "read_source": "frozen R56 scripts/python/_b_route_retained_execution.py",
+      "read_point": "_original_controls:183-187; _execution:214,232-241",
+      "expected_sha256": "8eeb2cb2399a4706316831564ec1d49042757fe6c02bccd8e485a4fbf2ed7f60",
+      "expected_bytes": null,
+      "size_status": "Not recorded in selected fixed source/index/decoded references; measure original bytes during collection, never infer zero.",
+      "why_this_route_needs_it": "Preserve original owner OS2/zero-model failure, charged facts and exact blocked boundary; do not replay or rewrite failure.",
+      "cloud_status": "Not mapped by FILE_INDEX; no indexed raw match; no exact bytes found in19 selected original records and32 decoded carriers."
+    },
+    {
+      "original_task_relative_path": "logs/ci/2026-11-09/story27-r52-atomic-review-prepare-supervision-01/result.json",
+      "original_absolute_path": "C:\\Users\\Administrator\\Documents\\Codex\\2026-11-05\\task\\logs\\ci\\2026-11-09\\story27-r52-atomic-review-prepare-supervision-01\\result.json",
+      "read_source": "frozen R56 scripts/python/_b_route_retained_execution.py",
+      "read_point": "_original_controls:183-187; _execution:215-219",
+      "expected_sha256": "0e43c191bd9da4ec0110f82bece80bf72e547bbc4a8dd894ff533489d64f01ab",
+      "expected_bytes": null,
+      "size_status": "Not recorded in selected fixed source/index/decoded references; measure original bytes during collection, never infer zero.",
+      "why_this_route_needs_it": "Original supervision completion/known terminal and retained failed worker OS1/source-control observations.",
+      "cloud_status": "Not mapped by FILE_INDEX; no indexed raw match; no exact bytes found in19 selected original records and32 decoded carriers."
+    },
+    {
+      "original_task_relative_path": "night-handoff/story27-r52-atomic-review-prepare-thin-controls-01/manifest.json",
+      "original_absolute_path": "C:\\Users\\Administrator\\Documents\\Codex\\2026-11-05\\task\\night-handoff\\story27-r52-atomic-review-prepare-thin-controls-01\\manifest.json",
+      "read_source": "frozen R56 scripts/python/_b_route_retained_execution.py",
+      "read_point": "_original_controls:183-187",
+      "expected_sha256": "88a551e4a57a09a621990758ae6355d0de70651824a36faabc01ec991810fa25",
+      "expected_bytes": null,
+      "size_status": "Not recorded in selected fixed source/index/decoded references; measure original bytes during collection, never infer zero.",
+      "why_this_route_needs_it": "Required original control source/manifest/start/terminal raw pin closes the selected archived execution contract; not a fresh execution or general Story requirement.",
+      "cloud_status": "Not mapped by FILE_INDEX; no indexed raw match; no exact bytes found in19 selected original records and32 decoded carriers."
+    },
+    {
+      "original_task_relative_path": "night-handoff/story27-r52-atomic-review-prepare-thin-controls-01/run_review_prepare.Root-only.py",
+      "original_absolute_path": "C:\\Users\\Administrator\\Documents\\Codex\\2026-11-05\\task\\night-handoff\\story27-r52-atomic-review-prepare-thin-controls-01\\run_review_prepare.Root-only.py",
+      "read_source": "frozen R56 scripts/python/_b_route_retained_execution.py",
+      "read_point": "_original_controls:183-187",
+      "expected_sha256": "71e7f9241ae4485a525868060bff75db537fff15e1a6c2d4ce82f5c3fd4916c8",
+      "expected_bytes": null,
+      "size_status": "Not recorded in selected fixed source/index/decoded references; measure original bytes during collection, never infer zero.",
+      "why_this_route_needs_it": "Required original control source/manifest/start/terminal raw pin closes the selected archived execution contract; not a fresh execution or general Story requirement.",
+      "cloud_status": "Not mapped by FILE_INDEX; no indexed raw match; no exact bytes found in19 selected original records and32 decoded carriers."
+    },
+    {
+      "original_task_relative_path": "night-handoff/story27-r52-atomic-review-prepare-thin-controls-01/control_common.py",
+      "original_absolute_path": "C:\\Users\\Administrator\\Documents\\Codex\\2026-11-05\\task\\night-handoff\\story27-r52-atomic-review-prepare-thin-controls-01\\control_common.py",
+      "read_source": "frozen R56 scripts/python/_b_route_retained_execution.py",
+      "read_point": "_original_controls:183-187",
+      "expected_sha256": "0ea4c7774dec93207fd1b5470ac29232fbcdf0d01b20b06f8db570d85c32ccbe",
+      "expected_bytes": null,
+      "size_status": "Not recorded in selected fixed source/index/decoded references; measure original bytes during collection, never infer zero.",
+      "why_this_route_needs_it": "Required original control source/manifest/start/terminal raw pin closes the selected archived execution contract; not a fresh execution or general Story requirement.",
+      "cloud_status": "Not mapped by FILE_INDEX; no indexed raw match; no exact bytes found in19 selected original records and32 decoded carriers."
+    },
+    {
+      "original_task_relative_path": "logs/ci/2026-11-09/story27-r52-atomic-review-prepare-supervision-01/supervisor-started.json",
+      "original_absolute_path": "C:\\Users\\Administrator\\Documents\\Codex\\2026-11-05\\task\\logs\\ci\\2026-11-09\\story27-r52-atomic-review-prepare-supervision-01\\supervisor-started.json",
+      "read_source": "frozen R56 scripts/python/_b_route_retained_execution.py",
+      "read_point": "_original_controls:183-187",
+      "expected_sha256": "8487cfa42819c94fd8481cc2af5436eecb3d166e42731a432bfe001272f33ab7",
+      "expected_bytes": null,
+      "size_status": "Not recorded in selected fixed source/index/decoded references; measure original bytes during collection, never infer zero.",
+      "why_this_route_needs_it": "Required original control source/manifest/start/terminal raw pin closes the selected archived execution contract; not a fresh execution or general Story requirement.",
+      "cloud_status": "Not mapped by FILE_INDEX; no indexed raw match; no exact bytes found in19 selected original records and32 decoded carriers."
+    },
+    {
+      "original_task_relative_path": "logs/ci/2026-11-09/story27-r52-atomic-review-prepare-supervision-01/child-started.json",
+      "original_absolute_path": "C:\\Users\\Administrator\\Documents\\Codex\\2026-11-05\\task\\logs\\ci\\2026-11-09\\story27-r52-atomic-review-prepare-supervision-01\\child-started.json",
+      "read_source": "frozen R56 scripts/python/_b_route_retained_execution.py",
+      "read_point": "_original_controls:183-187",
+      "expected_sha256": "afc066d65dd521c1ea22375a9f359ed5c76af93b06f74273685c571d53998a8a",
+      "expected_bytes": null,
+      "size_status": "Not recorded in selected fixed source/index/decoded references; measure original bytes during collection, never infer zero.",
+      "why_this_route_needs_it": "Required original control source/manifest/start/terminal raw pin closes the selected archived execution contract; not a fresh execution or general Story requirement.",
+      "cloud_status": "Not mapped by FILE_INDEX; no indexed raw match; no exact bytes found in19 selected original records and32 decoded carriers."
+    },
+    {
+      "original_task_relative_path": "logs/ci/2026-11-09/story27-r52-atomic-review-prepare-supervision-01/child-terminal.json",
+      "original_absolute_path": "C:\\Users\\Administrator\\Documents\\Codex\\2026-11-05\\task\\logs\\ci\\2026-11-09\\story27-r52-atomic-review-prepare-supervision-01\\child-terminal.json",
+      "read_source": "frozen R56 scripts/python/_b_route_retained_execution.py",
+      "read_point": "_original_controls:183-187",
+      "expected_sha256": "8b44bd98f93be1f9380ed81da84a3f71febfe4e397516ac0a814532b9ffea9a6",
+      "expected_bytes": null,
+      "size_status": "Not recorded in selected fixed source/index/decoded references; measure original bytes during collection, never infer zero.",
+      "why_this_route_needs_it": "Required original control source/manifest/start/terminal raw pin closes the selected archived execution contract; not a fresh execution or general Story requirement.",
+      "cloud_status": "Not mapped by FILE_INDEX; no indexed raw match; no exact bytes found in19 selected original records and32 decoded carriers."
+    }
+  ],
+  "full_python_policy_input": {
+    "original_task_relative_path": "r62/scripts/python/qualified-historical-owner-authority.v2.json",
+    "original_absolute_path": "C:\\Users\\Administrator\\Documents\\Codex\\2026-11-05\\task\\r62\\scripts\\python\\qualified-historical-owner-authority.v2.json",
+    "preferred_field": "/python_version",
+    "expected_sha256": null,
+    "expected_bytes": null,
+    "read_source": "original R56 _b_route_adoption_review.py:80 policy_identity; current _b_route_qualified_historical_auth_v3.py:80-83",
+    "purpose": "Actual full original sys.version input is needed to reconstruct recorded policy identity1012db...; numeric version/current Python cannot substitute.",
+    "sensitivity": "Project owner/source/interpreter descriptor, not credentials or OpenAI auth.json. Preserve screened original bytes if present; no password/token/key/session files.",
+    "status": "Original populated uncommitted resource explicitly excluded by initial migration; current public template is null; selected structured encodings yield no full build string.",
+    "alternative_if_original_record_unavailable": {
+      "artifact": "new python-policy-input-observation.json, explicitly a current metadata observation, never a fake historical file",
+      "interpreter_path": "C:\\Program Files\\Python312\\python.exe",
+      "required_original_executable_sha256": "4d6f5f81a4bca11191c4c7c6b43632694d0a4ce74e068619d8fdc161d469859a",
+      "pin_source": "batch03 task/story29-host3-allocation-Root-01/config.json#/binding/runtime_files/6",
+      "bounded_action": "Only if needed, obtain sys.version with this exact hash-matching system interpreter in isolated/no-site metadata mode (-I -S); no project import/driver/model/ledger. Record timestamp, actual executable path/hash and complete sys.version.",
+      "acceptance_limit": "Cloud must reconstruct and match the old recorded policy digest using actual51 source/schema preimages. A new observation alone proves neither an old execution nor installed authority. If executable hash differs, report the mismatch; do not substitute."
+    }
+  },
+  "conditional_same_config_closure": {
+    "reason": "Avoid another round trip after reading the actually missing config. These are exact downstream reads in the same existing function, not recursive history/software collection.",
+    "source": "frozen R56 _b_route_retained_execution.py:196-205",
+    "only_follow": [
+      "config.parent_pins path/digest entries",
+      "config.prerequisite_pins path/digest entries"
+    ],
+    "explicit_old_owner_files": [
+      {
+        "original_task_relative_path": "logs/ci/2026-11-09/story27-r52-retained-execution-admission-01/old-owner-sources/_b_route_qualified_origin.py",
+        "expected_sha256_from_config": "/source_files/scripts~1python~1_b_route_qualified_origin.py",
+        "expected_bytes": null
+      },
+      {
+        "original_task_relative_path": "logs/ci/2026-11-09/story27-r52-retained-execution-admission-01/old-owner-sources/_b_route_adoption_review.py",
+        "expected_sha256_from_config": "/source_files/scripts~1python~1_b_route_adoption_review.py",
+        "expected_bytes": null
+      }
+    ],
+    "pruning": "Use cloud-available-raw-pins.json and original path/roles to avoid retransmitting exact already available data. Raw equality alone does not substitute an owner, namespace, budget grant or execution claim.",
+    "do_not_expand": [
+      "All source_files885 entries",
+      "Entire Task/.git/home",
+      "Software environments/packages/credentials",
+      "Optional historical directories and diagnostic attachments"
+    ],
+    "missing": "Record exact unresolved original path/digest/reference field once; do not execute code to regenerate it or sanitize into a fake original."
+  },
+  "scope": "Only NativeV15Origin03 consumption of retained original NativeV15Origin02/R52 archive and original policy reconstruction. Not Epic-wide prerequisites.",
+  "handoff": "Parent coordinates the already authorized one-time original-side static screened handoff to migration/newrogue-20261111/recovery-batch01-public. No original-side development, old driver/native/model/unknown replay, accounting transition, main merge or Fast.",
+  "do_not_resend": "Two exact derived large outputs and82k host source are resolved; batch03 and51 policy preimages remain available. Preserve originals, failures, privacy exclusions and STOP."
+}

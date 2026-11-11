@@ -1,0 +1,505 @@
+{
+  "scope": "Explicit original03/producer02 operation, retained binding, capsules/reviews, linked Host3/config/runtime, protection and actual m1/s1 reference records only. No directory walk, unlinked historical expansion or arbitrary model-text evaluation.",
+  "analysis_limits": {
+    "encoded_depth": 4,
+    "decoded_bytes_per_carrier": 33554432,
+    "total_decoded_bytes": 134217728
+  },
+  "seed_files": [
+    {
+      "archive_path": "target/logs/ci/b-route-operations/operations/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/operation.json",
+      "bytes": 482459,
+      "sha256": "ad20fe68bae12bf5805e809c73dad6355db3d876d13000524810b90ccfdafc05"
+    },
+    {
+      "archive_path": "target/logs/ci/b-route-operations/operations/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/commit.json",
+      "bytes": 2294937,
+      "sha256": "d3706a43a8ed69d073faf124e2b79bf8c17c64c61e150d257a54ec30dcaa12a9"
+    },
+    {
+      "archive_path": "target/logs/ci/b-route-retained-executions/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/binding.json",
+      "bytes": 155979,
+      "sha256": "887561fa589b72c77147beeb2047b275f5335dae9462ef7d02e9edc3ea656c6b"
+    },
+    {
+      "archive_path": "target/logs/ci/b-route-origin-captures/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/capsule.json",
+      "bytes": 2379892,
+      "sha256": "df8b3c9bc2e0f5e40d1a45c865ae7b959941250c87ff0733eff5bf845311f7d7"
+    },
+    {
+      "archive_path": "target/logs/ci/b-route-adoption-reviews/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/subject.json",
+      "bytes": 4284819,
+      "sha256": "4d5815078dc7ba20fe8df942dcbb8841d56d161616ce6d54f4ab5e21bc048c45"
+    },
+    {
+      "archive_path": "target/logs/ci/b-route-adoption-reviews/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/execution.json",
+      "bytes": 5993420,
+      "sha256": "b64ef282c88954f7a853e090ae60f5f7c5e1d86458c2eebee963cc0e0b540e53"
+    },
+    {
+      "archive_path": "target/logs/ci/b-route-adoption-reviews/3dc54cb21d1795b05d440e10bab6d8a9bc9d36311979ac190a7f33cc8b0d2c03/subject.json",
+      "bytes": 4240965,
+      "sha256": "a39c23b7497470c81b6e804a5973579d6ffcdd4fea67ab72c523d1152bc8fbdc"
+    },
+    {
+      "archive_path": "target/logs/ci/b-route-adoption-reviews/3dc54cb21d1795b05d440e10bab6d8a9bc9d36311979ac190a7f33cc8b0d2c03/execution.json",
+      "bytes": 5314437,
+      "sha256": "79ad868bcf7e85ec951641dabea7f430938d2be679c185a217eee921a123ea89"
+    },
+    {
+      "archive_path": "target/logs/ci/b-route-origin-captures/3dc54cb21d1795b05d440e10bab6d8a9bc9d36311979ac190a7f33cc8b0d2c03/capsule.json",
+      "bytes": 2379892,
+      "sha256": "18cc622f405e9615487328f9ace15726154d97a8af901f8cf382372169c0dbfa"
+    },
+    {
+      "archive_path": "task/story29-host3-allocation-Root-01/config.json",
+      "bytes": 1151260,
+      "sha256": "db1cdbb40e622ca40a5b6cbe21f36d559838c71d85a8be29705dd163d7b0df7e"
+    },
+    {
+      "archive_path": "task/story29-host3-allocation-Root-01/Root-authority.json",
+      "bytes": 687,
+      "sha256": "8b719894d3245c1c1158641c443c92e6655fc5917e6ffbd7f09c5105c0c1ca21"
+    },
+    {
+      "archive_path": "task/logs/ci/2026-11-09/story29-host1-retained-runtime-Root-01/runtime.json",
+      "bytes": 2897,
+      "sha256": "189246b8e9a8bce0e3224bb2bfb5f2efec07a73388a8467fd8cb7f6f3aab1acc"
+    },
+    {
+      "archive_path": "task/logs/ci/2026-11-09/story27-r52-retained-review-prepare-02/result.json",
+      "bytes": 420738,
+      "sha256": "d699dfca861bb0a17f55417d6d5ea6f442188339ee13795b31b9c90e54d80f6f"
+    },
+    {
+      "archive_path": "task/logs/ci/2026-11-09/story27-r56-zero03-review-prepare-02/result.json",
+      "bytes": 462514,
+      "sha256": "2cfbe0cf795012ce0ddd7c4f7ce867f02092f67ad67e85084f33c4e1312f5957"
+    },
+    {
+      "archive_path": "task/logs/ci/2026-11-09/story27-r52-public-review-prepare-seal-01/config.json",
+      "bytes": 637746,
+      "sha256": "d44d9b9157428399e9a35c6970be41a2098d937fc2b90e5d87181f3e77896e03"
+    },
+    {
+      "archive_path": "target/logs/ci/2026-11-09/b-route-protection/v15-r56-origin03-capture-01/snapshot.json",
+      "bytes": 95921,
+      "sha256": "b6b11249e68d9d282d2ed952f2b80fc4cfac1052886d19e2eb969c335607bd8f"
+    },
+    {
+      "archive_path": "target/logs/ci/2026-11-09/b-route-protection/v15-r56-origin03-capture-01/inventory.json",
+      "bytes": 1114879,
+      "sha256": "06d5a6e835e4f21bdf75c780b81354eb0ef028976586b0d5e9b77a2531a969af"
+    },
+    {
+      "archive_path": "nx/logs/ci/mvg-planning/m4/recovery/m1/record.json",
+      "bytes": 3029955,
+      "sha256": "5b90e1c3643b771b289a41f97b4c548b11dd89fb82f3dd6a65ce016c5f16facf"
+    },
+    {
+      "archive_path": "nx/logs/ci/mvg-planning/m4/recovery/s1/record.json",
+      "bytes": 10767486,
+      "sha256": "1322c850745e79ae340b6b023143e7a05201e217599465d910a03a3f6f1ee0b6"
+    }
+  ],
+  "decoded_carriers": [
+    {
+      "source": "target/logs/ci/b-route-operations/operations/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/operation.json#/request_raw_base64 -> base64#",
+      "raw_sha256": "9e98ad9d678961111d505d8379824536eea8bdcf4ce91da0df4a574f5c725aa0",
+      "bytes": 142648,
+      "depth": 1,
+      "kind": "base64"
+    },
+    {
+      "source": "target/logs/ci/b-route-adoption-reviews/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/subject.json#/registered_source_set/raw_base64 -> base64#",
+      "raw_sha256": "499d49af5e6273631d38bd6c51f1a4329fe1f4a8b28b2c4005056a8082dd37c7",
+      "bytes": 283,
+      "depth": 1,
+      "kind": "base64"
+    },
+    {
+      "source": "target/logs/ci/b-route-adoption-reviews/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/execution.json#/stdout_base64 -> base64#",
+      "raw_sha256": "147ca5ff18a1f544b2a42d251ea34451ecb9cdd49fc28dcde0b2e43550d8cb6b",
+      "bytes": 2567932,
+      "depth": 1,
+      "kind": "base64"
+    },
+    {
+      "source": "target/logs/ci/b-route-adoption-reviews/3dc54cb21d1795b05d440e10bab6d8a9bc9d36311979ac190a7f33cc8b0d2c03/execution.json#/stdout_base64 -> base64#",
+      "raw_sha256": "1033ffb4742779f1beaa07c579534837955e5e2621c4b791b068a9b612ba5632",
+      "bytes": 2276944,
+      "depth": 1,
+      "kind": "base64"
+    },
+    {
+      "source": "target/logs/ci/2026-11-09/b-route-protection/v15-r56-origin03-capture-01/inventory.json#/legacy_manifest_requirement/proof/objects/fe51488c7066f6687ef680d6bfaa4f7768ef205c/raw_base64 -> base64#",
+      "raw_sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+      "bytes": 3,
+      "depth": 1,
+      "kind": "base64"
+    },
+    {
+      "source": "target/logs/ci/2026-11-09/b-route-protection/v15-r56-origin03-capture-01/inventory.json#/legacy_manifest_requirement/proof/objects/d9d91147cb84692064aa89d512df0764dc31b2e5/raw_base64 -> base64#",
+      "raw_sha256": "f188d0f5a3dd77b8f3dd2837164c66c809b39c63c79238ee593092c19b8b06f4",
+      "bytes": 38,
+      "depth": 1,
+      "kind": "base64"
+    },
+    {
+      "source": "nx/logs/ci/mvg-planning/m4/recovery/m1/record.json#/transition/previous_run/bytes_base64 -> base64#",
+      "raw_sha256": "e7c8431eed6d15b0d041bec3de8d55b1b399ff4922308419c6e8287f441e2164",
+      "bytes": 526924,
+      "depth": 1,
+      "kind": "base64"
+    },
+    {
+      "source": "nx/logs/ci/mvg-planning/m4/recovery/m1/record.json#/mutable_preimages/candidates~1candidate-2~1lineage-execution.json/bytes_base64 -> base64#",
+      "raw_sha256": "a93c4019d0c2de5af48797de124103cceb6dfb40cbad46731ae5c27f52830c67",
+      "bytes": 164,
+      "depth": 1,
+      "kind": "base64"
+    },
+    {
+      "source": "nx/logs/ci/mvg-planning/m4/recovery/m1/record.json#/mutable_preimages/model-execution.json/bytes_base64 -> base64#",
+      "raw_sha256": "af9927f510758a6cdf59ff93dd44ceeaca84697ebbf54d05278843108949b37f",
+      "bytes": 48308,
+      "depth": 1,
+      "kind": "base64"
+    },
+    {
+      "source": "nx/logs/ci/mvg-planning/m4/recovery/m1/record.json#/previous_append/bytes_base64 -> base64#",
+      "raw_sha256": "5420ad6abc50b4026feec5357e641afcd4521570adb455ebb60b6d1592729ceb",
+      "bytes": 1233,
+      "depth": 1,
+      "kind": "base64"
+    },
+    {
+      "source": "nx/logs/ci/mvg-planning/m4/recovery/s1/record.json#/transition/previous_run/bytes_base64 -> base64#",
+      "raw_sha256": "351fe198ae4a9d049fd79d673f7a3f08f81af4d8ab1a6e4e93e3cf3bf15d7227",
+      "bytes": 2289866,
+      "depth": 1,
+      "kind": "base64"
+    },
+    {
+      "source": "nx/logs/ci/mvg-planning/m4/recovery/s1/record.json#/model_execution_preimage/bytes_base64 -> base64#",
+      "raw_sha256": "2f534c050e635c482170310bf298c1b93e15e722cfe5dcb08502bd7e54721f62",
+      "bytes": 84542,
+      "depth": 1,
+      "kind": "base64"
+    },
+    {
+      "source": "target/logs/ci/b-route-adoption-reviews/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/execution.json#/stdout_base64 -> base64#/model_identity_evidence/0/protocol_jsonl_base64 -> base64#",
+      "raw_sha256": "a1d159e05da367033e77834b5e5665bcceb72f2ad8818bc1f3c5497720134368",
+      "bytes": 1924097,
+      "depth": 2,
+      "kind": "base64->JSONL"
+    },
+    {
+      "source": "target/logs/ci/b-route-adoption-reviews/3dc54cb21d1795b05d440e10bab6d8a9bc9d36311979ac190a7f33cc8b0d2c03/execution.json#/stdout_base64 -> base64#/model_identity_evidence/0/protocol_jsonl_base64 -> base64#",
+      "raw_sha256": "9a3dd42954aeb5dae89438bde196ea6b38975fb6524e95c26d2731caad620546",
+      "bytes": 1705856,
+      "depth": 2,
+      "kind": "base64->JSONL"
+    },
+    {
+      "source": "target/logs/ci/b-route-adoption-reviews/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/execution.json#/stdout_base64 -> base64#/model_identity_evidence/0/protocol_jsonl_base64 -> base64#/0/message/source_catalog_base64 -> base64#",
+      "raw_sha256": "18431bcc2aad4fb00e33edcd9d82a8860b5d617911c65f47dda9248f57f940b8",
+      "bytes": 464431,
+      "depth": 3,
+      "kind": "base64"
+    },
+    {
+      "source": "target/logs/ci/b-route-adoption-reviews/3dc54cb21d1795b05d440e10bab6d8a9bc9d36311979ac190a7f33cc8b0d2c03/execution.json#/stdout_base64 -> base64#/model_identity_evidence/0/protocol_jsonl_base64 -> base64#/0/message/source_catalog_base64 -> base64#",
+      "raw_sha256": "8f1b156e9f55b75b4c238850022e9a946bf370a9c6089d5d94b03c3c6cc2540c",
+      "bytes": 464431,
+      "depth": 3,
+      "kind": "base64"
+    }
+  ],
+  "decoded_blobs": [
+    {
+      "source": "target/logs/ci/b-route-operations/operations/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/operation.json#/request_raw_base64 -> base64#",
+      "sha256": "9e98ad9d678961111d505d8379824536eea8bdcf4ce91da0df4a574f5c725aa0",
+      "bytes": 142648,
+      "depth": 1
+    },
+    {
+      "source": "target/logs/ci/b-route-adoption-reviews/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/subject.json#/registered_source_set/raw_base64 -> base64#",
+      "sha256": "499d49af5e6273631d38bd6c51f1a4329fe1f4a8b28b2c4005056a8082dd37c7",
+      "bytes": 283,
+      "depth": 1
+    },
+    {
+      "source": "target/logs/ci/b-route-adoption-reviews/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/subject.json#/prepared/inputs/constraints/0/raw_base64 -> base64#",
+      "sha256": "7e5e1fe8aeb5937c70caa16aea2a9e1784a429c70c30a4f7f4d66601f1880061",
+      "bytes": 7044,
+      "depth": 1
+    },
+    {
+      "source": "target/logs/ci/b-route-adoption-reviews/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/execution.json#/stdout_base64 -> base64#",
+      "sha256": "147ca5ff18a1f544b2a42d251ea34451ecb9cdd49fc28dcde0b2e43550d8cb6b",
+      "bytes": 2567932,
+      "depth": 1
+    },
+    {
+      "source": "target/logs/ci/b-route-adoption-reviews/3dc54cb21d1795b05d440e10bab6d8a9bc9d36311979ac190a7f33cc8b0d2c03/execution.json#/stdout_base64 -> base64#",
+      "sha256": "1033ffb4742779f1beaa07c579534837955e5e2621c4b791b068a9b612ba5632",
+      "bytes": 2276944,
+      "depth": 1
+    },
+    {
+      "source": "target/logs/ci/2026-11-09/b-route-protection/v15-r56-origin03-capture-01/inventory.json#/legacy_manifest_requirement/proof/index_base64 -> base64#",
+      "sha256": "8237f2b2907a97441f54a26a5a6c5cd6865757f6e8ed4afa0a6592a40bf9723a",
+      "bytes": 423,
+      "depth": 1
+    },
+    {
+      "source": "target/logs/ci/2026-11-09/b-route-protection/v15-r56-origin03-capture-01/inventory.json#/legacy_manifest_requirement/proof/objects/6904a313486179a65307a2d631e7be47d0fc2b55/raw_base64 -> base64#",
+      "sha256": "4b7492dc88930148b2b9cb6b58927366127d629e9839e8dda2ec4711d423b650",
+      "bytes": 680,
+      "depth": 1
+    },
+    {
+      "source": "target/logs/ci/2026-11-09/b-route-protection/v15-r56-origin03-capture-01/inventory.json#/legacy_manifest_requirement/proof/objects/34058f56816e895bae5491c751d405fb29c3ed0a/raw_base64 -> base64#",
+      "sha256": "2f325c17dc13483eb9986dd14f8d0c71e00da62b615c3f2605a93db26a19fab6",
+      "bytes": 40,
+      "depth": 1
+    },
+    {
+      "source": "target/logs/ci/2026-11-09/b-route-protection/v15-r56-origin03-capture-01/inventory.json#/legacy_manifest_requirement/proof/objects/40fd7ab13c4a0287d3abb75f162203bf6a651836/raw_base64 -> base64#",
+      "sha256": "dde9ccf1512a06a1d9ac4b601c757023273c60ec687352cb254002c235395b39",
+      "bytes": 369,
+      "depth": 1
+    },
+    {
+      "source": "target/logs/ci/2026-11-09/b-route-protection/v15-r56-origin03-capture-01/inventory.json#/legacy_manifest_requirement/proof/objects/f6b023e8c4b5fda74965973762ced21fd8b1eadb/raw_base64 -> base64#",
+      "sha256": "4341f6b36e3416c449817ab8913a084ab5c184c7fc4c404bc4b9ded93122e9ca",
+      "bytes": 250,
+      "depth": 1
+    },
+    {
+      "source": "target/logs/ci/2026-11-09/b-route-protection/v15-r56-origin03-capture-01/inventory.json#/legacy_manifest_requirement/proof/objects/e8da796ae26509f34fe085a45ecbc7f9c7dd8557/raw_base64 -> base64#",
+      "sha256": "5ae66cc1053577ede64e2feb113fe38fa8b2987d10cab86d65831b1e6036572c",
+      "bytes": 58,
+      "depth": 1
+    },
+    {
+      "source": "target/logs/ci/2026-11-09/b-route-protection/v15-r56-origin03-capture-01/inventory.json#/legacy_manifest_requirement/proof/objects/7c7fd1300811a354f4d6ccd9444a4fa89f98047f/raw_base64 -> base64#",
+      "sha256": "fee89cfe24ce87970b4a23b90258208dce9ec9bb28731499ec67d606fbc52ee7",
+      "bytes": 1345,
+      "depth": 1
+    },
+    {
+      "source": "target/logs/ci/2026-11-09/b-route-protection/v15-r56-origin03-capture-01/inventory.json#/legacy_manifest_requirement/proof/objects/4c7074787e3e157e82255ff219b17fb02b1b8ed9/raw_base64 -> base64#",
+      "sha256": "15acb5c2da1cd74ea4698b2be4a25f06f207989ff48a6cb4104391bde5f57969",
+      "bytes": 716,
+      "depth": 1
+    },
+    {
+      "source": "target/logs/ci/2026-11-09/b-route-protection/v15-r56-origin03-capture-01/inventory.json#/legacy_manifest_requirement/proof/objects/262784ecf4d426aa97701988a45ab016c880c208/raw_base64 -> base64#",
+      "sha256": "e6d81837e06393f9ef1200179d1193deea7f03318c49fc1499db134d7595efff",
+      "bytes": 40,
+      "depth": 1
+    },
+    {
+      "source": "target/logs/ci/2026-11-09/b-route-protection/v15-r56-origin03-capture-01/inventory.json#/legacy_manifest_requirement/proof/objects/727f6b5f515e5b04228fdf46b14237918900cc19/raw_base64 -> base64#",
+      "sha256": "5a2a3e38a67c5b389896c4da8611e9ae8a4f9e2a19ee687fa4734c5f1652b236",
+      "bytes": 311,
+      "depth": 1
+    },
+    {
+      "source": "target/logs/ci/2026-11-09/b-route-protection/v15-r56-origin03-capture-01/inventory.json#/legacy_manifest_requirement/proof/objects/b87fab15500f2164c0cdfde30db08951d46acc5b/raw_base64 -> base64#",
+      "sha256": "15aa6ccd07ba3c7a6b5dfd656487a906caa6ada3b882d5ca2e098f244834dc0a",
+      "bytes": 139,
+      "depth": 1
+    },
+    {
+      "source": "target/logs/ci/2026-11-09/b-route-protection/v15-r56-origin03-capture-01/inventory.json#/legacy_manifest_requirement/proof/objects/fe51488c7066f6687ef680d6bfaa4f7768ef205c/raw_base64 -> base64#",
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+      "bytes": 3,
+      "depth": 1
+    },
+    {
+      "source": "target/logs/ci/2026-11-09/b-route-protection/v15-r56-origin03-capture-01/inventory.json#/legacy_manifest_requirement/proof/objects/d9d91147cb84692064aa89d512df0764dc31b2e5/raw_base64 -> base64#",
+      "sha256": "f188d0f5a3dd77b8f3dd2837164c66c809b39c63c79238ee593092c19b8b06f4",
+      "bytes": 38,
+      "depth": 1
+    },
+    {
+      "source": "target/logs/ci/2026-11-09/b-route-protection/v15-r56-origin03-capture-01/inventory.json#/legacy_manifest_requirement/proof/objects/e70b81a6c99fc171809e590c965edc7c005c2f8d/raw_base64 -> base64#",
+      "sha256": "6d5ecceb8c2f4730f8289f46a17ddc0d735ba58d3e7285c44aaf30dfac968bab",
+      "bytes": 128,
+      "depth": 1
+    },
+    {
+      "source": "target/logs/ci/2026-11-09/b-route-protection/v15-r56-origin03-capture-01/inventory.json#/legacy_manifest_requirement/proof/objects/8c2b3953906373f1d01215e6db69c963dd1ebd26/raw_base64 -> base64#",
+      "sha256": "a0f5dcf7c51fd4861435424540502ee90a7daf41d9c67478c0880fd9f45219c4",
+      "bytes": 32,
+      "depth": 1
+    },
+    {
+      "source": "target/logs/ci/2026-11-09/b-route-protection/v15-r56-origin03-capture-01/inventory.json#/legacy_manifest_requirement/proof/objects/1cb75c65d12f37cc1c690b91732180169ec76a4a/raw_base64 -> base64#",
+      "sha256": "b58f319f302987f3265b8c19c4a6859458fa00b5d89e5e26a732d95a04cb87f5",
+      "bytes": 369,
+      "depth": 1
+    },
+    {
+      "source": "target/logs/ci/2026-11-09/b-route-protection/v15-r56-origin03-capture-01/inventory.json#/legacy_manifest_requirement/proof/objects/d1ceabeabe43bc4c2318fa0d5a3a4fe5ba25302b/raw_base64 -> base64#",
+      "sha256": "fc4848a693365e5560c050d7983db61f0423c9cb987fa8f91f60c463e645cfeb",
+      "bytes": 290,
+      "depth": 1
+    },
+    {
+      "source": "nx/logs/ci/mvg-planning/m4/recovery/m1/record.json#/transition/previous_run/bytes_base64 -> base64#",
+      "sha256": "e7c8431eed6d15b0d041bec3de8d55b1b399ff4922308419c6e8287f441e2164",
+      "bytes": 526924,
+      "depth": 1
+    },
+    {
+      "source": "nx/logs/ci/mvg-planning/m4/recovery/m1/record.json#/mutable_preimages/candidates~1candidate-2~1lineage-execution.json/bytes_base64 -> base64#",
+      "sha256": "a93c4019d0c2de5af48797de124103cceb6dfb40cbad46731ae5c27f52830c67",
+      "bytes": 164,
+      "depth": 1
+    },
+    {
+      "source": "nx/logs/ci/mvg-planning/m4/recovery/m1/record.json#/mutable_preimages/model-execution.json/bytes_base64 -> base64#",
+      "sha256": "af9927f510758a6cdf59ff93dd44ceeaca84697ebbf54d05278843108949b37f",
+      "bytes": 48308,
+      "depth": 1
+    },
+    {
+      "source": "nx/logs/ci/mvg-planning/m4/recovery/m1/record.json#/previous_append/bytes_base64 -> base64#",
+      "sha256": "5420ad6abc50b4026feec5357e641afcd4521570adb455ebb60b6d1592729ceb",
+      "bytes": 1233,
+      "depth": 1
+    },
+    {
+      "source": "nx/logs/ci/mvg-planning/m4/recovery/s1/record.json#/transition/previous_run/bytes_base64 -> base64#",
+      "sha256": "351fe198ae4a9d049fd79d673f7a3f08f81af4d8ab1a6e4e93e3cf3bf15d7227",
+      "bytes": 2289866,
+      "depth": 1
+    },
+    {
+      "source": "nx/logs/ci/mvg-planning/m4/recovery/s1/record.json#/model_execution_preimage/bytes_base64 -> base64#",
+      "sha256": "2f534c050e635c482170310bf298c1b93e15e722cfe5dcb08502bd7e54721f62",
+      "bytes": 84542,
+      "depth": 1
+    },
+    {
+      "source": "target/logs/ci/b-route-adoption-reviews/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/execution.json#/stdout_base64 -> base64#/model_identity_evidence/0/protocol_jsonl_base64 -> base64#",
+      "sha256": "a1d159e05da367033e77834b5e5665bcceb72f2ad8818bc1f3c5497720134368",
+      "bytes": 1924097,
+      "depth": 2
+    },
+    {
+      "source": "target/logs/ci/b-route-adoption-reviews/3dc54cb21d1795b05d440e10bab6d8a9bc9d36311979ac190a7f33cc8b0d2c03/execution.json#/stdout_base64 -> base64#/model_identity_evidence/0/protocol_jsonl_base64 -> base64#",
+      "sha256": "9a3dd42954aeb5dae89438bde196ea6b38975fb6524e95c26d2731caad620546",
+      "bytes": 1705856,
+      "depth": 2
+    },
+    {
+      "source": "target/logs/ci/b-route-adoption-reviews/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/execution.json#/stdout_base64 -> base64#/model_identity_evidence/0/protocol_jsonl_base64 -> base64#/0/message/source_catalog_base64 -> base64#",
+      "sha256": "18431bcc2aad4fb00e33edcd9d82a8860b5d617911c65f47dda9248f57f940b8",
+      "bytes": 464431,
+      "depth": 3
+    },
+    {
+      "source": "target/logs/ci/b-route-adoption-reviews/3dc54cb21d1795b05d440e10bab6d8a9bc9d36311979ac190a7f33cc8b0d2c03/execution.json#/stdout_base64 -> base64#/model_identity_evidence/0/protocol_jsonl_base64 -> base64#/0/message/source_catalog_base64 -> base64#",
+      "sha256": "8f1b156e9f55b75b4c238850022e9a946bf370a9c6089d5d94b03c3c6cc2540c",
+      "bytes": 464431,
+      "depth": 3
+    }
+  ],
+  "exact_required_raw_matches": [],
+  "python_version_values": [],
+  "required_pin_metadata": [
+    {
+      "source": "target/logs/ci/b-route-retained-executions/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/binding.json#/execution/raw_pins/logs~1ci~12026-11-09~1story27-r52-atomic-review-prepare-seal-01~1config.json",
+      "task_relative_path": "logs/ci/2026-11-09/story27-r52-atomic-review-prepare-seal-01/config.json",
+      "sha256": "d6f1eec3a9e9bf7dc5b94608db02d069c4f84404625587bfe9ebd7e64658067d"
+    },
+    {
+      "source": "target/logs/ci/b-route-retained-executions/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/binding.json#/execution/raw_pins/logs~1ci~12026-11-09~1story27-r52-atomic-review-prepare-01~1reader-stdout.bin",
+      "task_relative_path": "logs/ci/2026-11-09/story27-r52-atomic-review-prepare-01/reader-stdout.bin",
+      "sha256": "57b2c0d883ae6884b090a32d4652e367f22743d467c5d4b0fd6c4982eac2e295"
+    },
+    {
+      "source": "target/logs/ci/b-route-retained-executions/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/binding.json#/execution/raw_pins/logs~1ci~12026-11-09~1story27-r52-atomic-review-prepare-01~1reader-stderr.bin",
+      "task_relative_path": "logs/ci/2026-11-09/story27-r52-atomic-review-prepare-01/reader-stderr.bin",
+      "sha256": "ab643f2520346c6a2443c201fd3fe10779da2546ba9e263f563778827c40740e"
+    },
+    {
+      "source": "target/logs/ci/b-route-retained-executions/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/binding.json#/execution/raw_pins/logs~1ci~12026-11-09~1story27-r52-atomic-review-prepare-01~1actual-native-capture.json",
+      "task_relative_path": "logs/ci/2026-11-09/story27-r52-atomic-review-prepare-01/actual-native-capture.json",
+      "sha256": "15771c58f9f7f8065b4b03a608d294625c88604a170d0a0d3235f1fd33b0785f"
+    },
+    {
+      "source": "target/logs/ci/b-route-retained-executions/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/binding.json#/execution/raw_pins/logs~1ci~12026-11-09~1story27-r52-atomic-review-prepare-01~1reader-held-started.json",
+      "task_relative_path": "logs/ci/2026-11-09/story27-r52-atomic-review-prepare-01/reader-held-started.json",
+      "sha256": "012731090b820c06579e91ab3a3daf851051fa328da954ebdf29d59155330354"
+    },
+    {
+      "source": "target/logs/ci/b-route-retained-executions/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/binding.json#/execution/raw_pins/logs~1ci~12026-11-09~1story27-r52-atomic-review-prepare-01~1reader-held-terminal.json",
+      "task_relative_path": "logs/ci/2026-11-09/story27-r52-atomic-review-prepare-01/reader-held-terminal.json",
+      "sha256": "f8ccd45bf89c799692636bf77aa7c5aa8d08c2b0f669a3ed994984a754b66e42"
+    },
+    {
+      "source": "target/logs/ci/b-route-retained-executions/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/binding.json#/execution/raw_pins/logs~1ci~12026-11-09~1story27-r52-atomic-review-prepare-01~1stop.json",
+      "task_relative_path": "logs/ci/2026-11-09/story27-r52-atomic-review-prepare-01/stop.json",
+      "sha256": "8eeb2cb2399a4706316831564ec1d49042757fe6c02bccd8e485a4fbf2ed7f60"
+    },
+    {
+      "source": "target/logs/ci/b-route-retained-executions/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/binding.json#/execution/raw_pins/logs~1ci~12026-11-09~1story27-r52-atomic-review-prepare-supervision-01~1result.json",
+      "task_relative_path": "logs/ci/2026-11-09/story27-r52-atomic-review-prepare-supervision-01/result.json",
+      "sha256": "0e43c191bd9da4ec0110f82bece80bf72e547bbc4a8dd894ff533489d64f01ab"
+    },
+    {
+      "source": "target/logs/ci/b-route-retained-executions/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/binding.json#/execution/raw_pins/night-handoff~1story27-r52-public-review-prepare-host-followup02~1review_prepare_host.draft.py",
+      "task_relative_path": "night-handoff/story27-r52-public-review-prepare-host-followup02/review_prepare_host.draft.py",
+      "sha256": "3875a5c8865fef7b4297fd8c62393429dea07a63f73b2a8ae051316e11138449"
+    },
+    {
+      "source": "target/logs/ci/b-route-retained-executions/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/binding.json#/execution/raw_pins/night-handoff~1story27-r52-atomic-review-prepare-thin-controls-01~1manifest.json",
+      "task_relative_path": "night-handoff/story27-r52-atomic-review-prepare-thin-controls-01/manifest.json",
+      "sha256": "88a551e4a57a09a621990758ae6355d0de70651824a36faabc01ec991810fa25"
+    },
+    {
+      "source": "target/logs/ci/b-route-retained-executions/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/binding.json#/execution/raw_pins/night-handoff~1story27-r52-atomic-review-prepare-thin-controls-01~1run_review_prepare.Root-only.py",
+      "task_relative_path": "night-handoff/story27-r52-atomic-review-prepare-thin-controls-01/run_review_prepare.Root-only.py",
+      "sha256": "71e7f9241ae4485a525868060bff75db537fff15e1a6c2d4ce82f5c3fd4916c8"
+    },
+    {
+      "source": "target/logs/ci/b-route-retained-executions/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/binding.json#/execution/raw_pins/night-handoff~1story27-r52-atomic-review-prepare-thin-controls-01~1control_common.py",
+      "task_relative_path": "night-handoff/story27-r52-atomic-review-prepare-thin-controls-01/control_common.py",
+      "sha256": "0ea4c7774dec93207fd1b5470ac29232fbcdf0d01b20b06f8db570d85c32ccbe"
+    },
+    {
+      "source": "target/logs/ci/b-route-retained-executions/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/binding.json#/execution/raw_pins/logs~1ci~12026-11-09~1story27-r52-atomic-review-prepare-supervision-01~1supervisor-started.json",
+      "task_relative_path": "logs/ci/2026-11-09/story27-r52-atomic-review-prepare-supervision-01/supervisor-started.json",
+      "sha256": "8487cfa42819c94fd8481cc2af5436eecb3d166e42731a432bfe001272f33ab7"
+    },
+    {
+      "source": "target/logs/ci/b-route-retained-executions/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/binding.json#/execution/raw_pins/logs~1ci~12026-11-09~1story27-r52-atomic-review-prepare-supervision-01~1child-started.json",
+      "task_relative_path": "logs/ci/2026-11-09/story27-r52-atomic-review-prepare-supervision-01/child-started.json",
+      "sha256": "afc066d65dd521c1ea22375a9f359ed5c76af93b06f74273685c571d53998a8a"
+    },
+    {
+      "source": "target/logs/ci/b-route-retained-executions/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/binding.json#/execution/raw_pins/logs~1ci~12026-11-09~1story27-r52-atomic-review-prepare-supervision-01~1child-terminal.json",
+      "task_relative_path": "logs/ci/2026-11-09/story27-r52-atomic-review-prepare-supervision-01/child-terminal.json",
+      "sha256": "8b44bd98f93be1f9380ed81da84a3f71febfe4e397516ac0a814532b9ffea9a6"
+    },
+    {
+      "source": "target/logs/ci/b-route-retained-executions/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/binding.json#/execution/original_parent_source_epoch/source_manifest_raw_sha256",
+      "task_relative_path": "logs/ci/2026-11-09/story27-r52-atomic-review-prepare-seal-01/config.json",
+      "sha256": "d6f1eec3a9e9bf7dc5b94608db02d069c4f84404625587bfe9ebd7e64658067d"
+    }
+  ],
+  "declared_sizes": [],
+  "limits_or_parse_omissions": [],
+  "historical_code_executed": false,
+  "model_calls": 0,
+  "authority_granted": false,
+  "unique_parsed_carriers": 51,
+  "decoded_bytes_total": 12509934,
+  "interpretation": "Metadata pins locate expected evidence, not the evidence bytes. A DATA match would not authenticate prior process execution. No negative claim about every unreferenced/opaque historical payload."
+}

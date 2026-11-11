@@ -1,0 +1,11 @@
+{
+  "original_task_relative_path": "night-handoff/story27-r52-public-review-prepare-host-followup02/review_prepare_host.draft.py",
+  "available_data_path": "/workspace/newrouge-recovery-data/batch03-05f5fbf9/work/recovered-producer-control-source/review_prepare_host.draft.py",
+  "bytes": 82000,
+  "sha256": "3875a5c8865fef7b4297fd8c62393429dea07a63f73b2a8ae051316e11138449",
+  "source_git_path": "docs/handoff/2026-11-11/archive/night-handoff/story27-r52-public-review-prepare-host-followup02/review_prepare_host.draft.py",
+  "source_git_blob": "866f4c7e5d7ec7d0c948cc8834124092aa00b044",
+  "basis": "Exact archive_source_map correspondence and raw Git blob match original pinned hash; working-tree CRLF bytes do not match",
+  "old_code_executed": false,
+  "authority_granted": false
+}
