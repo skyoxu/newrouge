@@ -20,12 +20,16 @@ import sys
 from pathlib import Path
 
 # The read-only command must not create bytecode even without Python -B.
-if len(sys.argv) > 1 and sys.argv[1] in {"b-route-preflight", "b-route-sources"}:
+if len(sys.argv) > 1 and sys.argv[1] in {"b-route-preflight", "b-route-sources", "b-route-adoption"}:
     sys.dont_write_bytecode = True
 
 if __name__ == "__main__" and len(sys.argv) > 1 and sys.argv[1] == "b-route-sources":
     from account_b_route_sources import main as sources_main
     raise SystemExit(sources_main(sys.argv[2:]))
+
+if __name__ == "__main__" and len(sys.argv) > 1 and sys.argv[1] == "b-route-adoption":
+    from b_route_adoption import main as adoption_main
+    raise SystemExit(adoption_main(sys.argv[2:]))
 
 from dev_cli_builders import (
     DEFAULT_GATE_BUNDLE_TASK_FILES,
@@ -610,6 +614,10 @@ def build_parser() -> argparse.ArgumentParser:
     from _b_route_sources import register_arguments as register_sources_arguments
     register_sources_arguments(sources_parser)
 
+    adoption_parser = sub.add_parser("b-route-adoption", help="Explicit adoption review/prepare/commit/read; optional read context, no default B activation")
+    from b_route_adoption import register_arguments as register_adoption_arguments
+    register_adoption_arguments(adoption_parser)
+
     # run-ci-basic
     p_ci = sub.add_parser(
         "run-ci-basic",
@@ -827,10 +835,14 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_cap.add_argument("--stage", required=True, choices=[
         "prepare", "generate", "review", "preview-alignment", "align",
-        "apply", "validate-candidate", "status",
+        "apply", "validate-candidate", "verify-selection", "status",
     ])
     p_cap.add_argument("--repo-root", default=str(Path(__file__).resolve().parents[2]))
     p_cap.add_argument("--run-id", required=True)
+    p_cap.add_argument("--input-stage", choices=("legacy", "3b"), default="legacy")
+    p_cap.add_argument("--planning-contract", default="")
+    p_cap.add_argument("--prepared-ref", default="")
+    p_cap.add_argument("--planning-profile", default="")
     p_cap.add_argument("--task-id", action="append", default=[])
     p_cap.add_argument("--allow-unready-draft", action="store_true")
     p_cap.add_argument("--source-manifest", default="logs/ci/task-generation/source-manifest.v1.json")
@@ -858,11 +870,16 @@ def build_parser() -> argparse.ArgumentParser:
     p_mvg_plan.add_argument(
         "--stage",
         required=True,
-        choices=["prepare", "generate", "review", "validate", "apply", "rebind-handoff", "status",
+        choices=["prepare", "generate", "review", "validate", "verify-selection", "apply", "rebind-handoff", "status",
                  "audit", "reopen-plan", "reopen"],
     )
     p_mvg_plan.add_argument("--repo-root", default=".")
     p_mvg_plan.add_argument("--run-id", required=True)
+    p_mvg_plan.add_argument("--input-stage", choices=("legacy", "3b"), default="legacy")
+    p_mvg_plan.add_argument("--planning-contract", default="")
+    p_mvg_plan.add_argument("--prepared-ref", default="")
+    p_mvg_plan.add_argument("--planning-profile", default="")
+    p_mvg_plan.add_argument("--candidate", default="")
     p_mvg_plan.add_argument("--capabilities", default="")
     p_mvg_plan.add_argument("--manifest", default="")
     p_mvg_plan.add_argument("--evidence-ref", action="append", default=[])
@@ -1128,6 +1145,10 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     arguments = list(sys.argv[1:] if argv is None else argv)
+    if arguments and arguments[0] == "b-route-adoption":
+        sys.dont_write_bytecode = True
+        from b_route_adoption import main as adoption_main
+        return adoption_main(arguments[1:])
     if arguments and arguments[0] == "b-route-sources":
         sys.dont_write_bytecode = True
         from account_b_route_sources import main as sources_main

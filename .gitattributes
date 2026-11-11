@@ -41,3 +41,6 @@ docs/planning/semantic-topology/** text eol=lf
 *.dll  binary
 *.pdb  binary
 *.pck  binary
+
+# Evidence is verified by raw-byte digest; preserve it across checkouts.
+/logs/** -text

@@ -19,6 +19,18 @@ Use `docs/workflows/script-entrypoints-index.md` when you need the full executab
 
 The target order is 3A source audit, 3B formal adoption without Task/readiness/real scenes, 3C Task handoff, 4–5 binding/readiness, 6 one Task, applicable 7, then Flow/cumulative closeout. These are responsibilities, not three new commands. Default B waits for later consumers, recovery counterexamples and real reward evidence from both paths. A freeze, final A exit and reviewed compensation each follow the ADR conditions; this navigation does not activate them.
 
+## Explicit B-route planning context (implemented slice; not enabled by default)
+
+`py -3 scripts/python/dev_cli.py b-route-adoption --stage inspect --operation-id <original-id> --context`
+reads the original retained operation. Use `--stage read --context` for the
+validated published operation's plan/binding/revision references; its original
+reader retains coordination metadata writes. See [adoption owner](b-route-adoption.md)
+and [retained native status](b-route-native-planning-status.md) for exact boundaries.
+The native status route still validates the original run and can recover a
+checkpoint; it is not a substitute read-only formal reader. No new Task, latest
+context selector, model invocation or 2.9 reuse API is supplied by these views.
+Original A entrypoints remain below. Default B and full Story 2.10 remain unaccepted.
+
 ## Repo Bootstrap And Recovery
 
 ### `py -3 scripts/python/dev_cli.py run-prototype-workflow --prototype-file docs/prototypes/<your-file>.md`

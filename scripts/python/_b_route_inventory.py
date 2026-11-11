@@ -20,7 +20,7 @@ from _planning_skill_common import canonical_sha, file_sha, repo_path
 from build_source_ledger import resolve_sources, SUPPORTED_SUFFIXES
 from _mvg_manifest import manifest_sha256, validate_manifest
 
-SCHEMA = "newrouge.b-route-baseline-inventory.v1"
+SCHEMA = "newrouge.b-route-baseline-inventory.v3"
 SOURCE_SET = "docs/workflows/chapter3-source-set.json"
 TRIPLET = {name: f".taskmaster/tasks/tasks{suffix}.json" for name, suffix in
            (("master", ""), ("back", "_back"), ("gameplay", "_gameplay"))}
@@ -184,10 +184,20 @@ def safe_source_pattern(root: Path, pattern: str) -> None:
                 no_reparse(Path(directory, name))
 
 
-def git(root: Path, *args: str, optional: bool = False) -> bytes:
+def git(root: Path, *args: str, optional: bool = False, environment: dict | None = None) -> bytes:
+    child_env = dict(os.environ if environment is None else environment)
+    for name in ('GIT_DIR', 'GIT_WORK_TREE', 'GIT_COMMON_DIR', 'GIT_INDEX_FILE',
+                 'GIT_OBJECT_DIRECTORY', 'GIT_ALTERNATE_OBJECT_DIRECTORIES', 'GIT_CONFIG_PARAMETERS'):
+        child_env.pop(name, None)
+    child_env.update(GIT_NO_LAZY_FETCH='1', GIT_NO_REPLACE_OBJECTS='1', GIT_REPLACE_REF_BASE='refs/replace',
+        GIT_TERMINAL_PROMPT='0', GIT_OPTIONAL_LOCKS='0', GIT_CONFIG_NOSYSTEM='1',
+        GIT_CONFIG_GLOBAL=os.devnull, GIT_CONFIG_COUNT='0', GIT_TRACE='0', GIT_TRACE_SETUP='0',
+        GIT_TRACE_PACKET='0', GIT_TRACE2='0', GIT_TRACE2_EVENT='0', GIT_TRACE2_PERF='0')
     try:
-        proc = subprocess.run(["git", "--no-optional-locks", "-C", str(root), *args],
-                              capture_output=True, timeout=30)
+        proc = subprocess.run(["git", "--no-optional-locks", "--no-replace-objects",
+            "-c", "protocol.allow=never", "-c", "core.hooksPath=" + os.devnull,
+            "-c", "commit.gpgSign=false", "-c", "tag.gpgSign=false", "-C", str(root), *args],
+            capture_output=True, timeout=30, env=child_env)
     except subprocess.TimeoutExpired as exc:
         raise GitCommandTimeout(f"Git {' '.join(args[:2])} timed out after {exc.timeout} seconds") from exc
     if proc.returncode and not optional:
@@ -235,6 +245,21 @@ def git_identity(root: Path) -> dict:
 
 def digest(raw: bytes) -> str:
     return "sha256:" + hashlib.sha256(raw).hexdigest()
+
+
+def rule_identity() -> dict[str, str]:
+    """Exact installed collector rules supported by the current protection owner.
+
+    This is a policy identity, not an attestation that a collection event ran.
+    """
+    rule_files = [Path(__file__), Path(__file__).with_name("inventory_b_route_baseline.py"),
+                  Path(__file__).with_name("_planning_skill_common.py"),
+                  Path(__file__).with_name("build_source_ledger.py"), Path(__file__).with_name("_mvg_manifest.py"),
+                  Path(__file__).with_name("_b_route_initial_legacy.py"), Path(__file__).with_name("_b_route_records.py"),
+                  Path(__file__).with_name("_b_route_codec.py"), Path(__file__).with_name("_b_route_schema_resources.py")]
+    from _b_route_schema_resources import resources
+    return {**{path.name: file_sha(path) for path in rule_files},
+            **{"schema:"+name: digest(raw) for name,raw in resources()}}
 
 
 def strict_json(raw: bytes) -> Any:
@@ -309,8 +334,9 @@ def markdown_status_lines(text: str):
 
 
 class Snapshot:
-    def __init__(self, root: Path, epics: str, *, read_bytes=None, virtual_files=()):
+    def __init__(self, root: Path, epics: str, *, read_bytes=None, virtual_files=(), historical_inventory=None):
         self.root, self.epics = root, epics
+        self.historical_inventory = historical_inventory
         self.read_bytes = read_bytes
         self.virtual_files = tuple(virtual_files)
         self.inputs: dict[str, dict] = {}
@@ -333,8 +359,9 @@ class Snapshot:
             if path in self.cache:
                 if role not in self.inputs[path]["roles"]:
                     self.inputs[path]["roles"].append(role)
-                if self.cache[path] is None and required:
-                    self.diagnostic("missing-input", path, "Required file is missing")
+                if self.cache[path] is None:
+                    self.diagnostic("missing-input", path, "Required file is missing" if required else "Optional file is missing",
+                                    "error" if required else "warning")
                 return self.cache[path]
             raw = target.read_bytes() if self.read_bytes is None else self.read_bytes(path)
             if raw is None:
@@ -434,8 +461,16 @@ class Snapshot:
 
     def reference(self, owner: str, pointer: str, task_id: Any, master_id: Any, field: str, value: Any,
                   *, required: bool = True) -> None:
+        # Roles come from the owning field, never from Task status or a caller
+        # supplied exemption. An attachment is not an operation prerequisite.
+        if field == "evidence_refs":
+            required = False
+            reference_role = "historical-debug-attachment"
+        else:
+            reference_role = "current-input" if required else "planned-input"
         row = {"owner_file": owner, "json_pointer": pointer, "task_id": task_id,
-               "master_id": master_id, "field": field, "raw_reference": value}
+               "master_id": master_id, "field": field, "raw_reference": value,
+               "reference_role": reference_role, "required": required}
         self.references.append(row)
         if not isinstance(value, str) or not value.strip():
             row.update(state="unknown", reason="Reference must be a nonempty original string")
@@ -558,7 +593,7 @@ class Snapshot:
 
         return {"path": SOURCE_SET, "document": source_set, "resolved_active_sources": active_sources}
 
-    def manifests(self, paths) -> list[dict]:
+    def manifests(self, paths, *, requirement=None) -> list[dict]:
         """Native manifest rules and required/planned reference observations."""
         manifests = []
         for path in paths:
@@ -584,7 +619,7 @@ class Snapshot:
                                   "execution_claim": "not-run; static inventory is not runtime evidence"})
             except (KeyError, TypeError, ValueError, AttributeError, OSError) as exc:
                 self.diagnostic("invalid-manifest", path, str(exc))
-        if not manifests:
+        if not manifests and (requirement or {}).get("state") != "initially_absent":
             self.diagnostic("missing-manifests", "docs/testing/mvg", "No cumulative manifest could be inventoried")
         return manifests
 
@@ -626,6 +661,8 @@ class Snapshot:
 
     def collect(self) -> dict:
         header = self._canonical_inputs()
+        if self.historical_inventory is not None:
+            self.read(self.historical_inventory, "historical-inventory", required=False, evidence=True)
         discovered = self.discover()
         for prefix in ("docs/adr/", "docs/architecture/base/", "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/", "Game.Core/Contracts/"):
             if not any(path.startswith(prefix) for _, path in discovered):
@@ -678,12 +715,13 @@ class Snapshot:
 
         source_set_summary = self.source_set()
         tasks = self.tasks()
-        manifests = self.manifests(path for role, path in discovered if role == "manifest")
-        # These loaded helper implementations and the CLI are part of rule identity.
-        rule_files = [Path(__file__), Path(__file__).with_name("inventory_b_route_baseline.py"),
-                      Path(__file__).with_name("_planning_skill_common.py"),
-                      Path(__file__).with_name("build_source_ledger.py"), Path(__file__).with_name("_mvg_manifest.py")]
-        rules = {path.name: file_sha(path) for path in rule_files}
+        from _b_route_initial_legacy import observe
+        manifest_paths = [path for role,path in discovered if role == "manifest"]
+        requirement = observe(self, tasks, manifest_paths, header)
+        if requirement["state"] == "unknown":
+            self.diagnostic("legacy-manifest-requirement-unknown", "docs/testing/mvg", requirement["reason"])
+        manifests = self.manifests(manifest_paths, requirement=requirement)
+        rules = rule_identity()
         git_end = git_identity(self.root)
         if self.git_start != git_end:
             self.diagnostic("git-drift-within-pass", "git", "Git identity changed during collection; recollect")
@@ -694,19 +732,21 @@ class Snapshot:
                 "declared_input_snapshot": header.get("inputSnapshotCommit"), "epics": self.epics,
                 "canonical_inputs": header.get("inputDocuments"), "discovery": discovered,
                 "inputs": [self.inputs[key] for key in sorted(self.inputs)], "rules": rules,
-                "source_set": source_set_summary,
+                "source_set": source_set_summary, "historical_inventory_ref": self.historical_inventory,
                 "tasks": tasks, "task_and_manifest_references": self.references, "adrs": adrs,
-                "manifests": manifests, "consumers": self.consumers, "diagnostics": self.diagnostics}
+                "manifests": manifests, "legacy_manifest_requirement": requirement,
+                "consumers": self.consumers, "diagnostics": self.diagnostics}
 
 
-def collect_inventory(root: Path, epics: str, *, between_passes: Callable[[], None] | None = None) -> dict:
+def collect_inventory(root: Path, epics: str, *, between_passes: Callable[[], None] | None = None,
+                      historical_inventory: str | None = None) -> dict:
     require_runtime()
     root = root.absolute()
     safe_input(root, epics)
-    first = Snapshot(root, epics).collect()
+    first = Snapshot(root, epics, historical_inventory=historical_inventory).collect()
     if between_passes is not None:
         between_passes()
-    second = Snapshot(root, epics).collect()
+    second = Snapshot(root, epics, historical_inventory=historical_inventory).collect()
     first_sha, second_sha = canonical_sha(first), canonical_sha(second)
     stable = first_sha == second_sha and not any(d["code"] == "git-drift-within-pass" for d in first["diagnostics"] + second["diagnostics"])
     diagnostics = list(first["diagnostics"])
@@ -724,13 +764,14 @@ def collect_inventory(root: Path, epics: str, *, between_passes: Callable[[], No
         diagnostics.append({"code": "unstable-inputs", "location": "collection", "severity": "error",
                             "message": "Input set, raw bytes, derived closure or Git identity changed; recollect. " + json.dumps(drift, ensure_ascii=False)})
     first.update(content_identity=first_sha, second_pass_identity=second_sha, drift=drift,
-                 collection={"event_id": str(uuid.uuid4()), "collected_at_utc": dt.datetime.now(dt.timezone.utc).isoformat()},
+                 collection={"event_id": str(uuid.uuid4()), "collected_at_utc": dt.datetime.now(dt.timezone.utc).isoformat(),
+                             "root_real": str(root.resolve())},
                  stable=stable, adoptable=stable and not any(d["severity"] == "error" for d in diagnostics),
                  status="unstable" if not stable else ("invalid" if any(d["severity"] == "error" for d in diagnostics) else "stable"),
                  diagnostics=diagnostics,
                  verification_limits=["No lock against external concurrent writers; double-read observation only.",
                                       "Consumer checklist verifies locations, not semantic completeness.",
-                                      "Historical template/missing evidence is unknown, never runtime proof.",
+                                      "Historical debug attachments retain missing/unknown observations, never runtime proof or operation prerequisites.",
                                       "Formal protection baseline belongs to Story 1.5; default route is unchanged."])
     return first
 
@@ -762,11 +803,12 @@ def markdown(report: dict) -> str:
     for row in report["tasks"]["status_differences"]:
         lines.append("| " + " | ".join(cell(x) for x in (row["master_id"], f"{row['view']} / {row['view_id']}",
                      row["master_status"], row["view_status"], row["master_pointer"], row["view_pointer"])) + " |")
-    lines += ["", "## Reference closure", "", "| Owner / pointer | Original reference | State | Raw SHA256 / reason |",
-              "| --- | --- | --- | --- |"]
+    lines += ["", "## Reference closure", "", "| Owner / pointer | Original reference | Role / required | State | Raw SHA256 / reason |",
+              "| --- | --- | --- | --- | --- |"]
     for row in report["task_and_manifest_references"]:
         lines.append("| " + " | ".join(cell(x) for x in (row["owner_file"] + "#" + row["json_pointer"],
-                     row["raw_reference"], row["state"], row.get("raw_sha256") or row.get("reason", ""))) + " |")
+                     row["raw_reference"], f"{row['reference_role']} / {row['required']}", row["state"],
+                     row.get("raw_sha256") or row.get("reason", ""))) + " |")
     lines += ["", "## ADR body status", ""]
     lines += [f"- {cell(row['path'])}: {row['status']}" for row in report["adrs"]]
     lines += ["", "## Cumulative manifests", ""]

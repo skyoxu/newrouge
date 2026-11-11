@@ -2,16 +2,38 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
 from pathlib import Path
 import subprocess
 import sys
 import time
+import uuid
 
 from _planning_skill_common import atomic_json, canonical_sha, file_sha, load_json, parse_model_json
 from _mvg_worker_lifetime import worker_lifetime
 
 SCHEMA = "newrouge.mvg-capability-worker.v1"
+
+
+def write_output_schema(path, value, *, compact=False):
+    """Write identical JSON values; compact only the versioned review carrier."""
+    if not compact:
+        atomic_json(path, value)
+        return
+    from _b_route_codec import validate_json_value
+    validate_json_value(value)
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_name(path.name + "." + uuid.uuid4().hex + ".tmp")
+    try:
+        with temporary.open("xb") as stream:
+            stream.write((json.dumps(value, ensure_ascii=False, separators=(",", ":"), allow_nan=False) + "\n").encode("utf-8"))
+            stream.flush()
+            os.fsync(stream.fileno())
+        temporary.replace(path)
+    finally:
+        temporary.unlink(missing_ok=True)
 
 
 class Mailbox:
@@ -54,6 +76,12 @@ def runner_invoke(root, run_dir, state, workspace, config, mailbox):
     import plan_mvg as pm
     from _mvg_capability_generation import preflight_dispatch, dispatch_request_identity
     runner = Path(config["runner"])
+    from _b_route_planning_runtime import enabled as is_3b
+    if is_3b(state):
+        from _b_route_planning_runtime import descriptor
+        descriptor(state)
+        if file_sha(runner) != config.get("runner_sha256"):
+            raise ValueError("b_route_runner_identity_changed")
 
     def invoke(prompt, attempt, *, output_name, output_schema_path, output_schema, before_dispatch=None):
         name = Path(output_name)
@@ -64,7 +92,11 @@ def runner_invoke(root, run_dir, state, workspace, config, mailbox):
         output = sandbox / name.name
         if output.exists():
             raise ValueError("worker_model_output_already_exists")
-        atomic_json(output_schema_path, output_schema)
+        compact_schema = False
+        if is_3b(state):
+            from _b_route_planning_runtime import INDEXED_REVIEW
+            compact_schema = output_schema.get("properties", {}).get("schema_version", {}).get("const") == INDEXED_REVIEW
+        write_output_schema(output_schema_path, output_schema, compact=compact_schema)
         schema = sandbox / "output-schema.json"
         shutil.copyfile(output_schema_path, schema)
         stem = name.with_suffix("").as_posix().replace("/", "-")
@@ -75,27 +107,62 @@ def runner_invoke(root, run_dir, state, workspace, config, mailbox):
                            output_schema=schema, timeout_sec=config["timeout_sec"])
         request = dispatch_request_identity(run_dir, runner, workspace=sandbox, prompt_path=prompt_path,
             output_path=output, output_schema=schema, attempt=attempt)
+        binding_path = workspace / f"execution-binding-{attempt}-{stem}.json"
+        host_path = workspace / f"host-execution-{attempt}-{stem}.json"
+        if is_3b(state):
+            from _b_route_planning_runtime import prepare_dispatch
+            request, actual_payload, measurement = prepare_dispatch(root, run_dir, state, runner, sandbox,
+                prompt_path, schema, output, attempt, binding_path, timeout_sec=config["timeout_sec"])
         previous_reservation = mailbox.reservation
         if before_dispatch:
-            before_dispatch(request_identity=request)
+            returned_reservation = before_dispatch(request_identity=request)
+            if is_3b(state) and isinstance(returned_reservation, dict):
+                mailbox.reservation = returned_reservation
         reservation = mailbox.reservation
         if not isinstance(reservation, dict) or reservation is previous_reservation:
             raise ValueError("worker_dispatch_requires_parent_reservation")
+        dispatch_timeout = reservation.get("request_identity", {}).get("timeout_sec", config["timeout_sec"])
         try:
+            if is_3b(state):
+                from _b_route_planning_runtime import require_live_high
+                require_live_high(state, runner)
             receipt = pm.run_isolated_model(runner, workspace=sandbox, prompt_path=prompt_path,
-                output_path=output, output_schema=schema, timeout_sec=config["timeout_sec"])
+                output_path=output, output_schema=schema, timeout_sec=dispatch_timeout,
+                **({"execution_log": host_path, "model_request_budget": 1,
+                    **({"wall_timeout_sec": dispatch_timeout} if state["planning_runtime"]["planner"] == "capabilities" else {}),
+                    "suppress_bytecode": True} if is_3b(state) else {}))
+            binding = None
+            if is_3b(state):
+                from _b_route_planning_runtime import capture_binding
+                binding = capture_binding(sandbox, prompt_path, schema, output, actual_payload, measurement,
+                    host_path, config["backend_info"], receipt)
+                atomic_json(binding_path, binding)
             parse_model_json(output)
             outcome = {"status": "completed", "completed_at_utc": pm.now(),
-                "error_type": None, "output_sha256": file_sha(output)}
+                "error_type": None, "output_sha256": file_sha(output),
+                **({"active_elapsed_seconds": binding["host_execution"]["active_elapsed_seconds"]} if is_3b(state) else {})}
         except Exception as exc:
             mailbox.request("outcome", reservation_id=reservation["reservation_id"], outcome={
                 "status": "failed", "completed_at_utc": pm.now(),
-                "error_type": pm.classify_review_error(exc), "error_class": type(exc).__name__})
+                "error_type": pm.classify_review_error(exc), "error_class": type(exc).__name__,
+                **({"active_elapsed_seconds": failure_elapsed(host_path)} if is_3b(state) else {})})
             raise
         mailbox.request("outcome", reservation_id=reservation["reservation_id"], outcome=outcome)
         return output, {"attempt": attempt, "invocation": reservation, "backend": config["backend"],
-            "backend_info": config["backend_info"], "runner": runner.as_posix(), "returncode": 0, "receipt": receipt}
+            "backend_info": config["backend_info"], "runner": runner.as_posix(), "returncode": 0, "receipt": receipt,
+            **({"execution_binding": binding} if is_3b(state) else {})}
     return invoke
+
+
+def failure_elapsed(host_path):
+    """Missing or malformed host evidence is unknown, never measured zero."""
+    import math
+    try:
+        host = load_json(host_path, {})
+        value = host.get("active_elapsed_seconds") if type(host) is dict else None
+    except (OSError, ValueError, TypeError):
+        return None
+    return value if type(value) in (int, float) and math.isfinite(value) and value >= 0 else None
 
 
 def execute(job_path):
@@ -116,7 +183,9 @@ def execute(job_path):
             "status": progress["status"], "total_invocations": progress["total_invocations"]}),
         scope_index=data["scope_index"], accepted_seed=data["accepted_seed"],
         selected_records=data["selected_records"],
-        cost_budget=lambda phase, **kwargs: mailbox.request("cost", phase=phase, **kwargs))
+        cost_budget=lambda phase, **kwargs: mailbox.request("cost", phase=phase, **kwargs),
+        replacement=(lambda **kwargs: mailbox.request("replacement", **kwargs))
+            if data["state"].get("input_stage") == "3b" else None)
     # Intermediate drafts and model conversations never cross this boundary.
     output = {"schema_version": SCHEMA, "identity": binding, "pid": os.getpid(),
         "status": result["status"], "total_invocations": result["total_invocations"],
@@ -127,8 +196,56 @@ def execute(job_path):
     atomic_json(job_path.parent / "result.json", output)
 
 
-def run_candidate(job_dir, data, *, reserve, cost_budget, outcome, inline=None):
+def _cleanup_candidate(process, job, job_dir, flags, *, primary_error, cleanup_timeout=10):
+    """Reap only this owned child; independent failures share one cleanup deadline."""
+    deadline = time.monotonic() + cleanup_timeout
+    failures = []
+    def attempt(stage, action):
+        try:
+            action()
+        except BaseException as error:
+            failures.append({"stage": stage, "type": type(error).__name__, "detail": str(error)})
+    def remaining():
+        return max(0, deadline - time.monotonic())
+    attempt("stdin_close", process.stdin.close)
+    def stop_tree():
+        if process.poll() is None and os.name == "nt":
+            budget = remaining()
+            if budget <= 0:
+                raise TimeoutError("worker cleanup deadline exhausted before taskkill")
+            result = subprocess.run(["taskkill", "/PID", str(process.pid), "/T", "/F"],
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, creationflags=flags,
+                check=False, timeout=budget)
+            if result.returncode and process.poll() is None:
+                raise RuntimeError("worker taskkill failed:" + str(result.returncode))
+    attempt("taskkill", stop_tree)
+    def kill_if_running():
+        if process.poll() is None:
+            process.kill()
+    attempt("kill", kill_if_running)
+    if job is not None:
+        attempt("job_close", job.close)
+    # wait(timeout=0) is still a nonblocking reap when the cleanup budget expires.
+    attempt("wait", lambda: process.wait(timeout=remaining()))
+    if not failures:
+        return
+    diagnostic = {"schema_version": "newrouge.mvg-worker-host-cleanup.v1",
+        "pid": process.pid, "primary_error": None if primary_error is None else
+            {"type": type(primary_error).__name__, "detail": str(primary_error)},
+        "failures": failures}
+    attempt("diagnostic_save", lambda: atomic_json(job_dir / "worker-cleanup.json", diagnostic))
+    note = "worker_cleanup: " + json.dumps(diagnostic, ensure_ascii=False)
+    if primary_error is not None:
+        BaseException.add_note(primary_error, note)
+        return
+    error = RuntimeError("candidate_worker_cleanup_failed")
+    BaseException.add_note(error, note)
+    raise error
+
+
+def run_candidate(job_dir, data, *, reserve, cost_budget, outcome, inline=None, replacement=None, timeout_sec=None):
     """Run a real OS child; the optional inline callable is a unit-test seam."""
+    deadline = time.monotonic() + timeout_sec if timeout_sec is not None else None
     job_dir.mkdir(parents=True, exist_ok=False)
     identity = canonical_sha(data)
     job_path = job_dir / "job.json"
@@ -151,6 +268,11 @@ def run_candidate(job_dir, data, *, reserve, cost_budget, outcome, inline=None):
             process.stdin.write(b"start\n")
             process.stdin.close()
             while True:
+                if deadline is not None and time.monotonic() >= deadline:
+                    atomic_json(job_dir / "lifecycle-timeout.json", {"status": "deadline_exhausted",
+                        "pid": process.pid, "identity": identity, "timeout_sec": timeout_sec,
+                        "next_mailbox_sequence": sequence, "dispatch_outcome": "unknown_if_reserved"})
+                    raise TimeoutError("candidate_worker_deadline_exhausted:" + str(job_dir))
                 request_path = mailbox / (str(sequence) + ".request.json")
                 if request_path.is_file():
                     request = load_json(request_path)
@@ -163,6 +285,8 @@ def run_candidate(job_dir, data, *, reserve, cost_budget, outcome, inline=None):
                             value = reserve(request["phase"], request.get("request_identity"))
                         elif kind == "cost":
                             value = cost_budget(request["phase"], known_evidence_calls=request["known_evidence_calls"])
+                        elif kind == "replacement" and replacement is not None:
+                            value = replacement(context=request["context"], issue=request["issue"])
                         elif kind == "outcome":
                             value = outcome(request["reservation_id"], request["outcome"])
                         else:
@@ -191,14 +315,7 @@ def run_candidate(job_dir, data, *, reserve, cost_budget, outcome, inline=None):
                 result["accepted"] = load_json(workspace / "proposal.json")
             return result
         finally:
-            process.stdin.close()
-            if process.poll() is None:
-                if os.name == "nt":
-                    subprocess.run(["taskkill", "/PID", str(process.pid), "/T", "/F"],
-                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, creationflags=flags, check=False)
-                else:
-                    process.kill()
-                process.wait(timeout=10)
+            _cleanup_candidate(process, job, job_dir, flags, primary_error=sys.exc_info()[1])
 
 
 if __name__ == "__main__":

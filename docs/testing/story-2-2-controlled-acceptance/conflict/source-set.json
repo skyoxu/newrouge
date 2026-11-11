@@ -1,0 +1,12 @@
+{
+  "schema_version": "chapter3.source-set.v1",
+  "active_patterns": [
+    "docs/testing/story-2-2-controlled-acceptance/conflict/retention-a.md",
+    "docs/testing/story-2-2-controlled-acceptance/conflict/retention-b.md"
+  ],
+  "active_sources": [
+    "docs/testing/story-2-2-controlled-acceptance/conflict/retention-a.md",
+    "docs/testing/story-2-2-controlled-acceptance/conflict/retention-b.md"
+  ],
+  "retirements": []
+}

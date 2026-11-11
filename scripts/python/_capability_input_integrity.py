@@ -515,7 +515,8 @@ def measure_request(payload: str, *, max_bytes: int, max_input_tokens: int,
     if tokens + reserved_tokens > max_input_tokens:
         raise ValueError(f'runner_context_budget_exceeded:estimated_input_tokens={tokens};'
                          f'continuation_reserve={reserved_tokens};limit={max_input_tokens};'
-                         f'complete_request_chars={len(payload)};complete_request_bytes={len(data)}')
+                         f'complete_request_chars={len(payload)};complete_request_bytes={len(data)};'
+                         f'token_counter={counter}')
     return report
 
 
