@@ -78,7 +78,7 @@ def _context_view(args, value, *, receipt=None, receipt_ref=None):
             actual=type(value).__name__))
     boundary = {"global_planning_completion": "not_established",
         "completed_unit_reuse": "unsupported",
-        "reuse_reason": "Story 2.9 completed-unit ABI is absent in this source epoch",
+        "reuse_reason": "Completed-unit reuse belongs to the native planner coordinator; operation context only presents retained references",
         "native_resume_performed": False, "default_B_activated": False}
     if receipt is None:
         if value["operation_id"] != args.operation_id:
@@ -160,7 +160,12 @@ def _execute(args):
             return resolved
         records = importlib.import_module('_b_route_records')
         path = records.BASE + 'commits/' + args.operation_id + '.json'
-        raw = codec.read_reference_bytes(root, path)
+        try:
+            raw = codec.read_reference_bytes(root, path)
+        except codec.CodecError as error:
+            if error.diagnostic.resume_ref is not None:
+                raise
+            raise codec.CodecError(replace(error.diagnostic, resume_ref=path)) from error
         checked = records.validate_record(raw, path=path)
         if not checked.ok:
             raise codec.CodecError(checked.diagnostic)

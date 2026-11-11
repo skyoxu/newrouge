@@ -1,0 +1,113 @@
+{
+  "schema": "newrouge.cloud-epic2-independent-repair.v1",
+  "created_utc": "2026-11-11T17:07:50Z",
+  "baseline_checkpoint": "6edb6b2f76dc96a8a8da4c4861cab10ae43c469c",
+  "branch": "build/cloud-epic2-recovery-20261111",
+  "changes": [
+    {
+      "path": "scripts/python/b_route_adoption.py",
+      "purpose": "Replace the stale Story2.9-ABI-absent diagnostic with the actual coordinator route; supply the known receipt reference when receipt-file reading fails without a resume_ref. Preserve original diagnostic reason/stage and any existing resume_ref."
+    },
+    {
+      "path": "scripts/python/tests/test_b_route_public_context.py",
+      "purpose": "Actual empty-target direct/dev-cli regression for the missing receipt, no fabricated native/provider proof."
+    }
+  ],
+  "original_ac": "Story 2.10 AC3 public resume_ref; AC5 accurate route/diagnostic guidance",
+  "checks": [
+    {
+      "label": "story210-context-routing-01",
+      "tests_run": 9,
+      "passed": 9,
+      "failures": [],
+      "errors": [],
+      "skipped": [],
+      "successful": true,
+      "elapsed_seconds": 0.28915583299999525,
+      "finished_utc": "2026-11-11T17:00:24.743348+00:00",
+      "new_provider_calls": 0,
+      "qualification": "Focused offline unit/CLI checks only; no provider, Windows durability or formal Story acceptance claim."
+    },
+    {
+      "label": "story210-missing-receipt-red-02",
+      "tests_run": 1,
+      "passed": 0,
+      "failures": [
+        "test_missing_receipt_keeps_public_resume_path_through_both_entries (test_b_route_public_context.PublicContextTests.test_missing_receipt_keeps_public_resume_path_through_both_entries)"
+      ],
+      "errors": [],
+      "skipped": [],
+      "successful": false,
+      "elapsed_seconds": 0.2693600289999267,
+      "finished_utc": "2026-11-11T17:02:45.233669+00:00",
+      "new_provider_calls": 0,
+      "qualification": "Focused offline unit/CLI checks only; no provider, Windows durability or formal Story acceptance claim."
+    },
+    {
+      "label": "story210-published-clone-04",
+      "tests_run": 1,
+      "passed": 0,
+      "failures": [],
+      "errors": [
+        "CommitTests (unittest.loader._FailedTest.CommitTests)"
+      ],
+      "skipped": [],
+      "successful": false,
+      "elapsed_seconds": 0.2232564099999763,
+      "finished_utc": "2026-11-11T17:05:24.656530+00:00",
+      "new_provider_calls": 0,
+      "qualification": "Focused offline unit/CLI checks only; no provider, Windows durability or formal Story acceptance claim."
+    },
+    {
+      "label": "story210-published-clone-selector-05",
+      "tests_run": 1,
+      "passed": 1,
+      "failures": [],
+      "errors": [],
+      "skipped": [],
+      "successful": true,
+      "elapsed_seconds": 5.703468407999935,
+      "finished_utc": "2026-11-11T17:05:37.301094+00:00",
+      "new_provider_calls": 0,
+      "qualification": "Focused offline unit/CLI checks only; no provider, Windows durability or formal Story acceptance claim."
+    },
+    {
+      "label": "story210-receipt-boundary-green-03",
+      "tests_run": 4,
+      "passed": 4,
+      "failures": [],
+      "errors": [],
+      "skipped": [],
+      "successful": true,
+      "elapsed_seconds": 0.2623330829999304,
+      "finished_utc": "2026-11-11T17:02:57.703064+00:00",
+      "new_provider_calls": 0,
+      "qualification": "Focused offline unit/CLI checks only; no provider, Windows durability or formal Story acceptance claim."
+    }
+  ],
+  "fresh_process_checks": 4,
+  "fresh_process_passed": 4,
+  "fresh_process_target_unchanged": true,
+  "initial_smoke_attempt": "Stopped at direct read with file_not_found and resume_ref=null; original tool output retained. The same defect has a separate persisted failing RED unit result before repair. No aggregate success is claimed for the incomplete smoke attempt.",
+  "selector_error": "The first clone selector used nonexistent CommitTests; it executed no target method. The corrected PublicCommitTests selector passed separately; the loader-error result remains.",
+  "qualification": "Focused CLI, synthetic upstream fixtures and actual empty-target error behavior only. Not the original private operation, real semantic/provider proof or Windows formal acceptance.",
+  "private_dependency_reduction": "Published read_committed deliberately permits absent receipt-sealed historical logs. Original target formal records and current non-log authority are still needed; full original private history and fiscal ledger are not prerequisites for this read-only branch.",
+  "private_material_received": false,
+  "private_files_requested_via_tools": false,
+  "original_private_operation_replayed": false,
+  "new_model_turns": 0,
+  "new_provider_model_calls": 0,
+  "budget_releases": 0,
+  "remote_writes": 0,
+  "main_merge": false,
+  "fast_setting_changed": false,
+  "formal_story28_29_210_acceptance": false,
+  "tokenizer_403_retried_or_bypassed": false,
+  "full_suite_rerun": false,
+  "waiting_for_material": [
+    "Actual prepare11 input/root location and retained original operation state",
+    "Actual original referenced formal target chain for read-only qualification",
+    "Existing fiscal config/liability prefix before any paid segmented action"
+  ],
+  "unchanged_workflow_raw": true
+}

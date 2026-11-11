@@ -1,0 +1,15 @@
+{
+  "label": "story210-published-clone-04",
+  "tests_run": 1,
+  "passed": 0,
+  "failures": [],
+  "errors": [
+    "CommitTests (unittest.loader._FailedTest.CommitTests)"
+  ],
+  "skipped": [],
+  "successful": false,
+  "elapsed_seconds": 0.2232564099999763,
+  "finished_utc": "2026-11-11T17:05:24.656530+00:00",
+  "new_provider_calls": 0,
+  "qualification": "Focused offline unit/CLI checks only; no provider, Windows durability or formal Story acceptance claim."
+}

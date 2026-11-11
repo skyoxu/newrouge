@@ -99,3 +99,7 @@ runner/help与精准参数测试已写入，未执行。原audit参数测试的�
 显式 B 的 Codex 默认 runner、显式 runner 保留和 A 路线默认值已实现。六项定向测试在原进程自然 OS0 后通过，证据为 Task/logs/ci/2026-11-11/story210-r64-entrypoint-focused-01/result.json 与 unit.json；零项目模型调用。新增 owning 导航与旧链接、stage 权限说明已写入。该结果不等同于本 Story 的真实全链验收。
 
 后续基线 75e935e0 已集成 2.9 当前源码修复；三个相关文件与 R65 已保存版本逐字节一致，证据为 Task/logs/ci/2026-11-11/story210-r64-story29-integration-01/result.json。2.9 原 source 的定向尾段在实际 held OS exit 0、Job 静止后通过：相关依赖变化拒绝复用，无关变化可以采纳，保留原 10 次本地调用且新增调用为零。该结果只补齐其技术验证，不替代 2.8/2.9 正式验收，也不把六项 CLI 测试扩大成当前集成全链通过。
+
+## Cloud public-read repair
+
+The integrated public context now routes completed reuse to its existing native coordinator instead of claiming Story 2.9 is absent. An actual missing-receipt CLI failure exposed a null public resume_ref (AC3); the CLI now adds only the known receipt path when that read diagnostic lacks one, retaining original reasons and existing references. The failing RED, four affected passing checks, four actual fresh-process checks and the receipt-sealed clone control are recorded in `logs/ci/2026-11-11/cloud-epic2-recovery-03/REPORT.md`. Existing owner seams/clone upstream admission remain synthetic; these results do not qualify the original private operation or full Windows acceptance. Formal Story status remains in-progress.

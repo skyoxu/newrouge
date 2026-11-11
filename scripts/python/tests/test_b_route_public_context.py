@@ -1,7 +1,7 @@
-"""Public context routing tests; owner seams are synthetic, not qualification.
+"""Public context routing checks, not native or provider qualification.
 
-No filesystem fixtures, subprocess, native call, model or dependency payload.
-Install beside the real CLI only after Root reviews the candidate.
+Most owner seams are synthetic. The missing-receipt check uses the actual
+readers on an empty temporary target, with no native or model dispatch.
 """
 from contextlib import redirect_stdout
 from copy import deepcopy
@@ -9,6 +9,7 @@ import io
 import json
 from pathlib import Path
 import sys
+import tempfile
 from types import ModuleType, SimpleNamespace
 import unittest
 from unittest.mock import Mock, patch
@@ -74,6 +75,21 @@ def installed(fake):
 
 
 class PublicContextTests(unittest.TestCase):
+    def test_missing_receipt_keeps_public_resume_path_through_both_entries(self):
+        with tempfile.TemporaryDirectory() as directory:
+            args = ['--root', directory, '--stage', 'read', '--operation-id', 'MissingReceipt']
+            direct = captured(cli.main, args)
+            routed = captured(dev_cli.main, ['b-route-adoption', *args])
+            self.assertEqual(direct, routed)
+            code, result = direct
+            self.assertEqual(2, code)
+            self.assertTrue(all(result[key] is False for key in cli.FLAGS))
+            diagnostic = result['diagnostics'][0]
+            self.assertEqual(codec.ReasonCode.FILE_NOT_FOUND.value, diagnostic['reason_code'])
+            self.assertEqual('MissingReceipt', diagnostic['entity_id'])
+            self.assertEqual('docs/planning/b-route/commits/MissingReceipt.json', diagnostic['resume_ref'])
+            self.assertEqual([], list(Path(directory).rglob('*')))
+
     def test_legacy_inspect_and_read_output_remain_opt_in(self):
         fake = modules()
         raw = json.dumps(receipt()).encode()

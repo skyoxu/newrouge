@@ -1,0 +1,15 @@
+{
+  "label": "story210-missing-receipt-red-02",
+  "tests_run": 1,
+  "passed": 0,
+  "failures": [
+    "test_missing_receipt_keeps_public_resume_path_through_both_entries (test_b_route_public_context.PublicContextTests.test_missing_receipt_keeps_public_resume_path_through_both_entries)"
+  ],
+  "errors": [],
+  "skipped": [],
+  "successful": false,
+  "elapsed_seconds": 0.2693600289999267,
+  "finished_utc": "2026-11-11T17:02:45.233669+00:00",
+  "new_provider_calls": 0,
+  "qualification": "Focused offline unit/CLI checks only; no provider, Windows durability or formal Story acceptance claim."
+}

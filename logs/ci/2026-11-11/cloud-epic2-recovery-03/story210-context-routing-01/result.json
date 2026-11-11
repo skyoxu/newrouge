@@ -1,0 +1,13 @@
+{
+  "label": "story210-context-routing-01",
+  "tests_run": 9,
+  "passed": 9,
+  "failures": [],
+  "errors": [],
+  "skipped": [],
+  "successful": true,
+  "elapsed_seconds": 0.28915583299999525,
+  "finished_utc": "2026-11-11T17:00:24.743348+00:00",
+  "new_provider_calls": 0,
+  "qualification": "Focused offline unit/CLI checks only; no provider, Windows durability or formal Story acceptance claim."
+}

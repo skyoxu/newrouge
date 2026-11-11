@@ -27,3 +27,13 @@ The tokenizer package (tiktoken 0.14.0) was installed in `/workspace/newrouge-to
 - [blocked] Full hard checks retain the existing py-launcher startup failure; no full rerun. No global launcher shim or platform rewrite is necessary for the focused checks completed above.
 
 Follow-up evidence: `logs/ci/2026-11-11/cloud-epic2-recovery-02/REPORT.md` and `continuation-result.json`. Seven new focused checks pass with no skips or provider-model calls; original attempts retain their own scope.
+
+## Independent Story 2.10 repair while transfer is pending
+
+- [x] Correct public context's stale Story2.9-ABI-absent wording; its coordinator route is installed. Nine existing focused checks pass.
+- [x] Reproduce the actual read/missing-receipt null resume_ref with a persisted failing regression; enrich the known receipt path only when the read diagnostic lacks a reference. Four affected checks pass, retaining the RED failure.
+- [x] Four actual fresh-process direct/dev-cli calls, with/without --context, reject a missing receipt consistently and leave the empty target untouched.
+- [x] Verify the existing receipt-sealed published-clone contract. One wrong class selector is retained as a loader error; only the corrected intended method was then run and passed. This uses synthetic upstream admission, not original private proof.
+- [x] Reduce the pending material boundary: published read can use actual formal chain/current non-log authority without all historical logs or fiscal data. Original operation compensation/recovery and paid work still need their separate actual inputs.
+
+Evidence: `logs/ci/2026-11-11/cloud-epic2-recovery-03/REPORT.md`. No private materials received, no model turns or full suite rerun. Formal Epic 2 acceptance remains pending.

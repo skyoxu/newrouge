@@ -1,0 +1,13 @@
+{
+  "label": "story210-published-clone-selector-05",
+  "tests_run": 1,
+  "passed": 1,
+  "failures": [],
+  "errors": [],
+  "skipped": [],
+  "successful": true,
+  "elapsed_seconds": 5.703468407999935,
+  "finished_utc": "2026-11-11T17:05:37.301094+00:00",
+  "new_provider_calls": 0,
+  "qualification": "Focused offline unit/CLI checks only; no provider, Windows durability or formal Story acceptance claim."
+}

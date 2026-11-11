@@ -1,0 +1,13 @@
+{
+  "label": "story210-receipt-boundary-green-03",
+  "tests_run": 4,
+  "passed": 4,
+  "failures": [],
+  "errors": [],
+  "skipped": [],
+  "successful": true,
+  "elapsed_seconds": 0.2623330829999304,
+  "finished_utc": "2026-11-11T17:02:57.703064+00:00",
+  "new_provider_calls": 0,
+  "qualification": "Focused offline unit/CLI checks only; no provider, Windows durability or formal Story acceptance claim."
+}

@@ -1,0 +1,117 @@
+{
+  "schema": "newrouge.cloud-public-read-cli.v1",
+  "started_utc": "2026-11-11T17:03:29.036003+00:00",
+  "checks": [
+    {
+      "lane": "direct",
+      "context": false,
+      "exit_code": 2,
+      "result": {
+        "status": "blocked",
+        "operation_id": "NoSuchCloudOperation",
+        "scope_ids": null,
+        "state": null,
+        "formal_adoption": false,
+        "readiness": false,
+        "runtime_verified": false,
+        "diagnostics": [
+          {
+            "reason_code": "file_not_found",
+            "stage": "path",
+            "entity_id": "NoSuchCloudOperation",
+            "expected": "existing reference target",
+            "actual": "missing path",
+            "resume_ref": "docs/planning/b-route/commits/NoSuchCloudOperation.json"
+          }
+        ]
+      },
+      "target_files_after": [],
+      "stderr_empty": true
+    },
+    {
+      "lane": "dev-cli",
+      "context": false,
+      "exit_code": 2,
+      "result": {
+        "status": "blocked",
+        "operation_id": "NoSuchCloudOperation",
+        "scope_ids": null,
+        "state": null,
+        "formal_adoption": false,
+        "readiness": false,
+        "runtime_verified": false,
+        "diagnostics": [
+          {
+            "reason_code": "file_not_found",
+            "stage": "path",
+            "entity_id": "NoSuchCloudOperation",
+            "expected": "existing reference target",
+            "actual": "missing path",
+            "resume_ref": "docs/planning/b-route/commits/NoSuchCloudOperation.json"
+          }
+        ]
+      },
+      "target_files_after": [],
+      "stderr_empty": true
+    },
+    {
+      "lane": "direct",
+      "context": true,
+      "exit_code": 2,
+      "result": {
+        "status": "blocked",
+        "operation_id": "NoSuchCloudOperation",
+        "scope_ids": null,
+        "state": null,
+        "formal_adoption": false,
+        "readiness": false,
+        "runtime_verified": false,
+        "diagnostics": [
+          {
+            "reason_code": "file_not_found",
+            "stage": "path",
+            "entity_id": "NoSuchCloudOperation",
+            "expected": "existing reference target",
+            "actual": "missing path",
+            "resume_ref": "docs/planning/b-route/commits/NoSuchCloudOperation.json"
+          }
+        ]
+      },
+      "target_files_after": [],
+      "stderr_empty": true
+    },
+    {
+      "lane": "dev-cli",
+      "context": true,
+      "exit_code": 2,
+      "result": {
+        "status": "blocked",
+        "operation_id": "NoSuchCloudOperation",
+        "scope_ids": null,
+        "state": null,
+        "formal_adoption": false,
+        "readiness": false,
+        "runtime_verified": false,
+        "diagnostics": [
+          {
+            "reason_code": "file_not_found",
+            "stage": "path",
+            "entity_id": "NoSuchCloudOperation",
+            "expected": "existing reference target",
+            "actual": "missing path",
+            "resume_ref": "docs/planning/b-route/commits/NoSuchCloudOperation.json"
+          }
+        ]
+      },
+      "target_files_after": [],
+      "stderr_empty": true
+    }
+  ],
+  "status": "passed",
+  "model_calls": 0,
+  "original_private_operation_accessed": false,
+  "qualification": "Actual fresh Python CLI processes on an empty temporary target; verifies missing-receipt diagnostics and no target writes only.",
+  "passed": 4,
+  "elapsed_seconds": 0.8206164429998353,
+  "finished_utc": "2026-11-11T17:03:29.856831+00:00"
+}
