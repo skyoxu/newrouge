@@ -20,7 +20,7 @@ from _planning_skill_common import canonical_sha, file_sha, repo_path
 from build_source_ledger import resolve_sources, SUPPORTED_SUFFIXES
 from _mvg_manifest import manifest_sha256, validate_manifest
 
-SCHEMA = "newrouge.b-route-baseline-inventory.v1"
+SCHEMA = "newrouge.b-route-baseline-inventory.v2"
 SOURCE_SET = "docs/workflows/chapter3-source-set.json"
 TRIPLET = {name: f".taskmaster/tasks/tasks{suffix}.json" for name, suffix in
            (("master", ""), ("back", "_back"), ("gameplay", "_gameplay"))}
@@ -237,6 +237,17 @@ def digest(raw: bytes) -> str:
     return "sha256:" + hashlib.sha256(raw).hexdigest()
 
 
+def rule_identity() -> dict[str, str]:
+    """Exact installed collector rules supported by the current protection owner.
+
+    This is a policy identity, not an attestation that a collection event ran.
+    """
+    rule_files = [Path(__file__), Path(__file__).with_name("inventory_b_route_baseline.py"),
+                  Path(__file__).with_name("_planning_skill_common.py"),
+                  Path(__file__).with_name("build_source_ledger.py"), Path(__file__).with_name("_mvg_manifest.py")]
+    return {path.name: file_sha(path) for path in rule_files}
+
+
 def strict_json(raw: bytes) -> Any:
     def pairs(items: list[tuple[str, Any]]) -> dict:
         output = {}
@@ -333,8 +344,9 @@ class Snapshot:
             if path in self.cache:
                 if role not in self.inputs[path]["roles"]:
                     self.inputs[path]["roles"].append(role)
-                if self.cache[path] is None and required:
-                    self.diagnostic("missing-input", path, "Required file is missing")
+                if self.cache[path] is None:
+                    self.diagnostic("missing-input", path, "Required file is missing" if required else "Optional file is missing",
+                                    "error" if required else "warning")
                 return self.cache[path]
             raw = target.read_bytes() if self.read_bytes is None else self.read_bytes(path)
             if raw is None:
@@ -434,8 +446,16 @@ class Snapshot:
 
     def reference(self, owner: str, pointer: str, task_id: Any, master_id: Any, field: str, value: Any,
                   *, required: bool = True) -> None:
+        # Roles come from the owning field, never from Task status or a caller
+        # supplied exemption. An attachment is not an operation prerequisite.
+        if field == "evidence_refs":
+            required = False
+            reference_role = "historical-debug-attachment"
+        else:
+            reference_role = "current-input" if required else "planned-input"
         row = {"owner_file": owner, "json_pointer": pointer, "task_id": task_id,
-               "master_id": master_id, "field": field, "raw_reference": value}
+               "master_id": master_id, "field": field, "raw_reference": value,
+               "reference_role": reference_role, "required": required}
         self.references.append(row)
         if not isinstance(value, str) or not value.strip():
             row.update(state="unknown", reason="Reference must be a nonempty original string")
@@ -679,11 +699,7 @@ class Snapshot:
         source_set_summary = self.source_set()
         tasks = self.tasks()
         manifests = self.manifests(path for role, path in discovered if role == "manifest")
-        # These loaded helper implementations and the CLI are part of rule identity.
-        rule_files = [Path(__file__), Path(__file__).with_name("inventory_b_route_baseline.py"),
-                      Path(__file__).with_name("_planning_skill_common.py"),
-                      Path(__file__).with_name("build_source_ledger.py"), Path(__file__).with_name("_mvg_manifest.py")]
-        rules = {path.name: file_sha(path) for path in rule_files}
+        rules = rule_identity()
         git_end = git_identity(self.root)
         if self.git_start != git_end:
             self.diagnostic("git-drift-within-pass", "git", "Git identity changed during collection; recollect")
@@ -730,7 +746,7 @@ def collect_inventory(root: Path, epics: str, *, between_passes: Callable[[], No
                  diagnostics=diagnostics,
                  verification_limits=["No lock against external concurrent writers; double-read observation only.",
                                       "Consumer checklist verifies locations, not semantic completeness.",
-                                      "Historical template/missing evidence is unknown, never runtime proof.",
+                                      "Historical debug attachments retain missing/unknown observations, never runtime proof or operation prerequisites.",
                                       "Formal protection baseline belongs to Story 1.5; default route is unchanged."])
     return first
 
@@ -762,11 +778,12 @@ def markdown(report: dict) -> str:
     for row in report["tasks"]["status_differences"]:
         lines.append("| " + " | ".join(cell(x) for x in (row["master_id"], f"{row['view']} / {row['view_id']}",
                      row["master_status"], row["view_status"], row["master_pointer"], row["view_pointer"])) + " |")
-    lines += ["", "## Reference closure", "", "| Owner / pointer | Original reference | State | Raw SHA256 / reason |",
-              "| --- | --- | --- | --- |"]
+    lines += ["", "## Reference closure", "", "| Owner / pointer | Original reference | Role / required | State | Raw SHA256 / reason |",
+              "| --- | --- | --- | --- | --- |"]
     for row in report["task_and_manifest_references"]:
         lines.append("| " + " | ".join(cell(x) for x in (row["owner_file"] + "#" + row["json_pointer"],
-                     row["raw_reference"], row["state"], row.get("raw_sha256") or row.get("reason", ""))) + " |")
+                     row["raw_reference"], f"{row['reference_role']} / {row['required']}", row["state"],
+                     row.get("raw_sha256") or row.get("reason", ""))) + " |")
     lines += ["", "## ADR body status", ""]
     lines += [f"- {cell(row['path'])}: {row['status']}" for row in report["adrs"]]
     lines += ["", "## Cumulative manifests", ""]

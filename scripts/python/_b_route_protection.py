@@ -19,7 +19,7 @@ from _b_route_records import TaskJoinContext
 from update_mvg_baseline import _weakens_baseline
 
 
-SCHEMA = "newrouge.b-route-protection-snapshot.v1"
+SCHEMA = "newrouge.b-route-protection-snapshot.v2"
 DEFAULT_EPICS = "_bmad-output/planning-artifacts/b-route/epics.md"
 AUTHORIZATION = {
     "formal_protection_baseline": False,
@@ -168,6 +168,13 @@ def _inventory_rows(report: Any) -> dict[str, dict]:
 
 def _inventory_identity(report: dict) -> None:
     _inventory_rows(report)
+    # A v2 label and self-consistent hashes do not establish which rules the
+    # report claims. Support one exact installed policy, without a legacy shim.
+    # This does not authenticate the collection event or prove current inputs.
+    rules = inventory.rule_identity()
+    if type(report.get("rules")) is not dict or not _same_json(report["rules"], rules):
+        _fail(codec.ReasonCode.UNKNOWN_CODEC_VERSION, None,
+              {"supported_inventory_rules": rules}, {"inventory_rules": report.get("rules")})
     for field in ("content_identity", "second_pass_identity"):
         _checked_digest(report.get(field), None)
     diagnostics = report.get("diagnostics")
@@ -215,6 +222,9 @@ class _ArchivedReferences:
             return None
         data = self.raw_files.get(path)
         self.requests.append({"path": path, "required": required, "allowed": True, "available": data is not None})
+        if data is None:
+            self.diagnostic("missing-input", path, "Archived file is missing",
+                            "error" if required else "warning")
         return data
 
 
@@ -344,10 +354,11 @@ def _archive_closure(report: dict, rows: dict, reader: _ArchivedReferences) -> N
                        and item.get("code") in ("missing-input", "unsafe-or-unreadable-input") for item in diagnostics):
                 _fail(codec.ReasonCode.DIGEST_MISMATCH, path, "retained owner error for unavailable required input", "missing required error diagnostic")
     for diagnostic in reader.diagnostics:
-        if diagnostic["severity"] == "error" and not any(
+        if not any(
                 all(_same_json(item.get(key), diagnostic[key]) for key in ("code", "location", "severity"))
                 for item in diagnostics):
-            _fail(codec.ReasonCode.DIGEST_MISMATCH, diagnostic["location"], "retained raw-derived owner error", diagnostic["code"])
+            _fail(codec.ReasonCode.DIGEST_MISMATCH, diagnostic["location"],
+                  "retained raw-derived owner diagnostic", diagnostic["code"])
 
 
 def _materials(report: dict, raw_files: dict[str, bytes]) -> tuple[dict, list, list, dict]:
@@ -571,7 +582,7 @@ def collect_protection(root: Path, epics: str, *, historical_inventory: str | No
         "stable": stable, "capture_complete": stable and report.get("adoptable") is True and triplet is not None,
         "authorization": dict(AUTHORIZATION),
         "verification_limits": ["Read-only candidate, not a formal protection baseline or frozen-A policy.",
-            "Missing historical evidence remains unresolved; old done never satisfies new obligations.",
+            "Missing historical debug attachments remain unresolved observations, not operation prerequisites; old done never satisfies new obligations.",
             "No committed reverse-governance proof is implemented; every Task candidate is blocked.",
             "Double-read observations do not isolate against external concurrent writers.",
             "Receipt target projections, policy bootstrap, journal and publication are not implemented."]}

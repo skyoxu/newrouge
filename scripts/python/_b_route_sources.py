@@ -31,8 +31,8 @@ CANDIDATE = "newrouge.b-route-sources-candidate.v1"
 DECLARATION = "newrouge.b-route-sources-declaration.v1"
 ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9_-]{0,95}\Z")
 PROPOSAL = re.compile(r"proposal:[A-Za-z0-9][A-Za-z0-9_.-]{0,127}\Z")
-AUDIT_ARGUMENTS = ("accounted", "audit_ref", "runner", "expected_model", "request_budget",
-                   "active_budget_seconds", "timeout_seconds")
+AUDIT_ARGUMENTS = ("accounted", "audit_ref", "completed_extraction_ref", "runner", "expected_model", "request_budget",
+                   "active_budget_seconds", "timeout_seconds", "citation_guidance")
 
 
 def fail(code, entity, expected, actual):
@@ -557,11 +557,13 @@ def register_arguments(parser):
     parser.add_argument("--max-chars", type=int, default=24000)
     parser.add_argument("--transport-max-bytes", type=int, default=1048576)
     parser.add_argument("--transport-max-input-tokens", type=int, default=96000)
-    for option in ("accounted", "audit-ref", "runner", "expected-model"):
+    for option in ("accounted", "audit-ref", "completed-extraction-ref", "runner", "expected-model"):
         parser.add_argument("--" + option)
     parser.add_argument("--request-budget", type=int)
     parser.add_argument("--active-budget-seconds", type=int)
     parser.add_argument("--timeout-seconds", type=int)
+    parser.add_argument("--citation-guidance", choices=("full-block",),
+                        help="Optional audit producer guidance for exact supplied block citations")
 
 
 def admission(args):
