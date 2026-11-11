@@ -1,0 +1,36 @@
+Traceback (most recent call last):
+  File "C:\Users\Administrator\Documents\Codex\2026-11-05\task\r62\scripts\python\_b_route_adoption.py", line 761, in checked
+    return function(root, operation_id=operation_id, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Administrator\Documents\Codex\2026-11-05\task\r62\scripts\python\_b_route_adoption.py", line 917, in prepare_review
+    return _review_preview(root, request, compensation_delivery=compensation_delivery)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Administrator\Documents\Codex\2026-11-05\task\r62\scripts\python\_b_route_adoption.py", line 855, in _review_preview
+    return compensation.review_preview(root, request, seal=seal, delivery=compensation_delivery)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Administrator\Documents\Codex\2026-11-05\task\r62\scripts\python\_b_route_compensation.py", line 683, in review_preview
+    return _review_preview_body(root, request, seal=seal, delivery=delivery)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Administrator\Documents\Codex\2026-11-05\task\r62\scripts\python\_b_route_compensation.py", line 528, in _review_preview_body
+    artifacts = None if seal else review.review_artifacts(root, subject, delivery=delivery)
+                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Administrator\Documents\Codex\2026-11-05\task\r62\scripts\python\_b_route_adoption_review.py", line 786, in review_artifacts
+    return _qualified_owner_v2().artifacts(root, subject, packet=packet, delivery=delivery)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Administrator\Documents\Codex\2026-11-05\task\r62\scripts\python\_b_route_qualified_compensation_review_v2.py", line 298, in artifacts
+    measure_request(request,max_bytes=CODEX_MAX_TURN_BYTES,
+  File "C:\Users\Administrator\Documents\Codex\2026-11-05\task\r62\scripts\python\_capability_input_integrity.py", line 516, in measure_request
+    raise ValueError(f'runner_context_budget_exceeded:estimated_input_tokens={tokens};'
+ValueError: runner_context_budget_exceeded:estimated_input_tokens=101371;continuation_reserve=2000;limit=70000;complete_request_chars=316309;complete_request_bytes=316309;token_counter=max(o200k_base,cl100k_base)+10_percent
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\Administrator\Documents\Codex\2026-11-05\task\night-handoff\story28_r62_public_prepare11_20261111.py", line 153, in <module>
+    actual = owner.prepare_review(target,operation_id=operation,request_ref=request_ref,
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Administrator\Documents\Codex\2026-11-05\task\r62\scripts\python\_b_route_adoption.py", line 771, in checked
+    fail(codec.ReasonCode.IDENTITY_UNPROVABLE, 'complete current adoption evidence',
+  File "C:\Users\Administrator\Documents\Codex\2026-11-05\task\r62\scripts\python\_b_route_adoption.py", line 31, in fail
+    raise codec.CodecError(codec.Diagnostic(reason, codec.Stage.BUNDLE,
+_b_route_codec.CodecError: identity_unprovable
