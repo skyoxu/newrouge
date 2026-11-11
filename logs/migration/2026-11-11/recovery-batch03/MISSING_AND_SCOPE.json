@@ -1,0 +1,231 @@
+{
+  "unit_canonical_config": {
+    "expected_source_absolute": "C:\\Users\\Administrator\\Documents\\Codex\\2026-11-05\\task\\story29-unit-profile-allocation-Root-02\\config.json",
+    "exists": false,
+    "ledger_directory_exists": false,
+    "000001_json_exists": false,
+    "STOP_json_exists": false,
+    "static_location_source": "night-handoff/story23-canonical-fiscal-cold-replay-successor-draft-02/Root_segmented_schedule_issuer.draft.py:HOME and __init__ line78",
+    "meaning": "Actual Host1/2/3 historical configs are not a replacement for this absent canonical Unit config. No ledger initialized."
+  },
+  "missing_historical_material": [
+    {
+      "from": "logs/ci/2026-11-08/story27-r50-native-controlled-01/config-locator-02.json",
+      "pointer": "/native/prepared_locator_path",
+      "reference": "C:\\Users\\Administrator\\Documents\\Codex\\2026-11-05\\task\\logs\\ci\\2026-11-08\\story27-r50-native-controlled-01\\launch\\prepared-locator.json",
+      "status": "not_found",
+      "classification": "historical_phase_output_or_dispatch_support_missing; retained as absence, not a zero-charge/finished claim"
+    },
+    {
+      "from": "logs/ci/2026-11-09/story29-host2-paid-supervision-01/result.json",
+      "pointer": "/test_result_ref",
+      "reference": "logs/ci/2026-11-09/story29-host2-paid-dispatch-01/result.json",
+      "status": "not_found",
+      "classification": "historical_phase_output_or_dispatch_support_missing; retained as absence, not a zero-charge/finished claim"
+    }
+  ],
+  "artifact_root_resolutions": [
+    {
+      "from": "logs/ci/2026-11-08/story27-r50-native-controlled-01/config-locator-02.json",
+      "pointer": "/audit_product_ref",
+      "reference": "logs/ci/2026-11-08/b-route-source-audit/s27-r50-audit-a5f77bcf-01/audit-01/report.json",
+      "status": "exists_in_original_configured_artifact_root",
+      "resolution": [
+        "temp/nb27-a5f77bcf/logs/ci/2026-11-08/b-route-source-audit/s27-r50-audit-a5f77bcf-01/audit-01/report.json"
+      ]
+    },
+    {
+      "from": "logs/ci/2026-11-08/story27-r50-native-controlled-01/config-locator-02.json",
+      "pointer": "/audit/accounted",
+      "reference": "logs/ci/2026-11-08/b-route-sources/story27-r50-local-3a-a5f77bcf-01/source-account-a5f77bcf-01/account/report.json",
+      "status": "exists_in_original_configured_artifact_root",
+      "resolution": [
+        "temp/nb27-a5f77bcf/logs/ci/2026-11-08/b-route-sources/story27-r50-local-3a-a5f77bcf-01/source-account-a5f77bcf-01/account/report.json"
+      ]
+    },
+    {
+      "from": "logs/ci/2026-11-08/story27-r50-native-controlled-01/config-locator-02.json",
+      "pointer": "/native/planning_contract_ref",
+      "reference": "logs/ci/2026-11-08/story27-r50-semantic-input/planning-contract-01.json",
+      "status": "exists_in_original_configured_artifact_root",
+      "resolution": [
+        "temp/nb27-a5f77bcf/logs/ci/2026-11-08/story27-r50-semantic-input/planning-contract-01.json"
+      ]
+    }
+  ],
+  "privacy_exclusions": {
+    "private_contact_information_in_diagnostic_or_historical_support_record": 2
+  },
+  "privacy_exclusion_policy": "Unsafe originals are not shipped or redacted into fake originals. Only categories/counts are reported; original references and files remain unchanged on server.",
+  "optional_historical_references": [
+    {
+      "source_task_relative": "logs/ci/2026-11-09/story29-atomic-source-observation-Root-01/source-overlay.json",
+      "size_bytes": 338240,
+      "sha256": "b6d4a56b25117fa42915f510615e60e21a653fbb37572aa1346428d0aef83b33",
+      "classification": "optional_historical_qualification_or_debug",
+      "contents_included": false
+    },
+    {
+      "source_task_relative": "logs/ci/2026-11-09/story29-atomic-source-observation-Root-01/Root-bridge.json",
+      "size_bytes": 3115,
+      "sha256": "af830b946f3e26ffd6bc8c8832c16f72802f46ebaec35afc93238261d896e639",
+      "classification": "optional_historical_qualification_or_debug",
+      "contents_included": false
+    },
+    {
+      "source_task_relative": "logs/ci/2026-11-09/story29-atomic-source-observation-Root-01/source-snapshot.json",
+      "size_bytes": 323211,
+      "sha256": "36fe0174f302c3a27e690671d13a990982ac104e57a0a10d53774512a3addad6",
+      "classification": "optional_historical_qualification_or_debug",
+      "contents_included": false
+    },
+    {
+      "source_task_relative": "logs/ci/2026-11-09/story29-atomic-current19-coverage-Root-01/result.json",
+      "size_bytes": 9635,
+      "sha256": "97b028ee1dbd3388bf0f16debf9bc984b787c07ea6381ece5fc881a1a44a5403",
+      "classification": "optional_historical_qualification_or_debug",
+      "contents_included": false
+    },
+    {
+      "source_task_relative": "logs/ci/2026-11-09/story29-atomic-concurrency-WIP-checkpoint-02/result.json",
+      "size_bytes": 3155,
+      "sha256": "18dc151924dbfa179983d8a769ffb02245d5e58725207d2493d6b61bb228e877",
+      "classification": "optional_historical_qualification_or_debug",
+      "contents_included": false
+    },
+    {
+      "source_task_relative": "logs/ci/2026-11-09/story29-atomic-test-followup-install-Root-01/result.json",
+      "size_bytes": 109274,
+      "sha256": "56d827e4fdc21c3fa081daa3e91b91c7958090daef5f54bdce4754aa79899e64",
+      "classification": "optional_historical_qualification_or_debug",
+      "contents_included": false
+    },
+    {
+      "source_task_relative": "logs/ci/2026-11-09/story29-atomic-concurrency02-peer-win4-author-01/STOP.json",
+      "size_bytes": 1196,
+      "sha256": "0aa2998e837fbeb80b730a294062e98253e407b2373a5bf9cba8c1e9e274d60c",
+      "classification": "optional_historical_qualification_or_debug",
+      "contents_included": false
+    },
+    {
+      "source_task_relative": "logs/ci/2026-11-09/story29-atomic-concurrency1-Root-01/tests.txt",
+      "size_bytes": 5417,
+      "sha256": "0e71d51def829af1e73005dd987b9c8633c43c11b1759ea9131aa71a9d80a847",
+      "classification": "optional_historical_qualification_or_debug",
+      "contents_included": false
+    },
+    {
+      "source_task_relative": "logs/ci/2026-11-09/story29-atomic-concurrency1-Root-01/result.json",
+      "size_bytes": 3380,
+      "sha256": "fbb893593730aeb04f17add5f929af30173d04bc1ad9a93152df0705e8e47d41",
+      "classification": "optional_historical_qualification_or_debug",
+      "contents_included": false
+    },
+    {
+      "source_task_relative": "logs/ci/2026-11-09/story29-atomic-paths19-Root-02/tests.txt",
+      "size_bytes": 5547,
+      "sha256": "ef649e51242ecfe328ff6ef8e3c3181ee17bc21bf23354b3ad6a56cbcd01c707",
+      "classification": "optional_historical_qualification_or_debug",
+      "contents_included": false
+    },
+    {
+      "source_task_relative": "logs/ci/2026-11-09/story29-atomic-paths19-Root-02/result.json",
+      "size_bytes": 89784,
+      "sha256": "0439fbb8aba648a3b473e11e3072fc7d4ddc03e33ec387aeedc1a2ed3d5f1b14",
+      "classification": "optional_historical_qualification_or_debug",
+      "contents_included": false
+    },
+    {
+      "source_task_relative": "logs/ci/2026-11-09/story29-atomic-paths-install-Root-01/result.json",
+      "size_bytes": 109497,
+      "sha256": "5e0010d6c9c8f7bd745c7de09b84606ea9e197e63ca1b1199cdeaaec77be2694",
+      "classification": "optional_historical_qualification_or_debug",
+      "contents_included": false
+    },
+    {
+      "source_task_relative": "logs/ci/2026-11-09/story27-installed-Codex-metadata-Root-01/record.json",
+      "size_bytes": 4125,
+      "sha256": "ae907930757c9e4fad5c71bc060a6d724851cf1eb679a21dcb1f0526b8a980ad",
+      "classification": "optional_historical_qualification_or_debug",
+      "contents_included": false
+    },
+    {
+      "source_task_relative": "logs/ci/2026-11-09/story29-atomic-json-peer-win4-author-01/STOP.json",
+      "size_bytes": 1307,
+      "sha256": "b3e78e5fa1ddc42519909f11f64668716582bfe588605ceca6523edd6c084aeb",
+      "classification": "optional_historical_qualification_or_debug",
+      "contents_included": false
+    }
+  ],
+  "non_expanding_reference_categories": {
+    "historical_directory_listing_not_file_reference": 22362,
+    "historical_fingerprint_table_not_live_reference": 35872,
+    "historical_software_environment_pin": 706,
+    "planned_artifact_or_contract_example": 29,
+    "historical_software_runtime_or_consumption_fingerprint": 15899,
+    "protocol_or_model_text_not_host_file_declaration": 7,
+    "optional_historical_debug_or_discovery_attachment": 30,
+    "snapshot_input_name_preserved_in_inventory_and_raw_capture": 18,
+    "optional_historical_observation_not_live_input": 113,
+    "external_historical_environment_location": 1
+  },
+  "current_target_tasks": {
+    "catalog_task_index_count": 0,
+    "task_origins_count": 0,
+    "taskmaster_master_tasks_count": 0,
+    "tasks_back_count": 0,
+    "tasks_gameplay_count": 0,
+    "actual_commit_targets": [
+      "docs/planning/b-route/plans/PLAN-bed480ce3e404b2cbaf5514d80a7f941/1.json",
+      "docs/planning/b-route/policy.v1.json",
+      "docs/planning/b-route/task-origins.v1.json"
+    ],
+    "meaning": "No adopted target Task/Acceptance/history binding is declared here. Preserve empty actual mirrors; do not synthesize missing gameplay tasks from historical debug attachments."
+  },
+  "operation_state": {
+    "operation_id": "NativeV15Origin03",
+    "pending_index_state": "reserved",
+    "operation_state": "reserved",
+    "commit_phase": "complete",
+    "commit_pending_marker_exists": false,
+    "meaning": "Preserve these original states; this migration performs no transition or cleanup."
+  },
+  "financial_history": {
+    "Host1": {
+      "claim": true,
+      "intent": true,
+      "outcome": false,
+      "STOP": true,
+      "recorded_paid_or_unknown": 81,
+      "recorded_guard_occupancy": 179
+    },
+    "Host2": {
+      "claim": true,
+      "intent": true,
+      "outcome": false,
+      "STOP": true,
+      "recorded_paid_or_unknown": 82,
+      "recorded_guard_occupancy": 180
+    },
+    "Host3": {
+      "claim": true,
+      "intent": true,
+      "outcome": true,
+      "STOP": false,
+      "recorded_paid_or_unknown": 83,
+      "recorded_guard_occupancy": 181,
+      "recorded_outcome_status": "owner_verified_completed"
+    },
+    "campaign_cap": 290,
+    "released": 0,
+    "R50_full_hold_retained": 99,
+    "meaning": "Read-only retained records, not a new financial reconciliation, grant or physical-request count. Occupancy overlaps; never sum it as independent spend or release old unknown."
+  },
+  "limits": [
+    "No credentials, sessions, cookie stores, private keys, environments or software-pin files are transferred.",
+    "Historical Windows paths/IDs and relevant synthetic model I/O are preserved where reviewed safe.",
+    "Originals remain on server. Archive roots are data namespaces; Windows ACLs, live locks/processes and original post-base Git history are not reconstructed.",
+    "This is a static recovery/audit dataset, not fresh native/Story/provider identity qualification. Missing or privacy-excluded original evidence is not fabricated.",
+    "Optional historical debug/qualification attachments are not current gameplay inputs or added Story blockers."
+  ]
+}

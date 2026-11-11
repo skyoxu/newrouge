@@ -1,0 +1,63 @@
+{
+  "schema": "newrouge.public-recovery-data-batch.v1",
+  "branch": "migration/newrogue-20261111/recovery-batch01-public",
+  "parent_commit": "d69cf0a935e9f4078b5ae2f2f746173b88ac3e72",
+  "archive": {
+    "assembled_filename": "recovery-data.zip",
+    "bytes": 139176639,
+    "sha256": "271f807515b842fbba3a18f7cbfb01b5960697d617ad8aa0191452b920a162aa",
+    "parts_in_order": [
+      {
+        "path": "recovery-data.zip.part001",
+        "bytes": 26214400,
+        "sha256": "7ac79ac43b8314b595fad780262c9a066b3567e96dd7aeb00f9932bcb49311aa"
+      },
+      {
+        "path": "recovery-data.zip.part002",
+        "bytes": 26214400,
+        "sha256": "f11cc1768c96cd825d27e88b9befe9e2d48890a254552667ff5865672f931ecc"
+      },
+      {
+        "path": "recovery-data.zip.part003",
+        "bytes": 26214400,
+        "sha256": "f76d77e4bb39cb871272f93c6f40728f9e90f5fb7651ffb7e993c4011fa00082"
+      },
+      {
+        "path": "recovery-data.zip.part004",
+        "bytes": 26214400,
+        "sha256": "9499eb04440ffb2ff2b2003010b7c8a2537da8b95a10652e1fa5c0562f878c8c"
+      },
+      {
+        "path": "recovery-data.zip.part005",
+        "bytes": 26214400,
+        "sha256": "eccc545e70a70d2e553de2744d633fa5068118eaf6248c2c02b868196859e908"
+      },
+      {
+        "path": "recovery-data.zip.part006",
+        "bytes": 8104639,
+        "sha256": "ee19eedc1904306eabc32d7fdc6ab0ee85c03943c258383babd68c9bf482e9e3"
+      }
+    ],
+    "assembly": "If split, concatenate listed parts in order before opening the ZIP. Verify transport integrity against this manifest; extract in a fresh isolated directory, not over a live workspace."
+  },
+  "file_index": "FILE_INDEX.json",
+  "missing_and_scope": "MISSING_AND_SCOPE.json",
+  "original_files": 359,
+  "derived_files": 1,
+  "original_bytes": 1133834641,
+  "optional_historical_contents_not_shipped": 14,
+  "privacy_exclusions": {
+    "private_contact_information_in_diagnostic_or_historical_support_record": 2
+  },
+  "actions": {
+    "driver_executions": 0,
+    "project_model_calls": 0,
+    "financial_writes": 0,
+    "tests_started": 0,
+    "new_project_development": false,
+    "originals_modified": false,
+    "force_push": false,
+    "main_merge": false,
+    "Fast_enabled": false
+  }
+}
