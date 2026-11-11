@@ -1,0 +1,12 @@
+Static source excerpt from night-handoff/story28_r62_public_prepare11_20261111.py
+Original line numbers follow; this text is not an executable driver.
+
+12: task = Path(__file__).resolve().parents[1]
+13: repo = task / 'r62'
+14: target = task / 'story27-r52-v15-empty-target-native01'
+15: out = task / 'logs/ci/2026-11-11/story28-r62-public-prepare-11'
+16: head = 'b24e1dfd35901389dc6297683cd1fe4b52ce3b58'
+17: operation = 'NativeV15Origin03Compensation01'
+18: request_ref = 'logs/ci/b-route-requests/native-v15-origin03-compensation-01/request.json'
+153:             actual = owner.prepare_review(target,operation_id=operation,request_ref=request_ref,
+154:                 compensation_delivery='newrouge.b-route-qualified-compensation-review-delivery.v2')
