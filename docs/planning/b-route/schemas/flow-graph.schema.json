@@ -1,0 +1,581 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "newrouge.b-route-flow-graph.v1",
+  "title": "Auxiliary logical Flow input; not a formal B-route record",
+  "type": "object",
+  "properties": {
+    "nodes": {
+      "type": "array",
+      "items": {
+        "$ref": "newrouge.b-route-flow-graph.v1#/$defs/Node"
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "edges": {
+      "type": "array",
+      "items": {
+        "$ref": "newrouge.b-route-flow-graph.v1#/$defs/Edge"
+      },
+      "minItems": 0,
+      "uniqueItems": true
+    },
+    "boundaries": {
+      "type": "array",
+      "items": {
+        "$ref": "newrouge.b-route-flow-graph.v1#/$defs/Boundary"
+      },
+      "minItems": 2,
+      "uniqueItems": true
+    },
+    "loops": {
+      "type": "array",
+      "items": {
+        "$ref": "newrouge.b-route-flow-graph.v1#/$defs/Loop"
+      },
+      "minItems": 0,
+      "uniqueItems": true
+    }
+  },
+  "required": [
+    "nodes",
+    "edges",
+    "boundaries",
+    "loops"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "Use": {
+      "oneOf": [
+        {
+          "$ref": "newrouge.b-route-common.v1#/$defs/LogicalDefinitionUse"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "$ref": "newrouge.b-route-common.v1#/$defs/DefinitionKind"
+            },
+            "definition_id": {
+              "$ref": "newrouge.b-route-common.v1#/$defs/String"
+            },
+            "proposed_owner_key": {
+              "$ref": "newrouge.b-route-common.v1#/$defs/String"
+            }
+          },
+          "required": [
+            "kind",
+            "definition_id",
+            "proposed_owner_key"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "Endpoint": {
+      "type": "object",
+      "properties": {
+        "flow_id": {
+          "$ref": "newrouge.b-route-common.v1#/$defs/String"
+        },
+        "node_id": {
+          "$ref": "newrouge.b-route-common.v1#/$defs/String"
+        }
+      },
+      "required": [
+        "flow_id",
+        "node_id"
+      ],
+      "additionalProperties": false
+    },
+    "Node": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "newrouge.b-route-common.v1#/$defs/String"
+        },
+        "responsibility": {
+          "$ref": "newrouge.b-route-common.v1#/$defs/String"
+        },
+        "owner": {
+          "oneOf": [
+            {
+              "$ref": "newrouge.b-route-common.v1#/$defs/LogicalDefinitionUse"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "$ref": "newrouge.b-route-common.v1#/$defs/DefinitionKind"
+                },
+                "definition_id": {
+                  "$ref": "newrouge.b-route-common.v1#/$defs/String"
+                },
+                "proposed_owner_key": {
+                  "$ref": "newrouge.b-route-common.v1#/$defs/String"
+                }
+              },
+              "required": [
+                "kind",
+                "definition_id",
+                "proposed_owner_key"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        },
+        "command_uses": {
+          "type": "array",
+          "items": {
+            "oneOf": [
+              {
+                "$ref": "newrouge.b-route-common.v1#/$defs/LogicalDefinitionUse"
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "$ref": "newrouge.b-route-common.v1#/$defs/DefinitionKind"
+                  },
+                  "definition_id": {
+                    "$ref": "newrouge.b-route-common.v1#/$defs/String"
+                  },
+                  "proposed_owner_key": {
+                    "$ref": "newrouge.b-route-common.v1#/$defs/String"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "definition_id",
+                  "proposed_owner_key"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          },
+          "minItems": 0,
+          "uniqueItems": true
+        },
+        "state_uses": {
+          "type": "array",
+          "items": {
+            "oneOf": [
+              {
+                "$ref": "newrouge.b-route-common.v1#/$defs/LogicalDefinitionUse"
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "$ref": "newrouge.b-route-common.v1#/$defs/DefinitionKind"
+                  },
+                  "definition_id": {
+                    "$ref": "newrouge.b-route-common.v1#/$defs/String"
+                  },
+                  "proposed_owner_key": {
+                    "$ref": "newrouge.b-route-common.v1#/$defs/String"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "definition_id",
+                  "proposed_owner_key"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          },
+          "minItems": 0,
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "id",
+        "responsibility",
+        "owner",
+        "command_uses",
+        "state_uses"
+      ],
+      "additionalProperties": false
+    },
+    "Edge": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "newrouge.b-route-common.v1#/$defs/String"
+        },
+        "from": {
+          "type": "object",
+          "properties": {
+            "flow_id": {
+              "$ref": "newrouge.b-route-common.v1#/$defs/String"
+            },
+            "node_id": {
+              "$ref": "newrouge.b-route-common.v1#/$defs/String"
+            }
+          },
+          "required": [
+            "flow_id",
+            "node_id"
+          ],
+          "additionalProperties": false
+        },
+        "to": {
+          "type": "object",
+          "properties": {
+            "flow_id": {
+              "$ref": "newrouge.b-route-common.v1#/$defs/String"
+            },
+            "node_id": {
+              "$ref": "newrouge.b-route-common.v1#/$defs/String"
+            }
+          },
+          "required": [
+            "flow_id",
+            "node_id"
+          ],
+          "additionalProperties": false
+        },
+        "condition": {
+          "$ref": "newrouge.b-route-common.v1#/$defs/String"
+        },
+        "responsibility": {
+          "$ref": "newrouge.b-route-common.v1#/$defs/String"
+        },
+        "owner": {
+          "oneOf": [
+            {
+              "$ref": "newrouge.b-route-common.v1#/$defs/LogicalDefinitionUse"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "$ref": "newrouge.b-route-common.v1#/$defs/DefinitionKind"
+                },
+                "definition_id": {
+                  "$ref": "newrouge.b-route-common.v1#/$defs/String"
+                },
+                "proposed_owner_key": {
+                  "$ref": "newrouge.b-route-common.v1#/$defs/String"
+                }
+              },
+              "required": [
+                "kind",
+                "definition_id",
+                "proposed_owner_key"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "from",
+        "to",
+        "condition",
+        "responsibility",
+        "owner"
+      ],
+      "additionalProperties": false
+    },
+    "Boundary": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "newrouge.b-route-common.v1#/$defs/String"
+        },
+        "kind": {
+          "enum": [
+            "entry",
+            "success",
+            "failure",
+            "cancel",
+            "return"
+          ]
+        },
+        "node": {
+          "type": "object",
+          "properties": {
+            "flow_id": {
+              "$ref": "newrouge.b-route-common.v1#/$defs/String"
+            },
+            "node_id": {
+              "$ref": "newrouge.b-route-common.v1#/$defs/String"
+            }
+          },
+          "required": [
+            "flow_id",
+            "node_id"
+          ],
+          "additionalProperties": false
+        },
+        "condition": {
+          "$ref": "newrouge.b-route-common.v1#/$defs/String"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "rationale": {
+          "$ref": "newrouge.b-route-common.v1#/$defs/String"
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "node",
+        "condition",
+        "required",
+        "rationale"
+      ],
+      "additionalProperties": false
+    },
+    "Loop": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "newrouge.b-route-common.v1#/$defs/String"
+        },
+        "anchors": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "flow_id": {
+                "$ref": "newrouge.b-route-common.v1#/$defs/String"
+              },
+              "node_id": {
+                "$ref": "newrouge.b-route-common.v1#/$defs/String"
+              }
+            },
+            "required": [
+              "flow_id",
+              "node_id"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "exit_boundary_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "newrouge.b-route-common.v1#/$defs/String"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "description": {
+          "$ref": "newrouge.b-route-common.v1#/$defs/String"
+        },
+        "exit_condition": {
+          "$ref": "newrouge.b-route-common.v1#/$defs/String"
+        }
+      },
+      "required": [
+        "id",
+        "anchors",
+        "exit_boundary_ids",
+        "description",
+        "exit_condition"
+      ],
+      "additionalProperties": false
+    },
+    "Handoff": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "newrouge.b-route-common.v1#/$defs/String"
+        },
+        "from": {
+          "type": "object",
+          "properties": {
+            "flow_id": {
+              "$ref": "newrouge.b-route-common.v1#/$defs/String"
+            },
+            "node_id": {
+              "$ref": "newrouge.b-route-common.v1#/$defs/String"
+            }
+          },
+          "required": [
+            "flow_id",
+            "node_id"
+          ],
+          "additionalProperties": false
+        },
+        "to": {
+          "type": "object",
+          "properties": {
+            "flow_id": {
+              "$ref": "newrouge.b-route-common.v1#/$defs/String"
+            },
+            "node_id": {
+              "$ref": "newrouge.b-route-common.v1#/$defs/String"
+            }
+          },
+          "required": [
+            "flow_id",
+            "node_id"
+          ],
+          "additionalProperties": false
+        },
+        "owner": {
+          "oneOf": [
+            {
+              "$ref": "newrouge.b-route-common.v1#/$defs/LogicalDefinitionUse"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "$ref": "newrouge.b-route-common.v1#/$defs/DefinitionKind"
+                },
+                "definition_id": {
+                  "$ref": "newrouge.b-route-common.v1#/$defs/String"
+                },
+                "proposed_owner_key": {
+                  "$ref": "newrouge.b-route-common.v1#/$defs/String"
+                }
+              },
+              "required": [
+                "kind",
+                "definition_id",
+                "proposed_owner_key"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        },
+        "state_uses": {
+          "type": "array",
+          "items": {
+            "oneOf": [
+              {
+                "$ref": "newrouge.b-route-common.v1#/$defs/LogicalDefinitionUse"
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "$ref": "newrouge.b-route-common.v1#/$defs/DefinitionKind"
+                  },
+                  "definition_id": {
+                    "$ref": "newrouge.b-route-common.v1#/$defs/String"
+                  },
+                  "proposed_owner_key": {
+                    "$ref": "newrouge.b-route-common.v1#/$defs/String"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "definition_id",
+                  "proposed_owner_key"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          },
+          "minItems": 0,
+          "uniqueItems": true
+        },
+        "responsibility": {
+          "$ref": "newrouge.b-route-common.v1#/$defs/String"
+        },
+        "result": {
+          "$ref": "newrouge.b-route-common.v1#/$defs/String"
+        }
+      },
+      "required": [
+        "id",
+        "from",
+        "to",
+        "owner",
+        "state_uses",
+        "responsibility",
+        "result"
+      ],
+      "additionalProperties": false
+    },
+    "Branch": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "enum": [
+            "failure",
+            "cancel",
+            "return"
+          ]
+        },
+        "applicability": {
+          "enum": [
+            "applicable",
+            "not_applicable"
+          ]
+        },
+        "rationale": {
+          "$ref": "newrouge.b-route-common.v1#/$defs/String"
+        },
+        "boundary_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "newrouge.b-route-common.v1#/$defs/String"
+          },
+          "minItems": 0,
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "kind",
+        "applicability",
+        "rationale",
+        "boundary_ids"
+      ],
+      "additionalProperties": false
+    },
+    "Graph": {
+      "type": "object",
+      "properties": {
+        "nodes": {
+          "type": "array",
+          "items": {
+            "$ref": "newrouge.b-route-flow-graph.v1#/$defs/Node"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "edges": {
+          "type": "array",
+          "items": {
+            "$ref": "newrouge.b-route-flow-graph.v1#/$defs/Edge"
+          },
+          "minItems": 0,
+          "uniqueItems": true
+        },
+        "boundaries": {
+          "type": "array",
+          "items": {
+            "$ref": "newrouge.b-route-flow-graph.v1#/$defs/Boundary"
+          },
+          "minItems": 2,
+          "uniqueItems": true
+        },
+        "loops": {
+          "type": "array",
+          "items": {
+            "$ref": "newrouge.b-route-flow-graph.v1#/$defs/Loop"
+          },
+          "minItems": 0,
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "nodes",
+        "edges",
+        "boundaries",
+        "loops"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

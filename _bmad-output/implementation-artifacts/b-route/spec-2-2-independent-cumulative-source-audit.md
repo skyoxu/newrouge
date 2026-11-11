@@ -2,7 +2,7 @@
 title: 'Story 2.2：完整累计来源的独立遗漏与冲突审计'
 type: 'feature'
 created: '2026-11-04'
-status: 'in-progress'
+status: 'done'
 baseline_commit: '2f7d36bdb6e1e0f9f3201a3df3c38bfb2dab6624'
 route: 'dispatch'
 review_loop_iteration: 0
@@ -53,7 +53,7 @@ context:
 **Execution:**
 - [x] `scripts/python/_b_route_source_audit.py`（新）— 唯一审计 owner；`_b_route_sources.py` 提供共享只读输入／event 验证，扩展现有 `--stage audit|verify`；直接入口与 `dev_cli.py` 共用，不增第二套 CLI／记录权威。旧 prepare／account 回归保持。
 - [x] 审计输入 — 显式 `--accounted <report.json>` 定位持久 account 及其真实 request／prepare／candidate；重新核所有冻结文件、当前原 bytes／glob、原生完整解析／注册推导及机械 accounting。允许已终态但仍有 unresolved 的合法 account 进入审计，保持原未决；损坏结构与缺 proof 阻断。首投影只进入第二步。
-- [ ] 独立执行 — 每个完整来源文件（含全部块／空文件）独立 extraction；之后全局 comparison 读取全部原文、全部 extraction 和完整提议／验收意图／去向。每步 fresh 无工具隔离 runner，复用公共生命周期；输出严格 schema 和逐文件／逐块分母核验。模型产出义务、finding 和明确 disposition 审阅，不用关键词／相似度造语义结论。全局依赖包含全部来源；完整请求若装不下，明确 capacity 阻断，不截断或悄换摘要。
+- [x] 独立执行 — 每个完整来源文件（含全部块／空文件）独立 extraction；之后全局 comparison 读取全部原文、全部 extraction 和完整提议／验收意图／去向。每步 fresh 无工具隔离 runner，复用公共生命周期；输出严格 schema 和逐文件／逐块分母核验。模型产出义务、finding 和明确 disposition 审阅，不用关键词／相似度造语义结论。全局依赖包含全部来源；完整请求若装不下，明确 capacity 阻断，不截断或悄换摘要。
 - [x] proof／事件 — 精确 prompt、schema、输入、runner 及协调器捕获的实际结果／receipt／输出原 bytes 绑定；schema／引文／完整覆盖由协调器复验，忽略模型自报 approved。显式 `--runner` 和 `--expected-model`，实际 identity／no-tools／完成计数须经可信本地 runner 的 receipt 与执行结果核对，default 别名不得冒充实际模型。公开报告区分 execution_complete、semantic_blockers、planning_eligible（不等于 formal_adoption）；所有原 account 未决合并入阻断。
 - [x] 完成复用 — `--audit-ref` 显式选择原终态；复验原所有 proof／执行输出及当前适用身份。全量一致复用；仅来源变化时可复用未变文件的完整原独立 extraction，始终重做受影响全局 comparison；只变首投影可复用 extraction。parser／审计 schema／prompt／相关 owner 与 transitive runner 工具 bytes、结果相关 Python／依赖版本、指定及原实际模型身份均绑定。HEAD／Task status／时间戳不是有效性条件。损坏原 proof 明确拒绝，不自动当未命中重跑。
 - [x] 预算与观测 — 每 run／scope 持久固定 request／活动预算和逐次 reservation，跨日期／attempt／进程不能归零、调高或并发超支；仅调用前短 metadata 保护，不持全局锁等模型。预留秒数是保守许可不是实际时间／账单；记录实际单调耗时、已观察 runner／model dispatch（不可知则 unknown）、复用来源／原因、返回及终止分类。相同 event 不重计，partial 不当完成重用。新输出仅 `logs/ci/<date>/b-route-source-audit/<run>/<attempt>/` 及对应 run 预算证据。
@@ -83,15 +83,60 @@ Linux 相关套件实际执行176项：174 PASS、2个真实 Windows 专用 skip
 
 更广 MVG 的3项既有失败已由当前 helper 和精确 baseline 原 helper 分别窄跑，均2 FAIL／1 ERROR；原始输出在 `root-baseline-attribution/`。未算通过、未禁用，也未扩大本 Story 去修改。T108 历史原件仍缺、保护基准不可采纳、Epic1五项权限 false 保持。
 
+
+### 2026-11-05 阿里云恢复后的 Step 3 验证
+
+原始基线与 frozen intent 均保留。依赖安装、容量与运行时适配的完整证据见 [当前交接记录](../../../logs/ci/2026-11-05/story22-runtime-adapter/handoff.json)。官方 App Server 在独立 ephemeral 线程真实返回 `openai/gpt-6.1-sol`、medium；回执仅验证运行时配置，服务端实际模型和物理请求次数保持 unknown。模型目录覆盖只限制客户端工具能力，保留原模型 slug 与指令；原始目录、完整协议与输入输出均绑定。
+
+两项原始容量测试通过；最新离线回归145项全部通过、无skip。受控真实遗漏与跨源冲突样例均完成独立提取及全源比较，定位原文并保留 blocking、planning_eligible=false、formal_adoption=false。两者verify及原attempt精确重放均通过且零新增模型调用：[遗漏](../../../logs/ci/2026-11-05/b-route-source-audit/story22-real-omission-20261105/audit-03/report.json)、[冲突](../../../logs/ci/2026-11-05/b-route-source-audit/story22-real-conflict-20261105/audit-03/report.json)。audit-01/02原始失败与固定预算保留，分别累计5/6个请求reservation，预算仍为32。
+
+修复Windows文本写入换行导致的输出字节绑定差异；为模型明确既有blocking规则，并提供只含原始字节范围和原文的citation_span定位数据。未修改受控原文、初始投影语义、引用核验或语义阻塞规则。当前进入原生Step4；尚未完成审核或Step5，不声明Story done。
+
 ## Spec Change Log
 
 ## Review Triage Log
+
+| ID | verdict | route | evidence |
+|---|---|---|---|
+| B1 | high | patch | API单次回执缺已要求的runner_invocations；补1并验证协调器合同。 |
+| B2 | high | patch | Windows API文本发布换行改变原字节；改为UTF-8 bytes。 |
+| B3 | medium | patch | replay接受turn请求前的item通知；按已有请求状态拒绝。 |
+| B4 | false | reject | 跨块全局约束合法，reason与精确原文均保留；合同不承诺机器判断语义相关性。 |
+| B5 | false | reject | 原extraction精确引用及模型声明的全局finding关系可追溯；所有finding仍阻塞，不能以同块交集代替语义判断。 |
+| B6 | medium | patch | 本地静态package相对导入未覆盖指纹；扩展现有import解析。 |
+| B7 | medium | patch | stdin写入可超过内部期限；给send加截止时间与自有子进程清理。 |
+| B8 | medium | patch | stdout读取/队列未受32MiB上限约束；前移同一上限并有界排队。 |
+| B9 | medium | patch | 专用CI漏已改API/容量/预算suite；补suite和tokenizer依赖。 |
+| B10 | medium | defer | 恢复的既有BMAD架构linter以substring识别字段；后续维护，不改本Story意图。 |
+| E1 | high | patch | 独立确认B1同一API回执缺陷。 |
+| E2 | high | patch | 独立确认B2同一Windows字节差异。 |
+| E3 | medium | patch | ast.parse的SyntaxError未持久化终态；规范化为input阻塞。 |
+| G1 | medium | patch | 采信验证层已核实缺口：须真实stdio子进程验证MCP预检先于turn/start。 |
+| G2 | high | patch | Other finding独立确认B1，保留逐条裁决。 |
+| Q1 | medium | patch | 验证层复核指出超时测试兜底kill会掩盖清理遗漏；在兜底前捕获并断言退出状态。 |
+| Q2 | low | reject | 洪水测试验证总字节上限，未独立证明8项容量；总量已在producer受限，8只是附加内部背压，不将其声称为独立已验证合同。为此另建测试分支超过直接修正，无日常新增坏结果。 |
+
+详细证据与根因分组见 [原生Step4裁决](../../../logs/ci/2026-11-05/story22-native-step4/triage.md)。
+
 
 ## Design Notes
 
 调研两位独立 agent 的源码与原合同结果一致：无必须询问用户的产品意图缺口。采用 per-file 完整独立提取＋全源比较属于常规实施选择；无安全局部比较证明时全源比较本就全部相关，不能假装保留旧全局结论。审计不引入 MVG 三候选／评选（2.5）或正式采纳恢复（2.9）。不可逆范围仅用户已授权的实际模型消耗与独立代码测试分支 CI；不扩大网络权限或披露内部材料。
 
 本 Story 继续以 Story／spec／原始工具链证据纳管，不制造游戏 Task；不自动继承1.1或1.2豁免，依据本轮实际 Task-free 3A 工具合同自行判断。完整 spec 为单一审计目标，超过原生建议体积时，按用户“完成所有 Story、自行选择、不必再问”的明确授权保留全体合同；由独立 spec review 降低遗漏风险，非虚构新的用户确认。
+
+
+### 2026-11-05 原生 Step 4 / Step 5 收口
+
+三层原生审核全部返回并逐条裁决，17条包含复核意见，13条修复、3条拒绝、1条既有BMAD运行时问题延期；按共同根因实施10项小修复。API单次回执/Windows字节、协议先后次序、本地包指纹、语法错误终态、管道超时/读取上限及live MCP预检测试均已修复。延期项及三层的覆盖边界见 [审核裁决](../../../logs/ci/2026-11-05/story22-native-step4/triage.md)，不声称穷尽恢复的全部第三方BMAD运行时分支。
+
+补丁后完整Windows验证303项执行：302通过、1项POSIX专属skip；两个真实Windows junction/短路径方法通过；原29次独立synthetic CLI原样通过。深目录首次CLI运行受服务器既有路径长度限制，保留失败现场，随后只换较短的任务logs目录原样重跑，未改产品或断言。七行矩阵已逐方法核对当前通过日志：[矩阵记录](../../../logs/ci/2026-11-05/story22-native-step4/current-matrix-verification.json)。
+
+当前源码的真实audit-04分别完成2/3个App Server逻辑回合，准确发现受控遗漏与跨源冲突；均execution_complete=true、independent_audit=true、planning_eligible=false、formal_adoption=false、无diagnostics。verify与原attempt重放四次全部通过且零新增模型调用。原audit-01/02/03及其绑定源码与固定预算保留，当前reservation累计7/9，预算仍32。服务端实际模型、物理请求次数与费用unknown；runtime配置为openai/gpt-6.1-sol、medium，不能冒称provider身份已验证。
+
+audit-04曾被自动审批拒绝且当次未执行；核验真实用户历史授权和349字节受控输入后，同命令一次重试获准并执行。之后收到父线程不要重试的指令，已停止所有新增真实模型请求；具体先后与数据类别保存在 [审批时间线](../../../logs/ci/2026-11-05/story22-native-step4/approval-review-resolution.json)。未读取或复制凭据、保存的sessions；未改认证、网络或安全设置，未操作main、PR、merge或S2。
+
+Story2.2的实施审核与受控验收完成，不等于正式规划采纳、默认B启用、T108补证或任何运行时PASS。下一个Story按依赖顺序另行准入，不复用此Story的真实模型结果冒充新验收。
 
 ## Verification
 

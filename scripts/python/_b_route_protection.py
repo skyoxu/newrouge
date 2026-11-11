@@ -19,7 +19,7 @@ from _b_route_records import TaskJoinContext
 from update_mvg_baseline import _weakens_baseline
 
 
-SCHEMA = "newrouge.b-route-protection-snapshot.v1"
+SCHEMA = "newrouge.b-route-protection-snapshot.v3"
 DEFAULT_EPICS = "_bmad-output/planning-artifacts/b-route/epics.md"
 AUTHORIZATION = {
     "formal_protection_baseline": False,
@@ -168,6 +168,17 @@ def _inventory_rows(report: Any) -> dict[str, dict]:
 
 def _inventory_identity(report: dict) -> None:
     _inventory_rows(report)
+    if (type(report.get("collection")) is not dict or type(report["collection"].get("root_real")) is not str
+            or not report["collection"]["root_real"]
+            or (report.get("historical_inventory_ref") is not None and type(report["historical_inventory_ref"]) is not str)):
+        _fail(codec.ReasonCode.INVALID_TYPE, None, "v3 original root and historical locator", "malformed observation")
+    # A v3 label and self-consistent hashes do not establish which rules the
+    # report claims. Support one exact installed policy, without a legacy shim.
+    # This does not authenticate the collection event or prove current inputs.
+    rules = inventory.rule_identity()
+    if type(report.get("rules")) is not dict or not _same_json(report["rules"], rules):
+        _fail(codec.ReasonCode.UNKNOWN_CODEC_VERSION, None,
+              {"supported_inventory_rules": rules}, {"inventory_rules": report.get("rules")})
     for field in ("content_identity", "second_pass_identity"):
         _checked_digest(report.get(field), None)
     diagnostics = report.get("diagnostics")
@@ -215,6 +226,9 @@ class _ArchivedReferences:
             return None
         data = self.raw_files.get(path)
         self.requests.append({"path": path, "required": required, "allowed": True, "available": data is not None})
+        if data is None:
+            self.diagnostic("missing-input", path, "Archived file is missing",
+                            "error" if required else "warning")
         return data
 
 
@@ -262,7 +276,11 @@ def _reference_closure(documents: dict, report: dict, raw_files: dict[str, bytes
     if not _same_json([row["path"] for row in report["manifests"]], manifest_paths):
         _fail(codec.ReasonCode.DIGEST_MISMATCH, None,
               "manifest membership rebuilt from archived discovery and original bytes", "different inventory manifest projection")
-    if not manifest_paths:
+    from _b_route_initial_legacy import rederive
+    legacy_state = rederive(report, raw_files)
+    if legacy_state == "unknown":
+        reader.diagnostic("legacy-manifest-requirement-unknown", "docs/testing/mvg", "Unknown governed initial boundary")
+    if not manifest_paths and legacy_state != "initially_absent":
         reader.diagnostic("missing-manifests", "docs/testing/mvg", "No cumulative manifest could be inventoried")
     return reader.references
 
@@ -333,7 +351,14 @@ def _archive_closure(report: dict, rows: dict, reader: _ArchivedReferences) -> N
         reader.read(path, role)
     for manifest in report["manifests"]:
         reader.read(manifest["path"], "cumulative-manifest")
+    requirement = report["legacy_manifest_requirement"]
+    if requirement["proof"] is not None:
+        for path in requirement["proof"]["current"]["files"]:
+            reader.read(path, "initial-legacy-boundary", evidence=path.startswith("logs/"))
 
+    historical_ref = report.get("historical_inventory_ref")
+    if historical_ref is not None:
+        reader.read(historical_ref, "historical-inventory", required=False, evidence=True)
     diagnostics = report["diagnostics"]
     for request in reader.requests:
         path = request["path"]
@@ -344,10 +369,11 @@ def _archive_closure(report: dict, rows: dict, reader: _ArchivedReferences) -> N
                        and item.get("code") in ("missing-input", "unsafe-or-unreadable-input") for item in diagnostics):
                 _fail(codec.ReasonCode.DIGEST_MISMATCH, path, "retained owner error for unavailable required input", "missing required error diagnostic")
     for diagnostic in reader.diagnostics:
-        if diagnostic["severity"] == "error" and not any(
+        if not any(
                 all(_same_json(item.get(key), diagnostic[key]) for key in ("code", "location", "severity"))
                 for item in diagnostics):
-            _fail(codec.ReasonCode.DIGEST_MISMATCH, diagnostic["location"], "retained raw-derived owner error", diagnostic["code"])
+            _fail(codec.ReasonCode.DIGEST_MISMATCH, diagnostic["location"],
+                  "retained raw-derived owner diagnostic", diagnostic["code"])
 
 
 def _materials(report: dict, raw_files: dict[str, bytes]) -> tuple[dict, list, list, dict]:
@@ -475,7 +501,8 @@ def collect_protection(root: Path, epics: str, *, historical_inventory: str | No
     root = Path(root).absolute()
     # The Story 1.1 in-process report contains discovery tuples. Its persisted
     # JSON contract uses arrays; convert that derived report, never input bytes.
-    report = codec.strict_json_loads(json.dumps(inventory.collect_inventory(root, epics), ensure_ascii=False))
+    report = codec.strict_json_loads(json.dumps(inventory.collect_inventory(root, epics,
+        **({"historical_inventory": historical_inventory} if historical_inventory is not None else {})), ensure_ascii=False))
     diagnostics, raw_files = [], {}
     rows = _inventory_rows(report)
     try:
@@ -537,6 +564,12 @@ def collect_protection(root: Path, epics: str, *, historical_inventory: str | No
                     {k: v for k, v in git_end.items() if k != "blobs"}))
     except (OSError, ValueError) as error:
         diagnostics.append(_diagnostic(codec.ReasonCode.IDENTITY_UNPROVABLE, "git", "stable current Git observation", str(error)))
+    try:
+        from _b_route_initial_legacy import verify_live
+        verify_live(root, report)
+    except (OSError, ValueError, KeyError, TypeError) as error:
+        diagnostics.append(_diagnostic(codec.ReasonCode.FILE_CHANGED, "initial-legacy-boundary",
+            "unchanged current governed initial observations", str(error)))
     triplet, tasks, cumulative = None, [], []
     frozen = {"task_set": "unproven", "candidate_count": None, "candidates": [], "classification_authorized": False}
     try:
@@ -560,18 +593,20 @@ def collect_protection(root: Path, epics: str, *, historical_inventory: str | No
             "artifact": "raw/" + digest[7:] + ".bin" if digest is not None else None,
             "roles": rows.get(path, {}).get("roles", ["historical-backlink"] )})
     stable = report.get("stable") is True and not diagnostics
+    from _b_route_initial_legacy import summary
     snapshot = {"schema_version": SCHEMA, "content_codec": codec.CODEC_VERSION,
         "projection_codec": codec.PROJECTION_CODEC, "status_authority": inventory.TRIPLET["master"],
         "collection": copy.deepcopy(report.get("collection")),
         "inventory": {"artifact": "inventory.json", "raw_digest": codec.raw_digest(_json_bytes(report)),
             "content_identity": report.get("content_identity"), "adoptable": report.get("adoptable") is True,
             "diagnostics": copy.deepcopy(report.get("diagnostics", []))},
+        "legacy_manifest_requirement": summary(report),
         "raw_files": archived, "triplet": triplet, "tasks": tasks, "cumulative": cumulative,
         "frozen_a": frozen, "historical_inventory": historical, "diagnostics": diagnostics,
         "stable": stable, "capture_complete": stable and report.get("adoptable") is True and triplet is not None,
         "authorization": dict(AUTHORIZATION),
         "verification_limits": ["Read-only candidate, not a formal protection baseline or frozen-A policy.",
-            "Missing historical evidence remains unresolved; old done never satisfies new obligations.",
+            "Missing historical debug attachments remain unresolved observations, not operation prerequisites; old done never satisfies new obligations.",
             "No committed reverse-governance proof is implemented; every Task candidate is blocked.",
             "Double-read observations do not isolate against external concurrent writers.",
             "Receipt target projections, policy bootstrap, journal and publication are not implemented."]}
@@ -730,6 +765,9 @@ def _load_snapshot(root: Path, path: str) -> tuple[dict, dict, dict[str, bytes]]
     for field, actual_value in (("triplet", triplet), ("tasks", tasks), ("cumulative", cumulative), ("frozen_a", frozen)):
         if not _same_json(snapshot.get(field), actual_value):
             _fail(codec.ReasonCode.DIGEST_MISMATCH, path, "raw-derived " + field, "different " + field)
+    from _b_route_initial_legacy import summary
+    if not _same_json(snapshot.get("legacy_manifest_requirement"), summary(report)):
+        _fail(codec.ReasonCode.DIGEST_MISMATCH, path, "raw-derived initial legacy boundary", "different boundary summary")
     if snapshot.get("status_authority") != inventory.TRIPLET["master"]:
         _fail(codec.ReasonCode.CONFLICT, path, inventory.TRIPLET["master"], snapshot.get("status_authority"))
     if snapshot.get("stable") is not True or not _same_json(snapshot.get("diagnostics"), []):
@@ -772,6 +810,8 @@ def _load_snapshot(root: Path, path: str) -> tuple[dict, dict, dict[str, bytes]]
                 _fail(codec.ReasonCode.DIGEST_MISMATCH, source, "raw-derived historical difference", item)
     if set(observations) - set(original) - allowed_extra:
         _fail(codec.ReasonCode.INVALID_REFERENCE, path, "only current and historical raw closure", "unexplained archived inputs")
+    from _b_route_initial_legacy import verify_live
+    verify_live(root, report, exclude=parent)
     for source, original_data in observed.items():
         current_data = _read(root, source)
         if current_data != original_data:
@@ -784,7 +824,9 @@ def _verification_summary(snapshot_path: str, snapshot: dict | None = None) -> d
         "snapshot_digest": None, "diagnostics": [], "authorization": dict(AUTHORIZATION)}
     if snapshot is not None:
         result.update(snapshot_digest=snapshot["snapshot_digest"], capture_complete=snapshot["capture_complete"],
-            unresolved_inventory_diagnostics=snapshot["inventory"]["diagnostics"])
+            unresolved_inventory_diagnostics=snapshot["inventory"]["diagnostics"],
+            legacy_manifest_requirement=copy.deepcopy(snapshot["legacy_manifest_requirement"]),
+            initial_live_boundary_checked=snapshot["legacy_manifest_requirement"]["state"] == "initially_absent")
     return result
 
 

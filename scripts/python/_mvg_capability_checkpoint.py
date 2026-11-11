@@ -238,8 +238,11 @@ def _committed_replay(run_dir, state, payload):
         try:
             if not enabled(state):
                 raise ValueError("checkpoint_protocol_changed")
+            from _b_route_planning_runtime import enabled as runtime_enabled, run_location, descriptor
             root = run_dir.resolve().parents[len(pm.DEFAULT_RUN_ROOT.parts)]
-            if (root / pm.DEFAULT_RUN_ROOT / state["run_id"]).resolve() != run_dir.resolve():
+            expected_run = (run_location(root, descriptor(state)["planner"], state["run_id"]) if runtime_enabled(state)
+                else (root / pm.DEFAULT_RUN_ROOT / state["run_id"]).resolve())
+            if expected_run != run_dir.resolve():
                 raise ValueError("checkpoint_run_location_changed")
             verified_prefix(root, run_dir, state)
         except (OSError, ValueError, KeyError, TypeError, IndexError, AttributeError) as exc:

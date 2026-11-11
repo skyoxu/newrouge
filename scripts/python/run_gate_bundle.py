@@ -7,6 +7,7 @@ Modes:
 - hard: fail on any gate failure
 - soft: do not fail by default (unless --strict-soft)
 - all : run hard then soft
+- b-route-runtime: run only offline B-route execution and recovery controls
 
 Outputs:
 - logs/ci/<YYYY-MM-DD>/gate-bundle/runs/<run-id>/<mode>/summary.json
@@ -52,6 +53,95 @@ TASK_FILE_DEPENDENT_GATES = {
 CONTRACT_INTERFACES_DIR = Path("Game.Core/Contracts/Interfaces")
 PRD_GDD_CONSISTENCY_CONFIG = Path("scripts/python/config/prd-gdd-consistency-rules.json")
 DELIVERY_PROFILE_CHOICES = tuple(sorted(known_delivery_profiles()))
+
+# One maintained selector set for the hard bundle and the dedicated Windows PR job.
+# These tests use local synthetic protocols and never invoke a provider.
+B_ROUTE_RUNTIME_DETERMINISTIC_TESTS = (
+    "scripts.python.tests.test_b_route_planning_runtime.RuntimeTests",
+    "scripts.python.tests.test_b_route_planning_runtime.ProtocolBindingTests",
+    "scripts.python.tests.test_b_route_planning_runtime.CheckpointProtocolReplayTests",
+    "scripts.python.tests.test_b_route_planning_runtime.ReviewFixTests",
+    "scripts.python.tests.test_b_route_planning_runtime.CompleteWireTests",
+    "scripts.python.tests.test_b_route_planning_runtime.CompactWireTests",
+    "scripts.python.tests.test_b_route_planning_runtime.TimeAndDeadlineFixTests",
+    "scripts.python.tests.test_b_route_compact_v2_coordinator",
+    "scripts.python.tests.test_b_route_compact_literal",
+    "scripts.python.tests.test_b_route_compact_literal_v3",
+    "scripts.python.tests.test_b_route_tuplecompact_v2",
+    "scripts.python.tests.test_b_route_input_compact_runtime",
+    "scripts.python.tests.test_b_route_source_audit",
+    "scripts.python.tests.test_b_route_audit_partial_reuse",
+    "scripts.python.tests.test_b_route_audit_recovery",
+    "scripts.python.tests.test_b_route_review_source_policy",
+    "scripts.python.tests.test_b_route_story25_review_hardening",
+    "scripts.python.tests.test_b_route_selector_recovery",
+    "scripts.python.tests.test_b_route_execution_transition",
+    "scripts.python.tests.test_b_route_story25_resource_pipeline",
+    "scripts.python.tests.test_b_route_story25_metadata_publication",
+    "scripts.python.tests.test_b_route_story25_host_cleanup",
+    "scripts.python.tests.test_b_route_story25_host_fault_guard",
+    "scripts.python.tests.test_b_route_story25_compatibility",
+    "scripts.python.tests.test_b_route_loop3_resources",
+    "scripts.python.tests.test_b_route_loop3_host_cleanup",
+    "scripts.python.tests.test_b_route_issue_accounts",
+    "scripts.python.tests.test_b_route_loop3_runtime",
+    "scripts.python.tests.test_b_route_loop4_runtime",
+    "scripts.python.tests.test_b_route_loop5_runtime",
+    "scripts.python.tests.test_b_route_provider_schema",
+    "scripts.python.tests.test_b_route_indexed_review",
+    "scripts.python.tests.test_b_route_review_schema_delivery",
+    "scripts.python.tests.test_b_route_review_recovery",
+    "scripts.python.tests.test_b_route_partial_generation_recovery",
+    "scripts.python.tests.test_b_route_input_path_recovery",
+    "scripts.python.tests.test_b_route_input_path_runtime",
+    "scripts.python.tests.test_b_route_synthesis_recovery",
+    "scripts.python.tests.test_b_route_mvg_recovery_prepare",
+    "scripts.python.tests.test_b_route_mvg_synthesis_recovery",
+    "scripts.python.tests.test_b_route_mvg_recovery_wiring",
+    "scripts.python.tests.test_b_route_worker_recovery",
+    "scripts.python.tests.test_b_route_recovery_funding",
+    "scripts.python.tests.test_mvg_capability_worker",
+    "scripts.python.tests.test_b_route_source_epoch",
+    "scripts.python.tests.test_b_route_source_epoch_v2",
+    "scripts.python.tests.test_b_route_source_epoch_scope",
+    "scripts.python.tests.test_b_route_mvg_source_epoch",
+    "scripts.python.tests.test_b_route_selector_source_epoch",
+    "scripts.python.tests.test_b_route_execution_transition_ordering",
+    "scripts.python.tests.test_codex_isolated_model_runner",
+    "scripts.python.tests.test_capability_input_integrity",
+    "scripts.python.tests.test_b_route_runtime_ci",
+    "scripts.python.tests.test_b_route_commit",
+    "scripts.python.tests.test_b_route_commit_e1",
+    "scripts.python.tests.test_b_route_commit_projection",
+    "scripts.python.tests.test_b_route_commit_images",
+    "scripts.python.tests.test_b_route_initial_legacy",
+    "scripts.python.tests.test_b_route_qualified_historical_v3",
+    "scripts.python.tests.test_b_route_commit_recovery",
+    "scripts.python.tests.test_b_route_compensation",
+    "scripts.python.tests.test_b_route_segmented_candidates",
+    "scripts.python.tests.test_b_route_segmented_journal",
+    "scripts.python.tests.test_b_route_segmented_fiscal_prefix",
+    "scripts.python.tests.test_b_route_segmented_plan",
+    "scripts.python.tests.test_b_route_segmented_requests",
+    "scripts.python.tests.test_b_route_segmented_response_wire",
+    "scripts.python.tests.test_b_route_segmented_runtime",
+    "scripts.python.tests.test_b_route_segmented_workflow",
+    "scripts.python.tests.test_plan_segmented",
+    "scripts.python.tests.test_codex_app_server_stdio",
+    "scripts.python.tests.test_inherited_pipe_cleanup",
+    "scripts.python.tests.test_planning_main_audit_fixes.PlanningMainAuditFixesTests.test_interrupted_runner_terminates_and_reaps_real_child",
+)
+
+
+def _b_route_runtime_gate() -> dict[str, Any]:
+    # CI supplies a job-private interpreter; other hard commands keep their
+    # original launcher. Local invocations retain the current interpreter.
+    python = os.environ.get("BR_PYTHON") or sys.executable
+    return {
+        "name": "b_route_runtime_deterministic",
+        "cmd": [python, "-B", "-m", "unittest",
+                *B_ROUTE_RUNTIME_DETERMINISTIC_TESTS, "-v"],
+    }
 
 
 def _configure_console_streams() -> None:
@@ -158,7 +248,7 @@ def _resolve_gate_command(name: str, cmd: list[str], out_dir: Path) -> list[str]
     return resolved
 
 
-def _run_command(cmd: list[str], log_path: Path) -> tuple[int, str]:
+def _run_command(cmd: list[str], log_path: Path, *, environment: dict[str, str] | None = None) -> tuple[int, str]:
     proc = subprocess.run(
         cmd,
         stdout=subprocess.PIPE,
@@ -167,6 +257,7 @@ def _run_command(cmd: list[str], log_path: Path) -> tuple[int, str]:
         encoding="utf-8",
         errors="ignore",
         check=False,
+        env=environment,
     )
     output = proc.stdout or ""
     log_path.parent.mkdir(parents=True, exist_ok=True)
@@ -409,6 +500,7 @@ def _hard_gate_commands(task_files: list[str], task_links_max_warnings: int = -1
             "cmd": ["py", "-3", "scripts/python/validate_chapter7_ui_wiring.py"],
         },
     ]
+    commands.append(_b_route_runtime_gate())
     if task_links_max_warnings >= 0:
         commands.append(
             {
@@ -531,7 +623,25 @@ def _run_group(
             continue
 
         _safe_print(f"[gate-bundle] START mode={mode} gate={name}")
-        rc, output = _run_command(cmd, log_path)
+        if name == "b_route_runtime_deterministic":
+            environment = os.environ.copy()
+            paths = [repo_root / "scripts/python", repo_root / "scripts/python/tests",
+                     repo_root / "scripts/sc", repo_root]
+            environment.update({
+                "PYTHONPATH": os.pathsep.join(str(path) for path in paths),
+                "PYTHONNOUSERSITE": "1",
+                "PYTHONDONTWRITEBYTECODE": "1",
+                "NEWROGUE_CODEX_REASONING_EFFORT": "high",
+                "NEWROGUE_B_ROUTE_FIXTURE_REASONING_EFFORT": "high",
+            })
+            if environment.get("BR_TIKTOKEN_CACHE_DIR"):
+                environment["TIKTOKEN_CACHE_DIR"] = environment["BR_TIKTOKEN_CACHE_DIR"]
+            if environment.get("BR_TEST_TEMP"):
+                environment["TEMP"] = environment["BR_TEST_TEMP"]
+                environment["TMP"] = environment["BR_TEST_TEMP"]
+            rc, output = _run_command(cmd, log_path, environment=environment)
+        else:
+            rc, output = _run_command(cmd, log_path)
         if output:
             _safe_print(output, end="" if output.endswith("\n") else "\n")
         _safe_print(f"[gate-bundle] END mode={mode} gate={name} rc={rc}")
@@ -539,14 +649,16 @@ def _run_group(
         if rc != 0:
             failed += 1
 
-        gate_results.append(
-            {
-                "name": name,
-                "rc": rc,
-                "command": cmd,
-                "log": str(log_path).replace("\\", "/"),
-            }
-        )
+        result = {
+            "name": name,
+            "rc": rc,
+            "command": cmd,
+            "log": str(log_path).replace("\\", "/"),
+        }
+        if name == "b_route_runtime_deterministic":
+            result["test_selectors"] = list(B_ROUTE_RUNTIME_DETERMINISTIC_TESTS)
+            result["execution_scope"] = "offline_synthetic_protocols_only"
+        gate_results.append(result)
 
     if mode == "hard":
         exit_code = 0 if failed == 0 else 1
@@ -621,9 +733,9 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Run grouped hard/soft gates.")
     parser.add_argument(
         "--mode",
-        choices=["hard", "soft", "all"],
+        choices=["hard", "soft", "all", "b-route-runtime"],
         default="all",
-        help="Bundle mode: hard | soft | all",
+        help="Bundle mode: hard | soft | all | b-route-runtime (offline controls only)",
     )
     parser.add_argument(
         "--strict-soft",
@@ -725,7 +837,10 @@ def main() -> int:
     soft_commands = _soft_gate_commands(args.task_files, bool(runtime["stability_template_hard"]))
 
     rc: int
-    if args.mode == "hard":
+    if args.mode == "b-route-runtime":
+        rc, _ = _run_group("b-route-runtime", [_b_route_runtime_gate()], args.strict_soft,
+                           out_root, run_id, Path.cwd().resolve(), [])
+    elif args.mode == "hard":
         rc, _ = _run_group("hard", hard_commands, args.strict_soft, out_root / "hard", run_id, Path.cwd().resolve(), list(args.task_files))
     elif args.mode == "soft":
         rc, _ = _run_group("soft", soft_commands, args.strict_soft, out_root / "soft", run_id, Path.cwd().resolve(), list(args.task_files))

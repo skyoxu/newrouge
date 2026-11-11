@@ -24,166 +24,39 @@ from openai_isolated_model_runner import (
 )
 import openai_isolated_model_runner as api
 from _planning_skill_common import atomic_json, load_json, validate_output_schema
+from _codex_app_server import SOURCE as APP_SERVER_IDENTITY_SOURCE, POLICY as APP_SERVER_EVIDENCE_POLICY
+from _codex_app_server import command as app_server_command, run_request as run_app_server_request
+from _codex_app_server import requested_reasoning_effort
 from _capability_input_integrity import (
     CODEX_MAX_TURN_BYTES, DEFAULT_MAX_INPUT_TOKENS, REPORT_NAME, TASK_VIEW_CHUNK_CHAR_BUDGET, check_workspace_request, configured_input_limit, measure_request, task_view_batch_sections, task_view_payload_chunks, task_view_batch_rows, validate_batches,
 )
 
 SCHEMA = "newrouge.isolated-model-runner.v1"
-
-# These are CLI feature switches, not claims about the sandbox.  In
-# particular, Codex's read-only sandbox still permits reads outside the
-# workspace; a no-tools invocation is the boundary we can actually verify.
-CODEX_DISABLED_FEATURES = (
-    "--disable", "shell_tool",
-    "--disable", "apps",
-    "--disable", "browser_use",
-    "--disable", "browser_use_external",
-    "--disable", "computer_use",
-    "--disable", "image_generation",
-    "--disable", "in_app_browser",
-    "--disable", "multi_agent",
-    "--disable", "multi_agent_v2",
-    "--disable", "code_mode_host",
-    "--disable", "plugins",
-    "--disable", "remote_plugin",
-    "--disable", "in_app_local_automation",
-    "--disable", "in_app_chat",
-    "--disable", "in_app_dictation",
-    "--disable", "in_app_updates",
-    "--disable", "realtime_conversation",
-    "--disable", "auth_elicitation",
-    "--disable", "view_image",
-    "--disable", "sleep_tool",
-    "--disable", "tool_suggest",
-    "--disable", "unified_exec",
-    "--disable", "unified_exec_tty",
-)
+MODEL_IDENTITY_SOURCE = APP_SERVER_IDENTITY_SOURCE
 
 _LAST_MODEL_IDENTITY: str | None = None
 _LAST_MODEL_PROVIDER: str | None = None
-_MODEL_IDENTITY_EVIDENCE: list[dict[str, str]] = []
-
-
-def _parse_codex_json_events(raw: str, *, require_model: bool = True) -> tuple[str, list[str]]:
-    """Extract an effective model and observed tool names from JSONL output.
-
-    ``codex exec --json`` does not currently emit a model event on every CLI
-    version.  We therefore fail closed instead of converting a configured
-    alias into a false claim about the executed model.
-    """
-    model = ""
-    tools: list[str] = []
-    for line in raw.splitlines():
-        try:
-            event = json.loads(line)
-        except json.JSONDecodeError:
-            continue
-        if not isinstance(event, dict):
-            continue
-        if event.get("type") in {"session_configured", "turn_context"}:
-            value = event.get("model")
-            if isinstance(value, str) and value.strip():
-                model = value.strip()
-        item = event.get("item")
-        if isinstance(item, dict):
-            item_type = str(item.get("type") or "")
-            if item_type not in {
-                "agent_message", "reasoning", "error", "plan_update",
-                "todo_list", "context_compaction",
-            }:
-                name = str(item.get("name") or item_type)
-                if name not in tools:
-                    tools.append(name)
-    if tools:
-        raise ValueError("model_tools_observed:" + ",".join(tools))
-    if not model and require_model:
-        raise ValueError("actual_model_identity_missing")
-    return model, tools
-
-
-def _runtime_model_from_rollout(raw: str, *, started_at: float,
-                                workspace: Path) -> tuple[str, dict[str, str]]:
-    """Read the model from this invocation's own Codex rollout, if available.
-
-    ``exec --json`` currently omits the session model event.  The non-ephemeral
-    rollout contains the authoritative ``turn_context.model`` for the exact
-    thread id returned by this invocation.  We never use the most recent
-    unrelated session and we never fall back to a configured alias.
-    """
-    thread_id = ""
-    for line in raw.splitlines():
-        try:
-            event = json.loads(line)
-        except json.JSONDecodeError:
-            continue
-        if isinstance(event, dict) and event.get("type") == "thread.started":
-            thread_id = str(event.get("thread_id") or "").strip()
-            if thread_id:
-                break
-    if not thread_id:
-        return "", {}
-    codex_home = Path(os.environ.get("CODEX_HOME") or (Path.home() / ".codex"))
-    sessions = codex_home / "sessions"
-    if not sessions.is_dir():
-        return "", {}
-    # Only inspect rollout files created by this invocation.  The thread id is
-    # still required, so a stale file can never satisfy the lookup.
-    workspace_mismatch = False
-    for path in sessions.rglob(f"rollout-*-{thread_id}.jsonl"):
-        try:
-            if path.stat().st_mtime + 2 < started_at:
-                continue
-            session_cwd = ""
-            model = ""
-            provider = ""
-            session_id = ""
-            with path.open("r", encoding="utf-8") as handle:
-                for line in handle:
-                    event = json.loads(line)
-                    payload = event.get("payload") if isinstance(event, dict) else None
-                    if not isinstance(payload, dict):
-                        continue
-                    if event.get("type") == "session_meta" and payload.get("id") == thread_id:
-                        session_id = str(payload.get("session_id") or payload.get("id") or "")
-                        session_cwd = str(payload.get("cwd") or "")
-                        provider = str(payload.get("model_provider") or "").strip()
-                    if event.get("type") == "turn_context" and payload.get("model"):
-                        model = str(payload["model"]).strip()
-                if session_id == thread_id and session_cwd and Path(session_cwd).resolve() == workspace.resolve():
-                    digest = hashlib.sha256(path.read_bytes()).hexdigest()
-                    if model:
-                        return model, {
-                            "thread_id": thread_id,
-                            "rollout_sha256": "sha256:" + digest,
-                            "workspace": str(workspace.resolve()),
-                            "source": "codex-rollout-turn-context",
-                            "model_provider": provider,
-                        }
-                if session_id == thread_id and session_cwd:
-                    workspace_mismatch = True
-        except (OSError, UnicodeError, json.JSONDecodeError):
-            continue
-    if workspace_mismatch:
-        raise ValueError("model_session_workspace_mismatch")
-    return "", {}
+_MODEL_IDENTITY_EVIDENCE: list[dict[str, object]] = []
 
 
 def _codex_command(executable: str, workspace: Path, output: Path,
                    schema_path: Path | None) -> list[str]:
-    command = [executable, "exec", "-s", "read-only", "-C", str(workspace),
-               "--skip-git-repo-check",
-               "--json", "--ignore-rules", *CODEX_DISABLED_FEATURES,
-               "-c", "mcp_servers={}", "--output-last-message", str(output)]
-    if schema_path is not None:
-        command.extend(["--output-schema", str(schema_path)])
-    command.append("-")
-    return command
+    return app_server_command(executable)
 
 
 def _codex_executable() -> str:
     for name in ("codex", "codex.cmd"):
         found = shutil.which(name)
         if found:
+            if os.name == "nt":
+                parent = Path(found).parent
+                for pattern in (
+                    "node_modules/@openai/codex/node_modules/@openai/codex-*/vendor/*/bin/codex.exe",
+                    "node_modules/@openai/codex/vendor/*/bin/codex.exe",
+                ):
+                    candidates = list(parent.glob(pattern))
+                    if len(candidates) == 1:
+                        return str(candidates[0])
             return found
     package_root = str(os.environ.get("CODEX_MANAGED_PACKAGE_ROOT") or "").strip()
     if package_root:
@@ -241,78 +114,31 @@ def _coverage_checklist(workspace: Path) -> str:
 
 def _run_codex_request(executable: str, workspace: Path, *, prompt: str, output: Path,
                        schema_path: Path | None, timeout_sec: int) -> str:
-    global _LAST_MODEL_IDENTITY
-    global _LAST_MODEL_PROVIDER
-    global _MODEL_IDENTITY_EVIDENCE
-    if len(prompt) > CODEX_MAX_TURN_BYTES:
-        raise ValueError(
-            f"runner_input_too_large:complete_request_chars={len(prompt)};"
-            f"limit={CODEX_MAX_TURN_BYTES}"
-        )
-    # Never let a failed/retried invocation consume a previous output. Each
-    # dispatch writes an isolated temp artifact and publishes it only after
-    # the CLI exits successfully and the file is readable.
+    global _LAST_MODEL_IDENTITY, _LAST_MODEL_PROVIDER, _MODEL_IDENTITY_EVIDENCE
+    if len(prompt.encode("utf-8")) > CODEX_MAX_TURN_BYTES:
+        raise ValueError("runner_input_too_large:complete_request_bytes=" +
+                         str(len(prompt.encode("utf-8"))) + ";limit=" + str(CODEX_MAX_TURN_BYTES))
     output.parent.mkdir(parents=True, exist_ok=True)
     temporary_output = output.with_name(f"{output.name}.{os.getpid()}.{uuid.uuid4().hex}.tmp")
+    journal_path = output.with_name(f"{output.name}.{uuid.uuid4().hex}.app-server.jsonl")
     try:
-        with tempfile.TemporaryDirectory(prefix="newrouge-codex-no-tools-") as isolated_cwd_text:
-            isolated_cwd = Path(isolated_cwd_text).resolve()
-            command = _codex_command(executable, isolated_cwd, temporary_output, schema_path)
-            started_at = time.time()
-            proc = subprocess.run(command, cwd=isolated_cwd, input=prompt, text=True,
-                encoding="utf-8", errors="replace", stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT, timeout=max(1, timeout_sec))
-            if proc.returncode != 0:
-                raise RuntimeError(f"Codex CLI failed rc={proc.returncode}: {(proc.stdout or '')[-4000:]}")
-        # Real JSON mode output is authoritative. Test doubles and older
-        # wrappers sometimes return only their output payload; keep those
-        # fixtures usable while never accepting a real JSON stream without a
-        # model identity.
-        json_lines = [line for line in (proc.stdout or "").splitlines()
-                      if line.lstrip().startswith("{")]
-        has_codex_event = False
-        for line in json_lines:
-            try:
-                event = json.loads(line)
-            except json.JSONDecodeError:
-                continue
-            if isinstance(event, dict) and event.get("type") in {
-                "thread.started", "turn.started", "turn.completed",
-                "item.started", "item.completed", "session_configured",
-                "turn_context",
-            }:
-                has_codex_event = True
-                break
-        if not has_codex_event:
-            raise ValueError("actual_model_identity_missing:codex_json_events_absent")
-        model, tools = _parse_codex_json_events(proc.stdout or "", require_model=False)
-        evidence: dict[str, str] = {"source": "codex-json-session-event"} if model else {}
-        if not model:
-            model, evidence = _runtime_model_from_rollout(proc.stdout or "", started_at=started_at,
-                                                          workspace=isolated_cwd)
-        if not model:
-            raise ValueError("actual_model_identity_missing")
-        if tools:
-            raise ValueError("model_tools_observed:" + ",".join(tools))
+        schema = load_json(schema_path, {}) if schema_path is not None else None
+        with tempfile.TemporaryDirectory(prefix="newrouge-codex-no-tools-") as isolated_cwd:
+            raw, evidence = run_app_server_request(executable, cwd=Path(isolated_cwd).resolve(),
+                prompt=prompt, schema=schema, timeout_sec=max(1, timeout_sec), journal_path=journal_path)
+        model, provider = str(evidence["model"]), str(evidence["model_provider"])
         if _LAST_MODEL_IDENTITY is not None and _LAST_MODEL_IDENTITY != model:
-            raise ValueError(
-                f"model_identity_changed:{_LAST_MODEL_IDENTITY}->{model}"
-            )
-        provider = evidence.get("model_provider", "")
-        if _LAST_MODEL_PROVIDER is not None and provider and _LAST_MODEL_PROVIDER != provider:
+            raise ValueError(f"model_identity_changed:{_LAST_MODEL_IDENTITY}->{model}")
+        if _LAST_MODEL_PROVIDER is not None and _LAST_MODEL_PROVIDER != provider:
             raise ValueError(f"model_provider_changed:{_LAST_MODEL_PROVIDER}->{provider}")
-        if provider:
-            _LAST_MODEL_PROVIDER = provider
-        _LAST_MODEL_IDENTITY = model
-        _MODEL_IDENTITY_EVIDENCE.append({"model": model,
-            **({"model_provider": provider} if provider else {}), **evidence})
-        if not temporary_output.is_file():
-            raise RuntimeError("Codex CLI produced no output")
-        raw = temporary_output.read_text(encoding="utf-8")
+        temporary_output.write_bytes(raw.encode("utf-8"))
         temporary_output.replace(output)
+        _LAST_MODEL_IDENTITY, _LAST_MODEL_PROVIDER = model, provider
+        _MODEL_IDENTITY_EVIDENCE.append(evidence)
         return raw
     finally:
         temporary_output.unlink(missing_ok=True)
+
 
 
 def _run_batched_codex(workspace: Path, prompt_path: Path, output_path: Path, *,
@@ -644,27 +470,34 @@ def _run_batched_codex(workspace: Path, prompt_path: Path, output_path: Path, *,
 
 
 def description() -> dict[str, object]:
-    return {
+    requested = requested_reasoning_effort()
+    value = {
         "schema_version": SCHEMA,
         "filesystem_scope": "prompt_only",
         "fresh_session_per_invocation": True,
         "can_read_outside_workspace": False,
         "model": "environment-default",
-        "model_identity_source": "invocation-thread-rollout",
+        "model_identity_source": MODEL_IDENTITY_SOURCE,
         "model_identity_required": True,
+        "model_identity_scope": "runtime_configuration", "evidence_policy": APP_SERVER_EVIDENCE_POLICY,
+        "provider_identity_verified": False,
         "tool_access_scope": "none",
-        "transport": "codex-cli-text-only",
+        "transport": "codex-app-server-stdio",
         "model_tools": [],
         "request_accounting": "exact_per_runner_invocation",
-        "request_count_semantics": "codex-cli-dispatches-not-provider-billing",
+        "request_count_semantics": "app-server-turns-not-provider-billing",
         "supports_batched_session": True,
         "supports_input_preflight": True,
         "supports_request_budget": True,
         "supports_synthesis_budget": True,
     }
+    if requested is not None:
+        value["requested_reasoning_effort"] = requested
+    return value
 
 
 def run(args: argparse.Namespace) -> int:
+    requested_reasoning_effort()
     global _LAST_MODEL_IDENTITY
     global _LAST_MODEL_PROVIDER
     global _MODEL_IDENTITY_EVIDENCE
@@ -709,12 +542,16 @@ def run(args: argparse.Namespace) -> int:
             raise
         print(json.dumps({
             "schema_version": "newrouge.isolated-model-runner-receipt.v1",
-            "model": _LAST_MODEL_IDENTITY, "transport": "codex-cli-text-only-batched",
+            "model": _LAST_MODEL_IDENTITY, "transport": "codex-app-server-stdio-batched",
             "model_provider": _LAST_MODEL_PROVIDER,
             "model_identity": (f"{_LAST_MODEL_PROVIDER}/{_LAST_MODEL_IDENTITY}"
                                if _LAST_MODEL_PROVIDER else _LAST_MODEL_IDENTITY),
-            "model_identity_source": "invocation-thread-rollout",
-            "model_identity_verified": True,
+            "model_identity_source": MODEL_IDENTITY_SOURCE,
+            "model_identity_verified": False,
+            "runtime_identity_verified": True, "model_identity_scope": "runtime_configuration",
+            "evidence_policy": APP_SERVER_EVIDENCE_POLICY,
+            "provider_reported_model": None, "provider_identity_verified": False,
+            "provider_dispatch_count": "unknown",
             "model_identity_evidence": list(_MODEL_IDENTITY_EVIDENCE),
             "model_tools": [], "runner_invocations": int(integrity.get("runner_invocations") or
                 (len(integrity.get("batch_analysis_sha256", {})) + 1)),
@@ -758,10 +595,14 @@ def run(args: argparse.Namespace) -> int:
         "model_provider": _LAST_MODEL_PROVIDER,
         "model_identity": (f"{_LAST_MODEL_PROVIDER}/{_LAST_MODEL_IDENTITY}"
                            if _LAST_MODEL_PROVIDER else _LAST_MODEL_IDENTITY),
-        "model_identity_source": "invocation-thread-rollout",
-        "model_identity_verified": True,
+        "model_identity_source": MODEL_IDENTITY_SOURCE,
+        "model_identity_verified": False,
+            "runtime_identity_verified": True, "model_identity_scope": "runtime_configuration",
+            "evidence_policy": APP_SERVER_EVIDENCE_POLICY,
+            "provider_reported_model": None, "provider_identity_verified": False,
+            "provider_dispatch_count": "unknown",
         "model_identity_evidence": list(_MODEL_IDENTITY_EVIDENCE),
-        "transport": "codex-cli-text-only",
+        "transport": "codex-app-server-stdio",
         "model_tools": [],
         "runner_invocations": 1,
         "request_count_observable": True,

@@ -1,0 +1,10 @@
+{
+  "schema_version": "newrouge.b-route-qualified-historical-owner-authority.v1",
+  "original_owner_root": null,
+  "source_schema_pins": null,
+  "python_version": null,
+  "python_executable": null,
+  "python_executable_raw_digest": null,
+  "scope": "Root installation input: exact actual finalized original v2 owner/source/schema/interpreter; never an earlier observed epoch or old-ticket resigning.",
+  "dependency_authority": "Reuse actual pinned managed-reader dependency closure; caller roots/results are not accepted."
+}
