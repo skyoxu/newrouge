@@ -1,0 +1,13 @@
+{
+  "schema": "newrouge.historical-policy-input-handoff.v1",
+  "value": "3.12.10 (tags/v3.12.10:0cc8128, Apr  8 2025, 12:21:36) [MSC v.1943 64 bit (AMD64)]",
+  "field": "/python_version",
+  "reported_original_source": "C:\\Users\\Administrator\\Documents\\Codex\\2026-11-05\\task\\r62\\scripts\\python\\qualified-historical-owner-authority.v2.json",
+  "receipt_utc": "2026-11-11T20:53:11.929358+00:00",
+  "source_kind": "Exact original file field provided in trusted parent delegation after bounded original-side read-only recovery",
+  "whole_original_resource_received": false,
+  "whole_original_resource_raw_digest": null,
+  "current_sys_version_used": false,
+  "fresh_original_interpreter_observation": false,
+  "owner_or_compensation_authority_granted": false
+}

@@ -1,0 +1,361 @@
+{
+  "schema": "newrouge.original-policy-reconstruction-data.v1",
+  "input_provenance": "historical-python-version-input.json",
+  "original_source_snapshot": "55afde57c2898cf214eab136cb868815919828fd",
+  "source_schema_inputs": [
+    {
+      "relative_path": "docs/planning/b-route/schemas/adoption-operation-v2.schema.json",
+      "bytes": 6989,
+      "sha256": "3fa672021f902f80af184ed01fc5c07c8cf6d5059cdabb72c38d38c97a427b52"
+    },
+    {
+      "relative_path": "docs/planning/b-route/schemas/adoption-operation.schema.json",
+      "bytes": 4787,
+      "sha256": "8079a4f334d40ee27188e538e56830e54237ebf3ac56109742e81588d083827e"
+    },
+    {
+      "relative_path": "docs/planning/b-route/schemas/binding.schema.json",
+      "bytes": 9295,
+      "sha256": "df78956b54debc808fcfdb0d6b33ccd652c1aa6eea74f6d1c9a694075c10d30a"
+    },
+    {
+      "relative_path": "docs/planning/b-route/schemas/catalog.schema.json",
+      "bytes": 2074,
+      "sha256": "5fd03ab0d98034214a37d843e2cc370c1e52fac9aba7ebcc97dfc7e91b86b601"
+    },
+    {
+      "relative_path": "docs/planning/b-route/schemas/commit-intent.schema.json",
+      "bytes": 4387,
+      "sha256": "fddd9fde4417fa1c8b26c95650e86d9825f490728dd262e3c8723c8dc6d8863d"
+    },
+    {
+      "relative_path": "docs/planning/b-route/schemas/commit.schema.json",
+      "bytes": 5503,
+      "sha256": "230a05230b72aef39196ae3748bc5507e5698b5ae84d70f338ffcfbc6de8341a"
+    },
+    {
+      "relative_path": "docs/planning/b-route/schemas/common.schema.json",
+      "bytes": 31392,
+      "sha256": "712b305ddfc68ff1bd3e7a3f52e1bb9c89393e5b49aa22945ecd726ace9d1790"
+    },
+    {
+      "relative_path": "docs/planning/b-route/schemas/flow-graph.schema.json",
+      "bytes": 15844,
+      "sha256": "db16a69e1d8971e38ed41ff51c7b3cc8b28c56885790894b827c060667c77c17"
+    },
+    {
+      "relative_path": "docs/planning/b-route/schemas/origins.schema.json",
+      "bytes": 1818,
+      "sha256": "dab25379c6141b4b1c25189ac140ce991214acdf3226ee8d37e2759ebed43d78"
+    },
+    {
+      "relative_path": "docs/planning/b-route/schemas/plan.schema.json",
+      "bytes": 37397,
+      "sha256": "a67203c9edcc16709a054a9b3e29503083c15e2a38b6995dce48870616f05184"
+    },
+    {
+      "relative_path": "docs/planning/b-route/schemas/planning-candidate.schema.json",
+      "bytes": 34627,
+      "sha256": "c9f31798b7d159db578ad828b15ae346638b79be4979468aa8d63c0eaaae5ff4"
+    },
+    {
+      "relative_path": "docs/planning/b-route/schemas/policy.schema.json",
+      "bytes": 1654,
+      "sha256": "daccdd9592da065ae53d43f347f87ef9690eafe186cc386e1e636c1943b4b855"
+    },
+    {
+      "relative_path": "scripts/python/_b_route_adoption.py",
+      "bytes": 58072,
+      "sha256": "e6662542828758d066bc92a33959009a6597f14a7d668b46280839f99067e4bd"
+    },
+    {
+      "relative_path": "scripts/python/_b_route_adoption_projection.py",
+      "bytes": 7890,
+      "sha256": "527be88bdb25219ad633734b790ed68118bdd055a8635d16135b276a9894c26a"
+    },
+    {
+      "relative_path": "scripts/python/_b_route_adoption_review.py",
+      "bytes": 32363,
+      "sha256": "b68f96a623aa9dafc25a8debdfd76bb068324a6943987a691406946f57cd2477"
+    },
+    {
+      "relative_path": "scripts/python/_b_route_adoption_semantic_view.py",
+      "bytes": 18058,
+      "sha256": "db88892a89717350f7e969aa56100d502842eb6d6202e0fd8fe84594c6a22d9a"
+    },
+    {
+      "relative_path": "scripts/python/_b_route_candidate.py",
+      "bytes": 23079,
+      "sha256": "563fd5f0edd1a6353ae25bb8b687fe761a99eca31c5e1626da86514612481f06"
+    },
+    {
+      "relative_path": "scripts/python/_b_route_codec.py",
+      "bytes": 21906,
+      "sha256": "57b83b6ed9c69676bd721b5a515581df882b12e961e00bf7a4aec33ae6bc0697"
+    },
+    {
+      "relative_path": "scripts/python/_b_route_commit.py",
+      "bytes": 35855,
+      "sha256": "ad8196d60f09bf875f0f754a6812cf6b54775c020bc90052b912d85604633b47"
+    },
+    {
+      "relative_path": "scripts/python/_b_route_commit_projection.py",
+      "bytes": 11260,
+      "sha256": "c996e418a2bbae788ed6e70b27f0b76016b3e6dc22a9812afef37348c6cb707b"
+    },
+    {
+      "relative_path": "scripts/python/_b_route_flow_graph.py",
+      "bytes": 9728,
+      "sha256": "0fe543a157ed4963c5cf1cba2500dab9d93b58621c0a292fda298a2994007e2c"
+    },
+    {
+      "relative_path": "scripts/python/_b_route_frozen_native_reader.py",
+      "bytes": 70440,
+      "sha256": "3c2b2c614082c3dcd04f5ac4866e0152fa93e4dc19ac5487853cef6731f41548"
+    },
+    {
+      "relative_path": "scripts/python/_b_route_initial_legacy.py",
+      "bytes": 36368,
+      "sha256": "27f5d990a3f3223db8bb354f1765b91d58cfcab51cb85908b57af486ec566e8c"
+    },
+    {
+      "relative_path": "scripts/python/_b_route_inventory.py",
+      "bytes": 50800,
+      "sha256": "64036e466358a10e27117df466526937e3f41252ea3520b98ba1d7cdcfca29d9"
+    },
+    {
+      "relative_path": "scripts/python/_b_route_operation_leases.py",
+      "bytes": 4208,
+      "sha256": "04589648e03ec0e9ea6c1b8adc9e931e340d72681320e98bc58fe36e5c5727b8"
+    },
+    {
+      "relative_path": "scripts/python/_b_route_operation_scope.py",
+      "bytes": 15269,
+      "sha256": "f3bd5bafcf1d3356eb47049d5a24db2c676af6852c0210ec73e567772a3d5bab"
+    },
+    {
+      "relative_path": "scripts/python/_b_route_planning_input.py",
+      "bytes": 48265,
+      "sha256": "58171b924e957a9893e7436e26ac823b0a13e3c8a41514efd3def9846d66c76c"
+    },
+    {
+      "relative_path": "scripts/python/_b_route_planning_runtime.py",
+      "bytes": 144567,
+      "sha256": "0a415780438259ba16ab93506871a763ad745c60d6694995834e3d1b73d38c83"
+    },
+    {
+      "relative_path": "scripts/python/_b_route_preflight.py",
+      "bytes": 57551,
+      "sha256": "f2069f4de96684dc2257eb262c9f3b6e42fe7f0a8ded3c3ebd0f52c21e60744b"
+    },
+    {
+      "relative_path": "scripts/python/_b_route_protection.py",
+      "bytes": 57242,
+      "sha256": "489f4798b30cd93caa10b3c0d759125c9ef1d36ece5351dadd8b7c23e7f38f4d"
+    },
+    {
+      "relative_path": "scripts/python/_b_route_qualified_origin.py",
+      "bytes": 29042,
+      "sha256": "312dcb7c5b9c3be3c8f5aee814eb09aa659825ad54cb6b10c190e14f7f4bfb93"
+    },
+    {
+      "relative_path": "scripts/python/_b_route_reader_lifetime.py",
+      "bytes": 10920,
+      "sha256": "9aaec97a56d5e96cbcc77ff3b36fd2ee7bcf035a6e4c831e5786092cd48db74b"
+    },
+    {
+      "relative_path": "scripts/python/_b_route_record_owners.py",
+      "bytes": 8793,
+      "sha256": "781a1e5c93fd010a67a2ba24827a9736c21872dcf15c44f5316b2041bd71a9e0"
+    },
+    {
+      "relative_path": "scripts/python/_b_route_records.py",
+      "bytes": 74427,
+      "sha256": "0e7357f36479516527867cdce299accaaf83c9a7ace6ffb604ae5ca48bff3152"
+    },
+    {
+      "relative_path": "scripts/python/_b_route_retained_execution.py",
+      "bytes": 36198,
+      "sha256": "e8d863e7f21e790cc6c3cfb2ca4d5b51e74733e6f367f7ed19931766cb7c8563"
+    },
+    {
+      "relative_path": "scripts/python/_b_route_schema_resources.py",
+      "bytes": 4589,
+      "sha256": "5c54a2476c12f272be4584957e4151317f7524f5c2ced035d13f52096075f7c5"
+    },
+    {
+      "relative_path": "scripts/python/_b_route_sources.py",
+      "bytes": 41260,
+      "sha256": "9028b544dc89d34bd39d057bb1523d18a3a17eb30e6aabc7fec15f4f2f4c5959"
+    },
+    {
+      "relative_path": "scripts/python/_codex_app_server.py",
+      "bytes": 29045,
+      "sha256": "598eb7d9e4e2dccec5a1a0ba31cf3b8e9fa0cd1df1d9d5b9263564cef1bdc022"
+    },
+    {
+      "relative_path": "scripts/python/_mvg_capability_checkpoint.py",
+      "bytes": 21901,
+      "sha256": "546fe588a6e9d71cc0d9b2536d5815f75b2c2aade642c6c9dc99f513700ac408"
+    },
+    {
+      "relative_path": "scripts/python/_mvg_capability_recovery.py",
+      "bytes": 22313,
+      "sha256": "b9a9e372a164fe4da94efaf8cf83929f13b4275c738063c5dcc630d39e8d1937"
+    },
+    {
+      "relative_path": "scripts/python/_mvg_manifest.py",
+      "bytes": 10955,
+      "sha256": "36c8d74add9dac6cfe4edef4b4f86bc73ac53c6a1963adb975971f9df5f63572"
+    },
+    {
+      "relative_path": "scripts/python/_mvg_requirement_routes.py",
+      "bytes": 11501,
+      "sha256": "9d6cfee6bcbe5182d44ab23a069552b733b182e7f8f80613d58749a9006e1f9a"
+    },
+    {
+      "relative_path": "scripts/python/_mvg_worker_lifetime.py",
+      "bytes": 3566,
+      "sha256": "e5a744567af9b5acee75198bdb1a056d0fcf9e43187cdf0e66d178f26e7a01c3"
+    },
+    {
+      "relative_path": "scripts/python/_planning_apply_journal.py",
+      "bytes": 24706,
+      "sha256": "15036270ac1de73244567b4820b83a5dc9f9032463800d120a63e14a3503d64c"
+    },
+    {
+      "relative_path": "scripts/python/_planning_execution_binding.py",
+      "bytes": 5951,
+      "sha256": "347f39c8956118ed578d9f7e2817078ef2a667de44dce00870ad2d992293f979"
+    },
+    {
+      "relative_path": "scripts/python/_planning_skill_common.py",
+      "bytes": 36388,
+      "sha256": "a1ff199850ed90275332d69e524cdf16d715b9f6df08909cab1d5493988b317a"
+    },
+    {
+      "relative_path": "scripts/python/build_source_ledger.py",
+      "bytes": 29561,
+      "sha256": "6268a6dcb700b672394dfe047f6ba9bb028a54918514cc90cbd8af9c686c0d1d"
+    },
+    {
+      "relative_path": "scripts/python/codex_isolated_model_runner.py",
+      "bytes": 36859,
+      "sha256": "ab5c5886b748b95e7c28e44d9fadfe73fefdf2ee1ed9651a321816006ac99d78"
+    },
+    {
+      "relative_path": "scripts/python/inventory_b_route_baseline.py",
+      "bytes": 2481,
+      "sha256": "fc5549ecdc968cbced61b399ed04f8ea48e689ce788ea42584b13a0092aaf95d"
+    },
+    {
+      "relative_path": "scripts/python/openai_isolated_model_runner.py",
+      "bytes": 76766,
+      "sha256": "fbec85b64d0ad355fb3c497e13f619cf9648ab68dca34271e18370eb3bc85827"
+    },
+    {
+      "relative_path": "scripts/python/update_mvg_baseline.py",
+      "bytes": 12323,
+      "sha256": "a43f21089fd40f0ef5d9ebca72e3bb2d6005d3b4d83894e6573c22106e78e67d"
+    }
+  ],
+  "base_policy_preimage": {
+    "python": "3.12.10 (tags/v3.12.10:0cc8128, Apr  8 2025, 12:21:36) [MSC v.1943 64 bit (AMD64)]",
+    "sources": {
+      "_b_route_adoption.py": "sha256:e6662542828758d066bc92a33959009a6597f14a7d668b46280839f99067e4bd",
+      "_b_route_adoption_review.py": "sha256:b68f96a623aa9dafc25a8debdfd76bb068324a6943987a691406946f57cd2477",
+      "_b_route_adoption_projection.py": "sha256:527be88bdb25219ad633734b790ed68118bdd055a8635d16135b276a9894c26a",
+      "_b_route_operation_scope.py": "sha256:f3bd5bafcf1d3356eb47049d5a24db2c676af6852c0210ec73e567772a3d5bab",
+      "_b_route_operation_leases.py": "sha256:04589648e03ec0e9ea6c1b8adc9e931e340d72681320e98bc58fe36e5c5727b8",
+      "_planning_apply_journal.py": "sha256:15036270ac1de73244567b4820b83a5dc9f9032463800d120a63e14a3503d64c",
+      "_b_route_codec.py": "sha256:57b83b6ed9c69676bd721b5a515581df882b12e961e00bf7a4aec33ae6bc0697",
+      "_b_route_records.py": "sha256:0e7357f36479516527867cdce299accaaf83c9a7ace6ffb604ae5ca48bff3152",
+      "_b_route_record_owners.py": "sha256:781a1e5c93fd010a67a2ba24827a9736c21872dcf15c44f5316b2041bd71a9e0",
+      "_b_route_schema_resources.py": "sha256:5c54a2476c12f272be4584957e4151317f7524f5c2ced035d13f52096075f7c5",
+      "_planning_execution_binding.py": "sha256:347f39c8956118ed578d9f7e2817078ef2a667de44dce00870ad2d992293f979",
+      "_codex_app_server.py": "sha256:598eb7d9e4e2dccec5a1a0ba31cf3b8e9fa0cd1df1d9d5b9263564cef1bdc022",
+      "_planning_skill_common.py": "sha256:a1ff199850ed90275332d69e524cdf16d715b9f6df08909cab1d5493988b317a",
+      "openai_isolated_model_runner.py": "sha256:fbec85b64d0ad355fb3c497e13f619cf9648ab68dca34271e18370eb3bc85827",
+      "codex_isolated_model_runner.py": "sha256:ab5c5886b748b95e7c28e44d9fadfe73fefdf2ee1ed9651a321816006ac99d78",
+      "_b_route_frozen_native_reader.py": "sha256:3c2b2c614082c3dcd04f5ac4866e0152fa93e4dc19ac5487853cef6731f41548",
+      "_b_route_reader_lifetime.py": "sha256:9aaec97a56d5e96cbcc77ff3b36fd2ee7bcf035a6e4c831e5786092cd48db74b",
+      "_mvg_worker_lifetime.py": "sha256:e5a744567af9b5acee75198bdb1a056d0fcf9e43187cdf0e66d178f26e7a01c3",
+      "_b_route_sources.py": "sha256:9028b544dc89d34bd39d057bb1523d18a3a17eb30e6aabc7fec15f4f2f4c5959",
+      "_b_route_protection.py": "sha256:489f4798b30cd93caa10b3c0d759125c9ef1d36ece5351dadd8b7c23e7f38f4d",
+      "_b_route_inventory.py": "sha256:64036e466358a10e27117df466526937e3f41252ea3520b98ba1d7cdcfca29d9",
+      "inventory_b_route_baseline.py": "sha256:fc5549ecdc968cbced61b399ed04f8ea48e689ce788ea42584b13a0092aaf95d",
+      "build_source_ledger.py": "sha256:6268a6dcb700b672394dfe047f6ba9bb028a54918514cc90cbd8af9c686c0d1d",
+      "_mvg_manifest.py": "sha256:36c8d74add9dac6cfe4edef4b4f86bc73ac53c6a1963adb975971f9df5f63572",
+      "update_mvg_baseline.py": "sha256:a43f21089fd40f0ef5d9ebca72e3bb2d6005d3b4d83894e6573c22106e78e67d",
+      "_b_route_planning_runtime.py": "sha256:0a415780438259ba16ab93506871a763ad745c60d6694995834e3d1b73d38c83",
+      "_b_route_planning_input.py": "sha256:58171b924e957a9893e7436e26ac823b0a13e3c8a41514efd3def9846d66c76c",
+      "_mvg_capability_checkpoint.py": "sha256:546fe588a6e9d71cc0d9b2536d5815f75b2c2aade642c6c9dc99f513700ac408",
+      "_mvg_capability_recovery.py": "sha256:b9a9e372a164fe4da94efaf8cf83929f13b4275c738063c5dcc630d39e8d1937",
+      "_b_route_candidate.py": "sha256:563fd5f0edd1a6353ae25bb8b687fe761a99eca31c5e1626da86514612481f06",
+      "_b_route_flow_graph.py": "sha256:0fe543a157ed4963c5cf1cba2500dab9d93b58621c0a292fda298a2994007e2c",
+      "_mvg_requirement_routes.py": "sha256:9d6cfee6bcbe5182d44ab23a069552b733b182e7f8f80613d58749a9006e1f9a",
+      "_b_route_preflight.py": "sha256:f2069f4de96684dc2257eb262c9f3b6e42fe7f0a8ded3c3ebd0f52c21e60744b",
+      "_b_route_commit.py": "sha256:ad8196d60f09bf875f0f754a6812cf6b54775c020bc90052b912d85604633b47",
+      "_b_route_commit_projection.py": "sha256:c996e418a2bbae788ed6e70b27f0b76016b3e6dc22a9812afef37348c6cb707b",
+      "_b_route_initial_legacy.py": "sha256:27f5d990a3f3223db8bb354f1765b91d58cfcab51cb85908b57af486ec566e8c",
+      "_b_route_qualified_origin.py": "sha256:312dcb7c5b9c3be3c8f5aee814eb09aa659825ad54cb6b10c190e14f7f4bfb93",
+      "_b_route_retained_execution.py": "sha256:e8d863e7f21e790cc6c3cfb2ca4d5b51e74733e6f367f7ed19931766cb7c8563"
+    },
+    "schemas": {
+      "common": "sha256:712b305ddfc68ff1bd3e7a3f52e1bb9c89393e5b49aa22945ecd726ace9d1790",
+      "policy": "sha256:daccdd9592da065ae53d43f347f87ef9690eafe186cc386e1e636c1943b4b855",
+      "plan": "sha256:a67203c9edcc16709a054a9b3e29503083c15e2a38b6995dce48870616f05184",
+      "binding": "sha256:df78956b54debc808fcfdb0d6b33ccd652c1aa6eea74f6d1c9a694075c10d30a",
+      "origins": "sha256:dab25379c6141b4b1c25189ac140ce991214acdf3226ee8d37e2759ebed43d78",
+      "commit": "sha256:230a05230b72aef39196ae3748bc5507e5698b5ae84d70f338ffcfbc6de8341a",
+      "catalog": "sha256:5fd03ab0d98034214a37d843e2cc370c1e52fac9aba7ebcc97dfc7e91b86b601",
+      "flow-graph": "sha256:db16a69e1d8971e38ed41ff51c7b3cc8b28c56885790894b827c060667c77c17",
+      "planning-candidate": "sha256:c9f31798b7d159db578ad828b15ae346638b79be4979468aa8d63c0eaaae5ff4",
+      "adoption-operation": "sha256:8079a4f334d40ee27188e538e56830e54237ebf3ac56109742e81588d083827e",
+      "adoption-operation-v2": "sha256:3fa672021f902f80af184ed01fc5c07c8cf6d5059cdabb72c38d38c97a427b52",
+      "commit-intent.schema.json": "sha256:fddd9fde4417fa1c8b26c95650e86d9825f490728dd262e3c8723c8dc6d8863d"
+    }
+  },
+  "base_policy_digest": "sha256:14ac4050ddb9019d56a00862f7658f5ea6a1dc37876312c2d940eb9158e62c04",
+  "v3_policy_preimage": {
+    "schema_version": "newrouge.b-route-adoption-review-policy.v3",
+    "review_profile": "expanded-semantics.v3",
+    "base_policy": "sha256:14ac4050ddb9019d56a00862f7658f5ea6a1dc37876312c2d940eb9158e62c04",
+    "v3_sources": {
+      "_b_route_adoption_semantic_view.py": "sha256:db88892a89717350f7e969aa56100d502842eb6d6202e0fd8fe84594c6a22d9a",
+      "_b_route_qualified_origin.py": "sha256:312dcb7c5b9c3be3c8f5aee814eb09aa659825ad54cb6b10c190e14f7f4bfb93",
+      "_b_route_retained_execution.py": "sha256:e8d863e7f21e790cc6c3cfb2ca4d5b51e74733e6f367f7ed19931766cb7c8563",
+      "_b_route_adoption_projection.py": "sha256:527be88bdb25219ad633734b790ed68118bdd055a8635d16135b276a9894c26a"
+    }
+  },
+  "v3_policy_digest": "sha256:1012db222765367c823f7dab0292b60f6248daf489377a65cc47968112d728cf",
+  "recorded_policy_identities": {
+    "original_subject": "sha256:1012db222765367c823f7dab0292b60f6248daf489377a65cc47968112d728cf",
+    "original_proof": "sha256:1012db222765367c823f7dab0292b60f6248daf489377a65cc47968112d728cf",
+    "original_Host3_binding": "sha256:1012db222765367c823f7dab0292b60f6248daf489377a65cc47968112d728cf",
+    "original_retained_binding": "sha256:1012db222765367c823f7dab0292b60f6248daf489377a65cc47968112d728cf"
+  },
+  "matches": {
+    "original_subject": true,
+    "original_proof": true,
+    "original_Host3_binding": true,
+    "original_retained_binding": true
+  },
+  "original_policy_data_reconstructed": true,
+  "original_owner_execution_authenticated": false,
+  "original_native_execution_authenticated": false,
+  "cloud_authority_installed": false,
+  "new_authority_granted": false,
+  "old_code_executed": false,
+  "old_interpreter_executed": false,
+  "current_interpreter_identity_substituted": false,
+  "new_project_model_calls": 0,
+  "financial_writes": 0,
+  "remaining12_originals_status": "Original-side existence/hash matches reported by parent; public upload rejected by risk review and awaiting specific file-risk confirmation. Bytes not received in Cloud; no transfer retry or alternate channel.",
+  "qualification": "Exact reconstruction of recorded policy DATA preimage/digest only. No full authority resource or old-owner execution identity is authenticated or installed; no compensation eligibility is granted.",
+  "base_policy_matches_original_commit": {
+    "recorded_policy_identity": "sha256:14ac4050ddb9019d56a00862f7658f5ea6a1dc37876312c2d940eb9158e62c04",
+    "matches": true,
+    "path": "/workspace/newrouge-recovery-data/batch03-05f5fbf9/data/target/logs/ci/b-route-operations/operations/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/commit.json"
+  }
+}
