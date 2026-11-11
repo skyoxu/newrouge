@@ -4,6 +4,7 @@ from __future__ import annotations
 from copy import deepcopy
 import random
 import shutil
+import time
 from pathlib import Path
 
 from _planning_skill_common import atomic_json, canonical_sha, file_sha, load_json, parse_model_json, repo_path
@@ -12,6 +13,102 @@ import _mvg_capability_checkpoint as selected_checkpoint
 from _mvg_capability_append import RunBudgetExhausted
 
 STRATEGY = "capability-local-selection.v1"
+
+
+def _selector_recovery_active(state):
+    epoch = state.get("b_route_execution_transition") or {}
+    if state.get("b_route_selector_recovery") or epoch.get("schema_version") == "newrouge.b-route-selector-source-epoch.v1":
+        from _b_route_selector_recovery import is_selector_recovery
+        return is_selector_recovery(state)
+    return False
+
+
+def _monotonic():
+    return time.monotonic()
+
+
+def remaining_time(state, label=None):
+    """Adapt only Capability's original active-time pools; MVG has none."""
+    from _b_route_planning_runtime import descriptor
+    desc = descriptor(state)
+    if desc["planner"] != "capabilities":
+        return None
+    calls = state.get("capability_selection", {}).get("calls", [])
+    def activity(rows):
+        import math
+        total = 0
+        for row in rows:
+            elapsed = (row.get("outcome") or {}).get("active_elapsed_seconds")
+            if type(elapsed) not in (int, float) or not math.isfinite(elapsed) or elapsed < 0:
+                elapsed = row.get("request_identity", {}).get("timeout_sec", 0)
+            total += elapsed
+        return total
+    limits = desc["limits"]
+    remaining = limits["total_budget_sec"] - activity(calls)
+    if label is not None:
+        info = state.get("runner_configuration", {}).get("backend_info", {})
+        allowance = limits["candidate_budget_sec"] + (limits["synthesis_budget_sec"]
+            if info.get("supports_synthesis_budget") is True else 0)
+        remaining = min(remaining, allowance - activity([row for row in calls if row.get("candidate") == label]))
+    return remaining
+
+
+def funded_timeout(state, label, request, *, deadline_remaining=None):
+    """Fund the actual invocation before reserving it; never round time up."""
+    from _b_route_planning_runtime import descriptor
+    desc = descriptor(state)
+    requested = request["requested_timeout_sec"]
+    if desc["planner"] == "capabilities" and request.get("synthesis"):
+        info = state.get("runner_configuration", {}).get("backend_info", {})
+        if info.get("supports_synthesis_budget") is True:
+            requested = desc["limits"]["synthesis_budget_sec"]
+    bounds = [requested]
+    remaining = remaining_time(state, label)
+    if remaining is not None:
+        bounds.append(remaining)
+    if deadline_remaining is not None:
+        bounds.append(deadline_remaining)
+    funded = int(min(bounds))
+    if funded < 1:
+        raise RunBudgetExhausted("b_route_active_time_cannot_fund_invocation")
+    return funded
+
+
+def campaign_preflight(state, used):
+    """Retain prior liabilities and a complete successor before every reserve."""
+    funding = state.get("b_route_campaign_funding")
+    if funding is None:
+        return
+    if (set(funding) != {"schema_version", "paid_or_unknown_before_run", "campaign_limit", "subsequent_full_reservation", "maximum_native_charges", "released"}
+            or funding["schema_version"] != "newrouge.story25-native-funding.v1"
+            or any(type(funding[key]) is not int for key in funding if key != "schema_version")
+            or funding["campaign_limit"] != 290 or funding["released"] != 0
+            or funding["paid_or_unknown_before_run"] < 55 or funding["subsequent_full_reservation"] < 0
+            or funding["maximum_native_charges"] != funding["campaign_limit"] - funding["paid_or_unknown_before_run"] - funding["subsequent_full_reservation"]):
+        raise ValueError("b_route_campaign_funding_changed")
+    if used >= funding["maximum_native_charges"]:
+        raise RunBudgetExhausted("b_route_campaign_cannot_fund_complete_successor")
+
+
+def candidate_labels(state):
+    from _b_route_planning_runtime import enabled, labels
+    if enabled(state):
+        return labels(state)
+    import plan_mvg as pm
+    return pm.MVG_CANDIDATE_LABELS
+
+
+def alias_keys(state):
+    return tuple("ABC"[:len(candidate_labels(state))])
+
+
+def selection_errors(state, selection, **kwargs):
+    from _b_route_planning_runtime import enabled, selection_errors as check
+    if enabled(state):
+        return check(state, selection)
+    import plan_mvg as pm
+    return pm.validate_mvg_selection(selection, **kwargs)
+
 
 
 def generation(state):
@@ -32,6 +129,9 @@ def scope_workspace(run_dir, label, index, attempt, execution=1):
 
 
 def frozen_scopes(state, prepared):
+    from _b_route_planning_runtime import enabled, scopes
+    if enabled(state):
+        return scopes(state, prepared)
     statuses = {str(row["id"]): str(row.get("status", "")).lower()
                 for row in load_json(prepared / "task-master.json", {}).get("master", {}).get("tasks", [])}
     return capability_scopes(load_json(prepared / "capabilities.v1.json", {}),
@@ -47,6 +147,10 @@ def _artifact(run_dir, relative, expected):
 
 def candidate_artifacts(root, run_dir, state, scopes, index, accepted, prefix, admission, *, check_originals=True):
     """Recheck every selected predecessor and the current admitted increment."""
+    if _selector_recovery_active(state):
+        from _b_route_selector_recovery import retained_candidate_artifacts
+        return retained_candidate_artifacts(root, run_dir, state, scopes, index, accepted, prefix,
+                                            admission, check_originals=check_originals)
     import plan_mvg as pm
     from _mvg_planning_review import review_execution_errors
     if admission.get("status") != "admitted":
@@ -81,6 +185,9 @@ def candidate_artifacts(root, run_dir, state, scopes, index, accepted, prefix, a
     errors = pm.candidate_admission_errors(root, state, proposal, proof,
         append_requirement_ids=set(scopes[index]["cumulative_requirement_ids"]), check_originals=check_originals)
     errors += review_execution_errors(state, proposal, execution, proof)
+    if state.get("input_stage") == "3b":
+        from _b_route_planning_runtime import verify_proof_reservations
+        verify_proof_reservations(root, state, proof, admission=admission)
     if errors:
         raise ValueError("capability_selection_candidate_proof_invalid:" + str(errors))
     local_ledger = load_json(workspace / "capability-append/append-ledger.json", {})
@@ -100,6 +207,8 @@ def candidate_artifacts(root, run_dir, state, scopes, index, accepted, prefix, a
 
 def selection_identity(state, scope, index, base, admissions, aliases):
     return {"schema_version": "newrouge.mvg-capability-selection-input.v1",
+        **({"runtime_identity": state["runtime_identity"], "epoch": state.get("recovery", {}).get("epoch")}
+            if state.get("input_stage") == "3b" else {}),
         "analysis_identity_sha256": state["analysis_identity_sha256"],
         "run_id": state["run_id"], "capability_id": scope["capability_id"],
         "scope_sha256": canonical_sha(scope), "order_index": index, "base_sha256": canonical_sha(base),
@@ -114,7 +223,12 @@ def _selected_step(root, run_dir, state, scopes, index, base, prefix, step, *, c
         from _mvg_capability_append import merge_append
         from _mvg_capability_recovery import verify_adoption_record
         record = step["record"]
-        proposal = merge_append(base, record["delta"], scopes[index])
+        if scopes[index].get("unit_kind") == "governed_planning_closure":
+            from _b_route_completed_reuse import replay_delta
+            proposal = replay_delta(root, state, run_dir / "analysis-input", base, record["delta"], scopes[index],
+                check_originals=check_originals)
+        else:
+            proposal = merge_append(base, record["delta"], scopes[index])
         verify_adoption_record(root, state, run_dir / "analysis-input", scopes[index], base,
             proposal, record, check_originals=check_originals)
         if (record.get("scope") != scopes[index] or record.get("base_sha256") != canonical_sha(base)
@@ -126,11 +240,11 @@ def _selected_step(root, run_dir, state, scopes, index, base, prefix, step, *, c
             raise ValueError("adoption_selected_record_changed")
         return proposal, record
     aliases = step["aliases"]
-    if set(aliases) != {"A", "B", "C"} or set(aliases.values()) != set(pm.MVG_CANDIDATE_LABELS):
+    if set(aliases) != set(alias_keys(state)) or set(aliases.values()) != set(candidate_labels(state)):
         raise ValueError("capability_selection_aliases_changed")
     proposals = {}
     proofs = {}
-    for label in pm.MVG_CANDIDATE_LABELS:
+    for label in candidate_labels(state):
         if step["admissions"][label].get("candidate") != label:
             raise ValueError("capability_selection_candidate_slot_changed")
         proposals[label], proofs[label], _ = candidate_artifacts(
@@ -148,13 +262,20 @@ def _selected_step(root, run_dir, state, scopes, index, base, prefix, step, *, c
         if load_json(comparison_workspace / f"{alias}.json", None) != proposals[label]:
             raise ValueError("capability_selection_comparison_candidate_changed")
     selection, receipt = load_json(output, {}), load_json(receipt_path, {})
-    errors = pm.validate_mvg_selection(selection, candidate_labels=set(pm.MVG_CANDIDATE_LABELS),
-        incumbent_present=False, alias_mapping=aliases, viable_labels=set(pm.MVG_CANDIDATE_LABELS))
+    errors = selection_errors(state, selection, candidate_labels=set(candidate_labels(state)),
+        incumbent_present=False, alias_mapping=aliases, viable_labels=set(candidate_labels(state)))
     errors += pm.validate_selection_execution_receipt(state, selection, receipt,
         selection_input_sha256=canonical_sha(identity), output_sha256=file_sha(output),
         expected_attempt=step["attempt"])
-    if (receipt.get("runner_receipt") or {}).get("output_sha256") != file_sha(output):
+    if state.get("input_stage") != "3b" and (receipt.get("runner_receipt") or {}).get("output_sha256") != file_sha(output):
         errors.append("capability_selection_runner_output_changed")
+    from _b_route_planning_runtime import enabled, verify_call
+    if enabled(state):
+        from _b_route_planning_runtime import verify_selector_reservation
+        verify_selector_reservation(run_dir, state, scopes[index], index, step, receipt, comparison_workspace, output,
+            check_originals=check_originals)
+        if canonical_sha(verify_call(receipt["execution_binding"])) != canonical_sha(selection):
+            errors.append("b_route_selector_execution_changed")
     label = aliases.get(selection.get("selected"))
     if errors or label != step.get("selected_candidate"):
         raise ValueError("capability_selection_receipt_invalid:" + str(errors))
@@ -171,6 +292,9 @@ def verified_prefix(root, run_dir, state, *, verify_history=True, recover_counte
     scopes = frozen_scopes(state, run_dir / "analysis-input")
     seed = seed_proposal(state, run_dir / "analysis-input")
     ledger = state.get("capability_selection") or {}
+    if check_originals and state.get("recovery"):
+        from _mvg_capability_recovery import assert_active_chain
+        assert_active_chain(root, state, run_dir)
     from _mvg_global_audit import verify_reopen_history
     if verify_history:
         verify_reopen_history(root, run_dir, state, check_originals=check_originals)
@@ -182,10 +306,10 @@ def verified_prefix(root, run_dir, state, *, verify_history=True, recover_counte
     costs = ledger.get("lineage_invocations", {})
     if (type(total) is not int or total != len(calls)
             or [row.get("number") for row in calls] != list(range(1, total + 1))
-            or set(costs) != set(pm.MVG_CANDIDATE_LABELS)
+            or set(costs) != set(candidate_labels(state))
             or any(type(costs[label]) is not int or costs[label] != sum(
                 row.get("candidate") == label for row in calls) or not 0 <= costs[label] <= 64
-                for label in pm.MVG_CANDIDATE_LABELS)):
+                for label in candidate_labels(state))):
         raise ValueError("capability_selection_invocation_accounting_changed")
     if "mvg.run_invocation_limit_source" in state:
         if total > state["mvg.run_invocation_limit"]:
@@ -199,9 +323,16 @@ def verified_prefix(root, run_dir, state, *, verify_history=True, recover_counte
                     or row.get("lineage") != (f"{row['candidate']}-r{row.get('generation', 1)}" if row.get("candidate") else None)):
                 raise ValueError("capability_selection_reservation_identity_changed")
     from _mvg_capability_generation import verify_dispatch_receipts
-    verify_dispatch_receipts(run_dir, calls)
+    if _selector_recovery_active(state):
+        from _b_route_selector_recovery import verify_retained_dispatches
+        verify_retained_dispatches(root, run_dir, state)
+    else:
+        verify_dispatch_receipts(run_dir, calls, state=state, check_originals=check_originals)
+    from _b_route_planning_runtime import enabled, verify_reservations
+    if enabled(state):
+        verify_reservations(run_dir, state)
     for attempt in range(1, generation(state) + 1):
-      for label in pm.MVG_CANDIDATE_LABELS:
+      for label in candidate_labels(state):
         if not check_originals:
             continue  # Live lineage counters may include later committed scopes.
         charged = [row for row in calls if row.get("candidate") == label and row.get("generation", 1) == attempt]
@@ -271,7 +402,7 @@ def verified_prefix(root, run_dir, state, *, verify_history=True, recover_counte
         execution = current.get("execution", 1)
         if type(execution) is not int or execution < 1:
             raise ValueError("capability_selection_current_execution_invalid")
-        for label in pm.MVG_CANDIDATE_LABELS:
+        for label in candidate_labels(state):
             local_path = scope_workspace(run_dir, label, len(selected), generation(state), execution) / "capability-append/append-ledger.json"
             local = load_json(local_path, None)
             if local is None:
@@ -306,9 +437,9 @@ def verified_prefix(root, run_dir, state, *, verify_history=True, recover_counte
                 atomic_json(local_path, local)
     if current is not None and current.get("input_sha256") is not None:
         aliases = current.get("aliases") or {}
-        if (set(aliases) != {"A", "B", "C"}
-                or set(aliases.values()) != set(pm.MVG_CANDIDATE_LABELS)
-                or set(current.get("admissions", {})) != set(pm.MVG_CANDIDATE_LABELS)):
+        if (set(aliases) != set(alias_keys(state))
+                or set(aliases.values()) != set(candidate_labels(state))
+                or set(current.get("admissions", {})) != set(candidate_labels(state))):
             raise ValueError("capability_selection_current_candidates_changed")
         identity = selection_identity(state, scopes[len(selected)], len(selected), accepted,
                                       current["admissions"], aliases)
@@ -328,11 +459,11 @@ def valid_current_candidates(root, run_dir, state):
     if current is None:
         if len(prefix) == len(scopes) and state.get("selection_status") == "selected":
             verify_published_chain(root, run_dir, state)
-            return list(pm.MVG_CANDIDATE_LABELS)
+            return list(candidate_labels(state))
         return []
     valid = []
     for label, admission in current.get("admissions", {}).items():
-        if label not in pm.MVG_CANDIDATE_LABELS or admission.get("status") != "admitted":
+        if label not in candidate_labels(state) or admission.get("status") != "admitted":
             continue
         if admission.get("candidate") != label:
             raise ValueError("capability_selection_candidate_slot_changed")
@@ -394,11 +525,11 @@ def scope_cost_budget(phase, *, remaining_run, remaining_lineage, remaining_cand
         "unknown_future_scope_estimate": {"run": 7 * future_scopes, "lineage": 2 * future_scopes}}
 
 
-def selector_cost_preflight(path, *, remaining_run, lineage_invocations, future_scopes):
+def selector_cost_preflight(path, *, remaining_run, lineage_invocations, future_scopes, state=None):
     """Future bases may permit zero-call adoption; recheck on entering each scope."""
     import plan_mvg as pm
     from _mvg_capability_generation import stage_cost_preflight
-    if set(lineage_invocations) != set(pm.MVG_CANDIDATE_LABELS):
+    if set(lineage_invocations) != set(candidate_labels(state) if state is not None else pm.MVG_CANDIDATE_LABELS):
         raise ValueError("mvg_selector_lineage_budget_missing")
     return stage_cost_preflight(path, phase="selection", evidence_calls=0,
         remaining={"run": remaining_run,
@@ -417,20 +548,32 @@ def generate_selected_capabilities(root, run_dir, state, *, backend, invoke_fact
 
 def _generate_selected_capabilities(root, run_dir, state, *, backend, invoke_factory, selector_factory, worker_config=None):
     import plan_mvg as pm
+    from _b_route_planning_runtime import enabled as is_3b
+    if is_3b(state) and state.get("selection_status") == "selected":
+        verified = verified_prefix(root, run_dir, state, recover_counters=False)
+        verify_published_chain(root, run_dir, state, verified=verified)
+        return {"run_id": state["run_id"], "proposal_sha256": file_sha(run_dir / "proposal.json"),
+            "selected": state["selected_candidate"], "candidate_count": len(candidate_labels(state)), "capability_count": len(verified[0])}
     scopes = frozen_scopes(state, run_dir / "analysis-input")
     seed = seed_proposal(state, run_dir / "analysis-input")
     ledger = state.setdefault("capability_selection", {
         "binding": canonical_sha({"strategy": STRATEGY, "scopes": scopes, "seed": seed}),
         "order": [scope["capability_id"] for scope in scopes], "selected": [],
         "accepted_sha256": canonical_sha(seed), "current": None, "total_invocations": 0,
-        "lineage_invocations": {label: 0 for label in pm.MVG_CANDIDATE_LABELS}})
+        "lineage_invocations": {label: 0 for label in candidate_labels(state)}})
     if selected_checkpoint.enabled(state) and not ledger["selected"]:
         ledger.setdefault("checkpoint_head", None)
     from _mvg_capability_recovery import bind_epoch, assert_epoch, register_committed, try_adopt
     if selected_checkpoint.enabled(state):
         bind_epoch(root, state)
 
+    started = _monotonic()
+    initial_active = state.get("active_elapsed_seconds", 0)
+    candidate_deadlines = {}
+
     def persist():
+        if is_3b(state):
+            state["active_elapsed_seconds"] = initial_active + _monotonic() - started
         if state.get("recovery"):
             assert_epoch(root, state)
         atomic_json(run_dir / "run.json", state)
@@ -453,7 +596,19 @@ def _generate_selected_capabilities(root, run_dir, state, *, backend, invoke_fac
         atomic_json(run_dir / "model-execution.json", execution)
 
     def reserve(phase, label=None, request_identity=None, publish=None):
+        if _selector_recovery_active(state) and (phase != "selection" or label is not None):
+            raise ValueError("b_route_selector_recovery_no_candidate_dispatch")
+        request = deepcopy(request_identity)
+        if is_3b(state):
+            if not isinstance(request, dict):
+                raise ValueError("b_route_dispatch_request_identity_required")
+            request["timeout_sec"] = funded_timeout(state, label, request, deadline_remaining=
+                candidate_deadlines[label] - _monotonic() if label in candidate_deadlines else None)
+            if phase == "selection":
+                request["selection_input_sha256"] = ledger["current"]["input_sha256"]
+            request["request_sha256"] = canonical_sha({k: v for k, v in request.items() if k != "request_sha256"})
         limit = state.get("mvg.run_invocation_limit", 192)
+        campaign_preflight(state, ledger["total_invocations"])
         if type(limit) is not int or limit <= 0:
             raise ValueError("mvg_run_invocation_limit_invalid")
         if ledger["total_invocations"] >= limit:
@@ -461,18 +616,23 @@ def _generate_selected_capabilities(root, run_dir, state, *, backend, invoke_fac
         if label is not None and ledger["lineage_invocations"][label] >= 64:
             from _mvg_capability_append import AppendBudgetExhausted
             raise AppendBudgetExhausted("capability_append_invocation_budget_exhausted")
-        ledger["total_invocations"] += 1
-        if label is not None:
-            ledger["lineage_invocations"][label] += 1
-        receipt = {"number": ledger["total_invocations"], "phase": phase, "candidate": label,
+        next_number = ledger["total_invocations"] + 1
+        receipt = {"number": next_number, "phase": phase, "candidate": label,
             "capability_id": ledger["current"]["capability_id"], "run_id": state["run_id"],
             "lineage": f"{label}-r{generation(state)}" if label else None,
             "generation": generation(state),
             "execution": (ledger.get("current") or {}).get("execution", 1),
-            "reservation_id": state["run_id"] + ":dispatch:" + str(ledger["total_invocations"]),
+            "reservation_id": state["run_id"] + ":dispatch:" + str(next_number),
             "reserved_at_utc": pm.now(), "status": "reserved"}
         if request_identity is not None:
-            receipt["request_identity"] = deepcopy(request_identity)
+            receipt["request_identity"] = request
+        if _selector_recovery_active(state):
+            from _b_route_selector_recovery import authorize_selector_reservation
+            authorize_selector_reservation(root, state, phase=phase, candidate=label,
+                request_identity=request, reservation=receipt)
+        ledger["total_invocations"] = next_number
+        if label is not None:
+            ledger["lineage_invocations"][label] += 1
         ledger.setdefault("calls", []).append(receipt)
         if publish is not None:
             publish(receipt)
@@ -485,6 +645,12 @@ def _generate_selected_capabilities(root, run_dir, state, *, backend, invoke_fac
                 "model_invocation_count": len(charged),
                 "reservation_ids": [row.get("reservation_id") for row in charged]})
         return deepcopy(receipt)
+
+    def reserve_replacement(label, *, context, issue):
+        from _b_route_planning_runtime import replacement_reservation
+        value = replacement_reservation(state, label, context, issue)
+        persist()
+        return value
 
     def publish_outcome(reservation_id, outcome):
         matches = [row for row in ledger.get("calls", []) if row["reservation_id"] == reservation_id]
@@ -504,7 +670,7 @@ def _generate_selected_capabilities(root, run_dir, state, *, backend, invoke_fac
         # runs.  A legacy run has no hash-bound checkpoint and must retain its
         # persisted current prefix so the historical resume path can replay
         # completed local evidence without dispatching fresh model calls.
-        if (worker_config is not None and ledger.get("current") is not None
+        if (not is_3b(state) and worker_config is not None and ledger.get("current") is not None
                 and selected_checkpoint.enabled(state)
                 and not ledger.get("terminal")):
             ledger["next_execution"] = (ledger["current"].get("execution", 1) + 1)
@@ -521,6 +687,11 @@ def _generate_selected_capabilities(root, run_dir, state, *, backend, invoke_fac
             if state.get("selection_block_reason") == "selection_blocked_insufficient_admitted_candidates":
                 results = [{"label": label, "admitted": row.get("status") == "admitted", "summary": row}
                            for label, row in current.get("admissions", {}).items()]
+                if is_3b(state):
+                    state.update(phase="selection-blocked", selection_status="blocked",
+                        selection_block_reason="selection_blocked_insufficient_admitted_candidates")
+                    persist()
+                    raise ValueError("selection_blocked_insufficient_admitted_candidates")
                 pm._block_selection_for_insufficient_admitted_candidates(run_dir, state, results)
             raise ValueError(str(state.get("selection_block_reason") or "capability_selection_terminal"))
         if state.get("selection_status") == "selected":
@@ -546,18 +717,22 @@ def _generate_selected_capabilities(root, run_dir, state, *, backend, invoke_fac
                 pointer = selected_checkpoint.prepare_checkpoint(run_dir, state,
                     scope["capability_id"], index, accepted, proposal, selection)
                 assert_epoch(root, state)
+                _selected_step(root, run_dir, state, scopes, index, accepted, prefix, selection)
+                checked_scopes, checked_accepted, checked_prefix = verified_prefix(root, run_dir, state)
+                if checked_scopes != scopes or checked_accepted != accepted or checked_prefix != prefix:
+                    raise ValueError("checkpoint_accepted_predecessor_changed")
                 selected_checkpoint.commit_checkpoint(run_dir, state, pointer, selection, proposal, writer=atomic_json)
                 accepted = proposal
                 prefix.append(record)
                 persist()
                 register_committed(root, run_dir, state)
                 continue
-            for label in pm.MVG_CANDIDATE_LABELS:
+            for label in candidate_labels(state):
                 existing = scope_workspace(run_dir, label, index, generation(state))
                 if (existing / "analysis-input").exists():
                     pm._validate_input_freshness(root, existing, state)
             results = []
-            for label in pm.MVG_CANDIDATE_LABELS:
+            for label in candidate_labels(state):
                 admission = current["admissions"].get(label)
                 if admission is None or admission.get("retryable") is True:
                     budget_root = candidate_root(run_dir, label, generation(state))
@@ -576,7 +751,7 @@ def _generate_selected_capabilities(root, run_dir, state, *, backend, invoke_fac
                         def cost_budget(phase, *, known_evidence_calls=0, label=label):
                             # Shared reservations span scopes and recovery; a local
                             # scope ledger must never grant a fresh lineage budget.
-                            remaining_candidates = sum(1 for other in pm.MVG_CANDIDATE_LABELS
+                            remaining_candidates = sum(1 for other in candidate_labels(state)
                                 if other != label and (current["admissions"].get(other) is None
                                     or current["admissions"][other].get("retryable") is True))
                             future_scopes = len(scopes) - index - 1
@@ -586,26 +761,57 @@ def _generate_selected_capabilities(root, run_dir, state, *, backend, invoke_fac
                                 remaining_candidates=remaining_candidates, known_evidence_calls=known_evidence_calls,
                                 future_scopes=future_scopes)
                         def inline():
-                            return generate_append(root, state, workspace,
+                            service_state = state
+                            if is_3b(state):
+                                service_state = deepcopy(state)
+                                service_state.update(runtime_slot=label, runtime_execution=current.get("execution", 1))
+                            return generate_append(root, service_state, workspace,
                                 invoke_factory=lambda target: invoke_factory(budget_root, target, label),
                                 before_call=lambda phase, request_identity=None: reserve(phase, label, request_identity),
                                 checkpoint=checkpoint, scope_index=index, accepted_seed=accepted,
-                                selected_records=prefix, cost_budget=cost_budget)
+                                selected_records=prefix, cost_budget=cost_budget,
+                                replacement=(lambda **kwargs: reserve_replacement(label, **kwargs)) if is_3b(state) else None)
                         if worker_config is None:
                             result = inline()
                         else:
                             from _mvg_capability_worker import run_candidate
                             private_state = deepcopy(state)
                             private_state["capability_selection"]["current"] = None
+                            if is_3b(state):
+                                private_state["runtime_slot"] = label
+                                private_state["runtime_execution"] = current.get("execution", 1)
                             private_state.pop("candidate_admissions", None)
                             private_state.pop("candidate_attempts", None)
-                            result = run_candidate(workspace / "lifecycle", {
+                            deadline_options = {}
+                            if is_3b(state):
+                                remaining = remaining_time(state, label)
+                                if remaining is not None:
+                                    if int(remaining) < 1:
+                                        raise RunBudgetExhausted("b_route_active_time_cannot_fund_worker")
+                                    candidate_deadlines[label] = _monotonic() + remaining
+                                    deadline_options["timeout_sec"] = remaining
+                            lifecycle_name = "lifecycle"
+                            recovery = state.get("b_route_review_recovery")
+                            if recovery and label == "candidate-1" and index == 0:
+                                lifecycle_name = "lifecycle-review-recovery-" + str(state.get("b_route_review_worker_attempt", 1))
+                            if state.get("b_route_synthesis_recovery") and label == "candidate-2" and index == 0:
+                                lifecycle_name = "lifecycle-synthesis-recovery-1"
+                            if state.get("b_route_partial_generation_recovery") and label == "candidate-2" and index == 0:
+                                lifecycle_name = "lifecycle-input-budget-recovery-1"
+                            if state.get("b_route_input_path_recovery") and label == "candidate-2" and index == 0:
+                                lifecycle_name = "lifecycle-p1"
+                            if state.get("b_route_mvg_synthesis_recovery") and label == "candidate-2" and index == 0:
+                                from _b_route_mvg_synthesis_recovery import NAMESPACE
+                                lifecycle_name = "lifecycle-" + NAMESPACE
+                            result = run_candidate(workspace / lifecycle_name, {
                                 "root": str(root.resolve()), "run_dir": str(run_dir.resolve()),
                                 "workspace": str(workspace.resolve()), "state": private_state,
                                 "scope_index": index, "accepted_seed": accepted,
                                 "selected_records": prefix, "runner": worker_config},
                                 reserve=lambda phase, request_identity=None: reserve(phase, label, request_identity),
-                                cost_budget=cost_budget, outcome=publish_outcome, inline=inline)
+                                cost_budget=cost_budget, outcome=publish_outcome, inline=inline,
+                                replacement=(lambda **kwargs: reserve_replacement(label, **kwargs)) if is_3b(state) else None,
+                                **deadline_options)
                             checkpoint(result)
                         admission = {"candidate": label, "status": result["status"], "lineage": f"{label}-r{generation(state)}",
                             "generation": generation(state),
@@ -630,8 +836,8 @@ def _generate_selected_capabilities(root, run_dir, state, *, backend, invoke_fac
                             "generation": generation(state),
                             "execution": current.get("execution", 1),
                             "workspace": workspace.relative_to(run_dir).as_posix(),
-                            "retryable": isinstance(exc, (OSError, RuntimeError)),
-                            "append_terminal": not isinstance(exc, (OSError, RuntimeError)),
+                            "retryable": not is_3b(state) and isinstance(exc, (OSError, RuntimeError)),
+                            "append_terminal": is_3b(state) or not isinstance(exc, (OSError, RuntimeError)),
                             "total_invocations": sum(row.get("candidate") == label and
                                 row.get("capability_id") == scope["capability_id"] and
                                 row.get("generation", 1) == generation(state) and
@@ -644,6 +850,12 @@ def _generate_selected_capabilities(root, run_dir, state, *, backend, invoke_fac
                     persist()
                 if admission["status"] == "admitted":
                     candidate_artifacts(root, run_dir, state, scopes, index, accepted, prefix, admission)
+                elif is_3b(state):
+                    ledger["terminal"] = True
+                    state.update(phase="selection-blocked", selection_status="blocked",
+                        selection_block_reason="selection_blocked_insufficient_admitted_candidates")
+                    persist()
+                    raise ValueError("selection_blocked_insufficient_admitted_candidates")
                 results.append({"label": label, "admitted": admission["status"] == "admitted", "summary": admission})
                 cost_failure = next((row for row in admission.get("errors", []) if isinstance(row, dict)
                     and row.get("code") == "append_stage_cost_budget_insufficient"), None)
@@ -651,17 +863,22 @@ def _generate_selected_capabilities(root, run_dir, state, *, backend, invoke_fac
                     ledger["terminal"] = True
                     persist()
                     raise ValueError(cost_failure["detail"])
-            if sum(row["admitted"] for row in results) != 3:
+            if sum(row["admitted"] for row in results) != len(candidate_labels(state)):
                 ledger["terminal"] = any(row["summary"].get("append_terminal") is True for row in results)
                 persist()
+                if is_3b(state):
+                    state.update(phase="selection-blocked", selection_status="blocked",
+                        selection_block_reason="selection_blocked_insufficient_admitted_candidates")
+                    persist()
+                    raise ValueError("selection_blocked_insufficient_admitted_candidates")
                 pm._block_selection_for_insufficient_admitted_candidates(run_dir, state, results)
             aliases = current.get("aliases")
             if aliases is None:
-                labels = list(pm.MVG_CANDIDATE_LABELS)
+                labels = list(candidate_labels(state))
                 random.Random(canonical_sha({"run": state["run_id"], "scope": scope})).shuffle(labels)
-                aliases = dict(zip(("A", "B", "C"), labels))
+                aliases = dict(zip(alias_keys(state), labels))
                 current["aliases"] = aliases
-            if set(aliases) != {"A", "B", "C"} or set(aliases.values()) != set(pm.MVG_CANDIDATE_LABELS):
+            if set(aliases) != set(alias_keys(state)) or set(aliases.values()) != set(candidate_labels(state)):
                 raise ValueError("capability_selection_aliases_changed")
             identity = selection_identity(state, scope, index, accepted, current["admissions"], aliases)
             input_sha = canonical_sha(identity)
@@ -669,8 +886,8 @@ def _generate_selected_capabilities(root, run_dir, state, *, backend, invoke_fac
                     or current.get("input_identity") != identity):
                 raise ValueError("capability_selection_input_identity_changed")
             current.update(input_identity=identity, input_sha256=input_sha)
-            state["admitted_candidates"] = list(pm.MVG_CANDIDATE_LABELS)
-            state["selection_input_candidates"] = list(pm.MVG_CANDIDATE_LABELS)
+            state["admitted_candidates"] = list(candidate_labels(state))
+            state["selection_input_candidates"] = list(candidate_labels(state))
             persist()
             selection = None
             selection_root = run_dir / "capability-selection" / f"scope-{index + 1}"
@@ -685,13 +902,17 @@ def _generate_selected_capabilities(root, run_dir, state, *, backend, invoke_fac
                     # recovered locally. Missing output keeps the reserved
                     # attempt consumed; it never earns a free retry slot.
                     number = recorded["attempt"]
-                    workspace = selection_root / f"attempt-{number}"
+                    if _selector_recovery_active(state):
+                        from _b_route_selector_recovery import selector_workspace
+                        workspace = selector_workspace(root, state, index, number)
+                    else:
+                        workspace = selection_root / f"attempt-{number}"
                     output = workspace / "llm-sandbox" / f"attempt-{number}" / "selection/selection.json"
                     receipt_path = workspace / "selection-receipt.json"
                     if receipt_path.is_file():
                         result = load_json(output, {})
                         label = aliases.get(result.get("selected"))
-                        if label not in pm.MVG_CANDIDATE_LABELS:
+                        if label not in candidate_labels(state):
                             raise ValueError("capability_selection_recovered_output_invalid")
                         proposal, proof, _ = candidate_artifacts(root, run_dir, state, scopes, index, accepted,
                                                                 prefix, current["admissions"][label])
@@ -702,6 +923,10 @@ def _generate_selected_capabilities(root, run_dir, state, *, backend, invoke_fac
                             receipt_path=receipt_path.relative_to(run_dir).as_posix(), receipt_sha256=file_sha(receipt_path))
                     else:
                         recorded.update(status="interrupted", error="selection_receipt_missing")
+                        if is_3b(state):
+                            ledger["terminal"] = True
+                            persist()
+                            raise ValueError("b_route_selection_completed_evidence_not_published")
                 if recorded.get("status") != "completed":
                     continue
                 _selected_step(root, run_dir, state, scopes, index, accepted, prefix, recorded)
@@ -710,7 +935,11 @@ def _generate_selected_capabilities(root, run_dir, state, *, backend, invoke_fac
             while selection is None and len(attempts) < pm.MVG_SELECTION_ATTEMPT_LIMIT:
                 current["stage"] = "selection-preparing"
                 number = len(attempts) + 1
-                workspace = selection_root / f"attempt-{number}"
+                if _selector_recovery_active(state):
+                    from _b_route_selector_recovery import selector_workspace
+                    workspace = selector_workspace(root, state, index, number)
+                else:
+                    workspace = selection_root / f"attempt-{number}"
                 workspace.mkdir(parents=True, exist_ok=True)
                 prepared = workspace / "analysis-input"
                 if not prepared.exists():
@@ -721,9 +950,19 @@ def _generate_selected_capabilities(root, run_dir, state, *, backend, invoke_fac
                     atomic_json(workspace / f"{alias}.json", proposal)
                 from _mvg_capability_generation import complete_scope_context, review_projection
                 from _mvg_evidence_transport import model_context, lossless_context
-                comparison = {alias: model_context(complete_scope_context(prepared, scope, accepted,
-                    load_json(workspace / f"{alias}.json"))) for alias in aliases}
-                atomic_json(workspace / "comparison-context.json", lossless_context(comparison))
+                from _b_route_planning_runtime import wire_delivery
+                complete_wire = is_3b(state) and wire_delivery(state) is not None
+                comparison = {alias: (lambda value: value if complete_wire else model_context(value))(
+                    complete_scope_context(prepared, scope, accepted, load_json(workspace / f"{alias}.json"))) for alias in aliases}
+                if is_3b(state):
+                    from _b_route_planning_runtime import wire, compact
+                    selection_work = compact._work(None)
+                    encoded_comparison = wire.factor_lossless_context(comparison, work=selection_work)
+                    wire.artifact_text(encoded_comparison, work=selection_work)
+                else:
+                    selection_work = None
+                    encoded_comparison = lossless_context(comparison)
+                atomic_json(workspace / "comparison-context.json", encoded_comparison)
                 for alias in aliases:
                     projected, _ = review_projection(scope, accepted, load_json(workspace / f"{alias}.json"))
                     atomic_json(workspace / f"comparison-{alias}.json", projected)
@@ -733,51 +972,65 @@ def _generate_selected_capabilities(root, run_dir, state, *, backend, invoke_fac
                 public_identity = {key: value for key, value in identity.items() if key != "candidates"}
                 public_identity["candidates"] = {alias: {key: value for key, value in candidate.items()
                     if key != "lineage"} for alias, candidate in identity["candidates"].items()}
-                prompt = ("Compare only the three admitted increments for the current Capability in A.json, B.json, C.json. "
-                    "accepted-seed.json is read-only context and is never a candidate or fallback. All three share the "
+                prompt = (("Compare only the admitted increments in " + ", ".join(alias + ".json" for alias in aliases) + ". ")
+                    + "accepted-seed.json is read-only context and is never a candidate or fallback. All candidates share the "
                     "same frozen input and base. Do not demand coverage of future Capabilities. Rank source fidelity, "
                     "journey coherence, affected handoffs, verification feasibility and cumulative impact. Select one "
                     "candidate without mixing. Read comparison-context.json for complete relevant frozen authority "
                     "and evidence. Its lossless references are defined in the same file. All candidates passed machine and independent semantic admission; "
                     "return only viable reviews, no additional hard veto. Candidate order and labels convey no quality. "
-                    "Return strict selection JSON with unique ranks 1..3; the winner must rank 1. No tools.\n" +
+                    "Return strict selection JSON with unique consecutive ranks; the winner must rank 1. No tools.\n" +
                     pm.json.dumps({"scope": scope, "identity": public_identity}, ensure_ascii=False))
+                if complete_wire:
+                    from _b_route_planning_runtime import selector_materials, selector_prompt
+                    materials = selector_materials(state, load_json(prepared / "b-route-prepared.json"), scope,
+                        public_identity, accepted, {label: load_json(workspace / f"{alias}.json")
+                            for alias, label in aliases.items()}, aliases, workspace, work=selection_work)
+                    prompt = selector_prompt(materials, work=selection_work)
                 recorded = {"attempt": number, "status": "preparing"}
+                if is_3b(state):
+                    recorded.update(generation=generation(state), execution=current.get("execution", 1))
                 persist()
                 try:
                     pm._validate_input_freshness(root, run_dir, state)
                     from _mvg_capability_generation import preflight_runner_payload
-                    schema = pm.mvg_selection_output_schema(incumbent_present=False)
+                    from _b_route_planning_runtime import enabled, selection_schema
+                    schema = selection_schema(state) if enabled(state) else pm.mvg_selection_output_schema(incumbent_present=False)
                     # Measure the exact runner wrapper with all complete files.
                     sandbox = workspace / "llm-sandbox" / f"attempt-{number}" / "selection"
                     sandbox.mkdir(parents=True, exist_ok=True)
-                    for alias in aliases:
-                        shutil.copyfile(workspace / f"comparison-{alias}.json", sandbox / f"{alias}.json")
-                    shutil.copyfile(workspace / "comparison-seed.json", sandbox / "accepted-seed.json")
-                    shutil.copyfile(workspace / "comparison-context.json", sandbox / "comparison-context.json")
+                    if not complete_wire:
+                        for alias in aliases:
+                            shutil.copyfile(workspace / f"comparison-{alias}.json", sandbox / f"{alias}.json")
+                        shutil.copyfile(workspace / "comparison-seed.json", sandbox / "accepted-seed.json")
+                        shutil.copyfile(workspace / "comparison-context.json", sandbox / "comparison-context.json")
                     preflight_runner_payload(workspace, number, prompt, schema, "selection.json")
                     future_scopes = len(scopes) - index - 1
                     selector_cost_preflight(workspace / "stage-cost.json",
                         remaining_run=state.get("mvg.run_invocation_limit", 192) - ledger["total_invocations"],
-                        lineage_invocations=ledger["lineage_invocations"], future_scopes=future_scopes)
+                        lineage_invocations=ledger["lineage_invocations"], future_scopes=future_scopes, state=state)
                     def dispatch_selection(request_identity=None):
                         def publish(reservation):
                             recorded.update(status="running", reservation_id=reservation["reservation_id"])
                             attempts.append(recorded)
                             current["stage"] = "selection-executing"
                         return reserve("selection", request_identity=request_identity, publish=publish)
-                    output, execution = selector_factory(workspace)(prompt, number,
+                    selected_invoke = (selector_factory(workspace, outcome=publish_outcome) if is_3b(state)
+                        else selector_factory(workspace))
+                    output, execution = selected_invoke(prompt, number,
                         output_name="selection.json", output_schema_path=workspace / "output-schema.json",
                         output_schema=schema, before_dispatch=dispatch_selection)
                     result = parse_model_json(output)
-                    errors = pm.validate_mvg_selection(result, candidate_labels=set(pm.MVG_CANDIDATE_LABELS),
-                        incumbent_present=False, alias_mapping=aliases, viable_labels=set(pm.MVG_CANDIDATE_LABELS))
+                    errors = selection_errors(state, result, candidate_labels=set(candidate_labels(state)),
+                        incumbent_present=False, alias_mapping=aliases, viable_labels=set(candidate_labels(state)))
                     if errors:
                         raise ValueError("capability_selection_output_invalid:" + str(errors))
                     receipt = {"schema_version": "newrouge.mvg-selection-execution-receipt.v1",
                         "attempt": number, "backend": backend, "analysis_identity_sha256": state["analysis_identity_sha256"],
                         "selection_input_sha256": input_sha, "output_sha256": file_sha(output),
                         "runner_info": execution["backend_info"], "runner_receipt": execution["receipt"], "returncode": 0}
+                    if is_3b(state):
+                        receipt["execution_binding"] = execution["execution_binding"]
                     receipt_path = workspace / "selection-receipt.json"
                     atomic_json(receipt_path, receipt)
                     label = aliases[result["selected"]]
@@ -796,6 +1049,10 @@ def _generate_selected_capabilities(root, run_dir, state, *, backend, invoke_fac
                     if recorded["status"] == "preparing":
                         raise
                     recorded.update(status="failed", error=str(exc))
+                    if is_3b(state):
+                        ledger["terminal"] = True
+                        persist()
+                        raise
                 persist()
             if selection is None:
                 if ledger["total_invocations"] >= state.get("mvg.run_invocation_limit", 192):
@@ -840,6 +1097,9 @@ def _generate_selected_capabilities(root, run_dir, state, *, backend, invoke_fac
             "analysis_identity_sha256": state["analysis_identity_sha256"], "proposal_sha256": canonical_sha(accepted),
             "semantic_review_sha256": canonical_sha(proof), "records_sha256": canonical_sha(prefix),
             "total_invocations": sum(selected_costs.values()), "lineage_invocations": selected_costs}
+        if is_3b(state):
+            from _b_route_planning_runtime import aggregate_execution
+            execution = aggregate_execution(state, accepted, proof, sum(selected_costs.values()), selected_costs)
         workspace = run_dir / "accepted-chain"
         if generation(state) > 1:
             workspace /= f"generation-{generation(state)}"
@@ -855,9 +1115,10 @@ def _generate_selected_capabilities(root, run_dir, state, *, backend, invoke_fac
         state.pop("selection_block_reason", None)
         persist()
         from _mvg_global_audit import audit
-        audit(root, run_dir, state)
+        if not is_3b(state):
+            audit(root, run_dir, state)
         return {"run_id": state["run_id"], "proposal_sha256": file_sha(run_dir / "proposal.json"),
-                "selected": "winner-chain", "candidate_count": 3, "capability_count": len(scopes)}
+                "selected": "winner-chain", "candidate_count": len(candidate_labels(state)), "capability_count": len(scopes)}
     except selected_checkpoint.CheckpointCommitOutcomeUnknown:
         # Only sidecar evidence is safe when the authoritative replace outcome is unknown.
         raise

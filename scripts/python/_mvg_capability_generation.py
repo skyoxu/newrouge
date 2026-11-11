@@ -138,6 +138,9 @@ def capability_scopes(capabilities, semantics, planning_scope, task_statuses=Non
 
 
 def review_projection(scope, base, proposal):
+    if scope.get("unit_kind") == "governed_planning_closure":
+        from _b_route_planning_runtime import projection
+        return projection(scope, base, proposal)
     """Review every changed flow and every link to an accepted predecessor."""
     prior = {row["id"]: row for row in base["manifest_candidate"].get("flows", [])}
     flows = proposal["manifest_candidate"].get("flows", [])
@@ -193,6 +196,9 @@ def review_projection(scope, base, proposal):
 
 
 def seed_proposal(state, prepared):
+    from _b_route_planning_runtime import enabled, seed
+    if enabled(state):
+        return seed(state, prepared)
     import plan_mvg as pm
     baseline = load_json(prepared / "existing-manifest.json", None)
     from _capability_input_integrity import task_master_rows, task_master_identity
@@ -345,6 +351,9 @@ def _chapter5_model_projection(chapter5, evidence):
 
 
 def complete_scope_context(prepared, scope, base, proposal=None, *, scope_schema=None):
+    if scope.get("unit_kind") == "governed_planning_closure":
+        from _b_route_planning_runtime import complete_context
+        return complete_context(prepared, scope, base, proposal)
     """Keep complete frozen proof and conservative, reproducible model evidence."""
     import plan_mvg as pm
     from _mvg_input_envelope import input_identity, _reference_path, _acceptance_refs, _looks_like_path
@@ -745,12 +754,20 @@ def dispatch_request_identity(run_dir, runner, *, workspace, prompt_path, output
     return identity
 
 
-def verify_dispatch_receipts(run_dir, calls):
+def verify_dispatch_receipts(run_dir, calls, *, state=None, check_originals=True):
     """The coordinator owns request and outcome identity; sidecars are projections."""
     from _planning_skill_common import repo_path
     from _capability_input_integrity import REPORT_NAME
+    generations = {}
     for row in calls:
         request = row.get("request_identity")
+        if isinstance(request, dict) and request.get("planning_profile"):
+            from _b_route_planning_runtime import verify_reserved_call, _reserved_state
+            attempt = row.get("generation", 1)
+            if attempt not in generations:
+                generations[attempt] = _reserved_state(run_dir, row, state)
+            verify_reserved_call(run_dir, row, state=generations[attempt], check_originals=check_originals)
+            continue
         if request is None:
             continue  # Historical calls remain read-only and retain their original identity.
         if not isinstance(request, dict) or canonical_sha({key: value for key, value in request.items()
@@ -1020,7 +1037,12 @@ def restore_inspection_cost(candidate_root, context_number, expected):
 
 
 def generate_append(root, state, candidate_root, *, invoke_factory, before_call, checkpoint,
-                    scope_index=None, accepted_seed=None, selected_records=None, cost_budget=None):
+                    scope_index=None, accepted_seed=None, selected_records=None, cost_budget=None, replacement=None):
+    from _b_route_planning_runtime import enabled, generate_append as generate_3b
+    if enabled(state):
+        return generate_3b(root, state, candidate_root, invoke_factory=invoke_factory, before_call=before_call,
+            checkpoint=checkpoint, scope_index=scope_index, accepted_seed=accepted_seed,
+            selected_records=selected_records, cost_budget=cost_budget, replacement=replacement)
     import plan_mvg as pm
     from _mvg_planning_review import semantic_review_errors, review_execution_errors
     prepared = candidate_root / "analysis-input"
@@ -1378,6 +1400,9 @@ def generate_append(root, state, candidate_root, *, invoke_factory, before_call,
 
 
 def admission_proof(state, seed, scopes, records, proposal):
+    from _b_route_planning_runtime import enabled, admission_proof as proof_3b
+    if enabled(state):
+        return proof_3b(state, seed, scopes, records, proposal)
     """Compose admitted increments without inventing a whole-batch review."""
     return {"schema_version": PROOF_SCHEMA, "analysis_identity_sha256": state["analysis_identity_sha256"],
             "proposal_sha256": canonical_sha(proposal), "verdict": "approved", "findings": [],

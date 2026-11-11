@@ -2,7 +2,7 @@
 
 本入口生成、复核和比较只读保护候选，供后续 Epic 2 审阅接收。Taskmaster master 仍是唯一 Task 状态权威；快照保存采集时的状态与历史定位，不成为另一套完成状态。[Story 1.5 spec](../../_bmad-output/implementation-artifacts/b-route/spec-1-5-mature-protection-and-frozen-a-input.md) 确定本次范围，[ADR-0040](../adr/ADR-0040-b-route-stages-authority-and-activation.md) 继续约束正式保护、冻结 A 和迁移启用。
 
-实际存量的 T108 历史 summary 仍缺失，不能补造或借旧 `done` 消除。不可采纳的 Story 1.1 盘点不能认证正式保护基准。本次交付能力及保留未决项的候选；正式保护、A 资格和策略生效须另有完整有效依据及受治理提交。
+实际存量的历史 summary 缺失仍须如实记录，不能补造或借旧 `done` 消除。v2 按 [inventory 引用角色合同](b-route-baseline-inventory.md#v2-引用角色合同) 区分当前必需输入与 Task 历史调试附件；附件单独缺失不再使当前保护采集不完整。不可采纳的当前盘点仍不能认证完整采集。完整采集是可核验材料，正式保护、A 资格和策略生效须另有完整有效依据及受治理提交；本次不授予这些资格。治理变更提案见 [ADR-0049](../adr/ADR-0049-b-route-reference-roles.md)。
 
 ## Windows 入口
 
@@ -33,7 +33,7 @@ py -3.12 -B scripts/python/capture_b_route_protection.py compare --root $repoRoo
 | `verify` | 所给归档的 bytes、身份与派生材料可复核，`claim=protection_archive_integrity_only` | verification 及 result |
 | `compare` | 旧归档可复核且本次当前采集 `capture_complete=true`，只读差异已生成 | 重新采集的当前 inventory、snapshot、raw、comparison 及 result |
 
-输入／核验失败退出 1；参数、根目录或新输出目录准入失败退出 2。已建立 run 后的失败尽量保存 `failure.json`。公共诊断使用 `reason_code`、`stage`、`entity_id`、`expected`、`actual`、`resume_ref` 六字段，空项显式 null；原 Story 1.1 诊断另保原形状。T108 等真实缺失令当前 `capture_complete=false` 时，capture 和 compare 均退出 1；仍保存候选、当前 raw 及能够形成的差异。`verify` 的归档完整性成功或 `stable=true` 都不把不可采纳的当前输入提升为完整保护。
+输入／核验失败退出 1；参数、根目录或新输出目录准入失败退出 2。已建立 run 后的失败尽量保存 `failure.json`。公共诊断使用 `reason_code`、`stage`、`entity_id`、`expected`、`actual`、`resume_ref` 六字段，空项显式 null；原盘点诊断另保原形状。当前必需输入缺失令 `capture_complete=false` 时，capture 和 compare 均退出 1；仍保存候选、当前 raw 及能够形成的差异。历史调试附件缺失保留 inventory warning、原引用和 absence 观测；其单独缺失允许完整采集，不能宣称该历史运行通过。`verify` 的归档完整性成功或 `stable=true` 都不把不可采纳的当前输入提升为完整保护。
 
 ## 唯一 API 与文件形状
 
@@ -62,12 +62,18 @@ CLI 输出固定在 `logs/ci/<UTC-date>/b-route-protection/<run-id>/`：
 | 文件 | 内容与身份 |
 | --- | --- |
 | `inventory.json` | 复用 Story 1.1 重新双采的完整派生报告，保留原诊断、引用闭包、累计 manifest 和 Git 观察 |
-| `snapshot.json` | `schema_version=newrouge.b-route-protection-snapshot.v1`；包含内容／投影 codec、唯一状态权威、collection、inventory 身份、raw 索引、三联、逐 Task、累计义务、冻结候选、历史差异、诊断、限制及授权 false |
+| `snapshot.json` | `schema_version=newrouge.b-route-protection-snapshot.v2`；包含内容／投影 codec、唯一状态权威、collection、inventory 身份、raw 索引、三联、逐 Task、累计义务、冻结候选、历史差异、诊断、限制及授权 false |
 | `raw/<sha256-hex>.bin` | 每个实际取得文件的原 bytes，按 raw digest 去重；原路径、角色、长度及归档路径保存在 snapshot 索引中 |
 | `result.json` | CLI 结果及本次目录；不能充当正式采纳证明 |
 | `verification.json`／`comparison.json` | 对应命令的归档核验或只读差异；compare 目录中的 snapshot/raw 始终属于本次当前采集 |
 
 `snapshot.raw_files[]` 保留 `path`、`exists`、`raw_digest`、`canonical_digest`、`size_bytes`、`artifact`、`roles`。缺失输入保留定位与 null 身份，不制造替代 bytes。raw 身份覆盖全部原始 bytes；仅可严格解码的 JSON 另有 canonical 身份。`snapshot_digest` 是除该字段自身外的快照 canonical digest，采集事件也参与其中，不能作为跨采集语义复用键。
+
+引用中的 `reference_role`／`required` 随原 locator 保留到逐 Task 及冻结候选。归档复核从原 Task／manifest bytes 重建角色与引用，验证缺失附件的 warning 仍在；删除 warning、把当前必需引用改成历史角色或重签派生摘要均不能通过。存在的历史附件继续完整归档，附件消失／出现／后编辑继续进入差异及稳定性核验。缺失附件可以不阻断当前采集，同时继续记录该 Task 的 `historical_evidence_not_proven`，且不授 frozen-A 资格。
+
+当前 reader 只支持 v2 snapshot、v2 inventory 及精确匹配当前 `inventory.rule_identity()` 的完整五项 rules。v1 snapshot／历史 inventory 被明确拒绝为未知 schema；旧、缺失、删改或被替换的 rules 即使换成 v2 标签并重签全部摘要，也拒绝为不受支持规则。规则身份的唯一 owner 同时供采集与复核使用，没有旧规则兼容层；需要当前材料时使用新 run ID 重新采集。旧 snapshot、Task 真相及历史原日志均保留，原有回执不自动获得新语义。
+
+规则匹配和原 bytes 重建核对的是归档在当前受支持规则下的语义一致性，不认证 `collection` 事件来源或某个物理新 capture 确已执行。普通 JSON 摘要可重算，也可复制当前 rules；这些字段不是采集来源证书。`verify` 仍只声称归档完整性，不声称工作区 fresh currentness；新采集／compare 和具体操作的当前性门禁继续负责后者。
 
 Story 1.1 内存报告的 discovery tuple 仅按其原持久 JSON 合同转换为数组；这是新派生报告的传输形状。任何 Task、来源、测试、manifest、旧报告或历史文件都从安全 reader 重新取得真实 bytes，再核对盘点 raw 身份并末次重读。不会把 parsed document 的 JSON 序列化结果冒充原文件。双读可发现观察到的漂移，不提供外部写者隔离或全项目锁。
 
@@ -89,7 +95,7 @@ Story 1.1 内存报告的 discovery tuple 仅按其原持久 JSON 合同转换�
 
 所有结果的 `authorization` 五项 `formal_protection_baseline`、`frozen_a`、`write`、`policy_bootstrap`、`target_projection_verified` 均为 false。本实现不生成 policy、origins、catalog、journal 或 receipt。纯保护投影实现不扩展 Story 1.4 的 receipt 证明；其 `target_projection_verified=false` 继续有效，`frozen_a_inventory` owner 只核 locator／raw。
 
-`docs/planning/b-route/protection-input.v1.json` 由 root 在实际审阅后保存最小版本、来源／身份引用、逐 Task 候选、审阅结果、未决项及 Epic 2 接收条件。完整采集仍留 logs；该最小材料是 external owner 输入，不增加第七类 policy 或新的状态权威。Epic 2 必须重新核对当前来源／定义／累计义务，处理 T108 等历史限制，并按所属 Story 交付已提交反向关系及受治理提交服务，才能判断后续接收／正式发布资格。
+`docs/planning/b-route/protection-input.v1.json` 由 root 在实际审阅后保存最小版本、来源／身份引用、逐 Task 候选、审阅结果、未决项及 Epic 2 接收条件。完整采集仍留 logs；该最小材料是 external owner 输入，不增加第七类 policy 或新的状态权威。Epic 2 必须重新核对当前来源／定义／累计义务，如实保留历史限制，并按所属 Story 交付已提交反向关系及受治理提交服务，才能判断后续接收／正式发布资格。此次角色修复不改写既存最小输入或替其旧 v1 引用授予当前资格。
 
 ## 定向验证
 

@@ -31,6 +31,22 @@ JSON 保留完整三联原始记录及累计 manifest。报告分开列出当前
 
 历史 `<date>` 等模板标记为 `unknown`，planned 测试、历史缺失证据均明确记录限制，不能作为运行通过。具体必需文件缺失、格式错误、失效定位、坏 join／重复 ID／缺失或非法原始状态、ADR 正文状态缺失或冲突都会阻止可采纳结论。master 每项至少映射一侧业务视图，每侧自身 ID 与 `taskmaster_id` 都必须唯一；保留原值，不反向同步状态。
 
+### v2 引用角色合同
+
+当前报告使用 `newrouge.b-route-baseline-inventory.v2`。每条 `task_and_manifest_references[]` 在原定位和观测上增加 `reference_role` 字符串及 `required` 布尔值，由 owning field 推导，调用者或 Task 状态不能改写角色。角色不删除任何原 Task 字段、历史引用或既有附件 bytes。
+
+| 原 owning field／用途 | `reference_role` | `required` | 缺失的含义 |
+| --- | --- | --- | --- |
+| Task `evidence_refs` | `historical-debug-attachment` | false | 保留原引用、owner／pointer、Task 身份、`state=missing`、null raw 身份和 `missing-input` warning；附件单独缺失不阻断当前盘点 |
+| Task `source_refs`／`test_refs`、manifest source／contract、已实现 manifest test | `current-input` | true | 保留 error，不能获得可采纳结论 |
+| manifest 显式 planned test | `planned-input` | false | 保留原 planned 与 missing 观测，不冒称已实现或运行通过 |
+
+同一路径若也被当前必需 owner 读取，其必需性仍生效；历史角色不豁免其他读取。不安全路径、大小写别名、reparse／链接、不可读文件和双采漂移继续阻断。历史附件实际存在时仍读取并绑定真实 bytes；存在、缺失及变化均进入内容身份与双采。若具体操作确实需要某份历史运行证据，该操作必须按自己的当前输入合同验证原件，不能从 `evidence_refs` 或盘点可采纳推断通过。语义决定见 [ADR-0049 提案](../adr/ADR-0049-b-route-reference-roles.md)。
+
+v1 材料保留原始解释和 bytes，当前 reader 明确拒绝其 schema。v2 的 `rules` 必须完整、精确匹配 `inventory.rule_identity()` 返回的当前已安装五项实现／CLI raw 摘要；旧、缺失、删改或被替换的 rules 不能仅靠新版本字符串和重签摘要被接为当前支持规则的结果。采集与复核共用这一个规则身份 owner，不提供兼容升级或自动修补入口；需要当前材料时使用新 run ID 重新采集。
+
+这项检查证明规则身份与当前支持集合一致，并与原 bytes 派生重建共同限定归档的语义解释。普通可变 JSON 中的规则摘要、checksum 和 `collection` 不认证采集事件来源，也不证明报告生成于某个真实新进程；复制当前摘要不是不可伪造的证书。归档复核不证明工作区仍与归档相同，实际当前性仍由新采集／compare 和具体操作的 currentness 检查负责。旧历史报告不能替代这些检查。
+
 内容身份包含采集集合、raw bytes、Git 身份和执行规则实现；排除采集时间、事件 ID 和绝对工作目录。同内容重采应保持内容身份，事件 ID 不同。两轮均重新发现集合并读取完整引用闭包；集合、bytes 或 Git 身份改变时标记 `unstable`。两次读取只提供观察稳定性，不能隔离任意外部并发写者。消费者清单可核查位置，不自动证明语义完备；静态 manifest 校验也不证明游戏或 MVG 已运行。
 
 ## 退出码与处置

@@ -62,6 +62,14 @@
               "$ref": "newrouge.b-route-common.v1#/$defs/String"
             },
             "uniqueItems": true
+          },
+          "prior_requirement_ids": {
+            "type": "array",
+            "items": {
+              "$ref": "newrouge.b-route-common.v1#/$defs/String"
+            },
+            "minItems": 0,
+            "uniqueItems": true
           }
         },
         "required": [
@@ -79,281 +87,620 @@
         "flows": {
           "type": "array",
           "items": {
-            "type": "object",
-            "properties": {
-              "id": {
-                "$ref": "newrouge.b-route-common.v1#/$defs/String"
-              },
-              "requirement_ids": {
-                "type": "array",
-                "items": {
+            "if": {
+              "required": [
+                "graph"
+              ]
+            },
+            "then": {
+              "type": "object",
+              "properties": {
+                "id": {
                   "$ref": "newrouge.b-route-common.v1#/$defs/String"
                 },
-                "uniqueItems": true
-              },
-              "entry": {
-                "$ref": "newrouge.b-route-common.v1#/$defs/String"
-              },
-              "entry_condition": {
-                "$ref": "newrouge.b-route-common.v1#/$defs/String"
-              },
-              "success_end": {
-                "$ref": "newrouge.b-route-common.v1#/$defs/String"
-              },
-              "branches": {
-                "type": "array",
-                "items": {
+                "requirement_ids": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "newrouge.b-route-common.v1#/$defs/String"
+                  },
+                  "minItems": 1,
+                  "uniqueItems": true
+                },
+                "source_block_ids": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "newrouge.b-route-common.v1#/$defs/String"
+                  },
+                  "minItems": 1,
+                  "uniqueItems": true
+                },
+                "entry_condition": {
+                  "$ref": "newrouge.b-route-common.v1#/$defs/String"
+                },
+                "branches": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "newrouge.b-route-flow-graph.v1#/$defs/Branch"
+                  },
+                  "minItems": 3,
+                  "uniqueItems": true
+                },
+                "handoffs": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "newrouge.b-route-flow-graph.v1#/$defs/Handoff"
+                  },
+                  "minItems": 0,
+                  "uniqueItems": true
+                },
+                "state_owners": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "newrouge.b-route-common.v1#/$defs/LogicalDefinitionUse"
+                  },
+                  "minItems": 0,
+                  "uniqueItems": true
+                },
+                "parts": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "newrouge.b-route-common.v1#/$defs/PartResponsibility"
+                  },
+                  "minItems": 4,
+                  "maxItems": 4,
+                  "allOf": [
+                    {
+                      "contains": {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "const": "domain_rules"
+                          },
+                          "applicability": {
+                            "enum": [
+                              "applicable",
+                              "not_applicable"
+                            ]
+                          },
+                          "rationale": {
+                            "$ref": "newrouge.b-route-common.v1#/$defs/String"
+                          },
+                          "responsibilities": {
+                            "type": "array",
+                            "items": {
+                              "$ref": "newrouge.b-route-common.v1#/$defs/String"
+                            }
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "applicability",
+                          "rationale",
+                          "responsibilities"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "minContains": 1,
+                      "maxContains": 1
+                    },
+                    {
+                      "contains": {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "const": "csharp_adapter"
+                          },
+                          "applicability": {
+                            "enum": [
+                              "applicable",
+                              "not_applicable"
+                            ]
+                          },
+                          "rationale": {
+                            "$ref": "newrouge.b-route-common.v1#/$defs/String"
+                          },
+                          "responsibilities": {
+                            "type": "array",
+                            "items": {
+                              "$ref": "newrouge.b-route-common.v1#/$defs/String"
+                            }
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "applicability",
+                          "rationale",
+                          "responsibilities"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "minContains": 1,
+                      "maxContains": 1
+                    },
+                    {
+                      "contains": {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "const": "binding"
+                          },
+                          "applicability": {
+                            "enum": [
+                              "applicable",
+                              "not_applicable"
+                            ]
+                          },
+                          "rationale": {
+                            "$ref": "newrouge.b-route-common.v1#/$defs/String"
+                          },
+                          "responsibilities": {
+                            "type": "array",
+                            "items": {
+                              "$ref": "newrouge.b-route-common.v1#/$defs/String"
+                            }
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "applicability",
+                          "rationale",
+                          "responsibilities"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "minContains": 1,
+                      "maxContains": 1
+                    },
+                    {
+                      "contains": {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "const": "scene"
+                          },
+                          "applicability": {
+                            "enum": [
+                              "applicable",
+                              "not_applicable"
+                            ]
+                          },
+                          "rationale": {
+                            "$ref": "newrouge.b-route-common.v1#/$defs/String"
+                          },
+                          "responsibilities": {
+                            "type": "array",
+                            "items": {
+                              "$ref": "newrouge.b-route-common.v1#/$defs/String"
+                            }
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "applicability",
+                          "rationale",
+                          "responsibilities"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "minContains": 1,
+                      "maxContains": 1
+                    }
+                  ]
+                },
+                "observable_result": {
+                  "$ref": "newrouge.b-route-common.v1#/$defs/String"
+                },
+                "verification_targets": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "newrouge.b-route-common.v1#/$defs/String"
+                  },
+                  "minItems": 1,
+                  "uniqueItems": true
+                },
+                "ui": {
                   "type": "object",
                   "properties": {
-                    "kind": {
+                    "applicability": {
                       "enum": [
-                        "failure",
-                        "cancel",
-                        "return"
+                        "applicable",
+                        "not_applicable"
                       ]
                     },
                     "rationale": {
                       "$ref": "newrouge.b-route-common.v1#/$defs/String"
                     },
-                    "description": {
-                      "$ref": "newrouge.b-route-common.v1#/$defs/String"
-                    }
-                  },
-                  "required": [
-                    "kind",
-                    "rationale",
-                    "description"
-                  ],
-                  "additionalProperties": false
-                }
-              },
-              "handoffs": {
-                "type": "array",
-                "items": {
-                  "type": "object",
-                  "properties": {
-                    "id": {
-                      "$ref": "newrouge.b-route-common.v1#/$defs/String"
-                    },
-                    "responsibility": {
-                      "$ref": "newrouge.b-route-common.v1#/$defs/String"
-                    },
-                    "state_uses": {
+                    "responsibilities": {
                       "type": "array",
                       "items": {
-                        "$ref": "newrouge.b-route-common.v1#/$defs/LogicalDefinitionUse"
-                      }
+                        "$ref": "newrouge.b-route-common.v1#/$defs/String"
+                      },
+                      "minItems": 0,
+                      "uniqueItems": true
                     },
-                    "result": {
-                      "$ref": "newrouge.b-route-common.v1#/$defs/String"
+                    "owner": {
+                      "$ref": "newrouge.b-route-common.v1#/$defs/LogicalDefinitionUse"
+                    },
+                    "inputs": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "newrouge.b-route-common.v1#/$defs/String"
+                      },
+                      "uniqueItems": true
+                    },
+                    "feedback": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "newrouge.b-route-common.v1#/$defs/String"
+                      },
+                      "uniqueItems": true
+                    },
+                    "scene_entry": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "newrouge.b-route-common.v1#/$defs/String"
+                      },
+                      "uniqueItems": true
+                    },
+                    "scene_return": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "newrouge.b-route-common.v1#/$defs/String"
+                      },
+                      "uniqueItems": true
                     }
                   },
                   "required": [
-                    "id",
-                    "responsibility",
-                    "state_uses",
-                    "result"
+                    "applicability",
+                    "rationale",
+                    "responsibilities",
+                    "owner",
+                    "inputs",
+                    "feedback",
+                    "scene_entry",
+                    "scene_return"
                   ],
                   "additionalProperties": false
-                }
-              },
-              "state_owners": {
-                "type": "array",
-                "items": {
-                  "$ref": "newrouge.b-route-common.v1#/$defs/LogicalDefinitionUse"
-                }
-              },
-              "parts": {
-                "type": "array",
-                "items": {
-                  "$ref": "newrouge.b-route-common.v1#/$defs/PartResponsibility"
                 },
-                "minItems": 4,
-                "maxItems": 4,
-                "allOf": [
-                  {
-                    "contains": {
-                      "type": "object",
-                      "properties": {
-                        "kind": {
-                          "const": "domain_rules"
-                        },
-                        "applicability": {
-                          "enum": [
-                            "applicable",
-                            "not_applicable"
-                          ]
-                        },
-                        "rationale": {
-                          "$ref": "newrouge.b-route-common.v1#/$defs/String"
-                        },
-                        "responsibilities": {
-                          "type": "array",
-                          "items": {
-                            "$ref": "newrouge.b-route-common.v1#/$defs/String"
-                          }
-                        }
-                      },
-                      "required": [
-                        "kind",
-                        "applicability",
-                        "rationale",
-                        "responsibilities"
-                      ],
-                      "additionalProperties": false
-                    },
-                    "minContains": 1,
-                    "maxContains": 1
-                  },
-                  {
-                    "contains": {
-                      "type": "object",
-                      "properties": {
-                        "kind": {
-                          "const": "csharp_adapter"
-                        },
-                        "applicability": {
-                          "enum": [
-                            "applicable",
-                            "not_applicable"
-                          ]
-                        },
-                        "rationale": {
-                          "$ref": "newrouge.b-route-common.v1#/$defs/String"
-                        },
-                        "responsibilities": {
-                          "type": "array",
-                          "items": {
-                            "$ref": "newrouge.b-route-common.v1#/$defs/String"
-                          }
-                        }
-                      },
-                      "required": [
-                        "kind",
-                        "applicability",
-                        "rationale",
-                        "responsibilities"
-                      ],
-                      "additionalProperties": false
-                    },
-                    "minContains": 1,
-                    "maxContains": 1
-                  },
-                  {
-                    "contains": {
-                      "type": "object",
-                      "properties": {
-                        "kind": {
-                          "const": "binding"
-                        },
-                        "applicability": {
-                          "enum": [
-                            "applicable",
-                            "not_applicable"
-                          ]
-                        },
-                        "rationale": {
-                          "$ref": "newrouge.b-route-common.v1#/$defs/String"
-                        },
-                        "responsibilities": {
-                          "type": "array",
-                          "items": {
-                            "$ref": "newrouge.b-route-common.v1#/$defs/String"
-                          }
-                        }
-                      },
-                      "required": [
-                        "kind",
-                        "applicability",
-                        "rationale",
-                        "responsibilities"
-                      ],
-                      "additionalProperties": false
-                    },
-                    "minContains": 1,
-                    "maxContains": 1
-                  },
-                  {
-                    "contains": {
-                      "type": "object",
-                      "properties": {
-                        "kind": {
-                          "const": "scene"
-                        },
-                        "applicability": {
-                          "enum": [
-                            "applicable",
-                            "not_applicable"
-                          ]
-                        },
-                        "rationale": {
-                          "$ref": "newrouge.b-route-common.v1#/$defs/String"
-                        },
-                        "responsibilities": {
-                          "type": "array",
-                          "items": {
-                            "$ref": "newrouge.b-route-common.v1#/$defs/String"
-                          }
-                        }
-                      },
-                      "required": [
-                        "kind",
-                        "applicability",
-                        "rationale",
-                        "responsibilities"
-                      ],
-                      "additionalProperties": false
-                    },
-                    "minContains": 1,
-                    "maxContains": 1
-                  }
-                ]
-              },
-              "observable_result": {
-                "$ref": "newrouge.b-route-common.v1#/$defs/String"
-              },
-              "verification_targets": {
-                "type": "array",
-                "items": {
-                  "$ref": "newrouge.b-route-common.v1#/$defs/String"
-                },
-                "uniqueItems": true
-              },
-              "loops": {
-                "type": "array",
-                "items": {
+                "human_verification": {
                   "type": "object",
                   "properties": {
-                    "description": {
+                    "applicability": {
+                      "enum": [
+                        "applicable",
+                        "not_applicable"
+                      ]
+                    },
+                    "rationale": {
                       "$ref": "newrouge.b-route-common.v1#/$defs/String"
                     },
-                    "exit_condition": {
-                      "$ref": "newrouge.b-route-common.v1#/$defs/String"
+                    "responsibilities": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "newrouge.b-route-common.v1#/$defs/String"
+                      },
+                      "minItems": 0,
+                      "uniqueItems": true
+                    },
+                    "owner": {
+                      "$ref": "newrouge.b-route-common.v1#/$defs/LogicalDefinitionUse"
                     }
                   },
                   "required": [
-                    "description",
-                    "exit_condition"
+                    "applicability",
+                    "rationale",
+                    "responsibilities",
+                    "owner"
                   ],
                   "additionalProperties": false
+                },
+                "graph": {
+                  "$ref": "newrouge.b-route-flow-graph.v1#/$defs/Graph"
+                },
+                "capability_ids": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "newrouge.b-route-common.v1#/$defs/String"
+                  },
+                  "minItems": 1,
+                  "uniqueItems": true
                 }
-              }
+              },
+              "required": [
+                "id",
+                "requirement_ids",
+                "source_block_ids",
+                "entry_condition",
+                "branches",
+                "handoffs",
+                "state_owners",
+                "parts",
+                "observable_result",
+                "verification_targets",
+                "ui",
+                "human_verification",
+                "graph",
+                "capability_ids"
+              ],
+              "additionalProperties": false
             },
-            "required": [
-              "id",
-              "requirement_ids",
-              "entry",
-              "entry_condition",
-              "success_end",
-              "branches",
-              "handoffs",
-              "state_owners",
-              "parts",
-              "observable_result",
-              "verification_targets",
-              "loops"
-            ],
-            "additionalProperties": false
+            "else": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "$ref": "newrouge.b-route-common.v1#/$defs/String"
+                },
+                "requirement_ids": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "newrouge.b-route-common.v1#/$defs/String"
+                  },
+                  "uniqueItems": true
+                },
+                "entry": {
+                  "$ref": "newrouge.b-route-common.v1#/$defs/String"
+                },
+                "entry_condition": {
+                  "$ref": "newrouge.b-route-common.v1#/$defs/String"
+                },
+                "success_end": {
+                  "$ref": "newrouge.b-route-common.v1#/$defs/String"
+                },
+                "branches": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "enum": [
+                          "failure",
+                          "cancel",
+                          "return"
+                        ]
+                      },
+                      "rationale": {
+                        "$ref": "newrouge.b-route-common.v1#/$defs/String"
+                      },
+                      "description": {
+                        "$ref": "newrouge.b-route-common.v1#/$defs/String"
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "rationale",
+                      "description"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "handoffs": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "$ref": "newrouge.b-route-common.v1#/$defs/String"
+                      },
+                      "responsibility": {
+                        "$ref": "newrouge.b-route-common.v1#/$defs/String"
+                      },
+                      "state_uses": {
+                        "type": "array",
+                        "items": {
+                          "$ref": "newrouge.b-route-common.v1#/$defs/LogicalDefinitionUse"
+                        }
+                      },
+                      "result": {
+                        "$ref": "newrouge.b-route-common.v1#/$defs/String"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "responsibility",
+                      "state_uses",
+                      "result"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "state_owners": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "newrouge.b-route-common.v1#/$defs/LogicalDefinitionUse"
+                  }
+                },
+                "parts": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "newrouge.b-route-common.v1#/$defs/PartResponsibility"
+                  },
+                  "minItems": 4,
+                  "maxItems": 4,
+                  "allOf": [
+                    {
+                      "contains": {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "const": "domain_rules"
+                          },
+                          "applicability": {
+                            "enum": [
+                              "applicable",
+                              "not_applicable"
+                            ]
+                          },
+                          "rationale": {
+                            "$ref": "newrouge.b-route-common.v1#/$defs/String"
+                          },
+                          "responsibilities": {
+                            "type": "array",
+                            "items": {
+                              "$ref": "newrouge.b-route-common.v1#/$defs/String"
+                            }
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "applicability",
+                          "rationale",
+                          "responsibilities"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "minContains": 1,
+                      "maxContains": 1
+                    },
+                    {
+                      "contains": {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "const": "csharp_adapter"
+                          },
+                          "applicability": {
+                            "enum": [
+                              "applicable",
+                              "not_applicable"
+                            ]
+                          },
+                          "rationale": {
+                            "$ref": "newrouge.b-route-common.v1#/$defs/String"
+                          },
+                          "responsibilities": {
+                            "type": "array",
+                            "items": {
+                              "$ref": "newrouge.b-route-common.v1#/$defs/String"
+                            }
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "applicability",
+                          "rationale",
+                          "responsibilities"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "minContains": 1,
+                      "maxContains": 1
+                    },
+                    {
+                      "contains": {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "const": "binding"
+                          },
+                          "applicability": {
+                            "enum": [
+                              "applicable",
+                              "not_applicable"
+                            ]
+                          },
+                          "rationale": {
+                            "$ref": "newrouge.b-route-common.v1#/$defs/String"
+                          },
+                          "responsibilities": {
+                            "type": "array",
+                            "items": {
+                              "$ref": "newrouge.b-route-common.v1#/$defs/String"
+                            }
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "applicability",
+                          "rationale",
+                          "responsibilities"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "minContains": 1,
+                      "maxContains": 1
+                    },
+                    {
+                      "contains": {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "const": "scene"
+                          },
+                          "applicability": {
+                            "enum": [
+                              "applicable",
+                              "not_applicable"
+                            ]
+                          },
+                          "rationale": {
+                            "$ref": "newrouge.b-route-common.v1#/$defs/String"
+                          },
+                          "responsibilities": {
+                            "type": "array",
+                            "items": {
+                              "$ref": "newrouge.b-route-common.v1#/$defs/String"
+                            }
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "applicability",
+                          "rationale",
+                          "responsibilities"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "minContains": 1,
+                      "maxContains": 1
+                    }
+                  ]
+                },
+                "observable_result": {
+                  "$ref": "newrouge.b-route-common.v1#/$defs/String"
+                },
+                "verification_targets": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "newrouge.b-route-common.v1#/$defs/String"
+                  },
+                  "uniqueItems": true
+                },
+                "loops": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "description": {
+                        "$ref": "newrouge.b-route-common.v1#/$defs/String"
+                      },
+                      "exit_condition": {
+                        "$ref": "newrouge.b-route-common.v1#/$defs/String"
+                      }
+                    },
+                    "required": [
+                      "description",
+                      "exit_condition"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "required": [
+                "id",
+                "requirement_ids",
+                "entry",
+                "entry_condition",
+                "success_end",
+                "branches",
+                "handoffs",
+                "state_owners",
+                "parts",
+                "observable_result",
+                "verification_targets",
+                "loops"
+              ],
+              "additionalProperties": false
+            }
           }
         },
         "commands": {
@@ -710,6 +1057,9 @@
         "identity_alignment"
       ],
       "additionalProperties": false
+    },
+    "native_candidate_ref": {
+      "$ref": "newrouge.b-route-common.v1#/$defs/PlanningProofRef"
     }
   },
   "required": [
@@ -729,5 +1079,30 @@
     "adoption_proof_refs",
     "lineage"
   ],
-  "additionalProperties": false
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "definitions": {
+            "properties": {
+              "flows": {
+                "contains": {
+                  "type": "object",
+                  "required": [
+                    "graph"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "native_candidate_ref"
+        ]
+      }
+    }
+  ]
 }

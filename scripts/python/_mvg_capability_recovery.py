@@ -105,6 +105,9 @@ def _source_pointer(run_dir, state, step):
 
 
 def _dependency(prepared, scope, base, proposal):
+    if scope.get("unit_kind") == "governed_planning_closure":
+        from _b_route_completed_reuse import dependency
+        return dependency(prepared, scope, base, proposal)
     from _mvg_capability_generation import complete_scope_context, review_projection
     context = complete_scope_context(prepared, scope, base, proposal)
     # Global catalogs/revision/readiness identities are provenance, not the
@@ -158,6 +161,13 @@ def _dependency(prepared, scope, base, proposal):
     return dependency
 
 
+def _scope_capability(prepared, scope):
+    if scope.get("unit_kind") == "governed_planning_closure":
+        from _b_route_completed_reuse import capability
+        return capability(prepared, scope)
+    return scope["capability"]
+
+
 def register_committed(root, run_dir, state):
     """Only disk-selected checkpoints are eligible; staged payloads are ignored."""
     # Legacy runs deliberately omit the checkpoint protocol.  They can still
@@ -188,6 +198,14 @@ def register_committed(root, run_dir, state):
                 continue
             payload = load_checkpoint(run_dir, step["checkpoint"])
             scope = step["record"]["scope"]
+            try:
+                capability = _scope_capability(run_dir / "analysis-input", scope)
+            except ValueError as exc:
+                if scope.get("unit_kind") != "governed_planning_closure":
+                    raise
+                atomic_json(run_dir / "recovery-lookups" / f"scope-{index + 1}-registration.json",
+                    {"status": "not_registered", "reason": str(exc), "transaction_id": token})
+                continue
             snapshot = deepcopy(state)
             ledger = snapshot["capability_selection"]
             ledger.update(selected=deepcopy(selected[:index + 1]), current=None,
@@ -204,8 +222,8 @@ def register_committed(root, run_dir, state):
                     snapshot = existing
             else:
                 atomic_json(target, snapshot)
-            entry = {"epoch": value["epoch"], "capability_id": scope["capability_id"],
-                "capability_sha256": capability_hash(scope["capability"]),
+            entry = {"epoch": value["epoch"], "capability_id": capability["capability_id"],
+                "capability_sha256": capability_hash(capability),
                 **_source_pointer(run_dir, state, step), "order_index": index,
                 "checkpoint": deepcopy(step["checkpoint"]), "ancestry": deepcopy(ancestry),
                 "state_path": target.relative_to(run_dir).as_posix(), "state_sha256": file_sha(target),
@@ -248,14 +266,15 @@ def verify_source(root, state, entry, *, historical=False):
     from _mvg_capability_selection import verified_prefix
     _eligible(root, state, entry, historical=historical)
     source = Path(entry["run_dir"]).resolve()
-    canonical_recovery_root = (root / "logs/ci/mvg-planning").resolve()
-    if not source.is_relative_to(canonical_recovery_root):
+    canonical_recovery_roots = {(root / "logs/ci/mvg-planning").resolve(),
+                                (root / "logs/ci/capability-planning").resolve()}
+    if source.parent not in canonical_recovery_roots:
         raise ValueError("recovery_source_path_outside_canonical_root")
     expected_run_id = str(entry.get("run_id") or "")
     # A run directory is exactly ``<canonical root>/<run id>``.  Checking the
     # parent against ``canonical root`` keeps valid recovery sources usable
     # while the ``is_relative_to`` guard above rejects nested path escapes.
-    if not expected_run_id or source.parent != canonical_recovery_root:
+    if not expected_run_id or source.name != expected_run_id:
         raise ValueError("recovery_source_run_id_mismatch")
     disk_state = load_json(source / "run.json", {})
     if disk_state.get("run_id") != expected_run_id:
@@ -264,6 +283,14 @@ def verify_source(root, state, entry, *, historical=False):
     if (not path.is_relative_to(source) or not path.is_file() or file_sha(path) != entry["state_sha256"]):
         raise ValueError("recovery_source_state_changed")
     original = load_json(path)
+    from _b_route_planning_runtime import enabled, descriptor, run_location
+    if enabled(original) != enabled(state):
+        raise ValueError("recovery_source_route_incompatible")
+    if enabled(original):
+        if run_location(root, descriptor(original)["planner"], expected_run_id) != source:
+            raise ValueError("recovery_source_run_id_mismatch")
+    elif source.parent != (root / "logs/ci/mvg-planning").resolve():
+        raise ValueError("recovery_source_run_id_mismatch")
     pointer = original["capability_selection"]["selected"][entry["order_index"]]["checkpoint"]
     if pointer != entry["checkpoint"] or pointer["transaction_id"] != entry["transaction_id"]:
         raise ValueError("recovery_source_checkpoint_changed")
@@ -277,7 +304,7 @@ def verify_source(root, state, entry, *, historical=False):
         check_originals=False, recover_counters=False)
     payload = load_checkpoint(source, pointer)
     scope = scopes[entry["order_index"]]
-    if capability_hash(scope["capability"]) != entry["capability_sha256"]:
+    if capability_hash(_scope_capability(source / "analysis-input", scope)) != entry["capability_sha256"]:
         raise ValueError("recovery_source_capability_changed")
     if canonical_sha(_dependency(source / "analysis-input", scope, payload["accepted_seed"],
             payload["accepted"])) != entry["dependency_sha256"]:
@@ -289,15 +316,20 @@ def replay(root, run_dir, state, scope, base, entry, *, historical=False):
     from _mvg_capability_append import merge_append, preservation_errors
     import plan_mvg as pm
     payload, source_scope = verify_source(root, state, entry, historical=historical)
-    if capability_hash(scope["capability"]) != entry["capability_sha256"]:
+    if capability_hash(_scope_capability(run_dir / "analysis-input", scope)) != entry["capability_sha256"]:
         raise ValueError("recovery_capability_content_changed")
     # Reopening requires fresh source-backed resolution, never old admission.
     from _mvg_global_audit import reopen_context
     if reopen_context(state, scope) is not None:
         raise ValueError("recovery_reopen_requires_fresh_resolution")
-    proposal = merge_append(base, payload["delta"], scope)
-    if preservation_errors(base, proposal):
-        raise ValueError("recovery_delta_mutates_accepted_state")
+    if scope.get("unit_kind") == "governed_planning_closure":
+        from _b_route_completed_reuse import replay_delta
+        proposal = replay_delta(root, state, run_dir / "analysis-input", base, payload["delta"], scope,
+            check_originals=not historical)
+    else:
+        proposal = merge_append(base, payload["delta"], scope)
+        if preservation_errors(base, proposal):
+            raise ValueError("recovery_delta_mutates_accepted_state")
     if canonical_sha(_dependency(run_dir / "analysis-input", scope, base, proposal)) != entry["dependency_sha256"]:
         raise ValueError("recovery_current_dependencies_incompatible")
     errors = pm.candidate_admission_errors(root, state, proposal,
@@ -308,9 +340,16 @@ def replay(root, run_dir, state, scope, base, entry, *, historical=False):
 
 
 def try_adopt(root, run_dir, state, scope, index, base):
-    digest = capability_hash(scope["capability"])
     value = registry(root, state)
     assert_epoch(root, state, value=value)
+    try:
+        digest = capability_hash(_scope_capability(run_dir / "analysis-input", scope))
+    except ValueError as exc:
+        if scope.get("unit_kind") != "governed_planning_closure":
+            raise
+        atomic_json(run_dir / "recovery-lookups" / f"scope-{index + 1}.json",
+            {"epoch": value["epoch"], "status": "generate_fresh", "reason": str(exc), "failures": []})
+        return None
     failures = []
     for entry in reversed(value["entries"]):
         if entry.get("capability_sha256") != digest:
@@ -346,7 +385,9 @@ def verify_adoption_record(root, state, prepared, scope, base, proposal, record,
     pointer = record["adoption"]
     # Candidate bundles carry the same frozen envelope in nested workspaces;
     # adoption receipts belong to the coordinator run, never that candidate.
-    run_dir = root / "logs/ci/mvg-planning" / state["run_id"]
+    from _b_route_planning_runtime import enabled, descriptor, run_location
+    run_dir = (run_location(root, descriptor(state)["planner"], state["run_id"]) if enabled(state)
+        else root / "logs/ci/mvg-planning" / state["run_id"])
     path = repo_path(run_dir, pointer["path"])
     if not path.is_relative_to(run_dir.resolve()) or file_sha(path) != pointer["sha256"]:
         raise ValueError("adoption_receipt_changed")
@@ -354,12 +395,12 @@ def verify_adoption_record(root, state, prepared, scope, base, proposal, record,
     if (receipt.get("schema_version") != ADOPTION or receipt.get("run_id") != state["run_id"]
             or receipt.get("analysis_identity_sha256") != state["analysis_identity_sha256"]
             or receipt.get("epoch") != state.get("recovery", {}).get("epoch")
-            or receipt.get("capability_sha256") != capability_hash(scope["capability"])
+            or receipt.get("capability_sha256") != capability_hash(_scope_capability(prepared, scope))
             or receipt.get("base_sha256") != canonical_sha(base)
             or receipt.get("result_sha256") != canonical_sha(proposal)):
         raise ValueError("adoption_identity_changed")
     revised, payload = replay(root, run_dir, state, scope, base, receipt["source"], historical=not check_originals)
-    if revised != proposal or payload["delta"] != record["delta"]:
+    if canonical_sha(revised) != canonical_sha(proposal) or canonical_sha(payload["delta"]) != canonical_sha(record["delta"]):
         raise ValueError("adoption_replay_changed")
     return proposal
 

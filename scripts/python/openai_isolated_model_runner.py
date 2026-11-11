@@ -10,6 +10,7 @@ import os
 import re
 import sys
 import time
+import uuid
 from pathlib import Path
 from typing import Any
 
@@ -21,9 +22,9 @@ if str(SC_DIR) not in sys.path:
 from _llm_backend import (  # noqa: E402
     _extract_response_output_text,
     inspect_llm_backend,
-    run_llm_exec,
 )
 from _planning_skill_common import atomic_json, load_json, validate_output_schema  # noqa: E402
+from _model_response_identity import ModelResponseEvidenceError, response_identity  # noqa: E402
 from _capability_task_evidence import AUDIT_DIR, CATALOG, build_task_request  # noqa: E402
 from _capability_input_integrity import (  # noqa: E402
     DEFAULT_MAX_INPUT_TOKENS, REPORT_NAME, check_workspace_request, compact_file_section, configured_input_limit, measure_request, schema_max_json_chars, task_view_batch_sections, task_view_payload_chunks, validate_batches,
@@ -31,6 +32,7 @@ from _capability_input_integrity import (  # noqa: E402
 )
 
 SCHEMA = "newrouge.isolated-model-runner.v1"
+MODEL_IDENTITY_SOURCE = "openai-responses-api"
 DEFAULT_MAX_BYTES = 8 * 1024 * 1024
 from _capability_input_integrity import TASK_VIEW_CHUNK_CHAR_BUDGET
 
@@ -53,6 +55,8 @@ def description() -> dict[str, object]:
         "fresh_session_per_invocation": True,
         "can_read_outside_workspace": False,
         "model": model_name(),
+        "model_identity_required": True,
+        "model_identity_source": MODEL_IDENTITY_SOURCE,
         "transport": "openai-api-text-only",
         "model_tools": [],
         "request_accounting": "exact_per_runner_invocation",
@@ -224,7 +228,7 @@ def _openai_client(timeout_sec: float) -> Any:
         OpenAI = getattr(openai, "OpenAI")
     except Exception as exc:  # noqa: BLE001
         raise ValueError(f"failed to import openai SDK: {exc}") from exc
-    return OpenAI(timeout=max(1.0, timeout_sec))
+    return OpenAI(timeout=max(1.0, timeout_sec), max_retries=0)
 
 
 def _response(
@@ -234,7 +238,7 @@ def _response(
     previous_response_id: str | None,
     timeout_sec: float,
     output_schema: dict[str, Any] | None = None,
-    max_output_tokens: int = 4096,
+    max_output_tokens: int | None = 4096,
     output_schema_name: str = "newrouge_mvg_review",
 ) -> Any:
     kwargs: dict[str, Any] = {
@@ -242,8 +246,11 @@ def _response(
         "input": prompt,
         "reasoning": {"effort": "high"},
         "truncation": "disabled",
-        "max_output_tokens": max(256, int(max_output_tokens)),
+        "tools": [],
+        "tool_choice": "none",
     }
+    if max_output_tokens is not None:
+        kwargs["max_output_tokens"] = max(256, int(max_output_tokens))
     if previous_response_id:
         kwargs["previous_response_id"] = previous_response_id
     if output_schema is not None:
@@ -251,7 +258,7 @@ def _response(
             "type": "json_schema", "name": output_schema_name,
             "strict": True, "schema": output_schema,
         }}
-    request_client = client.with_options(timeout=max(1.0, timeout_sec))
+    request_client = client.with_options(timeout=max(1.0, timeout_sec), max_retries=0)
     return request_client.responses.create(**kwargs)
 
 
@@ -979,6 +986,7 @@ def _run_batched_session(
     if request_limit < 1:
         raise ValueError("model_request_budget_exhausted:limit=0")
     request_integrity: list[dict[str, Any]] = []
+    identity_evidence: list[dict[str, str]] = []
 
     batch_index = load_json(_batch_index_path(workspace), {})
     coverage = validate_batches(workspace, batch_index)
@@ -1093,6 +1101,10 @@ def _run_batched_session(
             max_output_tokens=max_output_tokens,
             output_schema_name=output_schema_name,
         )
+        actual_model, evidence = response_identity(response, source=MODEL_IDENTITY_SOURCE)
+        if identity_evidence and identity_evidence[0]["model"] != actual_model:
+            raise ModelResponseEvidenceError("model_identity_changed")
+        identity_evidence.append(evidence)
         return response
 
     batch_outputs: list[tuple[str, str]] = []
@@ -1140,7 +1152,7 @@ def _run_batched_session(
                 accepted = True
                 break
             except ValueError as exc:
-                if "capability_batch_analysis_output_budget_exceeded" in str(exc):
+                if isinstance(exc, ModelResponseEvidenceError) or "capability_batch_analysis_output_budget_exceeded" in str(exc):
                     batch_attempts.append({"label": label, "attempts": attempt,
                         "status": "failed", "error": str(exc)[:500],
                         "error_type": _error_type(exc)})
@@ -1253,9 +1265,13 @@ def _run_batched_session(
         status='ready', model_invoked=True, model_request_count=request_count)
     return {
         "schema_version": "newrouge.isolated-model-runner-receipt.v1",
-        "model": model_name(),
+        "model": identity_evidence[0]["model"],
+        "model_identity": identity_evidence[0]["model"],
+        "model_identity_verified": True,
+        "model_identity_source": MODEL_IDENTITY_SOURCE,
+        "model_identity_evidence": identity_evidence,
         "transport": "openai-api-text-only-batched",
-        "response_id": str(getattr(final, "id", "") or "") or None,
+        "response_id": identity_evidence[-1]["response_id"],
         "output_chars": len(output_text),
         "model_tools": [],
         "model_request_count": request_count,
@@ -1326,38 +1342,42 @@ def run(args: argparse.Namespace) -> int:
     integrity.update(status="running", model_invoked=True,
         model_request_count=1, request_count_complete=True)
     atomic_json(workspace / REPORT_NAME, integrity)
+    temporary_output = output_path.with_name(f"{output_path.name}.{uuid.uuid4().hex}.tmp")
     try:
-        rc, trace_text, command = run_llm_exec(
-            backend="openai-api",
-            root=workspace,
-            prompt=payload,
-            output_last_message=output_path,
-            timeout_sec=args.timeout_sec,
-            codex_configs=["model_reasoning_effort=high"],
-            output_schema=schema_path,
-        )
+        response = _response(client=_openai_client(args.timeout_sec), prompt=payload,
+            previous_response_id=None, timeout_sec=args.timeout_sec,
+            output_schema=load_json(schema_path) if schema_path is not None else None,
+            max_output_tokens=None)
+        actual_model, evidence = response_identity(response, source=MODEL_IDENTITY_SOURCE)
+        output_text = _extract_response_output_text(response)
+        if not output_text:
+            raise ValueError("OpenAI response returned empty output")
+        temporary_output.write_bytes(output_text.encode("utf-8"))
+        if schema_path is not None:
+            validate_output_schema(temporary_output, schema_path)
+        temporary_output.replace(output_path)
     except BaseException as exc:
         integrity.update(status="failed", error=f"{type(exc).__name__}:{exc}"[:1000])
         atomic_json(workspace / REPORT_NAME, integrity)
         raise
-    if rc != 0:
-        print(trace_text.rstrip())
-        return rc
-    if schema_path is not None:
-        validate_output_schema(output_path, schema_path)
-    trace = json.loads(trace_text)
+    finally:
+        temporary_output.unlink(missing_ok=True)
     receipt = {
         "schema_version": "newrouge.isolated-model-runner-receipt.v1",
-        "model": trace.get("model") or model_name(),
+        "model": actual_model,
+        "model_identity": actual_model,
+        "model_identity_verified": True,
+        "model_identity_source": MODEL_IDENTITY_SOURCE,
+        "model_identity_evidence": [evidence],
         "transport": "openai-api-text-only",
-        "response_id": trace.get("response_id"),
-        "output_chars": trace.get("output_chars"),
+        "response_id": evidence["response_id"],
+        "output_chars": len(output_text),
         "model_tools": [],
         "model_request_count": 1,
+        "runner_invocations": 1,
         "request_count_observable": True,
         "batch_count": 0,
         "workspace": workspace.as_posix(),
-        "command": command,
         "input_integrity": integrity,
     }
     integrity.update(status="completed", model_request_count=1, request_count_complete=True)

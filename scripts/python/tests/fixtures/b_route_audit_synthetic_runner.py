@@ -3,10 +3,20 @@ import argparse
 import base64
 import json
 import time
+import sys
 from pathlib import Path
 
 MODE = "clean"
 MODEL = "synthetic/source-audit-v1"
+CODE_ROOT = None
+
+
+def decode_input(value):
+    if value.get("schema_version") == "newrouge.b-route-source-producer-input.v5":
+        sys.path.insert(0, CODE_ROOT or str(Path(__file__).resolve().parents[2]))
+        from _b_route_source_audit import decode_producer_input
+        return decode_producer_input(value, value["producer_schema_policy"])
+    return value
 
 
 def citation(file, block=None):
@@ -95,6 +105,26 @@ def execute(request):
     return output
 
 
+def wire_output(request, output):
+    transport = request.get("producer_transport", {})
+    if transport.get("schema_version") not in ("input-identity-span-ref.v3", "input-identity-span-ref.v4", "input-identity-span-ref.v5") or MODE == "literal":
+        return output
+    files = [request["payload"]["file"]] if request["phase"] == "extract" else request["payload"]["files"]
+    originals = {file["path"]: base64.b64decode(file["raw_base64"]) for file in files}
+    keys = ("path", "raw_digest", "block_id", "byte_start", "byte_end")
+    spans = {tuple(row[key] for key in keys): row["span_ref"] for row in transport["spans"]}
+    slots = (("coverage", "basis"), ("obligations", "citations")) if request["phase"] == "extract" else (
+        ("disposition_reviews", "basis"), ("obligation_reviews", "basis"), ("findings", "citations"))
+    for group, field in slots:
+        for row in output[group]:
+            for index, cite in enumerate(row[field]):
+                key = tuple(cite[name] for name in keys)
+                raw = originals[cite["path"]][cite["byte_start"]:cite["byte_end"]]
+                if key in spans and raw == cite["quote"].encode("utf-8"):
+                    row[field][index] = {"span_ref": spans[key]}
+    return output
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--describe", action="store_true")
@@ -113,7 +143,8 @@ def main():
     workspace = Path(args.workspace)
     assert set(p.name for p in workspace.iterdir()) == {"input.json", "schema.json", "prompt.txt"}
     request = json.loads((workspace / "input.json").read_bytes())
-    output = execute(request)
+    request = decode_input(request)
+    output = wire_output(request, execute(request))
     Path(args.output).write_bytes((json.dumps(output, ensure_ascii=False) + "\n").encode("utf-8"))
     print(json.dumps({"schema_version": "newrouge.isolated-model-runner-receipt.v1", "model": MODEL,
         "model_identity": MODEL, "model_identity_verified": True, "model_identity_source": "synthetic-fixture",

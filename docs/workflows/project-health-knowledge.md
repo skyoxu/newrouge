@@ -33,7 +33,7 @@ Capability input preflight is lossless: source/Requirement batch bodies must mat
 
 `/knowledge/scenes` 的 `GDD versions and MVG` 视图提供 `Generate MVG from Capability`。它消费同一 main 提交已生成的 Capability；没有该结果时消费 main 中已提交的 `capabilities.v1.json`，不会隐式生成 Capability。目标为当前选定的 MVG scope，首次没有 manifest 时为 `docs/testing/mvg/m1-full.json`。执行既有 prepare → generate → review → validate → apply，保留累计 flow/test/owner 及显式退役门控；成功刷新 MVG scope，成功和失败结果均写顶部 `scene-status`。
 
-Capability 候选和独立评审固定使用 `scripts/python/codex_isolated_model_runner.py`，也就是已认证 Codex CLI 的环境默认模型配置；网页和 CLI 共用该默认方式。runner 显式禁用模型工具、MCP 和工具型 feature，并将本次线程绑定到对应 rollout 的实际 `turn_context.model`；缺少或工作区不匹配时 fail closed，不用静态别名冒充模型身份。Codex CLI 不可用时流程明确失败，不自动切换到 Copilot 或 OpenAI API。MVG 的 backend 选择保持独立，可用 `SC_KNOWLEDGE_MVG_BACKEND=openai-api|copilot-cli|codex-cli` 显式选择。浏览器不接受任意 runner、命令、输入版本或输出路径；仅命令行 `--runner` 可用于受控覆盖。
+Capability 与默认 MVG 候选均使用 `scripts/python/codex_isolated_model_runner.py`，沿用已认证官方 Codex 的环境默认模型。runner 通过独立 ephemeral App Server 线程返回的配置绑定本次完整输入、输出和 turn；证据范围是运行时配置，服务端实际模型与物理请求次数明确为 unknown，不能称为服务端身份验证。进程级及线程级工具限制、禁用后的 MCP 清单、仅限制工具能力的临时官方模型目录覆盖与完整协议均随回执保存并验证。缺证、改路由、工具调用、失败或绑定不符时 fail closed；不读取保存的 sessions/rollout，不改认证或网络，不自动切换 backend。MVG 可继续以 `SC_KNOWLEDGE_MVG_BACKEND=openai-api|copilot-cli|codex-cli` 显式选择；详见 `docs/workflows/b-route-source-audit.md`。
 
 Capability 和 MVG 的 Generate 按钮每次点击都创建新的 job、独立 checkout 和三个新的候选上下文；即使提交号、来源内容和哈希完全相同，也不复用旧候选、评审或已完成结果。当前有效版本仍可作为比较基线，MVG 仍消费当前选定的 Capability，这不属于复用本次生成证据。页面断开连接不会取消已启动任务，通过原 job ID 轮询只读取该任务，不启动新生成。服务操作锁覆盖生成、扫描、查询及运行验证。证据和逐阶段日志保留在 `logs/ci/knowledge-planning/planning-<id>/`，生成文件位于该 job 的隔离 checkout。
 

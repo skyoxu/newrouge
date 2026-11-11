@@ -11,6 +11,9 @@ import sys
 import unittest
 import concurrent.futures
 import base64
+import hashlib
+from types import SimpleNamespace
+from copy import deepcopy
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -25,7 +28,8 @@ class SourceAuditTests(SourceAccountingTests):
     def setUp(self):
         super().setUp()
         fixture = Path(__file__).parent / "fixtures/b_route_audit_synthetic_runner.py"
-        self.fixture = fixture.read_text(encoding="utf-8")
+        self.fixture = fixture.read_text(encoding="utf-8").replace("CODE_ROOT = None",
+            "CODE_ROOT = " + repr(str(Path(audit.__file__).parent)))
         self.runner = "runner.py"
         self.put(self.runner, self.fixture.encode("utf-8"))
 
@@ -68,6 +72,787 @@ class SourceAuditTests(SourceAccountingTests):
         self.assertEqual(code, 0, replay)
         self.assertEqual(report, replay)
 
+    def test_default_citation_guidance_preserves_historical_prompt_and_request_bytes(self):
+        expected_hashes = {"extract": "d296e2145ee39267fd7c1a10a23df4e27d98fd338638fef65d9bb80588bf6973",
+                           "compare": "e267dcfa3c6510c01ae016d0f645e560bdfbafb60a4a727be5e64f0fb4a3739d"}
+        account, _ = self.accounted()
+        code, report = self.audit(account)
+        self.assertEqual(code, 0, report)
+        prefix = report["output_ref"]
+        self.assertNotIn("citation_guidance", self.json(prefix + "/request.json"))
+        identity = self.json(prefix + "/identity.json")
+        self.assertNotIn("citation_guidance", identity)
+        self.assertNotIn("producer_schema_policy", identity)
+        self.assertEqual(identity["prompt_identity"], audit.canonical_sha(audit.PROMPTS))
+        for phase, step in (("extract", "extract-000001"), ("compare", "compare")):
+            workspace = self.root / prefix / "steps" / step / "workspace"
+            raw = (workspace / "prompt.txt").read_bytes()
+            self.assertEqual(hashlib.sha256(raw).hexdigest(), expected_hashes[phase])
+            self.assertEqual(raw, (audit.PROMPTS[phase] + "\n").encode())
+            request = json.loads((workspace / "input.json").read_bytes())
+            self.assertEqual(set(request), {"phase", "input_identity", "payload"})
+            self.assertEqual(request["input_identity"], audit.canonical_sha(request["payload"]))
+            for filename in ("input.json", "schema.json"):
+                value = json.loads((workspace / filename).read_bytes())
+                self.assertEqual((workspace / filename).read_bytes(),
+                    (json.dumps(value, ensure_ascii=False, indent=2, allow_nan=False) + "\n").encode())
+        proof = audit.validate_proof(sources.Observations(self.root), prefix + "/report.json")
+        self.assertTrue(proof["report"]["execution_complete"])
+        self.assertEqual(self.audit(account), (code, report))
+
+    def test_full_block_guidance_native_cli_binds_lossless_compact_payload_and_replay(self):
+        raw = '# Rule\r\n\r\nKeep \"reward\" order: \u4e2d\u6587 \\ paths.  \r\n'.encode("utf-8")
+        self.put("docs/source.md", raw)
+        account, _ = self.accounted()
+        entry = Path(__file__).resolve().parents[1] / "dev_cli.py"
+        options = ["--citation-guidance", "full-block"]
+        code, report = self.audit(account, extras=options, entry=entry)
+        self.assertEqual(code, 0, report)
+        prefix = report["output_ref"]
+        self.assertEqual(self.json(prefix + "/request.json")["citation_guidance"], "full-block")
+        identity = self.json(prefix + "/identity.json")
+        self.assertEqual(identity["citation_guidance"], "full-block")
+        self.assertEqual(identity["producer_schema_policy"], audit.PRODUCER_SCHEMA_POLICY)
+        self.assertEqual(identity["producer_input_delivery"], audit.SOURCE_INPUT_CARRIER)
+        self.assertEqual(report["citation_provenance"], audit.SPAN_REF_PROVENANCE)
+        self.assertEqual(report["runner_dispatch_count"], 2)
+        self.assertEqual(report["model_dispatch_count"], 0)
+        self.assertEqual(identity["prompt_identity"], audit.producer_prompt_identity("full-block", audit.PRODUCER_SCHEMA_POLICY))
+        self.assertNotEqual(identity["prompt_identity"], audit.prompt_identity())
+        for phase, step in (("extract", "extract-000001"), ("compare", "compare")):
+            workspace = self.root / prefix / "steps" / step / "workspace"
+            actual_input = json.loads((workspace / "input.json").read_bytes())
+            request = audit.decode_producer_input(actual_input, audit.PRODUCER_SCHEMA_POLICY)
+            canonical_request = deepcopy(request)
+            transport = canonical_request.pop("producer_transport")
+            self.assertEqual(actual_input, audit.producer_input(canonical_request, audit.PRODUCER_SCHEMA_POLICY))
+            self.assertEqual(transport["schema_version"], audit.SPAN_REF_COMPAT_POLICY)
+            wire = json.loads((workspace / "output.json").read_bytes())
+            decoded = self.json(str(workspace.parent.relative_to(self.root)) + "/canonical-output.json")
+            self.assertEqual(decoded, audit.decode_producer_output(canonical_request, wire, audit.PRODUCER_SCHEMA_POLICY))
+            if phase == "extract":
+                self.assertEqual(set(wire["obligations"][0]["citations"][0]), {"span_ref"})
+                self.assertIn("quote", decoded["obligations"][0]["citations"][0])
+            self.assertEqual(request["citation_guidance"], "full-block")
+            self.assertEqual(request["input_identity"], audit.canonical_sha({"payload": request["payload"], "citation_guidance": "full-block"}))
+            self.assertNotEqual(request["input_identity"], audit.canonical_sha(request["payload"]))
+            self.assertEqual((workspace / "prompt.txt").read_bytes(), (audit.producer_prompt(phase, "full-block", audit.PRODUCER_SCHEMA_POLICY) + "\n").encode())
+            for filename in ("input.json", "schema.json"):
+                visible = (workspace / filename).read_bytes()
+                value = json.loads(visible)
+                self.assertEqual(visible, audit.compact_model_json(value))
+                pretty = (json.dumps(value, ensure_ascii=False, indent=2, allow_nan=False) + "\n").encode()
+                self.assertLess(len(visible), len(pretty))
+                self.assertEqual(json.loads(visible, object_pairs_hook=list), json.loads(pretty, object_pairs_hook=list))
+            files = [request["payload"]["file"]] if phase == "extract" else request["payload"]["files"]
+            self.assertEqual(files[0]["text"].encode(), raw)
+            self.assertEqual(base64.b64decode(files[0]["raw_base64"]), raw)
+            for block in files[0]["blocks"]:
+                span = block["citation_span"]
+                self.assertEqual(span["quote"].encode(), raw[span["byte_start"]:span["byte_end"]])
+        audit.validate_proof(sources.Observations(self.root), prefix + "/report.json")
+        before = {p: p.read_bytes() for p in (self.root / prefix).rglob("*") if p.is_file()}
+        self.assertEqual(self.audit(account, extras=options, entry=entry), (code, report))
+        self.assertEqual(before, {p: p.read_bytes() for p in before})
+        self.assertEqual(self.verify(report, entry=entry)[0], 0, "Verification derives guidance from the audited request")
+        self.assertEqual(self.audit(account)[0], 2, "An existing event cannot silently change producer mode")
+        code, reused = self.audit(account, "guided-reuse", [*options, "--audit-ref", prefix + "/report.json"], entry=entry)
+        self.assertEqual(code, 0, reused)
+        self.assertEqual(reused["runner_dispatch_count"], 0)
+        code, mismatch = self.audit(account, "default-reuse", ["--audit-ref", prefix + "/report.json"], entry=entry)
+        self.assertEqual(code, 1, mismatch)
+        self.assertEqual(mismatch["runner_dispatch_count"], 0)
+
+    def v5_request(self):
+        account, _ = self.accounted()
+        obs = sources.Observations(self.root)
+        state, _ = sources.load_accounted(obs, account["output_ref"] + "/report.json")
+        bundle = audit.make_input(obs, state)
+        request = audit.phase_input("extract", bundle, file=bundle["files"][0], citation_guidance="full-block")
+        request["payload"]["file"]["blocks"][0]["unknown_nested"] = {
+            "typed": [False, 0, 0.0, None], "text": "\u4e2d\u6587\r\n\u00e9\r", "$mvg_ref": 99,
+            "literal": {"$mvg_object": [["unknown", "literal"]]},
+            "nested_wire": audit.complete_wire.encode({"values": ["complete original " * 100] * 4})}
+        request["input_identity"] = audit.canonical_sha({"payload": request["payload"], "citation_guidance": "full-block"})
+        return request
+
+    def test_v5_complete_input_restores_types_order_unknown_values_and_rejects_rehashed_tampering(self):
+        request = self.v5_request()
+        before = audit.compact_model_json(request)
+        carrier = audit.producer_input(request, audit.SHARED_INPUT_POLICY)
+        decoded = audit.decode_producer_input(carrier, audit.SHARED_INPUT_POLICY, expected=request)
+        canonical = deepcopy(decoded)
+        canonical.pop("producer_transport")
+        self.assertEqual(audit.compact_model_json(canonical), before)
+        self.assertEqual(audit.compact_model_json(decoded), audit.compact_model_json(audit.producer_input(request, audit.SPAN_REF_COMPAT_POLICY)))
+        self.assertEqual(audit.compact_model_json(request), before)
+        self.assertEqual(audit.producer_schema(request, audit.SHARED_INPUT_POLICY), audit.producer_schema(request, audit.SPAN_REF_COMPAT_POLICY))
+        for mutation in ("outer-version", "policy", "codec-version", "digest", "ref", "cycle", "span", "mapping", "mixed-map", "input", "typed"):
+            broken = deepcopy(carrier)
+            if mutation == "outer-version": broken["schema_version"] += ".unknown"
+            elif mutation == "policy": broken["producer_schema_policy"] = audit.SPAN_REF_COMPAT_POLICY
+            elif mutation == "codec-version": broken["complete_materials"]["schema_version"] = "unknown"
+            elif mutation == "digest": broken["complete_materials"]["materials_bytes_sha256"] = "foreign"
+            elif mutation == "ref": broken["complete_materials"]["encoded"]["value"] = {"$mvg_ref": 999999}
+            elif mutation == "cycle":
+                broken["complete_materials"]["encoded"]["shared"] = [{"$mvg_ref": 0}]
+                broken["complete_materials"]["encoded"]["value"] = {"$mvg_ref": 0}
+            else:
+                inner = deepcopy(decoded)
+                if mutation == "span": inner["producer_transport"]["spans"][0]["byte_start"] = False
+                elif mutation == "mapping": inner["producer_transport"]["mapping_identity"] = "foreign"
+                elif mutation == "mixed-map": inner["producer_transport"]["schema_version"] = audit.SPAN_REF_POLICY
+                elif mutation == "input": inner["payload"]["file"]["text"] += "changed"
+                else: inner["payload"]["file"]["blocks"][0]["unknown_nested"]["typed"][0] = 0
+                if mutation in {"input", "typed"}:
+                    inner["input_identity"] = audit.canonical_sha({"payload": inner["payload"], "citation_guidance": "full-block"})
+                    broken["input_identity"] = inner["input_identity"]
+                broken["complete_materials"] = audit.complete_wire.encode(inner)
+            with self.subTest(mutation=mutation), self.assertRaises(ValueError):
+                audit.decode_producer_input(broken, audit.SHARED_INPUT_POLICY, expected=request)
+        with self.assertRaises(ValueError): audit.decode_producer_input(carrier, audit.SPAN_REF_COMPAT_POLICY)
+        with self.assertRaises(ValueError): audit.decode_producer_input(decoded, audit.SHARED_INPUT_POLICY)
+
+    def test_historical_plain_input_semantics_keep_valid_root_key_reordering(self):
+        request = {"phase": "extract", "input_identity": "original", "payload": {"file": {"unknown": [False, 0, "\u4e2d\u6587"]}}}
+        reordered = {key: request[key] for key in reversed(request)}
+        self.assertNotEqual(audit.compact_model_json(reordered), audit.compact_model_json(request))
+        self.assertEqual(audit.decode_producer_input(reordered, None, expected=request), request)
+        self.assertEqual(audit.decode_producer_input(request, None, expected=request), request)
+
+    def test_v5_keeps_strict_canonical_empty_quote_and_partial_citation_rules(self):
+        from fixtures import b_route_audit_synthetic_runner as fixture
+        request = self.v5_request()
+        restored = audit.decode_producer_input(audit.producer_input(request, audit.SHARED_INPUT_POLICY), audit.SHARED_INPUT_POLICY, expected=request)
+        literal = fixture.execute(restored)
+        wire = fixture.wire_output(restored, deepcopy(literal))
+        self.assertEqual(audit.decode_producer_output(request, wire, audit.SHARED_INPUT_POLICY), literal)
+        empty = deepcopy(wire)
+        empty["file_review"] = " \t\r\n"
+        audit.schema_check(empty, audit.producer_schema(request, audit.SHARED_INPUT_POLICY))
+        with self.assertRaises(codec.CodecError): audit.validate_output(request, audit.decode_producer_output(request, empty, audit.SHARED_INPUT_POLICY))
+        cite = literal["obligations"][-1]["citations"][0]
+        cite["quote"] = cite["quote"][:-1]
+        self.assertEqual(audit.decode_producer_output(request, literal, audit.SHARED_INPUT_POLICY), literal)
+        with self.assertRaises(codec.CodecError): audit.validate_output(request, literal)
+        cite["byte_end"] -= 1
+        audit.validate_output(request, literal)
+
+    def test_v5_final_actual_wrapper_capacity_failure_precedes_reservation(self):
+        request = self.v5_request()
+        for name, byte_limit, token_limit in (("bytes", 80, 30000), ("tokens", 1048576, 1)):
+            output = self.root / "logs" / ("v5-capacity-" + name)
+            args = SimpleNamespace(transport_max_bytes=byte_limit, transport_max_input_tokens=token_limit)
+            with patch.object(audit, "PRODUCER_SCHEMA_POLICY", audit.SHARED_INPUT_POLICY), \
+                    patch.object(audit, "reserve", side_effect=AssertionError("No reservation before actual wrapper fits")), \
+                    patch.object(audit, "run_isolated_model", side_effect=AssertionError("No runner dispatch")):
+                with self.assertRaises(audit.AuditStop) as stopped:
+                    audit.dispatch(sources.Observations(self.root), self.root / "unused-budget", output, args,
+                        "extract", request, {}, {"producer_schema_policy": audit.SHARED_INPUT_POLICY,
+                            "producer_input_delivery": audit.SOURCE_INPUT_CARRIER})
+            self.assertEqual(stopped.exception.category, "capacity")
+            actual = json.loads((output / "steps/extract/workspace/input.json").read_bytes())
+            self.assertEqual(actual["schema_version"], audit.SOURCE_INPUT_CARRIER)
+
+    def test_v5_mixed_fresh_policy_or_delivery_refused_before_preparation_and_reservation(self):
+        request = {"citation_guidance": "full-block"}
+        for identity in ({"producer_schema_policy": audit.SPAN_REF_COMPAT_POLICY},
+                {"producer_schema_policy": audit.SHARED_INPUT_POLICY},
+                {"producer_schema_policy": audit.SHARED_INPUT_POLICY, "producer_input_delivery": "unknown"}):
+            with self.subTest(identity=identity), \
+                    patch.object(audit, "prepare_step", side_effect=AssertionError("No mismatched preparation")), \
+                    patch.object(audit, "reserve", side_effect=AssertionError("No mismatched reservation")), \
+                    self.assertRaises(codec.CodecError):
+                audit.dispatch(None, None, None, None, "extract", request, {}, identity)
+
+    def test_v4_full_proof_wire_bytes_remain_historical_and_cannot_be_reused_as_v5(self):
+        account, _ = self.accounted()
+        options = ["--citation-guidance", "full-block"]
+        with patch.object(audit, "PRODUCER_SCHEMA_POLICY", audit.SPAN_REF_COMPAT_POLICY):
+            code, original = self.audit(account, "v4-history", options)
+        self.assertEqual(code, 0, original)
+        prefix = original["output_ref"]
+        before = {path: path.read_bytes() for path in (self.root / prefix).rglob("*") if path.is_file()}
+        proof = audit.validate_proof(sources.Observations(self.root), prefix + "/report.json")
+        self.assertEqual(proof["identity"]["producer_schema_policy"], "input-identity-span-ref.v4")
+        for name in ("extract-000001", "compare"):
+            base = prefix + "/steps/" + name + "/workspace/"
+            request = self.json(base + "input.json")
+            self.assertNotIn("complete_materials", request)
+            request.pop("producer_transport")
+            self.assertEqual((self.root / (base + "input.json")).read_bytes(), audit.compact_model_json(audit.producer_input(request, audit.SPAN_REF_COMPAT_POLICY)))
+        code, blocked = self.audit(account, "v5-reuse", [*options, "--audit-ref", prefix + "/report.json"])
+        self.assertEqual(code, 1, blocked)
+        self.assertEqual(blocked["runner_dispatch_count"], 0)
+        self.assertEqual(before, {path: path.read_bytes() for path in before})
+
+    def test_v5_full_high_synthetic_protocol_execution_and_original_binding_replay(self):
+        with patch.object(audit, "PRODUCER_SCHEMA_POLICY", audit.SHARED_INPUT_POLICY):
+            self.high_synthetic_protocol_roundtrip(audit.SHARED_INPUT_POLICY)
+
+    def test_v6_full_high_synthetic_protocol_execution_and_original_binding_replay(self):
+        self.high_synthetic_protocol_roundtrip(audit.SEMANTIC_GUIDANCE_POLICY)
+
+    def high_synthetic_protocol_roundtrip(self, policy):
+        """Synthetic stdio transport only; every production execution validator stays live."""
+        account, _ = self.accounted()
+        code_root = Path(audit.__file__).parent
+        fixtures = Path(__file__).parent / "fixtures"
+        adapter = (fixtures / "b_route_bound_protocol_runner.py").read_text(encoding="utf-8")
+        adapter = adapter.replace("import subprocess", "import subprocess\nimport json")
+        adapter = adapter.replace("sys.path.insert(0, str(Path(__file__).resolve().parents[2]))",
+            "sys.path[:0] = " + repr([str(code_root), str(code_root / "tests")]))
+        hook = '            workspace = Path(sys.argv[sys.argv.index("--workspace") + 1])'
+        self.assertEqual(adapter.count(hook), 1)
+        adapter = adapter.replace(hook, hook + '\n'
+            '            from _b_route_source_audit import decode_producer_input\n'
+            '            from fixtures import b_route_audit_synthetic_runner as fixture\n'
+            '            fixture.MODE = "omission"\n'
+            '            value = json.loads((workspace / "input.json").read_bytes())\n'
+            '            request = decode_producer_input(value, value["producer_schema_policy"])\n'
+            '            response = fixture.wire_output(request, fixture.execute(request))\n'
+            '            (workspace.parents[2] / "fixture-response.json").write_text(json.dumps(response, ensure_ascii=False), encoding="utf-8")')
+        self.put("b_route_protocol_child.py", (fixtures / "b_route_protocol_child.py").read_text(encoding="utf-8")
+            .replace('"reasoningEffort": "medium"', '"reasoningEffort": "high"').encode("utf-8"))
+        self.put("protocol-runner.py", adapter.encode("utf-8"))
+        self.put("offline-metadata/models_cache.json", {"models": [{"slug": "fixture-model"}]})
+        with patch.dict(os.environ, {"CODEX_HOME": str(self.root / "offline-metadata"),
+                "NEWROGUE_CODEX_REASONING_EFFORT": "high", "NEWROGUE_B_ROUTE_FIXTURE_REASONING_EFFORT": "high"}):
+            code, report = self.invoke("audit", "v5-protocol", ["--accounted", account["output_ref"] + "/report.json",
+                "--runner", "protocol-runner.py", "--expected-model", "fixture/fixture-model", "--citation-guidance", "full-block"])
+        self.assertEqual(code, 1, report)
+        self.assertTrue(report["execution_complete"], report)
+        self.assertFalse(report["planning_eligible"], "Retained synthetic omission never grants real semantic acceptance")
+        self.assertEqual(report["runner_dispatch_count"], 2)
+        prefix = report["output_ref"]
+        with patch.dict(os.environ, {"NEWROGUE_CODEX_REASONING_EFFORT": "invalid-current-environment"}):
+            proof = audit.validate_proof(sources.Observations(self.root), prefix + "/report.json")
+        self.assertEqual(proof["identity"]["producer_schema_policy"], policy)
+        self.assertEqual(proof["identity"]["expected_reasoning_effort"], "high")
+        for name in ("extract-000001", "compare"):
+            base = prefix + "/steps/" + name
+            receipt = self.json(base + "/receipt.json")
+            self.assertEqual(receipt["model_identity_scope"], "runtime_configuration")
+            self.assertFalse(receipt["provider_identity_verified"])
+            evidence = receipt["model_identity_evidence"][0]
+            self.assertEqual(evidence["requested_reasoning_effort"], "high")
+            self.assertEqual(evidence["runtime_reasoning_effort"], "high")
+            raw = base64.b64decode(evidence["protocol_jsonl_base64"])
+            from _codex_app_server import replay
+            output, rebuilt = replay(raw, prompt=(self.root / base / "request.txt").read_text(encoding="utf-8"),
+                schema=self.json(base + "/workspace/schema.json"))
+            self.assertEqual(rebuilt, evidence)
+            self.assertEqual(output.encode("utf-8"), (self.root / base / "workspace/output.json").read_bytes())
+            self.assertEqual(self.json(base + "/workspace/input.json")["schema_version"], audit.SOURCE_INPUT_CARRIER)
+            phase = "compare" if name == "compare" else "extract"
+            self.assertEqual((self.root / base / "workspace/prompt.txt").read_bytes(),
+                (audit.producer_prompt(phase, "full-block", policy) + "\n").encode("utf-8"))
+
+    def test_v6_guidance_extends_v5_without_changing_complete_materials_schema_or_canonical_identity(self):
+        request = self.v5_request()
+        before = audit.compact_model_json(request)
+        old = audit.producer_input(request, audit.SHARED_INPUT_POLICY)
+        new = audit.producer_input(request, audit.SEMANTIC_GUIDANCE_POLICY)
+        self.assertEqual(new, {**old, "producer_schema_policy": audit.SEMANTIC_GUIDANCE_POLICY})
+        self.assertEqual(audit.producer_schema(request, audit.SHARED_INPUT_POLICY),
+            audit.producer_schema(request, audit.SEMANTIC_GUIDANCE_POLICY))
+        for phase in ("extract", "compare"):
+            original = audit.prompt_text(phase, "full-block") + "\n\n" + audit.SPAN_REF_GUIDANCE + "\n\n" + audit.SHARED_INPUT_GUIDANCE
+            self.assertEqual(audit.producer_prompt(phase, "full-block", audit.SHARED_INPUT_POLICY), original)
+            self.assertEqual(audit.producer_prompt(phase, "full-block", audit.SEMANTIC_GUIDANCE_POLICY),
+                original + "\n\n" + audit.SEMANTIC_GUIDANCE[phase])
+        self.assertNotEqual(audit.producer_prompt_identity("full-block", audit.SHARED_INPUT_POLICY),
+            audit.producer_prompt_identity("full-block", audit.SEMANTIC_GUIDANCE_POLICY))
+        self.assertIn("Do not infer delegation", audit.SEMANTIC_GUIDANCE["extract"])
+        self.assertIn("even when", audit.SEMANTIC_GUIDANCE["compare"])
+        for policy in audit.SHARED_INPUT_POLICIES:
+            restored = audit.decode_producer_input(audit.producer_input(request, policy), policy, expected=request)
+            restored.pop("producer_transport")
+            self.assertEqual(audit.compact_model_json(restored), before)
+        for value, policy in ((new, audit.SHARED_INPUT_POLICY), (old, audit.SEMANTIC_GUIDANCE_POLICY), (new, "unknown")):
+            with self.subTest(policy=policy), self.assertRaises(codec.CodecError):
+                audit.decode_producer_input(value, policy, expected=request)
+
+    def test_v6_uncertainty_cannot_vanish_when_represented_but_valid_blocking_findings_remain_accepted(self):
+        from fixtures import b_route_audit_synthetic_runner as fixture
+        account, _ = self.accounted()
+        obs = sources.Observations(self.root)
+        state, _ = sources.load_accounted(obs, account["output_ref"] + "/report.json")
+        bundle = audit.make_input(obs, state)
+        extract = audit.phase_input("extract", bundle, file=bundle["files"][0], citation_guidance="full-block")
+        output = fixture.execute(extract)
+        for kind in ("unknown", "underspecified"):
+            with self.subTest(kind=kind):
+                uncertain = deepcopy(output)
+                uncertain["obligations"][0]["kind"] = kind
+                uncertain["coverage"][0]["disposition"] = "unknown"
+                audit.validate_output(extract, uncertain)
+                request = audit.phase_input("compare", bundle, [uncertain], citation_guidance="full-block")
+                reviewed = fixture.execute(request)
+                with self.assertRaises(codec.CodecError) as failed:
+                    audit.validate_output(request, reviewed)
+                self.assertEqual(failed.exception.diagnostic.entity_id, "obligation.unknown")
+                reviewed["findings"] = [{"finding_id": "retained-uncertainty", "input_identity": request["input_identity"],
+                    "classification": kind, "severity": "blocking", "return_owner": "source-owner",
+                    "reason": "Synthetic classification disagreement retains independent uncertainty.",
+                    "citations": uncertain["obligations"][0]["citations"],
+                    "affected_proposal_ids": reviewed["obligation_reviews"][0]["proposal_ids"], "unprojected": False}]
+                reviewed["obligation_reviews"][0]["finding_ids"] = ["retained-uncertainty"]
+                with self.assertRaises(codec.CodecError) as failed:
+                    audit.validate_output(request, reviewed)
+                self.assertEqual(failed.exception.diagnostic.entity_id, "disposition.unknown")
+                reviewed["disposition_reviews"][0]["finding_ids"] = ["retained-uncertainty"]
+                restored = audit.decode_producer_input(audit.producer_input(request, audit.SEMANTIC_GUIDANCE_POLICY),
+                    audit.SEMANTIC_GUIDANCE_POLICY, expected=request)
+                decoded = audit.decode_producer_output(request, fixture.wire_output(restored, deepcopy(reviewed)),
+                    audit.SEMANTIC_GUIDANCE_POLICY)
+                audit.validate_output(request, decoded)
+                self.assertEqual(decoded["findings"][0]["severity"], "blocking")
+
+    def test_v6_fresh_policy_delivery_and_guidance_mismatch_fail_before_reservation(self):
+        for identity in ({"producer_schema_policy": audit.SHARED_INPUT_POLICY, "producer_input_delivery": audit.SOURCE_INPUT_CARRIER},
+                {"producer_schema_policy": audit.SEMANTIC_GUIDANCE_POLICY},
+                {"producer_schema_policy": audit.SEMANTIC_GUIDANCE_POLICY, "producer_input_delivery": "unknown"},
+                {"producer_schema_policy": "unknown", "producer_input_delivery": audit.SOURCE_INPUT_CARRIER}):
+            with self.subTest(identity=identity), \
+                    patch.object(audit, "prepare_step", side_effect=AssertionError("No mismatched preparation")), \
+                    patch.object(audit, "reserve", side_effect=AssertionError("No mismatched reservation")), \
+                    self.assertRaises(codec.CodecError):
+                audit.dispatch(None, None, None, None, "extract", {"citation_guidance": "full-block"}, {}, identity)
+        with self.assertRaises(codec.CodecError):
+            audit.producer_prompt("extract", None, audit.SEMANTIC_GUIDANCE_POLICY)
+
+    def test_v5_completed_proof_keeps_original_bytes_and_blocks_v6_current_reuse(self):
+        account, _ = self.accounted()
+        options = ["--citation-guidance", "full-block"]
+        with patch.object(audit, "PRODUCER_SCHEMA_POLICY", audit.SHARED_INPUT_POLICY):
+            code, report = self.audit(account, "v5-history", options)
+        self.assertEqual(code, 0, report)
+        prefix = report["output_ref"]
+        before = {p: p.read_bytes() for p in (self.root / prefix).rglob("*") if p.is_file()}
+        proof = audit.validate_proof(sources.Observations(self.root), prefix + "/report.json")
+        self.assertEqual(proof["identity"]["producer_schema_policy"], audit.SHARED_INPUT_POLICY)
+        code, blocked = self.audit(account, "v6-reuse", [*options, "--audit-ref", prefix + "/report.json"])
+        self.assertEqual(code, 1, blocked)
+        self.assertEqual(blocked["runner_dispatch_count"], 0)
+        self.assertEqual(before, {p: p.read_bytes() for p in before})
+
+    def test_span_refs_preserve_qualified_utf8_crlf_bare_cr_and_literal_partials(self):
+        from fixtures import b_route_audit_synthetic_runner as fixture
+        files = []
+        for path, text in (("a.md", "\u4e2d\u6587\r\nline\rfinal\n"), ("b.md", "other \u00e9\r\n")):
+            raw = text.encode("utf-8")
+            files.append({"path": path, "raw_digest": codec.raw_digest(raw), "raw_base64": base64.b64encode(raw).decode(),
+                "text": text, "blocks": [{"block_id": "same-block", "source_char_start": 0,
+                    "source_char_end_exclusive": len(sources.text_view(raw)), "raw_text": text,
+                    "line_start": 1, "line_end": len(text.splitlines())}]})
+        compare = {"phase": "compare", "input_identity": "frozen", "citation_guidance": "full-block", "payload": {"files": files}}
+        rows = audit.span_table(compare)
+        self.assertEqual([row["span_ref"] for row in rows], ["span-000001", "span-000002"])
+        self.assertEqual([row["path"] for row in rows], ["a.md", "b.md"])
+        original = deepcopy(compare)
+        self.assertEqual(audit.producer_input(compare, audit.SPAN_REF_POLICY)["payload"], compare["payload"])
+        self.assertEqual(compare, original)
+        for file in files:
+            request = {"phase": "extract", "input_identity": "frozen", "citation_guidance": "full-block", "payload": {"file": file}}
+            literal = fixture.execute(request)
+            wire = fixture.wire_output(audit.producer_input(request, audit.SPAN_REF_POLICY), deepcopy(literal))
+            decoded = audit.decode_producer_output(request, wire, audit.SPAN_REF_POLICY)
+            self.assertEqual(decoded, literal)
+            audit.validate_output(request, decoded)
+            cite = literal["obligations"][0]["citations"][0]
+            cite["quote"] = file["text"][:1]
+            cite["byte_end"] = len(cite["quote"].encode())
+            self.assertEqual(audit.decode_producer_output(request, literal, audit.SPAN_REF_POLICY), literal)
+            audit.validate_output(request, literal)
+            cite["quote"] += "x"
+            self.assertEqual(audit.decode_producer_output(request, literal, audit.SPAN_REF_POLICY), literal)
+            with self.assertRaises(codec.CodecError):
+                audit.validate_output(request, literal)
+            for invalid in ({"span_ref": "span-999999"}, {"span_ref": "span-000001", "quote": file["text"]}):
+                broken = deepcopy(wire)
+                broken["obligations"][0]["citations"][0] = invalid
+                with self.assertRaises(codec.CodecError):
+                    audit.decode_producer_output(request, broken, audit.SPAN_REF_POLICY)
+
+    def test_v4_schema_subset_keeps_canonical_nonempty_nonwhitespace_string_gates(self):
+        from fixtures import b_route_audit_synthetic_runner as fixture
+        account, _ = self.accounted()
+        obs = sources.Observations(self.root)
+        state, _ = sources.load_accounted(obs, account["output_ref"] + "/report.json")
+        bundle = audit.make_input(obs, state)
+        extractions = []
+        for phase in ("extract", "compare"):
+            request = audit.phase_input(phase, bundle, extractions, bundle["files"][0] if phase == "extract" else None, "full-block")
+            canonical_schema = audit.output_schema(phase)
+            v3 = audit.producer_schema(request, audit.SPAN_REF_POLICY)
+            v4 = audit.producer_schema(request, audit.SPAN_REF_COMPAT_POLICY)
+            expected = deepcopy(v3)
+            removed = []
+            def strip(value):
+                if isinstance(value, dict):
+                    for key in ("pattern", "minLength"):
+                        if key in value:
+                            self.assertIn("string", value["type"] if isinstance(value["type"], list) else [value["type"]])
+                            removed.append(value.pop(key))
+                    for child in value.values(): strip(child)
+                elif isinstance(value, list):
+                    for child in value: strip(child)
+            strip(expected)
+            self.assertTrue(removed)
+            self.assertEqual(v4, expected)
+            self.assertEqual(audit.output_schema(phase), canonical_schema)
+            literal = fixture.execute(request)
+            wire = fixture.wire_output(audit.producer_input(request, audit.SPAN_REF_COMPAT_POLICY), deepcopy(literal))
+            self.assertEqual(audit.decode_producer_output(request, wire, audit.SPAN_REF_COMPAT_POLICY), literal)
+            audit.validate_output(request, literal)
+            if phase == "extract": extractions.append(literal)
+            for text in ("", " \t\r\n"):
+                broken = deepcopy(wire)
+                if phase == "extract": broken["file_review"] = text
+                else: broken["disposition_reviews"][0]["reason"] = text
+                audit.schema_check(broken, v4)
+                decoded = audit.decode_producer_output(request, broken, audit.SPAN_REF_COMPAT_POLICY)
+                with self.assertRaises(codec.CodecError): audit.validate_output(request, decoded)
+                with self.assertRaises(codec.CodecError): audit.schema_check(broken, v3)
+            for cite in ({"span_ref": "span-999999"}, {"span_ref": "span-000001", "quote": "wrong"}):
+                broken = deepcopy(wire)
+                group, field = audit.citation_slots(phase)[0 if phase == "compare" else 1]
+                broken[group][0][field] = [cite]
+                with self.assertRaises(codec.CodecError):
+                    audit.decode_producer_output(request, broken, audit.SPAN_REF_COMPAT_POLICY)
+
+    def test_historical_v3_full_execution_replay_keeps_wire_bytes_and_blocks_v4_reuse(self):
+        account, _ = self.accounted()
+        options = ["--citation-guidance", "full-block"]
+        with patch.object(audit, "PRODUCER_SCHEMA_POLICY", audit.SPAN_REF_POLICY):
+            code, old = self.audit(account, "v3", options)
+        self.assertEqual(code, 0, old)
+        prefix = old["output_ref"]
+        before = {p: p.read_bytes() for p in (self.root / prefix).rglob("*") if p.is_file()}
+        self.assertEqual(self.json(prefix + "/identity.json")["producer_schema_policy"], audit.SPAN_REF_POLICY)
+        for name in ("extract-000001", "compare"):
+            request = self.json(prefix + "/steps/" + name + "/workspace/input.json")
+            self.assertEqual(request.pop("producer_transport")["schema_version"], audit.SPAN_REF_POLICY)
+            expected = audit.compact_model_json(audit.producer_schema(request, audit.SPAN_REF_POLICY))
+            self.assertEqual((self.root / prefix / "steps" / name / "workspace/schema.json").read_bytes(), expected)
+            self.assertNotEqual(expected, audit.compact_model_json(audit.producer_schema(request, audit.SPAN_REF_COMPAT_POLICY)))
+        audit.validate_proof(sources.Observations(self.root), prefix + "/report.json")
+        code, blocked = self.audit(account, "v4-reuse", [*options, "--audit-ref", prefix + "/report.json"])
+        self.assertEqual(code, 1, blocked)
+        self.assertEqual(blocked["runner_dispatch_count"], 0)
+        self.assertEqual(before, {p: p.read_bytes() for p in before})
+
+    def span_ref_sizing(self):
+        """Mechanical complete-fixture comparison, never a model-quality claim."""
+        from fixtures import b_route_audit_synthetic_runner as fixture
+        self.put("docs/source.md", ("# Rule\r\n\r\n" + "Preserve all \u4e2d\u6587 reward ordering and explicit constraints. " * 40 + "\r\n").encode())
+        account, _ = self.accounted()
+        obs = sources.Observations(self.root)
+        state, _ = sources.load_accounted(obs, account["output_ref"] + "/report.json")
+        bundle = audit.make_input(obs, state)
+        extractions, measurements = [], []
+        with patch.object(fixture, "MODE", "supported-deferred"):
+            for phase, file in [("extract", file) for file in bundle["files"]] + [("compare", None)]:
+                request = audit.phase_input(phase, bundle, extractions, file, "full-block")
+                literal = fixture.execute(request)
+                wire = fixture.wire_output(audit.producer_input(request, audit.SPAN_REF_POLICY), deepcopy(literal))
+                decoded = audit.decode_producer_output(request, wire, audit.SPAN_REF_POLICY)
+                self.assertEqual(audit.canonical_sha(decoded), audit.canonical_sha(literal))
+                audit.validate_output(request, decoded)
+                if phase == "extract":
+                    extractions.append(decoded)
+                values = {}
+                for label, output in (("literal", literal), ("span_ref", wire)):
+                    raw = audit.compact_model_json(output)
+                    values[label] = audit.measure_request(raw.decode("utf-8"), max_bytes=1048576, max_input_tokens=96000)
+                    values[label]["bytes"] = len(raw)
+                measurements.append({"phase": phase, **values})
+        return measurements
+
+    def test_complete_nonempty_fixture_span_ref_sizing_preserves_all_outputs(self):
+        for row in self.span_ref_sizing():
+            self.assertLess(row["span_ref"]["bytes"], row["literal"]["bytes"])
+            self.assertLess(row["span_ref"]["input_token_estimate"], row["literal"]["input_token_estimate"])
+
+    def test_span_ref_input_table_and_canonical_sidecar_tampering_rejected(self):
+        account, _ = self.accounted()
+        code, report = self.audit(account, extras=["--citation-guidance", "full-block"])
+        self.assertEqual(code, 0, report)
+        prefix = report["output_ref"]
+        relative = "steps/extract-000001/workspace/input.json"
+        sidecar = "steps/extract-000001/canonical-output.json"
+        original = {name: (self.root / prefix / name).read_bytes() for name in (relative, sidecar, "event.json")}
+        for mutation in ("alias", "path", "digest", "offset", "mapping", "version", "duplicate", "canonical", "raw-substitution"):
+            with self.subTest(mutation=mutation):
+                for name, raw in original.items():
+                    (self.root / prefix / name).write_bytes(raw)
+                target, carrier = relative, self.json(prefix + "/" + relative)
+                value = audit.decode_producer_input(carrier, audit.PRODUCER_SCHEMA_POLICY)
+                table = value["producer_transport"]
+                if mutation == "alias": table["spans"][0]["span_ref"] = "span-999999"
+                elif mutation == "path": table["spans"][0]["path"] = "foreign.md"
+                elif mutation == "digest": table["spans"][0]["raw_digest"] = "sha256:" + "0" * 64
+                elif mutation == "offset": table["spans"][0]["byte_start"] = False
+                elif mutation == "mapping": table["mapping_identity"] = "foreign"
+                elif mutation == "version": table["schema_version"] = "unknown"
+                elif mutation == "duplicate": table["spans"].append(deepcopy(table["spans"][0]))
+                elif mutation == "canonical":
+                    target, value = sidecar, self.json(prefix + "/" + sidecar)
+                    value["obligations"][0]["statement"] += "changed"
+                else:
+                    target, value = sidecar, self.json(prefix + "/steps/extract-000001/workspace/output.json")
+                if target == relative:
+                    carrier["complete_materials"] = audit.complete_wire.encode(value)
+                    value = carrier
+                (self.root / prefix / target).write_bytes(audit.compact_model_json(value))
+                event = self.json(prefix + "/event.json")
+                event["artifacts"][target] = codec.raw_digest((self.root / prefix / target).read_bytes())
+                self.put(prefix + "/event.json", event)
+                with self.assertRaises(codec.CodecError):
+                    audit.validate_proof(sources.Observations(self.root), prefix + "/report.json")
+        for name, raw in original.items():
+            (self.root / prefix / name).write_bytes(raw)
+        audit.validate_proof(sources.Observations(self.root), prefix + "/report.json")
+
+    def test_trusted_reasoning_expectation_binds_tool_identity_and_captured_runner(self):
+        default = audit.tool_identity(self.root, self.root / self.runner, "synthetic/source-audit-v1", "full-block")
+        high = audit.tool_identity(self.root, self.root / self.runner, "synthetic/source-audit-v1", "full-block",
+                                   expected_reasoning_effort="high")
+        self.assertEqual(high.pop("expected_reasoning_effort"), "high")
+        self.assertEqual(high, default)
+        account, _ = self.accounted()
+        code, report = self.audit(account, extras=["--citation-guidance", "full-block"])
+        self.assertEqual(code, 0, report)
+        prefix = report["output_ref"]
+        runner = self.json(prefix + "/runner.json")
+        runner["requested_reasoning_effort"] = "high"
+        self.put(prefix + "/runner.json", runner)
+        event = self.json(prefix + "/event.json")
+        event["artifacts"]["runner.json"] = codec.raw_digest((self.root / prefix / "runner.json").read_bytes())
+        self.put(prefix + "/event.json", event)
+        with self.assertRaises(codec.CodecError) as failed:
+            audit.validate_proof(sources.Observations(self.root), prefix + "/report.json")
+        self.assertEqual(failed.exception.diagnostic.entity_id, "proof.reasoning_effort")
+
+    def test_guidance_still_accepts_exact_partial_and_rejects_off_by_one_citation(self):
+        account, _ = self.accounted()
+        code, report = self.audit(account, extras=["--citation-guidance", "full-block"])
+        self.assertEqual(code, 0, report)
+        step = report["output_ref"] + "/steps/extract-000001/workspace"
+        request = audit.decode_producer_input(self.json(step + "/input.json"), audit.PRODUCER_SCHEMA_POLICY)
+        output = self.json(str(Path(step).parent) + "/canonical-output.json")
+        request.pop("producer_transport")
+        cite = output["obligations"][-1]["citations"][0]
+        self.assertTrue(cite["quote"].endswith("\r\n"))
+        # Local validator probes never modify the captured model output.
+        cite["quote"] = cite["quote"][:-1]
+        with self.assertRaises(codec.CodecError) as failed:
+            audit.validate_output(request, output)
+        self.assertEqual(failed.exception.diagnostic.entity_id, "citation.quote")
+        cite["byte_end"] -= 1
+        audit.validate_output(request, output)
+        self.mode("bad-quote")
+        code, blocked = self.audit(account, "bad-guided", ["--citation-guidance", "full-block"])
+        self.assertEqual(code, 1, blocked)
+        self.assertEqual(blocked["runner_dispatch_count"], 1)
+        self.assertFalse(blocked["execution_complete"])
+        self.assertIn("citation.quote", json.dumps(blocked["diagnostics"]))
+
+    def test_guided_producer_schema_consts_preserve_canonical_identity_rejection(self):
+        account, _ = self.accounted(disposition="context")
+        self.mode("omission")
+        with patch.object(audit, "PRODUCER_SCHEMA_POLICY", "input-identity-const.v2"):
+            code, report = self.audit(account, extras=["--citation-guidance", "full-block"])
+        self.assertEqual(code, 1, report)
+        self.assertTrue(report["execution_complete"])
+        prefix = report["output_ref"]
+        for phase, name in (("extract", "extract-000001"), ("compare", "compare")):
+            step = prefix + "/steps/" + name + "/workspace"
+            request, value = self.json(step + "/input.json"), self.json(step + "/output.json")
+            schema = self.json(step + "/schema.json")
+            expected = audit.output_schema(phase)
+            expected["properties"]["input_identity"]["const"] = request["input_identity"]
+            expected["properties"]["schema_version"]["type"] = "string"
+            if phase == "compare":
+                expected["properties"]["findings"]["items"]["properties"]["input_identity"]["const"] = request["input_identity"]
+                self.assertTrue(value["findings"])
+            self.assertEqual(schema, expected)
+            self.assertNotIn("const", audit.output_schema(phase)["properties"]["input_identity"])
+            audit.schema_check(value, schema)
+            # Probe copies only; captured output bytes are never repaired.
+            for nested in ([False, True] if phase == "compare" else [False]):
+                bad = json.loads(json.dumps(value))
+                row = bad["findings"][0] if nested else bad
+                row["input_identity"] += "7"
+                audit.schema_check(bad, audit.output_schema(phase))
+                with self.assertRaises(codec.CodecError):
+                    audit.schema_check(bad, schema)
+                with self.assertRaises(codec.CodecError):
+                    audit.validate_output(request, bad)
+        audit.validate_proof(sources.Observations(self.root), prefix + "/report.json")
+
+    def test_v2_producer_string_choices_typed_with_exact_default_and_v1_history(self):
+        def rows(value):
+            if isinstance(value, dict):
+                yield value
+                for nested in value.values():
+                    yield from rows(nested)
+            elif isinstance(value, list):
+                for nested in value:
+                    yield from rows(nested)
+        for phase in ("extract", "compare"):
+            request = {"phase": phase, "input_identity": "sha256:" + "1" * 64, "citation_guidance": "full-block"}
+            canonical = audit.output_schema(phase)
+            self.assertEqual(audit.producer_schema(request), canonical)
+            legacy = json.loads(json.dumps(canonical))
+            legacy["properties"]["input_identity"]["const"] = request["input_identity"]
+            if phase == "compare":
+                legacy["properties"]["findings"]["items"]["properties"]["input_identity"]["const"] = request["input_identity"]
+            self.assertEqual(audit.producer_schema(request, "input-identity-const.v1"), legacy)
+            actual = audit.producer_schema(request, "input-identity-const.v2")
+            self.assertEqual(actual["properties"]["schema_version"]["type"], "string")
+            for row in rows(actual):
+                if row.get("type") == "object":
+                    self.assertIs(row.get("additionalProperties"), False, row)
+                    self.assertEqual(set(row.get("required", [])), set(row.get("properties", {})))
+                if isinstance(row.get("const"), str) or ("enum" in row and all(isinstance(v, str) for v in row["enum"])):
+                    self.assertEqual(row.get("type"), "string", row)
+            actual["properties"]["schema_version"].pop("type")
+            self.assertEqual(actual, legacy, "v2 adds only a redundant string declaration")
+            self.assertNotIn("type", canonical["properties"]["schema_version"])
+        account, _ = self.accounted()
+        with patch.object(audit, "PRODUCER_SCHEMA_POLICY", "input-identity-const.v1"):
+            code, old = self.audit(account, "v1-guided", ["--citation-guidance", "full-block"])
+        self.assertEqual(code, 0, old)
+        prefix = old["output_ref"]
+        self.assertEqual(self.json(prefix + "/identity.json")["producer_schema_policy"], "input-identity-const.v1")
+        before = {p: p.read_bytes() for p in (self.root / prefix).rglob("*") if p.is_file()}
+        audit.validate_proof(sources.Observations(self.root), prefix + "/report.json")
+        for name in ("extract-000001", "compare"):
+            self.assertNotIn("type", self.json(prefix + "/steps/" + name + "/workspace/schema.json")["properties"]["schema_version"])
+        code, blocked = self.audit(account, "v1-reuse", ["--citation-guidance", "full-block", "--audit-ref", prefix + "/report.json"])
+        self.assertEqual(code, 1, blocked)
+        self.assertEqual(blocked["runner_dispatch_count"], 0)
+        self.assertEqual(before, {p: p.read_bytes() for p in before})
+
+    def test_historical_guided_generic_schema_replay_blocks_cross_policy_reuse(self):
+        account, _ = self.accounted()
+        options = ["--citation-guidance", "full-block"]
+        current_identity = audit.tool_identity
+        def historical_identity(*args, **kwargs):
+            identity = current_identity(*args, **kwargs)
+            identity.pop("producer_schema_policy", None)
+            return identity
+        # Recreate the old producer only. All canonical/proof validators run.
+        with patch.object(audit, "PRODUCER_SCHEMA_POLICY", None), \
+             patch.object(audit, "tool_identity", side_effect=historical_identity):
+            code, old = self.audit(account, "historical-guided", options)
+        self.assertEqual(code, 0, old)
+        prefix = old["output_ref"]
+        self.assertNotIn("producer_schema_policy", self.json(prefix + "/identity.json"))
+        before = {p: p.read_bytes() for p in (self.root / prefix).rglob("*") if p.is_file()}
+        proof = audit.validate_proof(sources.Observations(self.root), prefix + "/report.json")
+        self.assertTrue(proof["report"]["execution_complete"])
+        for phase, name in (("extract", "extract-000001"), ("compare", "compare")):
+            self.assertEqual(self.json(prefix + "/steps/" + name + "/workspace/schema.json"), audit.output_schema(phase))
+        with self.assertRaises(codec.CodecError) as failed:
+            audit.verify_current_proof(sources.Observations(self.root), prefix + "/report.json", scope_id="scope")
+        self.assertIn("producer_schema_policy", failed.exception.diagnostic.actual["changed_dependencies"])
+        code, blocked = self.audit(account, "cross-policy", [*options, "--audit-ref", prefix + "/report.json"])
+        self.assertEqual(code, 1, blocked)
+        self.assertEqual(blocked["runner_dispatch_count"], 0)
+        code, new = self.audit(account, "fresh-policy", options)
+        self.assertEqual(code, 0, new)
+        for name in ("extract-000001", "compare"):
+            actual = audit.decode_producer_input(self.json(new["output_ref"] + "/steps/" + name + "/workspace/input.json"),
+                                                 audit.PRODUCER_SCHEMA_POLICY)
+            actual.pop("producer_transport")
+            self.assertEqual(self.json(prefix + "/steps/" + name + "/workspace/input.json"), actual)
+        self.assertEqual(before, {p: p.read_bytes() for p in before})
+
+    def test_producer_policy_mode_and_actual_schema_tampering_fail_closed(self):
+        account, _ = self.accounted()
+        code, report = self.audit(account, extras=["--citation-guidance", "full-block"])
+        self.assertEqual(code, 0, report)
+        prefix = report["output_ref"]
+        targets = ("identity.json", "steps/extract-000001/workspace/schema.json", "event.json")
+        original = {name: (self.root / prefix / name).read_bytes() for name in targets}
+        for mutation in ("unknown-policy", "missing-mode", "policy-downgrade", "v1-policy-downgrade", "schema-downgrade", "missing-type", "wrong-type", "boolean-minimum", "foreign-identity"):
+            with self.subTest(mutation=mutation):
+                for name, raw in original.items():
+                    (self.root / prefix / name).write_bytes(raw)
+                identity = self.json(prefix + "/identity.json")
+                schema = self.json(prefix + "/" + targets[1])
+                if mutation == "unknown-policy":
+                    identity["producer_schema_policy"] = "unknown-policy"
+                elif mutation == "missing-mode":
+                    identity.pop("citation_guidance")
+                elif mutation == "policy-downgrade":
+                    identity.pop("producer_schema_policy")
+                elif mutation == "v1-policy-downgrade":
+                    identity["producer_schema_policy"] = "input-identity-const.v1"
+                elif mutation == "schema-downgrade":
+                    schema["properties"]["input_identity"].pop("const")
+                elif mutation == "missing-type":
+                    schema["properties"]["schema_version"].pop("type")
+                elif mutation == "wrong-type":
+                    schema["properties"]["schema_version"]["type"] = "integer"
+                elif mutation == "boolean-minimum":
+                    schema["properties"]["obligations"]["items"]["properties"]["citations"]["items"]["anyOf"][1]["properties"]["byte_start"]["minimum"] = False
+                else:
+                    schema["properties"]["input_identity"]["const"] += "7"
+                self.put(prefix + "/identity.json", identity)
+                self.put(prefix + "/" + targets[1], schema)
+                if mutation in {"unknown-policy", "missing-mode"}:
+                    (self.root / prefix / targets[1]).write_bytes(original[targets[1]])
+                event = self.json(prefix + "/event.json")
+                for name in targets[:2]:
+                    event["artifacts"][name] = codec.raw_digest((self.root / prefix / name).read_bytes())
+                self.put(prefix + "/event.json", event)
+                with self.assertRaises(codec.CodecError):
+                    audit.validate_proof(sources.Observations(self.root), prefix + "/report.json")
+        for policy in ("unknown-policy", audit.PRODUCER_SCHEMA_POLICY):
+            with self.assertRaises(codec.CodecError):
+                audit.producer_schema({"phase": "extract", "input_identity": "fixture"}, policy)
+        with patch.object(audit, "reserve", side_effect=AssertionError("No reservation")), \
+             patch.object(audit, "prepare_step", side_effect=AssertionError("No preparation")):
+            with self.assertRaises(codec.CodecError):
+                audit.dispatch(None, None, None, None, "extract", {"citation_guidance": "full-block"}, {},
+                               {"producer_schema_policy": "unknown-policy"})
+
+    def test_guided_prompt_tampering_rejected_even_with_rehashed_event(self):
+        account, _ = self.accounted()
+        code, report = self.audit(account, extras=["--citation-guidance", "full-block"])
+        self.assertEqual(code, 0, report)
+        prefix = report["output_ref"]
+        relative = "steps/extract-000001/workspace/prompt.txt"
+        target = self.root / prefix / relative
+        target.write_bytes(target.read_bytes() + b"Changed producer guidance.\n")
+        event = self.json(prefix + "/event.json")
+        event["artifacts"][relative] = codec.raw_digest(target.read_bytes())
+        self.put(prefix + "/event.json", event)
+        with self.assertRaises(codec.CodecError) as failed:
+            audit.validate_proof(sources.Observations(self.root), prefix + "/report.json")
+        self.assertEqual(failed.exception.diagnostic.expected, "exact prompt rule bytes")
+        code, blocked = self.audit(account, "tampered-reuse", ["--citation-guidance", "full-block", "--audit-ref", prefix + "/report.json"])
+        self.assertEqual(code, 1, blocked)
+        self.assertEqual(blocked["runner_dispatch_count"], 0)
+
+    def test_citation_guidance_admission_rejects_source_stages_and_unknown_mode(self):
+        account, prepared = self.accounted()
+        with patch.object(audit, "reserve", side_effect=AssertionError("Admission must precede reservation")), \
+             patch.object(audit, "run_isolated_model", side_effect=AssertionError("No dispatch")):
+            for stage, options in (("prepare", ["--source-set", "docs/source-set.json"]),
+                                   ("account", ["--prepared", prepared["prepared_ref"]["path"], "--candidate", "candidate.json"])):
+                code, report = self.invoke(stage, "invalid-guidance", [*options, "--citation-guidance", "full-block"])
+                self.assertEqual(code, 2, report)
+                self.assertNotIn("output_ref", report)
+            code, report = self.audit(account, extras=["--citation-guidance", "unknown-mode"])
+            self.assertEqual(code, 2, report)
+            self.assertNotIn("output_ref", report)
+        self.assertEqual(list((self.root / "logs/ci").glob("*/b-route-source-audit/*")), [])
+
     def test_complete_reuse_zero_dispatch_and_unrelated_state(self):
         account, _ = self.accounted()
         code, original = self.audit(account)
@@ -84,7 +869,7 @@ class SourceAuditTests(SourceAccountingTests):
     def test_os_runner_workspace_drift_blocks_fresh_completion_with_verify_reuse_control(self):
         account, _ = self.accounted()
         marker = "SYNTHETIC_WORKSPACE_DRIFT"
-        hook = "    output = execute(request)"
+        hook = "    output = wire_output(request, execute(request))"
         self.assertEqual(self.fixture.count(hook), 1)
         mutations = {
             "input": ('    (workspace / "input.json").write_bytes(b\'{"SYNTHETIC_WORKSPACE_DRIFT":true}\\n\')\n', "input.json", 1),
@@ -642,6 +1427,33 @@ class SourceAuditTests(SourceAccountingTests):
         self.assertEqual(code, 0, report)
         self.assertTrue(report["execution_complete"])
         self.assertEqual(self.verify(report)[0], 0)
+
+    def test_local_package_relative_dependency_changes_invalidate_runner_identity(self):
+        self.put('runner.py',b'import helper_package\n')
+        self.put('helper_package/__init__.py',b'from . import nested\n')
+        dependency=self.put('helper_package/nested.py',b'VALUE = 1\n')
+        first=audit.tool_identity(self.root,self.root/'runner.py','fixture-model')
+        self.assertIn('helper_package/__init__.py',first['tools'])
+        self.assertIn('helper_package/nested.py',first['tools'])
+        dependency.write_bytes(b'VALUE = 2\n')
+        self.assertNotEqual(first,audit.tool_identity(self.root,self.root/'runner.py','fixture-model'))
+        runner=self.put('runners/runner.py',b'import helper_namespace.nested\n')
+        dependency=self.put('helper_namespace/nested.py',b'VALUE = 1\n')
+        first=audit.tool_identity(self.root,runner,'fixture-model')
+        self.assertIn('helper_namespace/nested.py',first['tools'])
+        dependency.write_bytes(b'VALUE = 2\n')
+        self.assertNotEqual(first,audit.tool_identity(self.root,runner,'fixture-model'))
+
+    def test_invalid_runner_syntax_persists_terminal_failure_and_replays_without_dispatch(self):
+        account,_=self.accounted()
+        self.put(self.runner,b'def invalid(\n')
+        code,report=self.audit(account)
+        self.assertEqual(1,code)
+        self.assertFalse(report['execution_complete'])
+        self.assertEqual(0,report['runner_dispatch_count'])
+        self.assertEqual('input_blocked',report['termination_reason'])
+        self.assertTrue((self.root/report['output_ref']/'event.json').is_file())
+        self.assertEqual((code,report),self.audit(account))
 
     def test_rule_schema_and_parser_change_do_not_reuse_old_conclusions(self):
         account, _ = self.accounted()

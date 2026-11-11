@@ -41,7 +41,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 11-03-2026 17:10
-last_updated: 11-04-2026 19:15
+last_updated: 2026-11-11T06:38:37Z
 project: newrouge
 project_key: newrouge-b-route
 tracking_system: taskmaster-authoritative-planning-view
@@ -84,14 +84,15 @@ development_status:
 
   epic-2: in-progress
   2-1-在task之前形成累计来源ledger与需求验收意图: review
-  2-2-从完整来源独立审计遗漏与冲突: in-progress
-  2-3-准备task无关且完整的规划输入: backlog
-  2-4-描述可审阅的flow及合法非flow验证去向: backlog
-  2-5-通过独立准入与有界评选选出可采纳候选: backlog
-  2-6-冻结采纳操作并持久分配稳定身份: backlog
-  2-7-一致提交采纳目标并以catalog发布: backlog
-  2-8-按journal恢复中断并保留后编辑: backlog
-  2-9-复用已提交完成规划并遵守epoch与reopen撤销: backlog
+  2-2-从完整来源独立审计遗漏与冲突: review
+  2-3-准备task无关且完整的规划输入: review
+  2-4-描述可审阅的flow及合法非flow验证去向: review
+  2-5-通过独立准入与有界评选选出可采纳候选: review
+  2-6-冻结采纳操作并持久分配稳定身份: review
+  2-7-一致提交采纳目标并以catalog发布: review
+  # Story2.8 source is implemented; genuine compensation follows Story2.7 publication/read.
+  2-8-按journal恢复中断并保留后编辑: in-progress
+  2-9-复用已提交完成规划并遵守epoch与reopen撤销: in-progress
   2-10-从正式规划入口完成零task采纳与跨会话复验: backlog
   epic-2-retrospective: optional
 

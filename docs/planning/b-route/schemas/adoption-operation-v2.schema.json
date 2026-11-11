@@ -1,0 +1,326 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "newrouge.b-route-adoption-operation.v2",
+  "title": "Auxiliary frozen adoption operation; not a formal record",
+  "$defs": {
+    "Digest": {
+      "$ref": "newrouge.b-route-common.v1#/$defs/Digest"
+    },
+    "String": {
+      "type": "string",
+      "minLength": 1
+    },
+    "Reference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "schema_version",
+        "raw_digest"
+      ],
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/String"
+        },
+        "schema_version": {
+          "$ref": "#/$defs/String"
+        },
+        "raw_digest": {
+          "$ref": "#/$defs/Digest"
+        }
+      }
+    },
+    "References": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Reference"
+      }
+    },
+    "ScopeIds": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/String"
+      }
+    },
+    "Alignment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "plan",
+        "binding",
+        "requirements",
+        "flows",
+        "tasks"
+      ],
+      "properties": {
+        "plan": {
+          "type": "object"
+        },
+        "binding": {
+          "type": "object"
+        },
+        "requirements": {
+          "type": "array"
+        },
+        "flows": {
+          "type": "array"
+        },
+        "tasks": {
+          "type": "array"
+        }
+      }
+    },
+    "Material": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "planner",
+        "run_id",
+        "handoff_ref",
+        "protection_ref",
+        "authority_refs",
+        "identity_alignment",
+        "target_templates",
+        "lineage_refs",
+        "origin_profile"
+      ],
+      "properties": {
+        "planner": {
+          "enum": [
+            "capabilities",
+            "mvg"
+          ]
+        },
+        "run_id": {
+          "$ref": "#/$defs/String"
+        },
+        "handoff_ref": {
+          "$ref": "#/$defs/Reference"
+        },
+        "protection_ref": {
+          "$ref": "#/$defs/Reference"
+        },
+        "authority_refs": {
+          "$ref": "#/$defs/References"
+        },
+        "identity_alignment": {
+          "$ref": "#/$defs/Alignment"
+        },
+        "target_templates": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object"
+          }
+        },
+        "lineage_refs": {
+          "$ref": "#/$defs/References"
+        },
+        "origin_profile": {
+          "const": "r22-m4-nx-original.v1"
+        }
+      }
+    },
+    "Request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "operation_id",
+        "material",
+        "review_ref"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "newrouge.b-route-adoption-request.v2"
+        },
+        "operation_id": {
+          "$ref": "#/$defs/String"
+        },
+        "material": {
+          "$ref": "#/$defs/Material"
+        },
+        "review_ref": {
+          "$ref": "#/$defs/Reference"
+        },
+        "host_review_ref": {
+          "$ref": "#/$defs/Reference"
+        },
+        "review_profile": {
+          "const": "expanded-semantics.v3"
+        }
+      }
+    },
+    "Target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "schema_version",
+        "before_raw_digest",
+        "after_payload",
+        "after_raw_digest",
+        "verification_mode"
+      ],
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/String"
+        },
+        "schema_version": {
+          "$ref": "#/$defs/String"
+        },
+        "before_raw_digest": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/Digest"
+            }
+          ]
+        },
+        "after_payload": {},
+        "after_raw_digest": {
+          "$ref": "#/$defs/Digest"
+        },
+        "verification_mode": {
+          "enum": [
+            "immutable_bytes",
+            "task_definition_projection"
+          ]
+        }
+      }
+    },
+    "Frozen": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "request",
+        "allocations",
+        "scope_ids",
+        "authority_refs",
+        "targets"
+      ],
+      "properties": {
+        "request": {
+          "$ref": "#/$defs/Request"
+        },
+        "allocations": {
+          "type": "object"
+        },
+        "scope_ids": {
+          "$ref": "#/$defs/ScopeIds"
+        },
+        "authority_refs": {
+          "$ref": "#/$defs/References"
+        },
+        "targets": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/Target"
+          }
+        }
+      }
+    },
+    "IndexRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "operation_id",
+        "directory_key",
+        "scope_ids",
+        "frozen_digest",
+        "state"
+      ],
+      "properties": {
+        "operation_id": {
+          "$ref": "#/$defs/String"
+        },
+        "directory_key": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "scope_ids": {
+          "$ref": "#/$defs/ScopeIds"
+        },
+        "frozen_digest": {
+          "$ref": "#/$defs/Digest"
+        },
+        "state": {
+          "enum": [
+            "prepared",
+            "reserved"
+          ]
+        }
+      }
+    },
+    "Pending": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "operations"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "newrouge.b-route-adoption-pending.v1"
+        },
+        "operations": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/IndexRow"
+          }
+        }
+      }
+    }
+  },
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "codec_version",
+    "operation_id",
+    "state",
+    "request_raw_base64",
+    "request_raw_digest",
+    "request_digest",
+    "frozen",
+    "frozen_digest"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "newrouge.b-route-adoption-operation.v2"
+    },
+    "codec_version": {
+      "type": "string"
+    },
+    "operation_id": {
+      "$ref": "#/$defs/String"
+    },
+    "state": {
+      "enum": [
+        "prepared",
+        "reserved"
+      ]
+    },
+    "request_raw_base64": {
+      "type": "string"
+    },
+    "request_raw_digest": {
+      "$ref": "#/$defs/Digest"
+    },
+    "request_digest": {
+      "$ref": "#/$defs/Digest"
+    },
+    "frozen": {
+      "$ref": "#/$defs/Frozen"
+    },
+    "frozen_digest": {
+      "$ref": "#/$defs/Digest"
+    }
+  }
+}

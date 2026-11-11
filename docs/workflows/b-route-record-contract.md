@@ -6,6 +6,8 @@
 
 Story 1.5 的纯 Task／三联保护投影、raw 归档与只读比较见[成熟成果保护输入](b-route-mature-protection.md)。既定投影 ID 由 `_b_route_codec.PROJECTION_CODEC` 唯一拥有，records 保留原别名；这不扩展本合同的 receipt 目标复验，`target_projection_verified=false` 继续有效。`frozen_a_inventory` 仍只核 locator／raw，保护候选及其最小 external owner 材料不增加第七类政策记录、不授予正式保护或 A 资格。
 
+Story 2.4 的完整候选读取、公开图辅助格式及有限结构检查见[Flow 与非 Flow 候选](../testing/story-2-4-flow-candidates.md)。`flow-graph.schema.json` 与 `planning-candidate.schema.json` 有独立 v1 `$id`，共用 `_b_route_schema_resources.py` 的离线解析及实际字节缓存；它们是辅助输入，不属于六类正式记录，不改变下述 plan.v1 接受集合、adoption proof 或采纳权威。formal-only 调用不要求两份辅助资源存在。候选新 proposed owner key 与已有 owner_plan_id/revision 分开；精确冻结引用不等于 published/current 权威。
+
 ## 1. Sources and fixed boundaries
 
 - AGENTS.md；_bmad-output/planning-artifacts/b-route/epics.md:590–637（Story 1.4 AC-1–5）。
