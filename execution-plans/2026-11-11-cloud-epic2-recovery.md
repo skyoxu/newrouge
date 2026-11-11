@@ -62,3 +62,11 @@ Evidence: `logs/ci/2026-11-11/cloud-epic2-recovery-06/REPORT.md`, `batch01-verif
 - [waiting] Actual target/current formal and operation/review/protection closure, native/source qualification and real completed/fiscal graph per the consolidated inventory. P2 optional history is not a general blocker; published read does not require all historical logs or financial data.
 
 Current inventory: `logs/ci/2026-11-11/cloud-epic2-recovery-07/RECOVERY_MATERIALS.md` and JSON; exact producer pin list and outcomes are alongside. Known absent financial Root-02 is not an empty ledger and differs from the unknown-outcome R60 test.
+
+## Independent Story 2.10 receipt reread boundary
+
+- [x] Reproduce direct/dev-cli receipt deletion between initial reading and context recheck: one RED method, two failing subcases, original record preserved.
+- [x] Share the existing diagnostic enrichment across both receipt reads; preserve original reason/stage/owner reference and do not recreate receipt data.
+- [x] Five affected focused methods pass. The temporary RED counter bug and its derived correction are both explicit in the report; no failed attempt is rewritten.
+
+Evidence: `logs/ci/2026-11-11/cloud-epic2-recovery-08/REPORT.md`. This work requires no original private material and introduces no new global prerequisites from the inventory. Formal/original-operation recovery remains separately pending only its applicable inputs.

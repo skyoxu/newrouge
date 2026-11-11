@@ -160,12 +160,14 @@ def _execute(args):
             return resolved
         records = importlib.import_module('_b_route_records')
         path = records.BASE + 'commits/' + args.operation_id + '.json'
-        try:
-            raw = codec.read_reference_bytes(root, path)
-        except codec.CodecError as error:
-            if error.diagnostic.resume_ref is not None:
-                raise
-            raise codec.CodecError(replace(error.diagnostic, resume_ref=path)) from error
+        def read_receipt():
+            try:
+                return codec.read_reference_bytes(root, path)
+            except codec.CodecError as error:
+                if error.diagnostic.resume_ref is not None:
+                    raise
+                raise codec.CodecError(replace(error.diagnostic, resume_ref=path)) from error
+        raw = read_receipt()
         checked = records.validate_record(raw, path=path)
         if not checked.ok:
             raise codec.CodecError(checked.diagnostic)
@@ -176,7 +178,7 @@ def _execute(args):
                 actual=receipt['operation_id'], resume_ref=path))
         value = service.read_committed(root, scope_ids=receipt['scopes'])
         if context_requested:
-            if codec.read_reference_bytes(root, path) != raw:
+            if read_receipt() != raw:
                 raise codec.CodecError(codec.Diagnostic(codec.ReasonCode.INPUT_STALE,
                     entity_id=args.operation_id, expected="unchanged original receipt bytes",
                     actual="receipt changed during protected read", resume_ref=path))

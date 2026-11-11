@@ -1,0 +1,10 @@
+{
+  "original_result": "story210-deleted-receipt-red-01/result.json",
+  "original_passed_field": -1,
+  "original_result_unchanged": true,
+  "tests_run": 1,
+  "passed_methods": 0,
+  "failed_methods": 1,
+  "failed_subtests": 2,
+  "reason": "The temporary harness subtracted two subtest failures from one parent method. Original failure records are retained; normalized counts describe the same failed attempt."
+}

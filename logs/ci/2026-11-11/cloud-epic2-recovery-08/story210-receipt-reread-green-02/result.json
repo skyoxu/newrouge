@@ -1,0 +1,13 @@
+{
+  "label": "story210-receipt-reread-green-02",
+  "tests_run": 5,
+  "passed": 5,
+  "failures": [],
+  "errors": [],
+  "skipped": [],
+  "successful": true,
+  "elapsed_seconds": 0.2854467309998654,
+  "finished_utc": "2026-11-11T17:43:01.512319+00:00",
+  "new_provider_calls": 0,
+  "qualification": "Focused offline unit/CLI checks only; no provider, Windows durability or formal Story acceptance claim."
+}

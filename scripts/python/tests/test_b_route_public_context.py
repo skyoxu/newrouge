@@ -194,6 +194,30 @@ class PublicContextTests(unittest.TestCase):
             expected = codec.ReasonCode.INPUT_STALE if mode == 'drift' else codec.ReasonCode.CONFLICT
             self.assertEqual(expected.value, result['diagnostics'][0]['reason_code'])
 
+    def test_receipt_deleted_during_context_read_retains_resume_path(self):
+        for lane in ('direct', 'dev-cli'):
+            with self.subTest(lane=lane), tempfile.TemporaryDirectory() as directory:
+                relative = 'docs/planning/b-route/commits/OP-1.json'
+                target = Path(directory) / relative
+                target.parent.mkdir(parents=True)
+                target.write_text(json.dumps(receipt()), encoding='utf-8')
+                fake = modules()
+                def deleted(*args, **kwargs):
+                    target.unlink()
+                    return published()
+                fake[1].read_committed.side_effect = deleted
+                args = ['--root', directory, '--stage', 'read', '--operation-id', 'OP-1', '--context']
+                with installed(fake):
+                    code, result = (captured(cli.main, args) if lane == 'direct' else
+                                    captured(dev_cli.main, ['b-route-adoption', *args]))
+                self.assertEqual(2, code)
+                self.assertNotIn('context', result)
+                self.assertTrue(all(result[key] is False for key in cli.FLAGS))
+                diagnostic = result['diagnostics'][0]
+                self.assertEqual(codec.ReasonCode.FILE_NOT_FOUND.value, diagnostic['reason_code'])
+                self.assertEqual(relative, diagnostic['resume_ref'])
+                self.assertFalse(target.exists())
+
     def test_pending_reader_error_preserves_original_diagnostic(self):
         fake = modules()
         diagnostic = codec.Diagnostic(codec.ReasonCode.PENDING,

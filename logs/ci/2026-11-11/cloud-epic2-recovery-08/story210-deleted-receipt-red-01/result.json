@@ -1,0 +1,16 @@
+{
+  "label": "story210-deleted-receipt-red-01",
+  "tests_run": 1,
+  "passed": -1,
+  "failures": [
+    "test_receipt_deleted_during_context_read_retains_resume_path (test_b_route_public_context.PublicContextTests.test_receipt_deleted_during_context_read_retains_resume_path) (lane='direct')",
+    "test_receipt_deleted_during_context_read_retains_resume_path (test_b_route_public_context.PublicContextTests.test_receipt_deleted_during_context_read_retains_resume_path) (lane='dev-cli')"
+  ],
+  "errors": [],
+  "skipped": [],
+  "successful": false,
+  "elapsed_seconds": 0.13612431100045796,
+  "finished_utc": "2026-11-11T17:42:33.879417+00:00",
+  "new_provider_calls": 0,
+  "qualification": "Focused offline unit/CLI checks only; no provider, Windows durability or formal Story acceptance claim."
+}
