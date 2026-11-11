@@ -1,0 +1,142 @@
+# REPOSITORY AUTHORITY (overrides generic workflow notes below):
+# This file is a BMAD planning view, never a second Task/MVG state machine.
+# Taskmaster remains the only Task status authority. No Task IDs are assigned here.
+# Never infer Chapter 5 readiness or runtime PASS from a Story planning status.
+# Only start a Story after its explicit prerequisites and real admission checks.
+# Parallel work is not authorized by this file; use the approved dependency order.
+# For Story 5.10, backlog does not mean eligible: actual retirement is blocked
+# until real exit prerequisites are proven. Story 5.11 does not depend on 5.10,
+# but cannot close Epic 5 while actual retirement remains incomplete.
+# Explicitly select this scoped file; unrelated older epics/specs are excluded.
+# Story-to-Task mapping is established by reviewed gap analysis, never numeric IDs.
+
+# STATUS DEFINITIONS:
+# ==================
+# Epic Status:
+#   - backlog: Epic not yet started
+#   - in-progress: Epic actively being worked on
+#   - done: All stories in epic completed
+
+# Story Status:
+#   - backlog: Story only exists in epic file
+#   - ready-for-dev: Story file created, ready for development
+#   - in-progress: Developer actively working on implementation
+#   - review: Implementation complete, ready for review
+#   - done: Story completed
+
+# Retrospective Status:
+#   - optional: Can be completed but not required
+#   - done: Retrospective has been completed
+
+# Action Item Status:
+#   - open: Committed during a retrospective, not yet addressed
+#   - in-progress: Actively being worked on
+#   - done: Completed
+
+# WORKFLOW NOTES:
+# ===============
+# - Epic transitions to 'in-progress' automatically when its first story starts (via build's sprint sync)
+# - Stories can be worked in parallel if team capacity allows
+# - Developer typically creates the next story after the previous one is 'done' to incorporate learnings
+# - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
+# - Retrospective appends its action items to action_items; the status view surfaces open ones
+generated: 11-03-2026 17:10
+last_updated: 11-10-2026 17:53
+project: newrouge
+project_key: newrouge-b-route
+tracking_system: taskmaster-authoritative-planning-view
+story_location: _bmad-output/implementation-artifacts/b-route
+planning_scope: newrouge-b-route
+planning_source: _bmad-output/planning-artifacts/b-route/epics.md
+planning_source_sha256: 6564ee5a816311171f942477bc34ca07b6178aeafda5c4eab2de7d2fff76cceb
+timezone: Asia/Shanghai
+readiness_report: logs/ci/2026-11-03/b-route-sprint-planning/readiness.md
+scope_guide: _bmad-output/implementation-artifacts/b-route/SPRINT-SCOPE.md
+status_authority:
+  task_status: .taskmaster/tasks/tasks.json
+  business_views:
+    - .taskmaster/tasks/tasks_back.json
+    - .taskmaster/tasks/tasks_gameplay.json
+  sprint_role: non-authoritative-planning-view
+  task_mapping: not-created-by-sprint-planning
+conditional_constraints:
+  5-10-在条件成熟后实际撤权并清理a写入兼容:
+    rule: blocked-until-real-exit-prerequisites-proven
+    condition_evidence: not-established-in-this-planning-run
+    required_conditions:
+      - all-active-A-scopes-completed-or-governed-migration-to-B
+      - current-exit-gate-authority-and-before-images-valid
+      - required-migration-recovery-and-regression-evidence-valid
+      - reviewed-policy-revocation-and-normal-code-cleanup-delivery
+    does_not_block: [5-8, 5-11]
+    prevents_epic_5_done_while_incomplete: true
+
+development_status:
+  epic-1: in-progress
+  # Story 1.1 only: user-approved toolchain bootstrap, not a Task/runtime status.
+  1-1-生成可复查的当前基线与消费者盘点: review
+  1-2-明确b阶段顺序-记录权威及迁移启用规则: review
+  1-3-统一核验文件引用与规范化内容身份: review
+  1-4-按唯一公共schema校验六类规划记录: review
+  1-5-形成可审阅的成熟成果保护基准与冻结a输入: review
+  1-6-通过只读预检审阅迁移差异与阻断原因: review
+  epic-1-retrospective: optional
+
+  epic-2: in-progress
+  2-1-在task之前形成累计来源ledger与需求验收意图: review
+  2-2-从完整来源独立审计遗漏与冲突: review
+  2-3-准备task无关且完整的规划输入: review
+  2-4-描述可审阅的flow及合法非flow验证去向: review
+  2-5-通过独立准入与有界评选选出可采纳候选: review
+  2-6-冻结采纳操作并持久分配稳定身份: review
+  2-7-一致提交采纳目标并以catalog发布: in-progress
+  # Story2.8 source is implemented; genuine compensation follows Story2.7 publication/read.
+  2-8-按journal恢复中断并保留后编辑: in-progress
+  # Story2.9 isolated candidate sources only; no tests/native/model acceptance executed in this preparation.
+  # Formal prerequisites remain 2.3/2.5/2.7/2.8; Root Step4/5 and actual qualification remain pending.
+  2-9-复用已提交完成规划并遵守epoch与reopen撤销: in-progress
+  # Story2.10 depends on 2.1-2.9; candidate preparation is not prerequisite completion.
+  2-10-从正式规划入口完成零task采纳与跨会话复验: backlog
+  epic-2-retrospective: optional
+
+  epic-3: backlog
+  3-1-从复用盘点形成真实缺口的任务变更预览: backlog
+  3-2-受治理编译三联与3c绑定并保留当前任务状态: backlog
+  3-3-统一判定task来源及完整适用计划集合: backlog
+  3-4-在chapter4细化生产契约与四部分实施定义: backlog
+  3-5-构造共同inputset并精确判断新鲜度: backlog
+  3-6-绑定真实mvg义务或合法其他验证依据: backlog
+  3-7-在chapter5核对同源定义并形成有效readiness: backlog
+  3-8-让直接chapter6与公共cli消费统一实施门禁: backlog
+  3-9-在恢复与route入口重验当前输入和任务资格: backlog
+  3-10-按缺陷类型复用规划或返回定义所属阶段: backlog
+  3-11-按目标slice收口chapter7并复用已验证ui: backlog
+  3-12-让页面实施触发与全入口决定保持一致: backlog
+  epic-3-retrospective: optional
+
+  epic-4: backlog
+  4-1-从受治理反向关系计算完整传递影响: backlog
+  4-2-形成可执行的三类义务verificationscope: backlog
+  4-3-让真实执行器消费范围并报告实际覆盖: backlog
+  4-4-在身份匹配时复用构建与共享测试证据: backlog
+  4-5-分别核对task-flow和累计里程碑完成: backlog
+  4-6-派生展示规划-实施与运行身份: backlog
+  4-7-在规划页面按真实阶段操作并定位阻塞与恢复: backlog
+  4-8-汇集可追溯过程观测与统一诊断: backlog
+  4-9-对齐全部生产者消费者与治理文档: backlog
+  4-10-在windows故障与共享变更下核对端到端结论: backlog
+  epic-4-retrospective: optional
+
+  epic-5: backlog
+  5-1-固定奖励真实变更与存量复用边界: backlog
+  5-2-在无变更task时正式采纳奖励规划: backlog
+  5-3-以存量增量路径承接真实任务和实施绑定: backlog
+  5-4-实现奖励受控生产命令与只读状态边界: backlog
+  5-5-将原生reward场景接入必要c-薄适配: backlog
+  5-6-使奖励重入与continue沿既有存档边界恢复: backlog
+  5-7-以windows真实输入完成奖励双路径取证: backlog
+  5-8-在证据齐备后切换新增需求默认入口为b: backlog
+  5-9-核对a退出资格并交付统一门禁能力: backlog
+  5-10-在条件成熟后实际撤权并清理a写入兼容: backlog
+  5-11-以补偿回退反例收口迁移与完成声明: backlog
+  epic-5-retrospective: optional

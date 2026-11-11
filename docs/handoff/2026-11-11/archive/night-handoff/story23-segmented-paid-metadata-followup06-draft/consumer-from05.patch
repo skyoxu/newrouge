@@ -1,0 +1,456 @@
+--- a/segmented_paid_guard.Root-only.py
++++ b/segmented_paid_guard.Root-only.py
+@@ -1,4 +1,4 @@
++"""Task-only paid metadata followup06; UNEXECUTED source composition.
+-"""Task-only paid consumer followup05; UNEXECUTED source composition.
+ 
+ Original SourceOnly/codec-FD Guard remains owner; the paid supervisor evidence
+ shows held wait only. This factory adapts finite/native/source-transport roles.
+@@ -26,10 +26,172 @@
+ def make_paid_guard(H):
+     Base=H.Guard
+     standard_run=H.subprocess.run
++    # Original inventory dispatcher implementation is copied below, retaining
++    # its existing mechanism while its real direct caller remains visible.
++    require,key,hash_file,file_identity=H.require,H.key,H.hash_file,H.file_identity
++    GIT,GIT_SHA,TARGET,POPEN=H.GIT,H.GIT_SHA,H.TARGET,H.POPEN
++    subprocess,write_new,raw_json,held=H.subprocess,H.write_new,H.raw_json,H.held
++    ctypes,wintypes,digest=H.ctypes,H.wintypes,H.digest
+ 
+     class PaidGuard(Base):
+         cleanup_program=Path(r'C:\Windows\System32\taskkill.exe')
+ 
++        def bind_metadata_sources(self,runtime,transition,common,*,root,run_id,planner,planning_contract):
++            """Bind existing actual source request DATA, never fiscal authority."""
++            need(not hasattr(self,'metadata_request'),'one actual source-metadata binding')
++            for module,name in ((runtime,'_b_route_segmented_runtime.py'),
++                                (transition,'_b_route_execution_transition.py'),
++                                (common,'_planning_skill_common.py')):
++                need(isinstance(module.__loader__,H.Loader) and module.__loader__.guard is self
++                     and Path(module.__file__).absolute()==H.SOURCE/'scripts/python'/name,
++                     'actual SourceOnly metadata owners')
++            need(Path(root).absolute()==self.target==H.TARGET and planner in runtime.PROFILE,
++                 'same existing actual metadata root and profile')
++            if hasattr(self,'owner'):
++                need(self.owner.root==Path(root).absolute() and self.plan['run_id']==run_id
++                     and self.plan['planner']==planner and self.owner.owners['runtime'] is runtime,
++                     'same existing owner and actual metadata source request')
++            runtime.codec.validate_business_id(run_id);runtime.role(planning_contract)
++            self.metadata_request={'run_id':run_id,'planner':planner,'planning_contract':planning_contract}
++            self.metadata_root=Path(root).absolute()
++            self.runtime_owner,self.transition,self.common=runtime,transition,common
++            self.run_function=common.run_isolated_model;self.run_code=self.run_function.__code__
++            self.cleanup_function=common._terminate_process_tree;self.cleanup_code=self.cleanup_function.__code__
++            self.metadata_functions=[]
++            for module,names in ((runtime,('_original_metadata_call','_original_assemble','capture_source',
++                         'verify_candidate_context','_source_runner_scope')),
++                         (transition,('_git','_source_manifest','_tracked_tree'))):
++                for name in names:
++                    fn=getattr(module,name);body=getattr(fn,'__wrapped__',fn)
++                    need(body.__globals__ is module.__dict__ and Path(body.__code__.co_filename).absolute()
++                         ==Path(module.__file__).absolute(),'original metadata code globals file')
++                    self.metadata_functions.append((module,name,fn,body.__code__))
++            self.metadata_rows=[];self.metadata_records=[]
++            if not hasattr(self,'runner_rows'):
++                self.runner_rows=[];self.describe_rows=[];self.cleanup_rows=[]
++                self.closed_child_rows=None
++
++        def installed_source_launch(self):
++            current=H.subprocess.Popen
++            if current is H.POPEN:return None
++            module=getattr(self,'runtime_owner',None)
++            need(module is not None and callable(current) and getattr(current,'__globals__',None) is module.__dict__,
++                 'only actual installed original source wrapper')
++            outer=getattr(module._source_runner_scope,'__wrapped__',module._source_runner_scope)
++            codes=[c for c in outer.__code__.co_consts if hasattr(c,'co_name') and c.co_name=='launch']
++            need(len(codes)==1 and getattr(current,'__code__',None) is codes[0],
++                 'actual original launch code')
++            cells=dict(zip(current.__code__.co_freevars,(c.cell_contents for c in current.__closure__)))
++            facts=cells.get('facts');source=cells.get('source')
++            issued=[token for token,value in module._TRANSPORTS.items() if value is facts]
++            need(len(issued)==1 and type(issued[0]) is module._RunnerTransport and issued[0].seal is module._SEAL
++                 and facts['closed'] is False and facts.get('launch') is current and facts['source'] is source
++                 and cells.get('prior') is H.POPEN and type(source) is module._SourceCapture
++                 and source in module._SOURCES and source._seal is module._SEAL
++                 and source._root==self.metadata_root and Path(source._policy['source_root'])==H.SOURCE
++                 and source['run_id']==self.metadata_request['run_id'] and source['planner']==self.metadata_request['planner']
++                 and source['source_identity']['planning_contract_ref']==self.metadata_request['planning_contract'],
++                 'same live issued source wrapper prior facts and original source')
++            return current
++
++        def assert_active(self):
++            # Original invariant, with only its Popen-reference clause extended
++            # to the exact currently installed factory output. Never restore it.
++            self.ack=None
++            sys.audit('Root.native.reader.guard',self.nonce)
++            wrapper=self.installed_source_launch()
++            need(self.ack==self.nonce and self.finder in sys.meta_path and sys.getprofile() is self.profile_role
++                 and H.POPEN.__init__ is self.guarded_init and H.POPEN._get_handles is self.guarded_handles
++                 and H.POPEN._execute_child is H.EXECUTE
++                 and (H.subprocess.Popen is H.POPEN or H.subprocess.Popen is wrapper)
++                 and os.open is self.guarded_os_open and os.fdopen is H._FDOPEN,
++                 'installed actual guard source constructor handles FD references')
++            need(not self.blocked and H.subprocess.run==self.run_git,'same actual dispatcher and no prior refusal')
++
++        def metadata_call(self,caller,argv,options):
++            if not hasattr(self,'metadata_request'):return None
++            for module,name,fn,code in self.metadata_functions:
++                actual=getattr(module,name);body=getattr(actual,'__wrapped__',actual)
++                need(actual is fn and body.__code__ is code and body.__globals__ is module.__dict__,
++                     'original bound metadata functions unchanged')
++            call=self.runtime_owner._original_metadata_call()
++            if call is None:return None
++            need(call['caller'] is caller and call['request']==self.metadata_request
++                 and Path(call['assemble'].f_locals['root']).absolute()==self.metadata_root
++                 and argv==call['argv'] and options==call['options'],
++                 'actual direct original metadata owner request and IO')
++            need(H.key(call['assemble'].f_locals['owner'])==H.key(TASK/'r5')
++                 and H.key(call['assemble'].f_locals.get('git',H.GIT))==H.key(H.GIT),
++                 'existing selected preserved owner and fixed original Git')
++            wanted=H.GIT if call['kind']=='metadata-git' else H.PYTHON
++            need(H.key(call['image'])==H.key(wanted),'same existing actual metadata executable')
++            program='Git' if call['kind']=='metadata-git' else 'Python'
++            pin=H.GIT_SHA if program=='Git' else H.PYTHON_SHA
++            need(H.hash_file(wanted)==pin and H.file_identity(wanted)==self.c['program_identities'][program],
++                 'original fixed metadata program before dispatch')
++            return call
++
++        def metadata_constructor(self,args,kwargs):
++            dispatch=self.own_frame('run_git')
++            if dispatch is None or dispatch.f_locals.get('metadata') is None:return None
++            local=dispatch.f_locals
++            need(local['self'] is self and dispatch.f_back is local['caller'],
++                 'known actual metadata dispatcher and its real direct caller')
++            call=self.metadata_call(local['caller'],local['argv'],local['kwargs'])
++            options=call['options']
++            expected={k:options[k] for k in ('stdout','stderr','creationflags')}
++            if options['input'] is not None:expected['stdin']=H.subprocess.PIPE
++            if 'cwd' in options:expected['cwd']=options['cwd']
++            need(list(args)==[call['argv']] and kwargs==expected,
++                 'unchanged original metadata stdlib constructor IO')
++            return dispatch,call,local['metadata_row']
++
++        def close_metadata_child(self,row,completed,error):
++            """Original held identity/OS terminal, pipe and handle close mechanism."""
++            process=row.get('process');record={k:v for k,v in row.items() if k!='process'}
++            record.update(model_calls=0,terminal_known=False,actual_handle_closed=False,terminal_errors=[])
++            try:
++                need(process is not None and row['start_identity_error'] is None,
++                     'actual metadata constructor and held start identity')
++                post=H.held(process);record['post_identity']=post
++                need(post['pid']==row['pid'] and post['held_handle']==row['held_handle']
++                     and post['birth_filetime']==row['birth_filetime'],'same held metadata PID handle birth')
++                if post['image'] is not None:need(H.key(post['image'])==H.key(row['image']),'same available metadata image')
++                kernel=H.ctypes.WinDLL('kernel32',use_last_error=True)
++                query=kernel.GetExitCodeProcess
++                query.argtypes=[H.wintypes.HANDLE,H.ctypes.POINTER(H.wintypes.DWORD)];query.restype=H.wintypes.BOOL
++                value=H.wintypes.DWORD()
++                need(query(H.wintypes.HANDLE(int(process._handle)),H.ctypes.byref(value)), 'actual held metadata exit query')
++                record['raw_GetExitCodeProcess_value']=value.value
++                need(value.value!=259 and process.poll()==value.value,'actual known held metadata terminal')
++                record.update(terminal_known=True,actual_original_held_OS_exit=value.value)
++                record['original_pipes_closed']=all(stream is None or stream.closed
++                    for stream in (process.stdin,process.stdout,process.stderr))
++                record['original_pipe_workers_closed']=all(worker is None or not worker.is_alive()
++                    for worker in (getattr(process,'_stdout_thread',None),getattr(process,'_stderr_thread',None)))
++                need(record['original_pipes_closed'] and record['original_pipe_workers_closed'],
++                     'original metadata stdin stdout stderr and reader threads closed')
++                if completed is not None:need(completed.returncode==value.value,'same original metadata return code')
++                wanted=H.GIT if row['kind']=='metadata-git' else H.PYTHON
++                program='Git' if row['kind']=='metadata-git' else 'Python'
++                pin=H.GIT_SHA if program=='Git' else H.PYTHON_SHA
++                need(H.hash_file(wanted)==pin and H.file_identity(wanted)==self.c['program_identities'][program],
++                     'original fixed metadata program at close')
++            except BaseException as close_error:
++                record['terminal_errors'].append(repr(close_error))
++            finally:
++                if process is not None:
++                    try:process._handle.Close();record['actual_handle_closed']=True
++                    except BaseException as close_error:record['terminal_errors'].append('Close:'+repr(close_error))
++                record['error']=None if error is None else repr(error)
++                if completed is not None:
++                    record.update(stdout_sha256=sha(completed.stdout),stderr_sha256=sha(completed.stderr),
++                                  stdout_bytes=len(completed.stdout),stderr_bytes=len(completed.stderr))
++                self.metadata_records.append(record)
++                H.write_new(self.out/('metadata/%s-terminal.json'%row['number']),H.raw_json(record))
++            need(record['terminal_known'] and record['actual_handle_closed'] and not record['terminal_errors'],
++                 'actual metadata held terminal pipe handle closure')
++
+         def own_frame(self, name):
+             wanted = getattr(PaidGuard, name).__code__
+             frame = sys._getframe(1)
+@@ -69,6 +231,10 @@
+                  'actual existing SourceOnly project owners')
+             need(owner.owners['runtime'] is runtime and owner.owners['workflow'] is workflow,
+                  'same source-bound fiscal/native owners')
++            if hasattr(self,'metadata_request'):
++                need(runtime is self.runtime_owner and common is self.common and owner.root==self.metadata_root
++                     and plan['run_id']==self.metadata_request['run_id'] and plan['planner']==self.metadata_request['planner'],
++                     'same original metadata and fiscal source binding')
+             self.owner=owner;self.plan=workflow.validate_plan(plan)
+             self.runtime_owner,self.workflow,self.journal,self.requests,self.common=runtime,workflow,journal,requests,common
+             self.run_function=common.run_isolated_model;self.run_code=self.run_function.__code__
+@@ -272,8 +438,9 @@
+                     tokens=[token for token,value in module._TRANSPORTS.items() if value is facts]
+                     need(len(tokens)==1 and type(tokens[0]) is module._RunnerTransport and tokens[0].seal is module._SEAL
+                          and facts['closed'] is False and facts['launches']==[record], 'actual original opaque source transport')
++                    source=facts['source'];self.installed_source_launch()
++                    module.verify_candidate_context(self.metadata_root,source)
++                    need(source['run_id']==self.metadata_request['run_id'] and source['planner']==self.metadata_request['planner']
+-                    source=facts['source'];module.verify_candidate_context(self.owner.root,source)
+-                    need(source['run_id']==self.plan['run_id'] and source['planner']==self.plan['planner']
+                          and Path(source._policy['source_root'])==H.SOURCE,'same original source input/run/profile')
+                     logical=record['logical_argv'];actual=record['transport_argv']
+                     need(actual==frame.f_locals['actual'] and logical==frame.f_locals['logical']
+@@ -296,20 +463,20 @@
+             if event=='open' and not isinstance(values[0],int) and os.fspath(values[0])==os.devnull:
+                 need(token and token.get('constructing') and token.get('kind')=='paid-cleanup',
+                      'only original owned cleanup stdio null');return
++            if event in ('subprocess.Popen','_winapi.CreateProcess') and token and token.get('kind') in ('paid-runner','describe-runner','paid-cleanup','metadata-git','metadata-bridge'):
+-            if event in ('subprocess.Popen','_winapi.CreateProcess') and token and token.get('kind') in ('paid-runner','describe-runner','paid-cleanup'):
+                 command=H.subprocess.list2cmdline(token['argv'])
+                 if event=='subprocess.Popen':
+                     need(len(values)==4 and values[0]==token['executable'] and values[1]==command
++                         and values[2]==token.get('cwd') and values[3] is None and not token['popen'],'exact actual consumer Popen audit')
+-                         and values[2] is None and values[3] is None and not token['popen'],'exact actual consumer Popen audit')
+                     token['popen']=True
+                 else:
+                     need(token['popen'] and not token['create'] and len(values)==3 and values[0]==token['executable']
++                         and values[2]==token.get('cwd'),'actual consumer CreateProcess order')
+-                         and values[2] is None,'actual consumer CreateProcess order')
+                     frame=sys._getframe(1)
+                     while frame and frame.f_code is not H.EXECUTE.__code__:frame=frame.f_back
+                     actual={} if frame is None else frame.f_locals
+                     need(frame is not None and actual['self'] is token['process'] and actual['args']==command
++                         and actual['executable']==token['executable'] and actual['cwd']==token.get('cwd') and actual['env'] is None
+-                         and actual['executable']==token['executable'] and actual['cwd'] is None and actual['env'] is None
+                          and actual['creationflags']==token['creationflags'] and actual['shell'] is False,'actual unchanged _execute_child fields')
+                     token['create']=True
+                 return
+@@ -330,27 +497,212 @@
+                      and self.own_frame('cleanup_fact') is not None,'only actual fixed cleanup read');return
+             return super().audit_checked(event,values)
+ 
++        def run_git(self,argv,**kwargs):
++            caller=sys._getframe(1)
++            metadata=self.metadata_call(caller,argv,kwargs)
++            if metadata is not None:
++                self.assert_active()
++                number=len(self.metadata_rows)+1
++                metadata_row={'number':number,'kind':metadata['kind'],'process':None,
++                              'start_identity_error':None}
++                self.metadata_rows.append(metadata_row)
++                completed=None;error=None
++                try:
++                    completed=standard_run(argv,**kwargs)
++                    return completed
++                except BaseException as primary:
++                    error=primary
++                    raise
++                finally:
++                    try:self.close_metadata_child(metadata_row,completed,error)
++                    except BaseException as closing:
++                        if error is None:raise
++                        error.add_note('original_metadata_close_unproven:'+repr(closing))
++            args=(argv,)
+-        def run_git(self,*args,**kwargs):
+             describe=self.describe_frame()
++            if describe is caller:
++                need(args==([*self.common._runner_prefix(H.SOURCE/'scripts/python/codex_isolated_model_runner.py',suppress_bytecode=True),'--describe'],)
+-            if describe is not None:
+-                need(args==([*self.common._runner_prefix(Path(self.owner.source)/'scripts/python/codex_isolated_model_runner.py',suppress_bytecode=True),'--describe'],)
+                      and kwargs=={'text':True,'encoding':'utf-8','errors':'replace','stdout':H.subprocess.PIPE,'stderr':H.subprocess.STDOUT,'timeout':30},
+                      'unchanged original zero-model describe run')
+                 return standard_run(*args,**kwargs)
+             cleanup=self.real_frame(self.common,'_terminate_process_tree',self.cleanup_code) if hasattr(self,'common') else None
++            if cleanup is caller:
+-            if cleanup is not None:
+                 matches=[row for row in self.runner_rows if row['process'] is cleanup.f_locals['proc']]
+                 need(len(matches)==1 and args==(['taskkill','/PID',str(matches[0]['process'].pid),'/T','/F'],)
+                      and kwargs=={'stdout':H.subprocess.DEVNULL,'stderr':H.subprocess.DEVNULL,'timeout':15,'check':False},
+                      'unchanged original owned runner cleanup')
+                 return standard_run(*args,**kwargs)
++            # Copied original inventory mechanism; the direct caller is the
++            # genuine owner, not a forwarding adapter pretending to be it.
++            self.assert_active()
++            caller=sys._getframe(1)
++            owner=self.inventory.git
++            require(caller.f_code is owner.__code__ and caller.f_globals is self.inventory.__dict__
++                    and isinstance(self.inventory.__loader__,H.Loader) and key(caller.f_locals['root'])==key(TARGET),
++                    'original inventory.git caller/root')
++            prefix = ['git','--no-optional-locks','--no-replace-objects','-c','protocol.allow=never',
++                '-c','core.hooksPath=' + os.devnull,'-c','commit.gpgSign=false','-c','tag.gpgSign=false','-C',str(TARGET)]
++            require(type(argv) is list and argv == prefix + list(caller.f_locals['args'])
++                    and set(kwargs) == {'capture_output','timeout','env'} and kwargs['capture_output'] is True
++                    and type(kwargs['timeout']) is int and kwargs['timeout'] == 30
++                    and kwargs['env'] is caller.f_locals['child_env'], 'unchanged original argv/30s/capture_output/env object')
++            self.git_shape(argv[len(prefix):])
++            require(hash_file(GIT) == GIT_SHA and file_identity(GIT) == self.c['program_identities']['Git'], 'fixed Git before dispatch')
++            number = len(self.git_intents) + 1
++            require(number <= 4096, 'finite original Git read calls')
++            stem = 'git/' + str(number) + '-'
++            self.git_intents.append({'number':number, 'argv':argv})
++            write_new(self.out / (stem+'intent.json'), raw_json({'argv':argv, 'executable':str(GIT),
++                'timeout':30, 'capture_output':True, 'environment':kwargs['env'], 'original_optional':caller.f_locals['optional'], 'automatic_retry':False}))
++            process = None; stdout = stderr = b''; error = None; timed_out = False; row = None
++            try:
++                process = POPEN(argv, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=str(TASK),
++                    env=kwargs['env'], executable=str(GIT), close_fds=True, creationflags=subprocess.CREATE_NO_WINDOW)
++                row = self.git_children[-1]
++                try:
++                    stdout, stderr = process.communicate(timeout=30)
++                except subprocess.TimeoutExpired:
++                    timed_out = True
++                    process.kill()  # Same newly-owned-child timeout cleanup as stdlib subprocess.run.
++                    stdout, stderr = process.communicate(timeout=30)
++            except BaseException as exc:
++                error = exc
++                if process is None and self.git_children and self.git_children[-1].get('number') == number:
++                    row = self.git_children[-1]; process = row['process']
++                if process is not None and process.poll() is None:
++                    try:
++                        process.wait(timeout=30)
++                    except BaseException as wait_error:
++                        if row is not None:
++                            row['finite_wait_error'] = type(wait_error).__name__ + ':' + str(wait_error)
++            finally:
++                actual = None; raw_exit_query = None; closed = False
++                post_identity = None; post_identity_error = None; exit_query_error = None
++                handle_close_error = None; handle_close_attempted = False
++                pre_identity_verified = False; terminal_birth_verified = False
++                if process is not None:
++                    try:
++                        try:
++                            pre_identity_verified = bool(row is not None and row['identity_error'] is None
++                                and row['Popen_audit'] and row['CreateProcess_audit'] and row.get('image') is not None
++                                and key(row['image']) == key(GIT) and row.get('birth_filetime',0) > 0)
++                            post_identity = held(process)
++                            require(pre_identity_verified, 'actual original pre-image/audits/birth fixed Git')
++                            require(post_identity['pid'] == row['pid'] and post_identity['held_handle'] == row['held_handle']
++                                    and post_identity['birth_filetime'] == row['birth_filetime'], 'same original Git held handle/PID/birth at terminal')
++                            terminal_birth_verified = True
++                            # Windows can deny image lookup after a known process exit.
++                            # Preserve the actual error; a returned image must still match.
++                            if post_identity['image'] is not None:
++                                require(key(post_identity['image']) == key(GIT), 'available post-image must remain fixed Git')
++                        except BaseException as identity_error:
++                            post_identity_error = type(identity_error).__name__ + ':' + str(identity_error)
++                        try:
++                            kernel = ctypes.WinDLL('kernel32', use_last_error=True)
++                            query = kernel.GetExitCodeProcess
++                            query.argtypes = [wintypes.HANDLE, ctypes.POINTER(wintypes.DWORD)]; query.restype = wintypes.BOOL
++                            value = wintypes.DWORD()
++                            require(query(wintypes.HANDLE(int(process._handle)), ctypes.byref(value)), 'actual Git held exit query')
++                            raw_exit_query = value.value
++                            require(raw_exit_query != 259 and process.poll() == raw_exit_query, 'actual known original held Git terminal')
++                            actual = raw_exit_query
++                        except BaseException as query_error:
++                            exit_query_error = type(query_error).__name__ + ':' + str(query_error)
++                    finally:
++                        # The original owned handle gets a close attempt even when
++                        # post-identity or exit-query validation failed. No PID reopen.
++                        handle_close_attempted = True
++                        try:
++                            process._handle.Close()
++                            closed = True
++                        except BaseException as close_error:
++                            handle_close_error = type(close_error).__name__ + ':' + str(close_error)
++                closing_errors = [value for value in (post_identity_error, exit_query_error, handle_close_error) if value is not None]
++                closing_error = ';'.join(closing_errors) if closing_errors else None
++                write_new(self.out / (stem+'stdout.bin'), stdout)
++                write_new(self.out / (stem+'stderr.bin'), stderr)
++                evidence = {k:v for k,v in (row or {}).items() if k != 'process'}
++                evidence.update(number=number, argv=argv, actual_original_held_OS_exit=actual,
++                    raw_GetExitCodeProcess_value=raw_exit_query, terminal_known=actual is not None,
++                    python_returncode=None if process is None else process.returncode, timeout=timed_out,
++                    error=None if error is None else type(error).__name__ + ':' + str(error),
++                    post_identity=post_identity, post_identity_error=post_identity_error,
++                    pre_identity_verified=pre_identity_verified, terminal_birth_verified=terminal_birth_verified,
++                    exit_query_error=exit_query_error, handle_close_attempted=handle_close_attempted, handle_close_error=handle_close_error,
++                    closing_error=closing_error, actual_handle_closed=closed,
++                    stdout_sha256=digest(stdout), stderr_sha256=digest(stderr), stdout_bytes=len(stdout), stderr_bytes=len(stderr))
++                write_new(self.out / (stem+'terminal.json'), raw_json(evidence))
++                self.git_records.append(evidence)
++            require(row is not None and row['identity_error'] is None and row['Popen_audit'] and row['CreateProcess_audit']
++                    and pre_identity_verified and terminal_birth_verified and actual is not None
++                    and closing_error is None and closed and hash_file(GIT) == GIT_SHA
++                    and file_identity(GIT) == self.c['program_identities']['Git'], 'actual held Git audits/identity/program close')
++            if error is not None:
++                raise error
++            if timed_out:
++                raise subprocess.TimeoutExpired(argv, 30, stdout, stderr)
++            self.observe_git_output(argv[len(prefix):], stdout, actual)
++            return subprocess.CompletedProcess(argv, actual, stdout, stderr)
+-            return super().run_git(*args,**kwargs)
+ 
+         def install(self):
+             H.Guard.install(self)
+             original_initialize=self.guarded_init
+             guard=self
+             def initialize(process,*args,**kwargs):
++                metadata=guard.metadata_constructor(args,kwargs)
++                direct=sys._getframe(1)
++                inventory=(direct.f_code is PaidGuard.run_git.__code__ and direct.f_globals is globals()
++                           and direct.f_locals.get('self') is guard and direct.f_locals.get('metadata') is None)
++                if metadata is not None:
++                    dispatch,call,row=metadata
++                    need(guard.token is None,'one original metadata constructor')
++                    token={'process':process,'argv':args[0],'kind':call['kind'],'executable':None,
++                           'cwd':kwargs.get('cwd'),'creationflags':H.subprocess.CREATE_NO_WINDOW,
++                           'constructing':True,'popen':False,'create':False,
++                           'fresh_pipe_handles':set(),'used_pipe_handles':set()}
++                    guard.token=token;row['process']=process
++                    try:return H.INIT(process,*args,**kwargs)
++                    finally:
++                        token['constructing']=False;guard.token=None
++                        row.update(Popen_audit=token['popen'],CreateProcess_audit=token['create'])
++                        if getattr(process,'_child_created',False) and getattr(process,'_handle',None) is not None:
++                            try:
++                                row.update(H.held(process))
++                                wanted=H.GIT if call['kind']=='metadata-git' else H.PYTHON
++                                need(row['birth_filetime']>0 and row['image'] is not None
++                                     and H.key(row['image'])==H.key(wanted) and token['popen'] and token['create'],
++                                     'actual metadata held identity and dual audits')
++                            except BaseException as error:
++                                # Match the original H Git constructor: retain
++                                # the identity failure but let original run own
++                                # communicate/wait/timeout cleanup before close.
++                                row['start_identity_error']=repr(error)
++                if inventory:
++                    need(guard.token is None and len(args)==1 and args[0]==guard.git_intents[-1]['argv']
++                         and set(kwargs)=={'stdout','stderr','cwd','env','executable','close_fds','creationflags'}
++                         and kwargs['stdout']==kwargs['stderr']==H.subprocess.PIPE and kwargs['cwd']==str(TASK)
++                         and kwargs['executable']==str(H.GIT) and kwargs['close_fds'] is True
++                         and kwargs['creationflags']==H.subprocess.CREATE_NO_WINDOW,
++                         'exact original inventory query capture constructor')
++                    token={'process':process,'argv':args[0],'env':kwargs['env'],'constructing':True,'kind':'git',
++                           'popen':False,'create':False,'fresh_pipe_handles':set(),'used_pipe_handles':set()}
++                    guard.token=token
++                    try:return H.INIT(process,*args,**kwargs)
++                    finally:
++                        token['constructing']=False;guard.token=None
++                        if getattr(process,'_child_created',False) and getattr(process,'_handle',None) is not None:
++                            row={'number':guard.git_intents[-1]['number'],'process':process,'pid':process.pid,
++                                 'held_handle':int(process._handle),'Popen_audit':token['popen'],
++                                 'CreateProcess_audit':token['create'],'identity_error':None}
++                            guard.git_children.append(row)
++                            try:
++                                row.update(H.held(process))
++                                need(row['birth_filetime']>0 and row['image'] is not None
++                                     and H.key(row['image'])==H.key(H.GIT) and token['popen'] and token['create'],
++                                     'original inventory dual audits held birth image')
++                            except BaseException as error:row['identity_error']=type(error).__name__+':'+str(error)
++                            H.write_new(guard.out/('git/%s-started.json'%row['number']),
++                                        H.raw_json({k:v for k,v in row.items() if k!='process'}))
+                 transport=guard.source_transport()
+                 cleanup=guard.real_frame(guard.common,'_terminate_process_tree',guard.cleanup_code) if hasattr(guard,'common') else None
+                 if transport is None and cleanup is None:return original_initialize(process,*args,**kwargs)
+@@ -371,7 +723,7 @@
+                         kind='paid-runner';flags=H.subprocess.CREATE_NEW_PROCESS_GROUP;held_frame=run
+                     else:
+                         need(describe is not None and logical==[*guard.common._runner_prefix(
++                            H.SOURCE/'scripts/python/codex_isolated_model_runner.py',suppress_bytecode=True),'--describe'],
+-                            Path(guard.owner.source)/'scripts/python/codex_isolated_model_runner.py',suppress_bytecode=True),'--describe'],
+                             'actual original zero-model describe source')
+                         need(kwargs=={'text':True,'encoding':'utf-8','errors':'replace',
+                                       'stdout':H.subprocess.PIPE,'stderr':H.subprocess.STDOUT},'original describe IO')

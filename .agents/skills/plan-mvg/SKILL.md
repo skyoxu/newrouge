@@ -125,3 +125,16 @@ Apply also journals the approved trace and manifest together. Re-running the sam
 Each fixed proposal has a hash-bound `semantic-review-publication-<proposal-sha256>.json` checkpoint containing its verdict and execution receipt. Re-run review to finish interrupted publication without another invocation. Before that checkpoint exists, require the completed attempt's original output hash, runner/analysis identities and receipt to match before reuse. Unknown target edits or corrupt checkpoints block recovery. Completed records preserve earlier blocked verdicts when a repaired proposal is reviewed within the same ten-attempt limit. Finish any pending publication against its original proposal before revision. Drafts and invalid semantic accounting never gain formal approval by replaying publication.
 
 Generation execution has three admitted candidate slots, with fresh lineage contexts and a separate three-repair budget for each hard issue. A candidate's sections run in its own ephemeral workspace using the selected backend's environment-default model configuration; Windows timeout cleanup terminates the complete child process tree. Retired lineages are replaced from immutable prepared inputs and never share retired prompts, findings, proposals, or segments. Selection has a bounded transport/schema budget and never receives blocked candidates. The independent semantic Review verifies the selected candidate's hash-bound admission evidence; it cannot replace the winner. Identity/transport failures remain execution failures and do not create semantic findings or regenerate Capability.
+
+## Explicit formal B planning context boundary
+
+The existing A workflow above remains its own route. For explicit B-route
+operation inspection or published plan/revision context, use
+`py -3 scripts/python/dev_cli.py b-route-adoption --stage inspect|read --operation-id <original-id> --context`.
+See `docs/workflows/b-route-adoption.md` and `b-route-native-planning-status.md`.
+Formal no-Task 3B depends on its original qualified source/native/review owners;
+this link does not require inventing a Task, authorize a model call, or activate
+B by default. Completed-unit reuse/epoch/reopen is unsupported through this context observation entrypoint.
+A published prefix and retained counts never establish global planning completion,
+Task readiness or runtime acceptance. Keep original IDs/resume_ref and blocked
+reasons; do not replace missing proof with a Knowledge summary or a fresh run.
