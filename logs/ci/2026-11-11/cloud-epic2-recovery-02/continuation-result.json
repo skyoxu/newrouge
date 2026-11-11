@@ -1,0 +1,47 @@
+{
+  "schema": "newrouge.cloud-epic2-followup.v1",
+  "updated_utc": "2026-11-11T16:57:54Z",
+  "baseline_checkpoint": "dcf6b34889d76a4d8702de406b5641fd2ee82c67",
+  "current_branch": "build/cloud-epic2-recovery-20261111",
+  "product_source_changed": false,
+  "test_fixture_change": "Five negative rule controls receive explicitly synthetic initial JSON files; only Windows publication setup is mocked. Production rule/epoch/historical checks remain live.",
+  "new_focused_tests": 7,
+  "new_focused_passes": 7,
+  "new_skips": 0,
+  "new_model_turns": 0,
+  "new_model_thread_starts": 0,
+  "new_provider_model_calls": 0,
+  "budget_releases": 0,
+  "remote_writes": 0,
+  "main_merge": false,
+  "old_results_preserved": true,
+  "old_windows_initialization_errors_requalified": false,
+  "formal_story28_29_210_acceptance": false,
+  "runtime_metadata_status": "Official metadata launch exits 0 with supported separate sqlite/log directories under reviewed host execution; actual models refresh HTTP 401, no applicable context-window value and no models cache.",
+  "existing_login_status_is_not_remote_authentication": "Local CLI reports ChatGPT login; remote metadata 401 demonstrates it is not sufficient for this subprocess.",
+  "credentials_transfer_needed": false,
+  "private_transfer_manifest_tracked": false,
+  "tokenizer_403_retried_or_bypassed": false,
+  "hard_checks": "Existing py-launcher failure retained; no full hard-check rerun. The supported BR_PYTHON override applies to the B runtime gate, not all hard-gate legacy commands.",
+  "scope_limits": [
+    "Synthetic initial storage is not Windows atomic-publication verification.",
+    "Two actual local recovery storage/CLI tests use explicitly synthetic upstream admission; they do not replay private operations.",
+    "Six complete coordinator tests still require production Windows initialization; not launched."
+  ],
+  "source_reuse": "Required original R52 reader raw hash already matches five fetched public snapshots; no transfer of that reader is needed.",
+  "workflow_raw_unchanged": true,
+  "checks": [
+    {
+      "label": "story28-public-recovery-02",
+      "tests_run": 2,
+      "passed": 2,
+      "successful": true
+    },
+    {
+      "label": "story29-owner-rules-01",
+      "tests_run": 5,
+      "passed": 5,
+      "successful": true
+    }
+  ]
+}

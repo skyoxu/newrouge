@@ -465,10 +465,20 @@ class CompletedCoordinatorTests(unittest.TestCase):
 
 
 class FollowupFrozenOwnerTests(unittest.TestCase):
-    """Narrow negative owner controls; no fabricated old-source success seam."""
+    """Negative owner rules over synthetic files, without native publication.
+
+    The production Windows initializer has its own IO contract. This fixture
+    supplies initial JSON only; historical proof/rule/epoch checks stay live.
+    """
     setUp = CompletedCoordinatorTests.setUp
     prepare = CompletedCoordinatorTests.prepare
-    create = fixtures.RuntimeTests.create
+
+    def create(self, *args, **kwargs):
+        def initial_data(_root, run_dir, state, frozen):
+            atomic_json(run_dir / "analysis-input/b-route-prepared.json", frozen)
+            atomic_json(run_dir / "run.json", state)
+        with patch.object(runtime, "publish_initial_run", side_effect=initial_data):
+            return fixtures.RuntimeTests.create(self, *args, **kwargs)
 
     def test_resigned_runtime_rules_do_not_authorize_historical_read_or_prefix_or_proof(self):
         run, state = self.create()

@@ -1,0 +1,13 @@
+{
+  "label": "story28-public-recovery-02",
+  "tests_run": 2,
+  "passed": 2,
+  "failures": [],
+  "errors": [],
+  "skipped": [],
+  "successful": true,
+  "elapsed_seconds": 11.454904747,
+  "finished_utc": "2026-11-11T16:54:36.971239+00:00",
+  "new_provider_calls": 0,
+  "qualification": "Focused offline unit/CLI checks only; no provider, Windows durability or formal Story acceptance claim."
+}

@@ -15,3 +15,15 @@ The public snapshots share cb55bb592a5027c1f39768ca08b1c7e49346b3d9; they do not
 The tokenizer package (tiktoken 0.14.0) was installed in `/workspace/newrouge-tools/python-env`; both official encoding downloads were denied by the enforced network policy for `openaipublic.blob.core.windows.net`. No alternative route or copied cache was used. Focused tests used the existing base Python and do not claim real encoding qualification.
 
 `workflow.md` has identical raw bytes to the r62 Git blob, but Git reports CRLF normalization noise under its current attributes. It is deliberately excluded from the integration checkpoint. No status-suppression flag is applied.
+
+## Follow-up cloud recovery
+
+- [x] Reconfirm dcf6b348 checkpoint, original result files and absence of active project processes.
+- [x] Check supported runtime configuration. CODEX_SQLITE_HOME and log_dir isolate noncredential state; reviewed normal-host metadata startup exits 0. Remote models refresh returns HTTP 401, so local login status is not usable-authentication proof. No model thread or turn, credential transfer or encoding-403 retry occurred.
+- [x] Remove an unnecessary Windows IO setup dependency from five pure negative rule tests using explicitly synthetic initial JSON only. Five affected methods pass; production Windows publication is unmodified and the original errors are retained.
+- [x] Two focused actual local recovery/CLI IO checks pass with synthetic upstream admission. These are not original private-operation or Windows qualification.
+- [x] Prepare a local-only staged private transfer checklist with file purposes, sensitivity and authentication alternatives; do not track or publish the list or original private materials. Reuse the original R52 reader bytes already present in migrated snapshots.
+- [blocked] Original operation replay still needs the actual referenced private operation/proof/current-target closure and a supported Windows reader. Paid segmentation still needs actual existing fiscal liabilities and legitimate live owner/lease. These conditions do not block independent source work.
+- [blocked] Full hard checks retain the existing py-launcher startup failure; no full rerun. No global launcher shim or platform rewrite is necessary for the focused checks completed above.
+
+Follow-up evidence: `logs/ci/2026-11-11/cloud-epic2-recovery-02/REPORT.md` and `continuation-result.json`. Seven new focused checks pass with no skips or provider-model calls; original attempts retain their own scope.
