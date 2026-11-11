@@ -827,10 +827,14 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_cap.add_argument("--stage", required=True, choices=[
         "prepare", "generate", "review", "preview-alignment", "align",
-        "apply", "validate-candidate", "status",
+        "apply", "validate-candidate", "verify-selection", "status",
     ])
     p_cap.add_argument("--repo-root", default=str(Path(__file__).resolve().parents[2]))
     p_cap.add_argument("--run-id", required=True)
+    p_cap.add_argument("--input-stage", choices=("legacy", "3b"), default="legacy")
+    p_cap.add_argument("--planning-contract", default="")
+    p_cap.add_argument("--prepared-ref", default="")
+    p_cap.add_argument("--planning-profile", default="")
     p_cap.add_argument("--task-id", action="append", default=[])
     p_cap.add_argument("--allow-unready-draft", action="store_true")
     p_cap.add_argument("--source-manifest", default="logs/ci/task-generation/source-manifest.v1.json")
@@ -858,11 +862,16 @@ def build_parser() -> argparse.ArgumentParser:
     p_mvg_plan.add_argument(
         "--stage",
         required=True,
-        choices=["prepare", "generate", "review", "validate", "apply", "rebind-handoff", "status",
+        choices=["prepare", "generate", "review", "validate", "verify-selection", "apply", "rebind-handoff", "status",
                  "audit", "reopen-plan", "reopen"],
     )
     p_mvg_plan.add_argument("--repo-root", default=".")
     p_mvg_plan.add_argument("--run-id", required=True)
+    p_mvg_plan.add_argument("--input-stage", choices=("legacy", "3b"), default="legacy")
+    p_mvg_plan.add_argument("--planning-contract", default="")
+    p_mvg_plan.add_argument("--prepared-ref", default="")
+    p_mvg_plan.add_argument("--planning-profile", default="")
+    p_mvg_plan.add_argument("--candidate", default="")
     p_mvg_plan.add_argument("--capabilities", default="")
     p_mvg_plan.add_argument("--manifest", default="")
     p_mvg_plan.add_argument("--evidence-ref", action="append", default=[])

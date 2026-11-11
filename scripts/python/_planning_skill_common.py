@@ -548,6 +548,92 @@ def validate_runner_description(payload: dict[str, Any]) -> None:
         raise ValueError("formal Capability generation requires a no-tools model session")
 
 
+def _cancel_owned_pipe_io(workers: list[threading.Thread]) -> None:
+    """Cancel blocking Windows pipe IO only on this process's recorded workers."""
+    if os.name != "nt":
+        return
+    import ctypes
+    from ctypes import wintypes
+    kernel = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel.OpenThread.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
+    kernel.OpenThread.restype = wintypes.HANDLE
+    kernel.GetProcessIdOfThread.argtypes = [wintypes.HANDLE]
+    kernel.GetProcessIdOfThread.restype = wintypes.DWORD
+    kernel.CancelSynchronousIo.argtypes = [wintypes.HANDLE]
+    kernel.CancelSynchronousIo.restype = wintypes.BOOL
+    kernel.CloseHandle.argtypes = [wintypes.HANDLE]
+    kernel.CloseHandle.restype = wintypes.BOOL
+    for worker in workers:
+        if not worker.is_alive() or worker.native_id is None:
+            continue
+        # THREAD_TERMINATE permits IO cancellation, not thread termination here.
+        handle = kernel.OpenThread(0x0001 | 0x0800, False, worker.native_id)
+        if not handle:
+            continue
+        try:
+            if worker.is_alive() and kernel.GetProcessIdOfThread(handle) == os.getpid():
+                kernel.CancelSynchronousIo(handle)
+        finally:
+            kernel.CloseHandle(handle)
+
+
+class _WindowsRunnerOutput:
+    """Own one merged stdout reader so timeout cleanup never closes its active IO."""
+    def __init__(self, proc):
+        self.proc = proc
+        self.output = None
+        self.error = None
+        self.parts = []
+        self.done = threading.Event()
+        self.worker = threading.Thread(target=self._read, daemon=True, name="planning-runner-output")
+        self.worker.start()
+
+    def _read(self):
+        text_mode = getattr(self.proc.stdout, "encoding", None) is not None
+        stream = self.proc.stdout.buffer if text_mode else self.proc.stdout
+        try:
+            # read1 returns each available successful OS read; a later cancelled
+            # read must not discard bytes already delivered before the timeout.
+            while True:
+                part = stream.read1(65536)
+                if not part:
+                    break
+                self.parts.append(part)
+        except (OSError, ValueError) as error:
+            self.error = error
+        finally:
+            try:
+                raw = b"".join(self.parts)
+                self.output = (raw.decode(self.proc.stdout.encoding, errors=self.proc.stdout.errors)
+                    .replace("\r\n", "\n").replace("\r", "\n")) if text_mode else raw
+            finally:
+                try:
+                    self.proc.stdout.close()
+                finally:
+                    self.done.set()
+
+    def communicate(self, timeout):
+        deadline = time.monotonic() + timeout
+        if not self.done.wait(timeout):
+            raise subprocess.TimeoutExpired(self.proc.args, timeout)
+        if self.error is not None:
+            raise self.error
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise subprocess.TimeoutExpired(self.proc.args, timeout, output=self.output)
+        self.proc.wait(timeout=remaining)
+        return self.output, None
+
+    def cancel(self):
+        _cancel_owned_pipe_io([self.worker])
+        self.worker.join(timeout=0.5)
+        if self.worker.is_alive():
+            # Never close the buffered stream from another thread while read holds it.
+            raise RuntimeError("isolated model runner pipe cleanup incomplete")
+        self.proc.wait(timeout=0.5)
+        return self.output
+
+
 def _terminate_process_tree(proc: subprocess.Popen[str]) -> None:
     if proc.poll() is not None:
         return
@@ -633,20 +719,32 @@ def run_isolated_model(
                 "active_elapsed_seconds": time.monotonic() - started,
                 "stdout_base64": base64.b64encode(raw).decode("ascii"),
                 "stdout": raw.decode("utf-8", errors="replace")})
+    capture = _WindowsRunnerOutput(proc) if os.name == "nt" else None
     try:
         effective_timeout = (max(timeout_sec + max(0, synthesis_timeout_sec or 0) + 30, 60)
                              if wall_timeout_sec is None else max(1, wall_timeout_sec))
-        stdout, _stderr = proc.communicate(timeout=effective_timeout)
+        stdout, _stderr = (capture.communicate(effective_timeout) if capture is not None else
+                           proc.communicate(timeout=effective_timeout))
     except subprocess.TimeoutExpired as exc:
         _terminate_process_tree(proc)
-        stdout, _stderr = proc.communicate()
+        if capture is not None:
+            stdout = capture.cancel()
+            if stdout is None:
+                stdout = b"" if execution_log is not None else ""
+        else:
+            stdout, _stderr = proc.communicate(timeout=15)
         persist_execution(stdout, "timeout")
         raise TimeoutError(
             f"isolated model runner timed out after {effective_timeout}s: {stdout[-2000:]}"
         ) from exc
     except BaseException:
         _terminate_process_tree(proc)
-        stdout, _stderr = proc.communicate(timeout=15)
+        if capture is not None:
+            stdout = capture.cancel()
+            if stdout is None:
+                stdout = b"" if execution_log is not None else ""
+        else:
+            stdout, _stderr = proc.communicate(timeout=15)
         persist_execution(stdout, "interrupted")
         raise
     persist_execution(stdout, "completed" if proc.returncode == 0 else "failed")

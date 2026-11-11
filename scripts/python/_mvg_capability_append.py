@@ -137,8 +137,12 @@ def run_capability_append(workspace: Path, *, scopes: list[dict[str, Any]], seed
                           identity: str, propose: Any, machine: Any, semantic: Any,
                           final_machine: Any, invocation_limit: int = 64,
                           before_call: Any = None, checkpoint: Any = None,
-                          repair_check: Any = None) -> dict[str, Any]:
+                          repair_check: Any = None, merge: Any = None, preserve: Any = None,
+                          replacement: Any = None, fail_execution_closed: bool = False,
+                          resume_propose_attempt: Any = None) -> dict[str, Any]:
     """Admit each slice; retry one issue three times, then restart that slice."""
+    merge = merge or merge_append
+    preserve = preserve or preservation_errors
     workspace.mkdir(parents=True, exist_ok=True)
     path = workspace / "append-ledger.json"
     binding = canonical_sha({"identity": identity, "scopes": scopes, "seed": seed})
@@ -178,7 +182,7 @@ def run_capability_append(workspace: Path, *, scopes: list[dict[str, Any]], seed
             raise ValueError("Capability append accepted order changed")
         if record.get("base_sha256") != canonical_sha(accepted):
             raise ValueError("Capability append accepted base changed")
-        rebuilt = merge_append(accepted, record["delta"], scopes[index])
+        rebuilt = merge(accepted, record["delta"], scopes[index])
         if record.get("proposal_sha256") != canonical_sha(rebuilt):
             raise ValueError("Capability append accepted proposal changed")
         if record.get("record_sha256") != canonical_sha({key: value for key, value in record.items() if key != "record_sha256"}):
@@ -205,7 +209,23 @@ def run_capability_append(workspace: Path, *, scopes: list[dict[str, Any]], seed
                 issue = current["issue"]
                 if issue:
                     key = issue_key(issue)
-                    if current["issue_attempts"].get(key, 0) >= 3:
+                    resumed = False
+                    if resume_propose_attempt is not None:
+                        resumed = resume_propose_attempt(deepcopy(current), deepcopy(ledger))
+                        if type(resumed) is not bool:
+                            raise ValueError("append_resume_propose_attempt_boolean_required")
+                    if resumed:
+                        # The typed owner durably claims only a partially executed
+                        # attempt already counted here. No counter is refunded.
+                        pass
+                    elif current["issue_attempts"].get(key, 0) >= 3:
+                        if replacement is not None:
+                            approval = replacement(context=current["context"] + 1, issue=key)
+                            if approval is None:
+                                ledger.update(status="retired", errors=[{"code": "append_replacement_rounds_exhausted"}])
+                                persist()
+                                return ledger
+                            ledger.setdefault("replacement_reservations", []).append(approval)
                         ledger["restarts"].append({"capability_id": scope["capability_id"],
                             "context": current["context"], "issue_id": key, "repair_attempts": 3})
                         # Only the immutable scope and accepted predecessors survive.
@@ -228,8 +248,8 @@ def run_capability_append(workspace: Path, *, scopes: list[dict[str, Any]], seed
                     else:
                         delta = propose(scope, deepcopy(ledger["accepted"]), deepcopy(current["proposal"]),
                                         deepcopy(issue), current["context"], call)
-                        proposal = merge_append(ledger["accepted"], delta, scope)
-                    issues = preservation_errors(ledger["accepted"], proposal)
+                        proposal = merge(ledger["accepted"], delta, scope)
+                    issues = preserve(ledger["accepted"], proposal)
                     issues += machine(scope, ledger["accepted"], proposal)
                     if any(str(row.get('code', '')).startswith('requirement_source_gap:') for row in issues):
                         ledger.update(status='blocked', errors=deepcopy(issues))
@@ -238,7 +258,7 @@ def run_capability_append(workspace: Path, *, scopes: list[dict[str, Any]], seed
                         return ledger
                     rejection = []
                     if issue and current["proposal"] is not None and not review_only:
-                        old_issues = preservation_errors(ledger["accepted"], current["proposal"])
+                        old_issues = preserve(ledger["accepted"], current["proposal"])
                         old_issues += machine(scope, ledger["accepted"], current["proposal"])
                         if {issue_key(row) for row in issues} - {issue_key(row) for row in old_issues}:
                             rejection.append("repair_new_machine_issue")
@@ -269,6 +289,11 @@ def run_capability_append(workspace: Path, *, scopes: list[dict[str, Any]], seed
                     if (any(code in str(exc) for code in ("runner_input_too_large", "runner_context_budget_exceeded"))
                             or before_invocations == ledger["total_invocations"]):
                         ledger.update(status="blocked", errors=[{"code": "append_input_preparation_failed", "detail": str(exc)}])
+                        persist()
+                        return ledger
+                    if fail_execution_closed:
+                        ledger.update(status="blocked", errors=[{"code": "append_execution_failure", "stage": stage,
+                            "error_type": classify_review_error(exc), "detail": str(exc)[:2000]}])
                         persist()
                         return ledger
                     execution_issue = {"code": "append_semantic_execution_invalid" if stage == "semantic" else "append_execution_or_output_invalid",

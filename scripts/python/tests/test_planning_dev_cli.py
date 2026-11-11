@@ -20,6 +20,44 @@ from dev_cli_builders import build_plan_capabilities_cmd, build_plan_mvg_cmd
 
 
 class PlanningDevCliTests(unittest.TestCase):
+    def test_3b_both_builders_forward_one_contract(self):
+        for command, builder, script in (("plan-capabilities", build_plan_capabilities_cmd, "plan_capabilities.py"),
+                                         ("plan-mvg", build_plan_mvg_cmd, "plan_mvg.py")):
+            args = dev_cli.build_parser().parse_args([command, "--stage", "prepare", "--run-id", "r3b",
+                "--input-stage", "3b", "--planning-contract", "contracts/planning.json"])
+            cmd = builder(args)
+            self.assertEqual(sys.executable, cmd[0])
+            self.assertEqual(PYTHON / script, Path(cmd[1]))
+            self.assertEqual(cmd.count("--planning-contract"), 1)
+            self.assertEqual(cmd[cmd.index("--planning-contract") + 1], "contracts/planning.json")
+            self.assertEqual(cmd[cmd.index("--input-stage") + 1], "3b")
+
+    def test_3b_stage_and_contract_cannot_be_silently_ignored(self):
+        for command, builder in (("plan-capabilities", build_plan_capabilities_cmd), ("plan-mvg", build_plan_mvg_cmd)):
+            for stage, extras in (("generate", ["--input-stage", "3b", "--planning-contract", "c.json"]),
+                                  ("prepare", ["--planning-contract", "c.json"]),
+                                  ("prepare", ["--input-stage", "3b"])):
+                args = dev_cli.build_parser().parse_args([command, "--stage", stage, "--run-id", "r3b", *extras])
+                with self.assertRaises(ValueError):
+                    builder(args)
+
+    def test_both_cli_shells_3b_fail_closed_without_legacy_inputs(self):
+        # These are CLI-shell Python processes, never model-runner processes.
+        with tempfile.TemporaryDirectory() as directory:
+            for script in ("plan_capabilities.py", "plan_mvg.py", "dev_cli.py"):
+                commands = ("plan-capabilities", "plan-mvg") if script == "dev_cli.py" else (None,)
+                for command in commands:
+                    args = ([command, "--stage", "prepare"] if command else ["prepare"])
+                    process = subprocess.run([sys.executable, str(PYTHON / script),
+                        *([] if command else ["--repo-root", directory]), *args,
+                        *(["--repo-root", directory] if command else []), "--run-id", "shell-probe",
+                        "--input-stage", "3b", "--planning-contract", "missing-contract.json"],
+                        cwd=directory, capture_output=True, text=True, timeout=30)
+                    self.assertEqual(process.returncode, 1, process.stdout + process.stderr)
+                    self.assertIn('"input_stage": "3b"', process.stdout)
+                    self.assertNotIn("capabilities and --manifest", process.stdout)
+                    self.assertFalse(list(Path(directory).rglob("run.json")))
+
     def test_absolute_entrypoint_works_from_an_unrelated_directory(self):
         with tempfile.TemporaryDirectory() as directory:
             proc = subprocess.run([sys.executable, str(PYTHON / 'dev_cli.py'),

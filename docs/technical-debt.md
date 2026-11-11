@@ -15,6 +15,11 @@ This file is updated by scripts/sc/run_review_pipeline.py.
 <!-- BEGIN AUTO:RUN_REVIEW_PIPELINE_TECHNICAL_DEBT -->
 <!-- END AUTO:RUN_REVIEW_PIPELINE_TECHNICAL_DEBT -->
 
+## Story 2.3 基线 API 测试夹具维护（2026-11-05，P2，待处理）
+
+- `scripts/python/tests/test_capability_task_evidence.py::TaskEvidenceAdmissionTests.test_api_dispatch_uses_encoded_task_evidence_and_original_output_ids` 的 `_response` stub 仅返回 `id/output_text/status`，缺少现有 `_model_response_identity.response_identity` 必需的 `object/model/output`，因此在预期第二次 Task-evidence dispatch 探针之前被拒。应更新明确的单元测试 stub，使其模拟完整响应元数据，同时保留任务证据与原 ID 断言；这不构成真实模型执行或规划准入证据。
+- 对照：Story 2.3 最终当前源码与独立 detached 基线 `2d3d3ba7e81dd21ca559614f599e8c633e65945b` 均复现同一 `actual_model_evidence_invalid:response_not_completed`，实际首先缺少的是 `object="response"`。证据在 `logs/ci/2026-11-05/story23-tests/story23-stable-environment-07.{json,log}` 与 `story23-baseline-comparison-08.{json,log}`。当前源码未修改该测试或响应校验，不宣称旧回归全绿。
+
 ## MVG 工作流夹具维护（2026-10-14，P2，已关闭）
 
 - 修复 `scripts/python/tests/test_project_health_planning.py` 中两个既有生产消费者夹具：`test_capability_then_mvg_use_actual_planner_stages_without_mutating_main`、`test_mvg_consumes_capabilities_already_committed_in_main`。夹具 planned test 输出不满足当前 append schema，导致候选零准入。该对象已有 `test_refs`，不能用缺字段解释；需按实际 schema 分支修正夹具并复验完整消费者链，禁止放宽生产准入门槛。
