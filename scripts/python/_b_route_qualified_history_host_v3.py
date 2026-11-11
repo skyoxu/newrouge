@@ -108,10 +108,17 @@ def authenticate(root, operation_id):
     authority_path = directory / 'qualified-historical-owner-authority.v2.json'
     authority_raw = _safe(authority_path).read_bytes()
     authority = codec.strict_json_loads(authority_raw)
-    need(type(authority) is dict and authority.get('schema_version') == 'newrouge.b-route-qualified-historical-owner-authority.v2'
+    closed = type(authority) is dict and authority.get('schema_version') == 'newrouge.b-route-qualified-historical-owner-authority.v2' \
          and set(authority) == {'schema_version','original_owner_root','source_schema_pins','python_version',
              'python_executable','python_executable_raw_digest','scope','dependency_authority','producer_reader'}
-         and type(authority.get('original_owner_root')) is str
+    installation_fields = ('original_owner_root', 'source_schema_pins', 'python_version',
+        'python_executable', 'python_executable_raw_digest', 'producer_reader')
+    if closed and all(authority[name] is None for name in installation_fields):
+        raise codec.CodecError(codec.Diagnostic(codec.ReasonCode.DEPENDENCY_UNAVAILABLE,
+            codec.Stage.BUNDLE, operation_id, 'installed original historical owner authority',
+            {'missing_installation_fields': sorted(installation_fields), 'historical_evidence_checked': False},
+            str(authority_path)))
+    need(closed and type(authority.get('original_owner_root')) is str
          and type(authority.get('source_schema_pins')) is dict and bool(authority['source_schema_pins'])
          and all(type(authority.get(k)) is str and authority[k] for k in
                  ('python_version','python_executable','python_executable_raw_digest')),

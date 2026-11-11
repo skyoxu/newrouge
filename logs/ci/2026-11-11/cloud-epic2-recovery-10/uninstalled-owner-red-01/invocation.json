@@ -1,0 +1,14 @@
+{
+  "label": "uninstalled-owner-red-01",
+  "started_utc": "2026-11-11T19:46:09.887194+00:00",
+  "selectors": [
+    "test_b_route_qualified_historical_v3.HistoricalV3OwnerInstallationTests.test_uninstalled_template_reports_dependency_without_releasing_reader"
+  ],
+  "baseline_commit": "bc79557eec16fb1a379595f1b03b29046e5c3be1",
+  "changed_files_sha256": {
+    "execution-plans/2026-11-11-cloud-epic2-recovery.md": "07e5efcc0d6d0f2fccbaddcc2093d79fe9fe5c94b4725d799cedf262c0d37e7b",
+    "scripts/python/tests/test_b_route_qualified_historical_v3.py": "a7e6213c99ee78639ede74dec161b6b1f0020264704127a3a27223483aee1c3c",
+    "workflow.md": "0d65a6edd5893707db866dd3f4d006e1cc48cb1f9f695d496f62c25401b50cfb"
+  },
+  "qualification": "Focused offline unit/CLI checks only; no provider, Windows durability or formal Story acceptance claim."
+}

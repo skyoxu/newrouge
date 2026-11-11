@@ -1,0 +1,18 @@
+test_uninstalled_template_reports_dependency_without_releasing_reader (test_b_route_qualified_historical_v3.HistoricalV3OwnerInstallationTests.test_uninstalled_template_reports_dependency_without_releasing_reader) ... ERROR
+
+======================================================================
+ERROR: test_uninstalled_template_reports_dependency_without_releasing_reader (test_b_route_qualified_historical_v3.HistoricalV3OwnerInstallationTests.test_uninstalled_template_reports_dependency_without_releasing_reader)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/newrouge/scripts/python/tests/test_b_route_qualified_historical_v3.py", line 40, in test_uninstalled_template_reports_dependency_without_releasing_reader
+    host.authenticate(Path('DATA-ONLY-NOT-READ'), 'DATA-ONLY')
+  File "/workspace/newrouge/scripts/python/_b_route_qualified_history_host_v3.py", line 111, in authenticate
+    need(type(authority) is dict and authority.get('schema_version') == 'newrouge.b-route-qualified-historical-owner-authority.v2'
+  File "/workspace/newrouge/scripts/python/_b_route_qualified_history_host_v3.py", line 25, in need
+    raise ValueError(expected)
+ValueError: Root must install actual FINAL original owner authority; null is not an observed or approved epoch
+
+----------------------------------------------------------------------
+Ran 1 test in 0.001s
+
+FAILED (errors=1)

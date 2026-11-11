@@ -1,0 +1,18 @@
+{
+  "label": "uninstalled-owner-green-02",
+  "started_utc": "2026-11-11T19:46:26.542246+00:00",
+  "selectors": [
+    "test_b_route_qualified_historical_v3.HistoricalV3OwnerInstallationTests",
+    "test_b_route_qualified_historical_v3.HistoricalV3AdapterDataTests.test_complete_binding2_is_only_data_not_an_opaque_proof",
+    "test_b_route_qualified_historical_v3.HistoricalV3AdapterDataTests.test_consumer_rule_policy_and_actual_path_drift_rejected",
+    "test_b_route_qualified_historical_v3.HistoricalV3AdapterDataTests.test_whole_producer_execution_and_reader_identity_drift_rejected"
+  ],
+  "baseline_commit": "bc79557eec16fb1a379595f1b03b29046e5c3be1",
+  "changed_files_sha256": {
+    "execution-plans/2026-11-11-cloud-epic2-recovery.md": "07e5efcc0d6d0f2fccbaddcc2093d79fe9fe5c94b4725d799cedf262c0d37e7b",
+    "scripts/python/_b_route_qualified_history_host_v3.py": "2f6afcc07f2e8ba0beb250854f0c018f310a6eb5ac04ae7841b36d94e2b820e7",
+    "scripts/python/tests/test_b_route_qualified_historical_v3.py": "a7e6213c99ee78639ede74dec161b6b1f0020264704127a3a27223483aee1c3c",
+    "workflow.md": "0d65a6edd5893707db866dd3f4d006e1cc48cb1f9f695d496f62c25401b50cfb"
+  },
+  "qualification": "Focused offline unit/CLI checks only; no provider, Windows durability or formal Story acceptance claim."
+}

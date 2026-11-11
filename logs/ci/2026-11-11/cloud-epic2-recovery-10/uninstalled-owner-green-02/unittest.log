@@ -1,0 +1,10 @@
+test_mixed_or_invalid_owner_is_not_reported_as_uninstalled_template (test_b_route_qualified_historical_v3.HistoricalV3OwnerInstallationTests.test_mixed_or_invalid_owner_is_not_reported_as_uninstalled_template) ... ok
+test_uninstalled_template_reports_dependency_without_releasing_reader (test_b_route_qualified_historical_v3.HistoricalV3OwnerInstallationTests.test_uninstalled_template_reports_dependency_without_releasing_reader) ... ok
+test_complete_binding2_is_only_data_not_an_opaque_proof (test_b_route_qualified_historical_v3.HistoricalV3AdapterDataTests.test_complete_binding2_is_only_data_not_an_opaque_proof) ... ok
+test_consumer_rule_policy_and_actual_path_drift_rejected (test_b_route_qualified_historical_v3.HistoricalV3AdapterDataTests.test_consumer_rule_policy_and_actual_path_drift_rejected) ... ok
+test_whole_producer_execution_and_reader_identity_drift_rejected (test_b_route_qualified_historical_v3.HistoricalV3AdapterDataTests.test_whole_producer_execution_and_reader_identity_drift_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.003s
+
+OK

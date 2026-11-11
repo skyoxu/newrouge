@@ -1,0 +1,13 @@
+{
+  "label": "uninstalled-owner-green-02",
+  "tests_run": 5,
+  "passed": 5,
+  "failures": [],
+  "errors": [],
+  "skipped": [],
+  "successful": true,
+  "elapsed_seconds": 0.152363630999389,
+  "finished_utc": "2026-11-11T19:46:26.697198+00:00",
+  "new_provider_calls": 0,
+  "qualification": "Focused offline unit/CLI checks only; no provider, Windows durability or formal Story acceptance claim."
+}

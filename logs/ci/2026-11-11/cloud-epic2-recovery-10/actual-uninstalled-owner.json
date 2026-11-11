@@ -1,0 +1,45 @@
+{
+  "command": [
+    "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python",
+    "-B",
+    "/workspace/newrouge/scripts/python/dev_cli.py",
+    "b-route-adoption",
+    "--root",
+    "/workspace/newrouge-recovery-data/batch03-05f5fbf9/work/target-compensation-prepare",
+    "--stage",
+    "review-prepare",
+    "--operation-id",
+    "NativeV15Origin03Compensation01",
+    "--request",
+    "logs/ci/b-route-requests/native-v15-origin03-compensation-01/request.json",
+    "--compensation-review-delivery",
+    "newrouge.b-route-qualified-compensation-review-delivery.v2"
+  ],
+  "exit_code": 2,
+  "elapsed_seconds": null,
+  "verification_uses_retained_actual_output": true,
+  "process_repeated_for_harness_correction": false,
+  "diagnostic": {
+    "reason_code": "dependency_unavailable",
+    "stage": "bundle",
+    "entity_id": "NativeV15Origin03",
+    "expected": "installed original historical owner authority",
+    "actual": {
+      "missing_installation_fields": [
+        "original_owner_root",
+        "producer_reader",
+        "python_executable",
+        "python_executable_raw_digest",
+        "python_version",
+        "source_schema_pins"
+      ],
+      "historical_evidence_checked": false
+    },
+    "resume_ref": "/workspace/newrouge/scripts/python/qualified-historical-owner-authority.v2.json"
+  },
+  "target_files_unchanged": true,
+  "new_model_calls": 0,
+  "financial_writes": 0,
+  "original_operation_replayed": false,
+  "qualification": "Actual blocked public prepare with verified original request, before any historical worker release. Diagnostic repair only; not a compensation or capacity acceptance."
+}

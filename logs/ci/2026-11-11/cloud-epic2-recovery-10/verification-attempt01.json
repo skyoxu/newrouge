@@ -1,0 +1,9 @@
+{
+  "verifier_exit_code": 1,
+  "public_process_exit_code": 2,
+  "public_result": "blocked/dependency_unavailable",
+  "verification_error": "AssertionError: expected compensation operation as diagnostic entity; host correctly retained original NativeV15Origin03 entity",
+  "actual_diagnostic_entity": "NativeV15Origin03",
+  "incorrect_expected_entity": "NativeV15Origin03Compensation01",
+  "resolution": "Preserve original stdout/stderr, correct harness expectation and verify those saved bytes against unchanged original target, without repeating prepare."
+}

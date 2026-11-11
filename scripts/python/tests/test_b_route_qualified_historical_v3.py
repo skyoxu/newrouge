@@ -1,6 +1,7 @@
 """Self-contained DATA/negative API tests; never real native/semantic authority.
 
-No legacy test imports, file fixture, prepare, counter, child or model seam.
+No legacy test imports, prepare, counter, fabricated child result or model seam.
+Installation tests supply config bytes only and require no reader release.
 The one genuine v3-history acceptance is separately pending real proof3 + Root epoch.
 """
 from copy import deepcopy
@@ -10,6 +11,8 @@ import b_route_adoption as public_cli
 import json
 import base64
 from pathlib import Path
+from types import SimpleNamespace
+from unittest import mock
 from fixtures.codex_app_server_protocol import protocol as transcript, encoded
 import _codex_app_server as transport
 from _planning_execution_binding import receipt_from, validate_execution
@@ -18,6 +21,51 @@ import _b_route_adoption as adoption
 import _b_route_qualified_historical_v3_protocol as protocol
 import _b_route_qualified_history_host_v3 as host
 import _b_route_qualified_public_history_v2 as public
+
+
+class HistoricalV3OwnerInstallationTests(unittest.TestCase):
+    def template(self):
+        return {'schema_version': 'newrouge.b-route-qualified-historical-owner-authority.v2',
+            'original_owner_root': None, 'source_schema_pins': None, 'python_version': None,
+            'python_executable': None, 'python_executable_raw_digest': None,
+            'scope': 'Fixture: installation input only',
+            'dependency_authority': 'Fixture: existing managed dependency owner',
+            'producer_reader': None}
+
+    def test_uninstalled_template_reports_dependency_without_releasing_reader(self):
+        raw = json.dumps(self.template()).encode('utf-8')
+        with mock.patch.object(host, '_safe', return_value=SimpleNamespace(read_bytes=lambda: raw)), \
+                mock.patch.object(host, 'run_reader') as reader:
+            with self.assertRaises(codec.CodecError) as caught:
+                host.authenticate(Path('DATA-ONLY-NOT-READ'), 'DATA-ONLY')
+        diagnostic = caught.exception.diagnostic
+        self.assertEqual(codec.ReasonCode.DEPENDENCY_UNAVAILABLE, diagnostic.reason_code)
+        self.assertEqual('DATA-ONLY', diagnostic.entity_id)
+        self.assertEqual(str(Path(host.__file__).absolute().with_name(
+            'qualified-historical-owner-authority.v2.json')), diagnostic.resume_ref)
+        self.assertEqual(sorted(['original_owner_root', 'source_schema_pins', 'python_version',
+            'python_executable', 'python_executable_raw_digest', 'producer_reader']),
+            diagnostic.actual['missing_installation_fields'])
+        self.assertIs(diagnostic.actual['historical_evidence_checked'], False)
+        reader.assert_not_called()
+
+    def test_mixed_or_invalid_owner_is_not_reported_as_uninstalled_template(self):
+        for case in ('unknown-schema', 'extra-key', 'mixed-input', 'wrong-nonnull-owner'):
+            value = self.template()
+            if case == 'unknown-schema': value['schema_version'] += '.unknown'
+            elif case == 'extra-key': value['extra'] = None
+            elif case == 'mixed-input': value['python_executable_raw_digest'] = 'wrong'
+            else:
+                value.update(original_owner_root='wrong-owner', source_schema_pins={'wrong': 'wrong'},
+                    python_version='wrong', python_executable='wrong', python_executable_raw_digest='wrong')
+            raw = json.dumps(value).encode('utf-8')
+            with self.subTest(case=case), \
+                    mock.patch.object(host, '_safe', return_value=SimpleNamespace(read_bytes=lambda: raw)), \
+                    mock.patch.object(host, 'run_reader') as reader:
+                with self.assertRaises(ValueError) as caught:
+                    host.authenticate(Path('DATA-ONLY-NOT-READ'), 'DATA-ONLY')
+                self.assertIs(type(caught.exception), ValueError)
+                reader.assert_not_called()
 
 
 def data():

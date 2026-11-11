@@ -1,0 +1,57 @@
+{
+  "schema": "newrouge.owner-installation-cloud-decoupling.v1",
+  "updated_utc": "2026-11-11T19:53:23.716520+00:00",
+  "source_checkpoint": "bc79557eec16fb1a379595f1b03b29046e5c3be1",
+  "branch": "build/cloud-epic2-recovery-20261111",
+  "null_source": "Deliberately committed uninstalled template; original populated uncommitted resource explicitly excluded by migration policy; byte-exact r62/r65/r64, not cleared by cloud integration",
+  "old_proof_validation_reached": false,
+  "old_current_target_identity_equal": false,
+  "transport_alone_sufficient": false,
+  "clean_review": {
+    "agent": "/root/reader_portability_scope_review",
+    "model": "gpt-6-astra",
+    "reasoning_effort": "max",
+    "fork_turns": "none",
+    "scope": "Read-only necessity/proportionality review, not acceptance"
+  },
+  "implemented_fix": "Exact closed-schema/six-null installation template returns existing dependency_unavailable with config resume_ref, original history entity and historical_evidence_checked:false; all other original checks remain",
+  "focused_red": {
+    "tests_run": 1,
+    "errors": 1,
+    "passed": 0
+  },
+  "focused_green": {
+    "tests_run": 5,
+    "passed": 5,
+    "failures": 0,
+    "errors": 0,
+    "skips": 0
+  },
+  "actual_public_prepare_after_fix": {
+    "attempts": 1,
+    "exit_code": 2,
+    "reason": "dependency_unavailable",
+    "outer_operation_id": "NativeV15Origin03Compensation01",
+    "diagnostic_history_entity_id": "NativeV15Origin03",
+    "target_files_unchanged": true,
+    "normalizer_error_retained": true,
+    "prepare_repeated_for_normalizer_correction": false
+  },
+  "pending_decision": "Approve only a finite read-only migration DATA verification contract/new owner for NativeV15Origin03 and its current compensation; no old owner execution or silent fallback",
+  "proposal": "migration-verifier-proposal.md",
+  "proposed_migration_owner_implemented": false,
+  "new_linux_reader_implemented": false,
+  "authority_values_changed": false,
+  "capacity_policy_changed": false,
+  "capacity_fix_implemented": false,
+  "new_project_model_calls": 0,
+  "financial_writes": 0,
+  "old_operation_replayed": false,
+  "historical_code_executed": false,
+  "batch_redownloaded": false,
+  "full_suite_rerun": false,
+  "main_merge": false,
+  "remote_write": false,
+  "Fast_setting_changed": false,
+  "formal_epic2_acceptance": false
+}
