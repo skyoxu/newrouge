@@ -1760,3 +1760,8 @@ Helper modules below are referenced directly by at least two included entry scri
 ## B 路线 3A 来源记账 owner
 
 `scripts/python/account_b_route_sources.py` 是 `dev_cli.py b-route-sources` 的直接入口；`_b_route_sources.py` 唯一拥有 prepare／account 编排。`--stage audit|verify` 交给唯一 `_b_route_source_audit.py` owner；两步独立性、真实／synthetic 证明、持久预算及只读复验见[来源审计说明](b-route-source-audit.md)。复用原生累计解析、语义分批／编译／投影及无损传输，仅写全新 logs。显式声明／提议、路径、原字节归档、退出码、不可变事件及验证限制见[owner 说明](b-route-source-accounting.md)。来源注册、Task、manifest、旧 proof 和正式规划记录保持原状；准备、完整记账、独立审计和正式采纳分别判断，现行 A 有效。
+
+
+## 显式 B 原生规划与正式 operation
+
+`dev_cli.py plan-capabilities|plan-mvg` 的显式 3B 路线与原直接脚本共用 owner；`b_route_adoption.py` 提供 review、prepare/reserve、commit/read 和原 operation 恢复。阶段参数、默认 runner、原 ID 续接和不同资格边界见[原生规划导航](b-route-native-planning-status.md)。此导航不授权调用或默认启用 B。

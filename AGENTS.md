@@ -147,3 +147,17 @@ B 路线目标为 3A 来源审计 → 3B 无 Task 正式采纳 → 3C 任务承�
 - Chapter 4 只改受影响页面/任务；成熟 Overlay 的稀疏更新默认合并。
 - Chapter 6 仍为单任务实施；若任务属于里程碑增量，优先消费经 Chapter 5 绑定的 milestone handoff，不自行扩大范围。
 - MVG manifest 是累计回归基线；旧 flow/test 只有在有规格依据的显式 retire 中才能移除。
+
+## Explicit formal B planning context boundary
+
+The existing A workflows remain their own routes. For explicit B-route
+operation inspection or published plan/revision context, use
+`py -3 scripts/python/dev_cli.py b-route-adoption --stage inspect|read --operation-id <original-id> --context`.
+See [adoption owner](docs/workflows/b-route-adoption.md) and
+[native planning/status](docs/workflows/b-route-native-planning-status.md).
+Formal no-Task 3B depends on its original qualified source/native/review owners;
+this link does not require inventing a Task, authorize a model call, or activate
+B by default. Completed-unit reuse/epoch/reopen is unsupported through this context observation entrypoint.
+A published prefix and retained counts never establish global planning completion,
+Task readiness or runtime acceptance. Keep original IDs/resume_ref and blocked
+reasons; do not replace missing proof with a Knowledge summary or a fresh run.

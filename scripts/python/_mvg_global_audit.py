@@ -34,10 +34,74 @@ def _immutable(path, value):
         atomic_json(path, value)
 
 
+def _flows(proposal, projection=None):
+    if projection is not None:
+        return projection["flows"]
+    if proposal.get("schema_version") == "newrouge.b-route-read-only-seed.v1":
+        return []
+    if proposal.get("schema_version") == "newrouge.b-route-planning-candidate.v1":
+        return proposal["content"]["definitions"]["flows"]
+    return proposal["manifest_candidate"].get("flows", [])
+
+
+def _step_flows(step, projection=None):
+    delta = step.get("record", {}).get("delta", {})
+    if "candidate" in delta:
+        return _flows(delta["candidate"], projection)
+    return delta.get("flows", [])
+
+
+def _verification(proposal):
+    if proposal.get("schema_version") == "newrouge.b-route-planning-candidate.v1":
+        return proposal["content"]["requirement_verification"]
+    return verification_rows(proposal)
+
+
+def _scope_entities(scope, kind):
+    result = set(scope["scope"]["ids"]) if scope["scope"]["kind"] == kind else set()
+    result.update(row["id"] for row in scope["closure"]["entities"] if row["kind"] == kind)
+    return result
+
+
+def _audit_projection(root, run_dir, proposal):
+    """Action-local view of an already verified prefix; never scan catalogs."""
+    planned = {"tests": [row["id"] for row in proposal.get("manifest_candidate", {}).get("tests", [])
+                          if row.get("state") == "planned"],
+        "entrypoints": [row.get("path") for row in proposal.get("entrypoints", []) if row.get("status") == "planned"],
+        "manual": deepcopy(proposal.get("manual_obligations", []))}
+    flows = _flows(proposal)
+    if proposal.get("schema_version") == "newrouge.b-route-planning-candidate.v1":
+        import _b_route_candidate as candidate
+        # verified_prefix has authenticated this complete local envelope against
+        # the run descriptor. The existing owner reads only its frozen bytes and
+        # explicitly selected PlanRefs, never unselected catalog/history entries.
+        frozen = load_json(run_dir / "analysis-input/b-route-prepared.json")
+        store = candidate.frozen_bytes(root, frozen["resume_ref"], frozen, candidate.sources.Observations(root))
+        owners, _resolve, _plans = candidate.check_owners(proposal["content"], store)
+        flows = [definition for (kind, _id), (_owner, definition) in owners.items() if kind == "flow"]
+        planned["implementation_objects"] = deepcopy([row for row in proposal["content"]["implementation_objects"]
+                                                     if row["availability"] == "planned"])
+    return {"flows": flows, "planned_obligations": planned}
+
+
+def _affected_units(state, affected, flow_ids=(), projection=None):
+    result = set(affected)
+    if state.get("input_stage") != "3b":
+        return result
+    for step in state["capability_selection"]["selected"]:
+        scope = step["record"]["scope"]
+        if (scope.get("unit_kind") == "governed_planning_closure" and
+                (_scope_entities(scope, "capability") & result or _scope_entities(scope, "flow") & set(flow_ids)
+                 or {row["id"] for row in _step_flows(step, projection)} & set(flow_ids))):
+            result.add(scope["capability_id"])
+    return set(state["capability_selection"]["order"]) & result
+
+
 def chain_identity(run_dir, state):
     ledger = state["capability_selection"]
+    prepared_index = "b-route-prepared.json" if state.get("input_stage") == "3b" else "analysis-index.json"
     return {"run_id": state["run_id"], "analysis_identity_sha256": state["analysis_identity_sha256"],
-        "prepared_index_sha256": file_sha(run_dir / "analysis-input/analysis-index.json"),
+        "prepared_index_sha256": file_sha(run_dir / "analysis-input" / prepared_index),
         "checkpoint_head": deepcopy(ledger.get("checkpoint_head")),
         "selected_sha256": canonical_sha(ledger["selected"]),
         "proposal_sha256": ledger["accepted_sha256"], "generation": ledger.get("generation", 1),
@@ -48,12 +112,54 @@ def chain_identity(run_dir, state):
             "limit_source": deepcopy(state.get("mvg.run_invocation_limit_source"))}}
 
 
-def _source(run_dir, reference):
+def _source(run_dir, reference, state=None):
     if (not isinstance(reference, dict) or not _nonempty(reference.get("path"))
             or not _nonempty(reference.get("sha256"))):
         raise ValueError("global_conflict_source_identity_invalid")
     ref = reference["path"]
     source_path(ref)
+    b_prepared = run_dir / "analysis-input/b-route-prepared.json"
+    if (state or {}).get("input_stage") == "3b":
+        import base64
+        from _b_route_codec import raw_digest
+        inputs = load_json(b_prepared)["inputs"]
+        allowed = ref in inputs["closure"]["source_paths"]
+        declared_document = None
+        for family in ("constraints", "contexts"):
+            declarations = [row for row in inputs["contract"][family] if row["path"] == ref]
+            if not declarations:
+                continue
+            documents = [row for row in inputs[family] if row["path"] == ref
+                and declarations[0].keys() <= row.keys()
+                and canonical_sha({key: row[key] for key in declarations[0]}) == canonical_sha(declarations[0])]
+            if len(declarations) != 1 or len(documents) != 1:
+                raise ValueError("global_conflict_source_not_frozen:" + ref)
+            document = documents[0]
+            if document.get("absence") is None and "text" in document:
+                # Present, explicitly declared documents are full applicable
+                # planning inputs in the existing contract, outside 3A closure.
+                # No arbitrary evidence path acquires a new source owner.
+                allowed, declared_document = True, document
+        rows = [row for row in inputs["evidence"] if row["path"] == ref and allowed]
+        if len(rows) != 1:
+            raise ValueError("global_conflict_source_not_frozen:" + ref)
+        text = rows[0]["text"]
+        raw = text.encode("utf-8")
+        if raw_digest(raw) != rows[0]["sha256"] or rows[0]["sha256"] != reference["sha256"]:
+            raise ValueError("global_conflict_source_not_frozen:" + ref)
+        if declared_document is not None and (
+                base64.b64decode(declared_document["raw_base64"], validate=True) != raw
+                or declared_document["raw_digest"] != reference["sha256"]):
+            raise ValueError("global_conflict_source_not_frozen:" + ref)
+        citations = reference.get("citations")
+        if (not isinstance(citations, list) or not citations
+                or any(not isinstance(row, dict) or set(row) != {"line", "text"}
+                       or not isinstance(row["text"], str) for row in citations)):
+            raise ValueError("global_conflict_citations_missing:" + ref)
+        resolved = resolve_citations({"text": text}, {"citations": [row["line"] for row in citations]})
+        if resolved != citations or len({row["line"] for row in citations}) != len(citations):
+            raise ValueError("global_conflict_citations_changed:" + ref)
+        return
     index = load_json(run_dir / "analysis-input/analysis-index.json", {})
     prepared = run_dir / "analysis-input"
     copies = [prepared / key for key in index.get("files", {})
@@ -75,7 +181,7 @@ def _source(run_dir, reference):
         raise ValueError("global_conflict_citations_changed:" + ref)
 
 
-def validate_report(run_dir, state, scopes, proposal, report):
+def validate_report(run_dir, state, scopes, proposal, report, *, projection=None):
     """An explicit reviewed declaration supplies semantics; hashes prove its scope."""
     if (not isinstance(report, dict) or report.get("schema_version") != REPORT_SCHEMA
             or report.get("run_id") != state["run_id"]
@@ -87,7 +193,11 @@ def validate_report(run_dir, state, scopes, proposal, report):
             or not isinstance(report.get("conflicts"), list) or not report["conflicts"]):
         raise ValueError("global_conflict_declaration_identity_invalid")
     caps = {scope["capability_id"] for scope in scopes}
-    flows = {flow["id"]: flow for flow in proposal["manifest_candidate"].get("flows", [])}
+    caps.update(cid for scope in scopes if scope.get("unit_kind") == "governed_planning_closure"
+                for cid in _scope_entities(scope, "capability"))
+    flows = {flow["id"]: flow for flow in _flows(proposal, projection)}
+    flows.update({fid: None for scope in scopes if scope.get("unit_kind") == "governed_planning_closure"
+                  for fid in _scope_entities(scope, "flow")})
     seen = set()
     for issue in report["conflicts"]:
         if (not isinstance(issue, dict) or not isinstance(issue.get("id"), str) or not issue["id"].strip()
@@ -104,13 +214,13 @@ def validate_report(run_dir, state, scopes, proposal, report):
         for ref in issue["source_refs"]:
             if not isinstance(ref, dict) or set(ref) != {"path", "sha256", "citations"}:
                 raise ValueError("global_conflict_source_identity_invalid")
-            _source(run_dir, ref)
+            _source(run_dir, ref, state)
     return deepcopy(report["conflicts"])
 
 
-def _overlaps(proposal):
+def _overlaps(proposal, projection=None):
     groups = {}
-    for flow in proposal["manifest_candidate"].get("flows", []):
+    for flow in _flows(proposal, projection):
         for key in flow.get("requirement_ids", []):
             groups.setdefault(("requirement", key), set()).add(flow["id"])
         for handoff in flow.get("handoffs", []):
@@ -210,7 +320,7 @@ def verify_reopen_history(root, run_dir, state, *, check_originals=True):
             if issue["id"] in inherited and inherited[issue["id"]] != issue:
                 raise ValueError("reopen_historical_conflict_changed")
             for ref in issue["source_refs"]:
-                _source(run_dir, ref)
+                _source(run_dir, ref, prior)
             inherited[issue["id"]] = issue
         boundaries.update(plan["conflict_resolution_boundaries"])
         if contexts[str(number)] != {"generation": number, "plan": entry["plan"],
@@ -275,6 +385,7 @@ def audit(root, run_dir, state, *, conflict_report=None, conflict_report_sha256=
     complete = len(records) == len(scopes)
     if complete:
         verify_published_chain(root, run_dir, state)
+    projection = _audit_projection(root, run_dir, proposal)
     report_pointer = state.get("global_conflict_report")
     if conflict_report is not None:
         path = Path(conflict_report).resolve()
@@ -289,11 +400,11 @@ def audit(root, run_dir, state, *, conflict_report=None, conflict_report_sha256=
     if report_pointer:
         try:
             report = load_json(_artifact(run_dir, report_pointer["path"], report_pointer["sha256"]), None)
-            conflicts = validate_report(run_dir, state, scopes, proposal, report)
+            conflicts = validate_report(run_dir, state, scopes, proposal, report, projection=projection)
         except (OSError, ValueError, KeyError, TypeError, UnicodeError) as exc:
             gaps.append({"code": "conflict_evidence_gap", "reason": str(exc)})
     gaps.extend({"code": "requirement_source_gap", "requirement_id": row.get("requirement_id")}
-                for row in verification_rows(proposal) if row.get("disposition") == "source_gap")
+                for row in _verification(proposal) if row.get("disposition") == "source_gap")
     if not complete:
         gaps.append({"code": "selected_chain_incomplete"})
     resolved, unresolved = _reopen_resolutions(run_dir, state)
@@ -302,12 +413,9 @@ def audit(root, run_dir, state, *, conflict_report=None, conflict_report_sha256=
         "status": "blocked" if conflicts or gaps else "passed", "complete_chain": complete,
         "conflict_report": deepcopy(report_pointer), "hard_conflicts": conflicts, "evidence_gaps": gaps,
         "resolved_reopened_conflicts": resolved,
-        "ordinary_overlaps": _overlaps(proposal),
+        "ordinary_overlaps": _overlaps(proposal, projection),
         "passed_checks": ["selected_prefix", "frozen_sources", "invocation_accounting"],
-        "planned_obligations": {"tests": [row["id"] for row in proposal["manifest_candidate"].get("tests", [])
-                                          if row.get("state") == "planned"],
-            "entrypoints": [row.get("path") for row in proposal.get("entrypoints", []) if row.get("status") == "planned"],
-            "manual": deepcopy(proposal.get("manual_obligations", []))},
+        "planned_obligations": projection["planned_obligations"],
         "runtime_verified": False,
         "claim": "No reported hard conflicts in the checked evidence; no natural-language contradiction inference."}
     path = run_dir / "global-audits" / (canonical_sha(receipt)[7:] + ".json")
@@ -319,9 +427,10 @@ def audit(root, run_dir, state, *, conflict_report=None, conflict_report_sha256=
     return {**state["global_audit"], **receipt}
 
 
-def verified_audit(root, run_dir, state, path=None, digest=None, *, prefix=None):
+def verified_audit(root, run_dir, state, path=None, digest=None, *, prefix=None, projection=None):
     from _mvg_capability_selection import verified_prefix
     scopes, proposal, records = prefix if prefix is not None else verified_prefix(root, run_dir, state)
+    projection = _audit_projection(root, run_dir, proposal) if projection is None else projection
     pointer = state.get("global_audit") or {}
     if path is not None and (pointer.get("path") != path or pointer.get("sha256") != digest):
         raise ValueError("global_audit_pointer_changed")
@@ -334,13 +443,16 @@ def verified_audit(root, run_dir, state, path=None, digest=None, *, prefix=None)
     conflicts = []
     if report_pointer:
         report = load_json(_artifact(run_dir, report_pointer["path"], report_pointer["sha256"]), None)
-        conflicts = validate_report(run_dir, state, scopes, proposal, report)
+        conflicts = validate_report(run_dir, state, scopes, proposal, report, projection=projection)
     if conflicts != receipt.get("hard_conflicts"):
         raise ValueError("global_audit_conflicts_changed")
+    if proposal.get("schema_version") == "newrouge.b-route-planning-candidate.v1" and (
+            receipt.get("planned_obligations") != projection["planned_obligations"] or receipt.get("runtime_verified") is not False):
+        raise ValueError("global_audit_planned_obligations_changed")
     resolved, unresolved = _reopen_resolutions(run_dir, state)
     if unresolved or receipt.get("resolved_reopened_conflicts") != resolved:
         raise ValueError("global_audit_reopen_resolutions_changed")
-    source_gaps = any(row.get("disposition") == "source_gap" for row in verification_rows(proposal))
+    source_gaps = any(row.get("disposition") == "source_gap" for row in _verification(proposal))
     blocked = bool(conflicts or source_gaps or len(records) != len(scopes) or receipt.get("evidence_gaps"))
     if (receipt.get("status") != ("blocked" if blocked else "passed")
             or receipt.get("complete_chain") is not (len(records) == len(scopes))):
@@ -348,18 +460,19 @@ def verified_audit(root, run_dir, state, path=None, digest=None, *, prefix=None)
     return receipt
 
 
-def closure(state, proposal, conflicts):
+def closure(state, proposal, conflicts, *, projection=None):
     """No deterministic rebase proof exists: invalidate every cumulative successor."""
     ledger = state["capability_selection"]
     affected = {cid for row in conflicts for cid in row["capability_ids"]}
     flows = {fid for row in conflicts for fid in row["flow_ids"]}
-    for flow in proposal["manifest_candidate"].get("flows", []):
+    for flow in _flows(proposal, projection):
         if flow["id"] in flows:
-            affected.update(flow.get("capability_refs", []))
+            affected.update(flow.get("capability_refs", flow.get("capability_ids", [])))
+    affected = _affected_units(state, affected, flows, projection)
     # Bind flow changes to the earliest checkpoint that introduced or changed it.
     indices = [index for index, cid in enumerate(ledger["order"][:len(ledger["selected"])]) if cid in affected]
     for index, step in enumerate(ledger["selected"]):
-        if any(flow.get("id") in flows for flow in step.get("record", {}).get("delta", {}).get("flows", [])):
+        if any(flow.get("id") in flows for flow in _step_flows(step, projection)):
             indices.append(index)
     if not indices:
         raise ValueError("reopen_no_accepted_affected_checkpoint")
@@ -370,17 +483,18 @@ def closure(state, proposal, conflicts):
         "replacement_order": ledger["order"][start:]}
 
 
-def resolution_boundaries(state, proposal, conflicts):
+def resolution_boundaries(state, proposal, conflicts, *, projection=None):
     order = state["capability_selection"]["order"]
     result = {}
     for issue in conflicts:
         affected = set(issue["capability_ids"])
-        for flow in proposal["manifest_candidate"].get("flows", []):
+        for flow in _flows(proposal, projection):
             if flow["id"] in issue["flow_ids"]:
-                affected.update(flow.get("capability_refs", []))
+                affected.update(flow.get("capability_refs", flow.get("capability_ids", [])))
+        affected = _affected_units(state, affected, issue["flow_ids"], projection)
         indices = [order.index(cid) for cid in affected]
         indices.extend(index for index, step in enumerate(state["capability_selection"]["selected"])
-            if any(flow.get("id") in issue["flow_ids"] for flow in step.get("record", {}).get("delta", {}).get("flows", [])))
+            if any(flow.get("id") in issue["flow_ids"] for flow in _step_flows(step, projection)))
         if not indices:
             raise ValueError("reopen_conflict_resolution_boundary_missing")
         result[issue["id"]] = max(indices)
@@ -391,14 +505,16 @@ def plan_reopen(root, run_dir, state, *, audit_path, audit_sha256):
     from _mvg_capability_selection import verified_prefix
     if not enabled(state) or (run_dir / "apply-journal.json").exists() or state.get("applied"):
         raise ValueError("reopen_checkpoint_or_apply_journal_blocked")
-    receipt = verified_audit(root, run_dir, state, audit_path, audit_sha256)
+    prefix = verified_prefix(root, run_dir, state)
+    _, proposal, _ = prefix
+    projection = _audit_projection(root, run_dir, proposal)
+    receipt = verified_audit(root, run_dir, state, audit_path, audit_sha256, prefix=prefix, projection=projection)
     if not receipt.get("hard_conflicts") or receipt.get("evidence_gaps"):
         raise ValueError("reopen_requires_source_backed_hard_conflict")
-    _, proposal, _ = verified_prefix(root, run_dir, state)
     plan = {"schema_version": PLAN_SCHEMA, "run_id": state["run_id"],
         "binding": chain_identity(run_dir, state), "audit": deepcopy(state["global_audit"]),
-        "conflicts": deepcopy(receipt["hard_conflicts"]), **closure(state, proposal, receipt["hard_conflicts"]),
-        "conflict_resolution_boundaries": resolution_boundaries(state, proposal, receipt["hard_conflicts"]),
+        "conflicts": deepcopy(receipt["hard_conflicts"]), **closure(state, proposal, receipt["hard_conflicts"], projection=projection),
+        "conflict_resolution_boundaries": resolution_boundaries(state, proposal, receipt["hard_conflicts"], projection=projection),
         "next_generation": state["capability_selection"].get("generation", 1) + 1,
         "replacement_policy": "three_independently_admitted_candidates_then_comparison_and_atomic_checkpoint",
         "refund_invocations": False}
@@ -414,15 +530,16 @@ def _verify_reopen_plan(root, run_dir, state, plan, *, historical=False):
             or plan.get("binding") != chain_identity(run_dir, state)):
         raise ValueError("reopen_stale_binding_or_apply_journal")
     prefix = verified_prefix(root, run_dir, state, check_originals=not historical)
-    receipt = verified_audit(root, run_dir, state, plan.get("audit", {}).get("path"),
-        plan.get("audit", {}).get("sha256"), prefix=prefix)
     scopes, proposal, records = prefix
+    projection = _audit_projection(root, run_dir, proposal)
+    receipt = verified_audit(root, run_dir, state, plan.get("audit", {}).get("path"),
+        plan.get("audit", {}).get("sha256"), prefix=prefix, projection=projection)
     if len(records) == len(scopes):
         verify_published_chain(root, run_dir, state, verified=prefix, check_originals=not historical)
     if (not receipt.get("hard_conflicts") or receipt.get("evidence_gaps")
             or plan.get("conflicts") != receipt["hard_conflicts"]
-            or any(plan.get(key) != value for key, value in closure(state, proposal, receipt["hard_conflicts"]).items())
-            or plan.get("conflict_resolution_boundaries") != resolution_boundaries(state, proposal, receipt["hard_conflicts"])
+            or any(plan.get(key) != value for key, value in closure(state, proposal, receipt["hard_conflicts"], projection=projection).items())
+            or plan.get("conflict_resolution_boundaries") != resolution_boundaries(state, proposal, receipt["hard_conflicts"], projection=projection)
             or plan.get("next_generation") != state["capability_selection"].get("generation", 1) + 1
             or plan.get("replacement_policy") != "three_independently_admitted_candidates_then_comparison_and_atomic_checkpoint"
             or plan.get("refund_invocations") is not False):
@@ -560,9 +677,13 @@ def operate(root, *, run_id, operation, **kwargs):
     from _mvg_capability_recovery import operation_lock, assert_epoch
     run_path = pm._run_dir(root, run_id) / "run.json"
     raw = load_json(run_path, {})
-    if raw.get("schema_version") != pm.RUN_SCHEMA or raw.get("run_id") != run_id:
+    from _b_route_planning_runtime import enabled as b_enabled, descriptor, run_location, validate_input
+    is_b = b_enabled(raw)
+    if (raw.get("run_id") != run_id or (not is_b and raw.get("schema_version") != pm.RUN_SCHEMA)):
         raise ValueError("reopen_run_identity_invalid")
     run_dir = run_path.parent
+    if is_b and run_location(root, descriptor(raw)["planner"], run_id) != run_dir:
+        raise ValueError("reopen_run_identity_invalid")
     with operation_lock(root, raw), coordinator_lock(run_dir):
         try:
             raw = load_json(run_path, {})
@@ -570,7 +691,15 @@ def operate(root, *, run_id, operation, **kwargs):
                 assert_epoch(root, raw)
             if operation == "reopen" and _transaction_path(run_dir, kwargs["plan_path"], kwargs["plan_sha256"]).is_file():
                 return execute_reopen(root, run_dir, raw, **kwargs)
-            _, state = pm._load_run(root, run_id)
+            if is_b:
+                descriptor(raw)
+                validate_input(root, run_dir, raw)
+                assert_no_pending_reopen(run_dir)
+                from _mvg_capability_recovery import assert_active_chain
+                assert_active_chain(root, raw, run_dir)
+                state = raw
+            else:
+                _, state = pm._load_run(root, run_id)
             recover_commit_outcome(run_dir, state, verify=lambda: verified_prefix(root, run_dir, state))
             return {"audit": audit, "reopen-plan": plan_reopen, "reopen": execute_reopen}[operation](
                 root, run_dir, state, **kwargs)

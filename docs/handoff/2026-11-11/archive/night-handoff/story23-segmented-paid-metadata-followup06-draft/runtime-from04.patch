@@ -1,0 +1,146 @@
+--- a/scripts/python/_b_route_segmented_runtime.py
++++ b/scripts/python/_b_route_segmented_runtime.py
+@@ -286,6 +286,124 @@
+     return len(''.join(lines[:first - 1]).encode('utf-8')), len(''.join(lines[:last]).encode('utf-8'))
+ 
+ 
++def _manifest_query_matches(arguments, input_bytes, *, tracked_names=None):
++    """Pure finite-query DATA check; never sufficient for a metadata role."""
++    if type(arguments) is not tuple:
++        return False
++    commit = _PRESERVED_COMMIT
++    if arguments in {('rev-parse', '--verify', commit + '^{commit}'),
++                     ('ls-tree', '-rz', '--full-tree', commit),
++                     ('ls-tree', '-rz', '--full-tree', 'HEAD'),
++                     ('ls-files', '--others', '-z')}:
++        return input_bytes is None
++    expected = ('check-attr', '--source=' + commit, '--stdin', '-z',
++                'text', 'eol', 'filter', 'working-tree-encoding', 'ident')
++    return (arguments == expected and tracked_names is not None
++            and input_bytes == b'\x00'.join(name.encode('utf-8') for name in sorted(tracked_names)) + b'\x00')
++
++
++def _original_metadata_call():
++    """Recognize only the live original preserved-verifier call chain.
++
++    Returned frame/data observations are not grants. The Task Guard additionally
++    checks its SourceOnly owners, bound request, actual dispatcher and IO.
++    This function never repeats source verification or creates a process.
++    """
++    def frame_for(fn, namespace):
++        body = getattr(fn, '__wrapped__', fn)
++        frame = sys._getframe(1)
++        while frame is not None:
++            if frame.f_code is body.__code__ and frame.f_globals is namespace:
++                return frame
++            frame = frame.f_back
++        return None
++    assemble = frame_for(_original_assemble, globals())
++    if assemble is None:
++        return None
++    local = assemble.f_locals
++    owner = Path(__file__).absolute().parents[3] / 'r5'
++    root = Path(local['root']).absolute()
++    contract = local['planning_contract']
++    mode = local['mode']
++    require(Path(local['owner']).absolute() == owner and mode in ('assemble', 'rules'),
++            'original_preserved_metadata_owner_mode')
++    capture = frame_for(capture_source, globals())
++    verify = frame_for(verify_candidate_context, globals())
++    if mode == 'assemble':
++        require(capture is not None and Path(capture.f_locals['root']).absolute() == root
++                and capture.f_locals['planning_contract'] == contract
++                and capture.f_locals.get('original_owner') == owner,
++                'actual_original_selected_capture_before_metadata')
++        request = {k: capture.f_locals[k] for k in ('run_id', 'planner', 'planning_contract')}
++    else:
++        token = None if verify is None else verify.f_locals.get('token')
++        require(type(token) is _SourceCapture and token._seal is _SEAL and token in _SOURCES
++                and token._root == root and token['source_identity']['planning_contract_ref'] == contract
++                and token['source_identity']['audit_verifier_source']['root'] == str(owner),
++                'actual_issued_source_before_rules_metadata')
++        request = {'run_id': token['run_id'], 'planner': token['planner'], 'planning_contract': contract}
++    transition = sys.modules.get('_b_route_execution_transition')
++    require(transition is not None and Path(transition.__file__).absolute()
++            == Path(__file__).absolute().with_name('_b_route_execution_transition.py'),
++            'original_metadata_transition_module')
++    git = frame_for(transition._git, transition.__dict__)
++    if git is not None:
++        manifest = frame_for(transition._source_manifest, transition.__dict__)
++        require(manifest is not None and Path(manifest.f_locals['root']).absolute() == owner
++                and manifest.f_locals['commit'] == _PRESERVED_COMMIT
++                and Path(git.f_locals['root']).absolute() == owner,
++                'original_preserved_manifest_frame')
++        arguments = git.f_locals['arguments']
++        input_bytes = git.f_locals['input_bytes']
++        require(_manifest_query_matches(arguments, input_bytes,
++                tracked_names=manifest.f_locals.get('tracked')), 'finite_original_manifest_query')
++        if arguments[0] == 'ls-tree':
++            tree = git.f_back
++            require(tree.f_code is transition._tracked_tree.__code__ and tree.f_globals is transition.__dict__
++                    and Path(tree.f_locals['root']).absolute() == owner
++                    and tree.f_locals['commit'] == arguments[-1], 'actual_original_tracked_tree_operand')
++        else:
++            require(git.f_back is manifest, 'actual_original_manifest_direct_git_caller')
++        if arguments[0] == 'check-attr':
++            require(input_bytes is manifest.f_locals['names'], 'actual_original_manifest_stdin_object')
++        argv = [git.f_locals['executable'], '--no-optional-locks', '-c', 'core.fsmonitor=false',
++                '-C', str(owner), *arguments]
++        options = {'input': input_bytes, 'stdout': subprocess.PIPE, 'stderr': subprocess.PIPE,
++                   'timeout': 60, 'check': False, 'creationflags': getattr(subprocess, 'CREATE_NO_WINDOW', 0)}
++        return {'kind': 'metadata-git', 'caller': git, 'assemble': assemble,
++                'request': request, 'argv': argv, 'options': options, 'image': argv[0]}
++    before = local.get('before')
++    payload = local.get('request')
++    require(type(before) is dict and type(payload) is dict, 'actual_original_bridge_request_ready')
++    expected = {'root': str(root), 'owner': str(owner), 'planning_contract': contract,
++        'pins': {name: row['raw_digest'] for name, row in before.items()},
++        'dependencies': [str(owner.parent / 'story22-tokenizer-deps'),
++            r'C:\Users\Administrator\Documents\Codex\2026-11-04\task-2\python-env\Lib\site-packages',
++            r'C:\Program Files\Python312\Lib\site-packages'],
++        'describe_names': list(_DESCRIBE_NAMES), 'git': local['git'], 'mode': mode, 'source_boot': _SOURCE_BOOT}
++    require(payload == expected, 'exact_original_bridge_payload')
++    return {'kind': 'metadata-bridge', 'caller': assemble, 'assemble': assemble, 'request': request,
++        'argv': [sys.executable, '-I', '-S', '-B', '-c', _BRIDGE],
++        'options': {'input': wire(payload), 'stdout': subprocess.PIPE, 'stderr': subprocess.PIPE,
++            'cwd': str(owner), 'timeout': 1800, 'check': False,
++            'creationflags': getattr(subprocess, 'CREATE_NO_WINDOW', 0)}, 'image': sys.executable}
++
++
++def _is_original_source_metadata(command, args, kwargs):
++    call = _original_metadata_call()
++    if call is None:
++        return False
++    options = call['options']
++    constructor = {k: options[k] for k in ('stdout', 'stderr', 'creationflags')}
++    if options['input'] is not None:
++        constructor['stdin'] = subprocess.PIPE
++    if 'cwd' in options:
++        constructor['cwd'] = options['cwd']
++    require(list(command) == call['argv'] and args == () and kwargs == constructor,
++            'exact_original_metadata_through_captured_prior')
++    return True
++
++
+ def _turns(audit_files):
+     """Only original 3A validation observations, before caller contexts are read."""
+     turns = set()
+@@ -1044,6 +1162,10 @@
+         require(type(command) in {list, tuple} and all(type(x) is str for x in command)
+             and not kwargs.get('shell') and 'executable' not in kwargs, 'source_runner_explicit_argv')
+         logical = list(command)
++        # Genuine original metadata is not an official runner launch and does
++        # not append transport facts or consume a paid reservation.
++        if _is_original_source_metadata(logical, args, kwargs):
++            return prior(logical, *args, **kwargs)
+         # Restore ONLY the original cleanup role for this one real child
+         # successfully returned by captured prior, not a second model runner.
+         if _is_original_owned_cleanup(owned_child, common, cleanup, cleanup_code, expected_common, logical, args, kwargs):
+@@ -1060,6 +1182,7 @@
+         record['child_pid'] = child.pid
+         owned_child = child
+         return child
++    facts['launch'] = launch  # exact live factory output in the existing issuer facts
+     primary = None
+     try:
+         subprocess.Popen = launch

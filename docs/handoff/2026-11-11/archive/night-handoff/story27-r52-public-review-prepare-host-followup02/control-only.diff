@@ -1,0 +1,29 @@
+--- frozen01/review_prepare_host.draft.py
++++ followup02/review_prepare_host.draft.py
+@@ -24,7 +24,7 @@
+ import types
+ 
+ TASK = Path(r'C:\Users\Administrator\Documents\Codex\2026-11-05\task')
+-HOME = TASK / 'night-handoff/story27-r52-public-review-prepare-host-draft-01'
++HOME = TASK / 'night-handoff/story27-r52-public-review-prepare-host-followup02'
+ SOURCE = TASK / 'r52'
+ ORIGIN = TASK / 'nx'
+ PYTHON = Path(r'C:\Program Files\Python312\python.exe')
+@@ -873,7 +873,7 @@
+         allowed = {key(self.target / name) for name in self.c['target_files']}
+         if self.target_complete:
+             allowed |= self.write_targets
+-        expected_dirs = {key(self.target)} | self.public_directories
++        expected_dirs = {key(self.target)} | self.public_directories | {key(self.target / name) for name in self.c['target_before']['directories']}
+         for name in allowed:
+             parent = Path(name).parent
+             while parent.is_relative_to(self.target):
+@@ -1300,7 +1300,7 @@
+             'actual Root admission and source/request seal required')
+     require(config['target'] == str(TARGET) and config['operation_id'] == OPERATION
+             and config['request_ref'] == REQUEST and config['model_calls_allowed'] == 0, 'only exact original public review-prepare')
+-    out = plain(TASK / 'logs/ci/2026-11-09/story27-r52-public-review-prepare-01', missing=True)
++    out = plain(TASK / 'logs/ci/2026-11-09/story27-r52-public-review-prepare-02', missing=True)
+     require(not out.exists(), 'fresh output; preserve any attempt')
+     source_close(config)
+     require(snapshot_tree(TARGET) == config['target_before'], 'fresh staged target/Git equals actual seal')

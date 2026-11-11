@@ -633,6 +633,7 @@ def build_serve_project_health_cmd(args) -> list[str]:
 
 
 def build_plan_capabilities_cmd(args) -> list[str]:
+    _planning_stage_arguments(args)
     # A page/launcher can invoke dev_cli by absolute path from another cwd.
     # Reuse its interpreter and locate the child next to this module.
     cmd = [sys.executable, str(Path(__file__).resolve().with_name("plan_capabilities.py")),
@@ -640,6 +641,9 @@ def build_plan_capabilities_cmd(args) -> list[str]:
     if args.run_id:
         cmd += ["--run-id", args.run_id]
     if args.stage == "prepare":
+        cmd += ["--input-stage", getattr(args, "input_stage", "legacy")]
+        if getattr(args, "planning_contract", ""):
+            cmd += ["--planning-contract", args.planning_contract]
         for task_id in args.task_id:
             cmd += ["--task-id", task_id]
         if args.allow_unready_draft:
@@ -666,14 +670,73 @@ def build_plan_capabilities_cmd(args) -> list[str]:
             cmd.append("--confirm")
     elif args.stage == "validate-candidate" and args.candidate:
         cmd += ["--candidate", args.candidate]
+        if getattr(args, "input_stage", "legacy") == "3b":
+            cmd += ["--input-stage", "3b", "--prepared-ref", args.prepared_ref]
+    return _runtime_arguments(args, cmd)
+
+
+def _planning_stage_arguments(args):
+    stage = getattr(args, "input_stage", "legacy")
+    contract = getattr(args, "planning_contract", "")
+    prepared = getattr(args, "prepared_ref", "")
+    profile = getattr(args, "planning_profile", "")
+    reading = args.stage in {"validate-candidate", "validate"} and bool(getattr(args, "candidate", ""))
+    runtime = args.stage in {"generate", "review", "verify-selection", "status", "validate"} and not reading
+    if contract and (stage != "3b" or args.stage != "prepare"):
+        raise ValueError("--planning-contract requires explicit 3b prepare")
+    if stage == "legacy":
+        if profile or prepared:
+            raise ValueError("--prepared-ref/--planning-profile require explicit 3b")
+        return
+    if stage != "3b":
+        raise ValueError("unsupported input stage")
+    if args.stage == "prepare":
+        if not contract or prepared or profile:
+            raise ValueError("3b prepare requires --planning-contract only")
+        return
+    if (getattr(args,"task_id",[]) or getattr(args,"allow_unready_draft",False)
+            or getattr(args,"capabilities","") or getattr(args,"manifest","")
+            or getattr(args,"evidence_ref",[]) or getattr(args,"run_invocation_limit",None) is not None
+            or getattr(args,"source_manifest","logs/ci/task-generation/source-manifest.v1.json") != "logs/ci/task-generation/source-manifest.v1.json"
+            or getattr(args,"ledger","logs/ci/task-generation/source-blocks.v1.json") != "logs/ci/task-generation/source-blocks.v1.json"
+            or getattr(args,"semantics","logs/ci/task-generation/semantic-requirements.v1.json") != "logs/ci/task-generation/semantic-requirements.v1.json"):
+        raise ValueError("3b rejects legacy Task/readiness/manifest/evidence gates")
+    if reading:
+        if not prepared or profile:
+            raise ValueError("3b candidate validation requires prepared-ref, candidate and no execution profile")
+    elif runtime:
+        from _b_route_planning_runtime import PROFILES
+        expected = "capabilities" if getattr(args, "command", "") == "plan-capabilities" else "mvg"
+        # dev_cli uses command names; direct builder fixtures may omit it.
+        if not prepared or profile not in PROFILES:
+            raise ValueError("3b execution requires --prepared-ref and known --planning-profile")
+    else:
+        raise ValueError("3b stage is not a planning execution or inspection stage")
+
+
+def _runtime_arguments(args, cmd):
+    if getattr(args, "input_stage", "legacy") == "3b" and getattr(args, "planning_profile", ""):
+        cmd += ["--input-stage", "3b", "--prepared-ref", args.prepared_ref,
+                "--planning-profile", args.planning_profile]
     return cmd
 
 
 def build_plan_mvg_cmd(args) -> list[str]:
-    cmd = ["py", "-3", "scripts/python/plan_mvg.py", "--repo-root", args.repo_root, args.stage]
+    _planning_stage_arguments(args)
+    runner = args.runner
+    if runner is None:
+        runner = (str(Path(__file__).resolve().with_name("codex_isolated_model_runner.py"))
+                  if getattr(args, "input_stage", "legacy") == "3b"
+                  else "scripts/python/openai_isolated_model_runner.py")
+    if getattr(args, "candidate", "") and args.stage != "validate":
+        raise ValueError("--candidate is limited to explicit 3b MVG validate")
+    cmd = [sys.executable, str(Path(__file__).resolve().with_name("plan_mvg.py")), "--repo-root", args.repo_root, args.stage]
     if args.run_id:
         cmd += ["--run-id", args.run_id]
     if args.stage == "prepare":
+        cmd += ["--input-stage", getattr(args, "input_stage", "legacy")]
+        if getattr(args, "planning_contract", ""):
+            cmd += ["--planning-contract", args.planning_contract]
         if getattr(args, "run_invocation_limit", None) is not None:
             cmd += ["--run-invocation-limit", str(args.run_invocation_limit)]
         if args.capabilities:
@@ -686,10 +749,17 @@ def build_plan_mvg_cmd(args) -> list[str]:
             cmd += ["--evidence-ref", ref]
         if args.allow_unready_draft:
             cmd.append("--allow-unready-draft")
+    elif args.stage == "validate":
+        if getattr(args, "input_stage", "legacy") == "3b" and args.candidate:
+            cmd += ["--input-stage", "3b", "--prepared-ref", args.prepared_ref, "--candidate", args.candidate]
+        elif getattr(args, "candidate", ""):
+            raise ValueError("legacy MVG validate does not accept --candidate")
     elif args.stage == "generate":
         cmd += ["--timeout-sec", str(args.timeout_sec), "--llm-backend", args.llm_backend]
+        if getattr(args, "input_stage", "legacy") == "3b":
+            cmd += ["--runner", runner]
     elif args.stage == "review":
-        cmd += ["--timeout-sec", str(args.timeout_sec), "--runner", args.runner]
+        cmd += ["--timeout-sec", str(args.timeout_sec), "--runner", runner]
     elif args.stage == "apply" and args.confirm:
         cmd.append("--confirm")
     elif args.stage in {"audit", "reopen-plan", "reopen"}:
@@ -709,4 +779,4 @@ def build_plan_mvg_cmd(args) -> list[str]:
         cmd += ["--task-id", args.task_id[0]]
         if args.change_plan:
             cmd += ["--change-plan", args.change_plan, "--out", args.handoff_out]
-    return cmd
+    return _runtime_arguments(args, cmd)

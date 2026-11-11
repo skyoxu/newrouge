@@ -39,9 +39,13 @@ class WindowsWorkerJob:
         limits = ExtendedLimits()
         limits.BasicLimitInformation.LimitFlags = 0x00002000  # JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
         if not api.SetInformationJobObject(self.handle, 9, ctypes.byref(limits), ctypes.sizeof(limits)):
-            error = ctypes.get_last_error()
-            self.close()
-            raise ctypes.WinError(error)
+            error = ctypes.WinError(ctypes.get_last_error())
+            try:
+                self.close()
+            except BaseException as cleanup_error:
+                BaseException.add_note(error, "worker_job_setup_cleanup_failed: " +
+                    type(cleanup_error).__name__ + ": " + str(cleanup_error))
+            raise error
 
     def assign(self, process):
         if not self.api.AssignProcessToJobObject(self.handle, int(process._handle)):
@@ -49,7 +53,8 @@ class WindowsWorkerJob:
 
     def close(self):
         if self.handle:
-            self.api.CloseHandle(self.handle)
+            if not self.api.CloseHandle(self.handle):
+                raise ctypes.WinError(ctypes.get_last_error())
             self.handle = None
 
 
@@ -58,6 +63,14 @@ def worker_lifetime():
     job = WindowsWorkerJob() if os.name == "nt" else None
     try:
         yield job
-    finally:
+    except BaseException as primary_error:
+        if job is not None:
+            try:
+                job.close()
+            except BaseException as cleanup_error:
+                BaseException.add_note(primary_error, "worker_job_cleanup_failed: " +
+                    type(cleanup_error).__name__ + ": " + str(cleanup_error))
+        raise
+    else:
         if job is not None:
             job.close()

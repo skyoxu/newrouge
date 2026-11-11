@@ -411,6 +411,10 @@ def candidate_admission_errors(root: Path, state: dict[str, Any],
                                semantic_review: dict[str, Any] | None = None, *,
                                append_requirement_ids: set[str] | None = None,
                                check_originals: bool = True) -> list[dict[str, str]]:
+    from _b_route_planning_runtime import enabled, machine, proof_errors
+    if enabled(state):
+        return (machine(root, state, proposal, check_originals=check_originals) if semantic_review is None else
+            proof_errors(root, state, proposal, semantic_review, check_originals=check_originals))
     """Return ordered hard issues that prevent a proposal entering selection."""
     validation = validate_proposal(root, state, proposal, append_requirement_ids=append_requirement_ids,
                                    check_originals=check_originals)
@@ -1083,7 +1087,7 @@ def validate_selection_execution_receipt(
     actual_model = str(runner_receipt.get("model") or "") if isinstance(runner_receipt, dict) else ""
     model_matches = (
         bool(actual_model)
-        and (expected_model.lower() in {"auto", "automatic", "codex-cli-default"}
+        and (expected_model.lower() in {"auto", "automatic", "codex-cli-default", "environment-default"}
              or actual_model == expected_model)
     )
     if (not isinstance(runner_receipt, dict)
@@ -6015,6 +6019,10 @@ Frozen manifest scope:
 
 def validate_proposal(root: Path, state: dict[str, Any], proposal: dict[str, Any], *,
                       append_requirement_ids: set[str] | None = None, check_originals: bool = True) -> dict[str, Any]:
+    from _b_route_planning_runtime import enabled, machine
+    if enabled(state):
+        errors = machine(root, state, proposal)
+        return {"status": "blocked" if errors else "passed", "errors": errors}
     errors: list[str] = []
     original_proposal = proposal
     # Read old whole-proposal artifacts through the lossless accounting
@@ -6718,6 +6726,9 @@ def validate(root: Path, *, run_id: str) -> dict[str, Any]:
 
 
 def _validate_input_freshness(root: Path, run_dir: Path, state: dict[str, Any], *, check_originals=True) -> None:
+    from _b_route_planning_runtime import enabled, validate_input
+    if enabled(state):
+        return validate_input(root, run_dir, state, check_originals=check_originals)
     prepared_index = load_json(run_dir / "analysis-input/analysis-index.json", {})
     for key in ("checkpoint_strategy", "checkpoint_schema_version", "planning_completion_protocol"):
         if prepared_index.get(key) != state.get(key):
@@ -7021,7 +7032,11 @@ def apply(root: Path, *, run_id: str, confirm: bool) -> dict[str, Any]:
     _, state = _load_run(root, run_id)
     from _mvg_capability_recovery import operation_lock
     with operation_lock(root, state):
-        return _apply_impl(root, run_id=run_id)
+        from _b_route_operation_scope import scope_guard
+        owner = {"kind": "mvg", "run_id": run_id,
+            "journal_path": "logs/ci/mvg-planning/" + run_id + "/apply-journal.json"}
+        with scope_guard(root, (), prepare_under_lease=lambda: None, legacy_owner=owner):
+            return _apply_impl(root, run_id=run_id)
 
 
 def _apply_impl(root: Path, *, run_id: str) -> dict[str, Any]:
@@ -7155,6 +7170,25 @@ def rebind_handoff(
     change_plan_path: Path | None,
     out_path: Path | None,
 ) -> dict[str, Any]:
+    _, state = _load_run(root, run_id)
+    from _mvg_capability_recovery import operation_lock
+    from _b_route_operation_scope import scope_guard
+    owner = {"kind": "mvg-rebind", "run_id": run_id,
+        "journal_path": "logs/ci/mvg-planning/" + run_id + "/apply-journal.json"}
+    with operation_lock(root, state):
+        with scope_guard(root, (), prepare_under_lease=lambda: None, legacy_owner=owner):
+            return _rebind_handoff_impl(root, run_id=run_id, task_id=task_id,
+                change_plan_path=change_plan_path, out_path=out_path)
+
+
+def _rebind_handoff_impl(
+    root: Path,
+    *,
+    run_id: str,
+    task_id: str,
+    change_plan_path: Path | None,
+    out_path: Path | None,
+) -> dict[str, Any]:
     run_path, state = _load_run(root, run_id)
     from _mvg_planning_boundary import handoff_target, planning_targets
     if out_path is not None:
@@ -7238,9 +7272,11 @@ def main(argv: list[str] | None = None) -> int:
 
     p_prepare = sub.add_parser("prepare")
     p_prepare.add_argument("--run-id", required=True)
-    p_prepare.add_argument("--capabilities", required=True)
+    p_prepare.add_argument("--input-stage", choices=("legacy", "3b"), default="legacy")
+    p_prepare.add_argument("--planning-contract")
+    p_prepare.add_argument("--capabilities", default="")
     p_prepare.add_argument("--task-id", action="append", default=[])
-    p_prepare.add_argument("--manifest", required=True)
+    p_prepare.add_argument("--manifest", default="")
     p_prepare.add_argument("--evidence-ref", action="append", default=[],
         help="additional existing verification file to include in the immutable input")
     p_prepare.add_argument("--allow-unready-draft", action="store_true")
@@ -7259,6 +7295,10 @@ def main(argv: list[str] | None = None) -> int:
     for name in ("validate", "status"):
         p = sub.add_parser(name)
         p.add_argument("--run-id", required=True)
+        if name == "validate":
+            p.add_argument("--input-stage", choices=("legacy", "3b"), default="legacy")
+            p.add_argument("--prepared-ref")
+            p.add_argument("--candidate")
 
     p_apply = sub.add_parser("apply")
     p_apply.add_argument("--run-id", required=True)
@@ -7286,9 +7326,38 @@ def main(argv: list[str] | None = None) -> int:
     p_handoff.add_argument("--change-plan", default="")
     p_handoff.add_argument("--out", default="")
 
+    p_verify = sub.add_parser("verify-selection")
+    p_verify.add_argument("--run-id", required=True)
+    for runtime_name in ("generate", "review", "status", "verify-selection"):
+        runtime_parser = sub.choices[runtime_name]
+        runtime_parser.add_argument("--input-stage", choices=("legacy", "3b"), default="legacy")
+        runtime_parser.add_argument("--prepared-ref")
+        runtime_parser.add_argument("--planning-profile")
+    p_generate.add_argument("--runner", default="scripts/python/codex_isolated_model_runner.py")
+    sub.choices["validate"].add_argument("--planning-profile")
+
     args = parser.parse_args(argv)
-    root = Path(args.repo_root).resolve()
+    root = Path(args.repo_root).absolute()
     try:
+        from _b_route_planning_runtime import cli_stage
+        runtime_result = cli_stage(args, planner="mvg")
+        if runtime_result is not None:
+            print(json.dumps(runtime_result, ensure_ascii=False, indent=2))
+            return 0
+        if args.command == "validate":
+            from _b_route_candidate import from_cli
+            stage_result = from_cli(args, planner="mvg")
+            if stage_result is not None:
+                print(json.dumps(stage_result, ensure_ascii=False, indent=2))
+                return stage_result["exit_code"]
+        if args.command == "prepare":
+            from _b_route_planning_input import prepare_from_cli
+            stage_result = prepare_from_cli(root, args, planner="mvg")
+            if stage_result is not None:
+                print(json.dumps(stage_result, ensure_ascii=False, indent=2))
+                return stage_result["exit_code"]
+            if not args.capabilities or not args.manifest:
+                raise ValueError("legacy MVG prepare requires --capabilities and --manifest")
         # Preserve lexical CLI spelling until output validation; repo_path resolves
         # links and would otherwise conceal an absolute path or directory alias.
         from _mvg_planning_boundary import run_directory_path, safe_reference, planning_targets, handoff_target

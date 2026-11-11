@@ -109,3 +109,17 @@ If a candidate or reviewer finds a missing/conflicting Requirement, record the s
 ## B 路线只读迁移预检
 
 审阅明确候选时使用 `py -3 -B scripts/python/dev_cli.py b-route-preflight --root <root> --epics <epics> --protection-input <input> --candidate <carrier> --intents <intents> --run-id <fresh-id>`，合同及 Windows 八组实际 CLI 样本见[owner 说明](../../../docs/workflows/b-route-migration-preflight.md)。仅全新 logs；无模型、apply、Task 写入或默认 B 启用。外部 source／review locator 及 digest 可核验，不自报语义批准。旧 pending 原样保留并定位原 Capability apply；原 `--resume-evidence`、completed-only MVG recovery 和 apply journal 边界不变。此预检不改变本 Skill 的现行后置 Chapter 5 正式规划要求。
+
+## Explicit formal B planning context boundary
+
+The existing A workflow above remains its own route. For explicit B-route
+operation inspection or published plan/revision context, use
+`py -3 scripts/python/dev_cli.py b-route-adoption --stage inspect|read --operation-id <original-id> --context`.
+See [adoption owner](../../../docs/workflows/b-route-adoption.md) and
+[native planning/status](../../../docs/workflows/b-route-native-planning-status.md).
+Formal no-Task 3B depends on its original qualified source/native/review owners;
+this link does not require inventing a Task, authorize a model call, or activate
+B by default. Completed-unit reuse/epoch/reopen is unsupported through this context observation entrypoint.
+A published prefix and retained counts never establish global planning completion,
+Task readiness or runtime acceptance. Keep original IDs/resume_ref and blocked
+reasons; do not replace missing proof with a Knowledge summary or a fresh run.

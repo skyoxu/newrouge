@@ -2,6 +2,18 @@
 
 ## 已完成 Capability 恢复与进度
 
+Story 2.9 的 B 路线适配本轮仅准备隔离候选源码；尚未执行项目测试、真实模型或原生验收，不能据此宣告交付完成。正式前置仍为 2.3、2.5、2.7、2.8；Root 的 Step4 独立审核及实际前置取证完成后，才允许从正式 B 入口取证，再进入 Step5 本地可回滚收口。2.10 仍依赖 2.1–2.9，默认 B 与 main 均不在本轮变更范围。
+
+候选适配仅在冻结合同明确选中一个 Capability，且既有完整根 JSON 对象、顶层数组或 `capabilities` 容器中能唯一定位完整原行时尝试恢复；完整根对象使用空 JSON Pointer。明确声明的 `shared_capability` 完整 context 不因 kind 或位于 3A source closure 外而被排除。完整原行保留未知字段、数组顺序、值和类型；原文件 raw digest、原 locator、原 whole-closure proof 与独立 adoption receipt 分别复验。多目标、缺原行、重复原行及只含嵌套 ID 引用的输入记录 `generate_fresh` / `not_registered` 诊断；不补造定义，也不阻断其他正常 fresh 路径。本次 followup03 形态修正及针对测试尚未执行、未安装，不改变完成状态。
+
+候选通过既有 B 结构、typed-ref/OwnedRef、Requirement/原源块、关系与 graph owner 重放完整 delta，当前 envelope 使用既有 `external` provenance；原模型候选与历史 proof 不改写、不重签成单项证明。未引用且不在治理来源闭包中的其他 Capability/Task status 与 catalog/HEAD 不作为本地依赖键；完整相关原义、约束、选定引用、Flow/非 Flow 和共享边界仍需相容。当前 active-chain、操作锁、持久 epoch、checkpoint 唯一提交点、reopen 撤销和后继规则继续适用；本地 clear 保留审计与正式 Git 采纳/累计基线。
+
+followup02 修正了 candidate01 的历史规则放宽：删除裸历史布尔上下文，同源只通过原 `check_originals` 选择历史业务输入读取，始终核对当前实际 runtime rules、原 planning rules 与持久 epoch。较旧 source epoch 仅走既有真实 source-transition/original-validator owner；无实际 owner 或未支持的旧项记录 miss/fresh，不用重签 JSON 或新指纹协议扩权。B source-conflict locator 同时允许当前冻结合同中明确声明、未 absence 且有完整原文的 constraints/contexts，逐项校验原 raw、evidence 与 exact citation；闭包外任意未声明路径仍无来源资格。两项修正及新增行为测试尚未执行。
+
+三类恢复入口保持分离：完成项 adoption 只认 `run.json` 的已提交 checkpoint；Capability runner 的显式 `--resume-evidence` 仍核对原完整准备输入、历史 batch 与 receipt；2.8 文件恢复仍由原 journal owner 核对 before/after、发布与后编辑。任何一种许可都不授予新 MVG 复用未完成候选的资格。handoff 记录原 transaction/receipt 与复用原因、当前 run 实际已预留调用数和 active elapsed；provider dispatch、费用等缺少可信计量时保留 `unknown`，不能以规划 adoption 宣告 runtime 通过。
+
+待 Root 执行的新增最小组合位于 `test_b_route_completed_reuse.py`（原本地 coordinator/checkpoint/receipt 与合成协议宿主，不能替代真实 native/模型资格）。原 epoch/后继、Capability evidence resume、2.8 journal 合同分别沿用 `test_mvg_capability_recovery.py`、`test_capability_input_integrity.py` 与原文件恢复测试；只按实际受影响方法选择验证。未运行或 unknown 均不得算通过，历史合成测试计数也不是本次真实验收。
+
 新范围默认使用 `newrouge.mvg-scoped-evidence.v4`：Knowledge 与 MVG 共享 `_semantic_topology.resolve_relation_closure` 及定向 Capability 关系规则。基础范围为选定 Capability → Requirement → source block/任务 owner；共享任务或来源块是边界，不反向拉入其他 Capability。准备阶段冻结 topology manifest/edges，使用前校验四项产物哈希、来源版本与已注册端点；部分缺失或失配阻断，完全缺失的旧输入显式标记 `legacy_unmapped`。MVG 仅在此基础上扩展受影响累计 flow/handoff、owner 的 Acceptance/Chapter 5 权威引用及显式证据，不另建搜索/RAG，也不向通用拓扑写入 MVG 专属关系。完整闭包与选择理由写入机器证明，模型收到完整选中正文，不重复机器闭包元数据。历史 scoped v1/v2/v3 保持原投影和哈希，不补读新拓扑。
 
 当前 v4 继承 `newrouge.mvg-scoped-evidence.v3` 的完整分批规则与下述 v2 来源投影规则，历史版本按原版投影、提示词与哈希重建，不改写旧证明。inspection 每批保留完整 Capability、Requirement、source block、受影响累计 flow，以及该批来源关联的完整任务行、Acceptance 和 readiness；其他任务以明确的全局边界表呈现。关联范围由任务引用、Acceptance Refs、Chapter 5 descriptor 和依赖闭包确定，共享路径包含全部关联任务；未知归属、异常结构和 explicit evidence 保守回退全量任务上下文。全部批次的任务行/master/readiness 并集必须精确覆盖 frozen core，缺失在首个模型调用前阻断。生成与独立语义准入分别执行此检查；synthesis 仍保留全部相关核心正文，新 synthesis 由既有无损编码保存原任务数组顺序、缺失值、null 与字段类型。不得用跨批次引用代替正文；重复指纹快照仍全文传送，仅允许同一请求内的自包含无损共享。优化不保证批次数或耗时降低，最终完整包装继续预检，64/192 预算不变。
@@ -220,3 +232,29 @@ py -3 -m unittest discover -s scripts/python/tests -p test_milestone_two_stage_i
 This two-stage fixture exercises source accumulation, task preview/apply/export, sparse overlays, Chapter 5 reconciliation and handoff, cumulative baseline updates, and regression evidence consumption. It preserves the old done task and subtasks, blocks planned tests, proves that a passing new shop test cannot hide a failing old reward regression, and accepts both only after correction on one committed revision. Replaying a stale task preview is rejected without changing the triplet.
 
 The fixture replaces the engine adapter with deterministic subprocess assertions and actual TRX parsing in git snapshots. It validates workflow integration, not Godot gameplay or the real next-milestone GDD. Actual milestone acceptance still requires the manifest's real engine/domain tests and human obligations. Chapter 6 rejects previously passed evidence when the current worktree has tracked or untracked changes, even if HEAD is unchanged.
+
+## 显式 Task 无关 3B 规划
+
+Story 2.5 仅向现有 append、OS worker、admission、协调器与原子 checkpoint
+owner 接入明确的输入/profile 数据服务，默认仍为 legacy。使用
+`--input-stage 3b --planning-profile 3b-mvg-v1 --prepared-ref ...` 调用
+`generate`、`review`、`verify-selection` 或 `status`；Capability planner 使用
+`3b-capabilities-v1`，保留其独立的原请求及时间默认预算。
+不生成伪造的 Task、readiness 或 manifest。候选结构读取保持独立；已提交的 selected
+不授予 B catalog 采纳或运行资格。完整合同、离线证据类别及真实验收缺口见
+[Story 2.5 验证说明](../testing/story-2-5-independent-admission-selection.md)。
+
+### Story 2.9 三层审核修复（2026-11-11）
+
+原四个coordinator单例在7b806df7通过；其producer/transport为本地合成，不能代表
+官方模型资格。原生审核13个发现已逐项裁决，最小修复覆盖历史wire的原state/代际与
+check_originals传播、显式context格式、完整相关Capability行、有效选定Flow/传递
+闭包冲突、planned实施对象义务，以及合法blocked重开评审的原有界语义修复。
+不增加Capability公共audit/reopen入口或自动改写新增Requirement分母的协议。
+
+十四项DATA/实际owner投影及负向检查在
+`logs/ci/2026-11-11/story29-r63-review-data-01/result.json`实际OS0通过；
+原indexed policy夹具补generation后的单独复验证据为
+`story29-r63-indexed-generation-fixture-01/result.json`。
+当前wire的完整reopen/replacement/历史复用场景已写入但尚未执行。正式2.9仍等待
+2.8前置与原Step4/5收口；原unknown、预算、历史失败和运行资格边界保留。
