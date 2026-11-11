@@ -1,0 +1,9 @@
+test_complete_support_order_and_recorded_workspace_are_checked (test_b_route_qualified_historical_v3.HistoricalV3SavedReviewDataTests.test_complete_support_order_and_recorded_workspace_are_checked) ... ok
+test_consistent_synthetic_data_cannot_authenticate_owner_or_grant_compensation (test_b_route_qualified_historical_v3.HistoricalV3SavedReviewDataTests.test_consistent_synthetic_data_cannot_authenticate_owner_or_grant_compensation) ... ok
+test_rehashed_output_drift_is_rejected_by_full_protocol_replay (test_b_route_qualified_historical_v3.HistoricalV3SavedReviewDataTests.test_rehashed_output_drift_is_rejected_by_full_protocol_replay) ... ok
+test_unsealed_request_cannot_replace_the_embedded_sealed_operation_request (test_b_route_qualified_historical_v3.HistoricalV3SavedReviewDataTests.test_unsealed_request_cannot_replace_the_embedded_sealed_operation_request) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.050s
+
+OK

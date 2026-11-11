@@ -221,6 +221,88 @@ class HistoricalV3OfflineProtocolDataTests(unittest.TestCase):
                 self.assertEqual('codex_app_server_'+reason,str(caught.exception))
 
 
+def saved_review_fixture():
+    """A deliberately synthetic bundle that must never grant owner authority."""
+    import hashlib
+    workspace, prompt, schema, output, execution = offline_protocol_data()
+    execution['command'] = ['historical-python', 'historical-runner', '--workspace', workspace.as_posix()]
+    request = {'schema_version': 'newrouge.b-route-adoption-request.v2', 'operation_id': 'DATA-ONLY',
+               'review_profile': protocol.PROFILE}
+    subject = {'schema_version': protocol.SUBJECT, 'operation_id': 'DATA-ONLY', 'request': request,
+        'policy_identity': 'sha256:' + '4' * 64, 'preview': {'authority_refs': []}, 'native_threads': []}
+    raw = lambda value: (json.dumps(value, ensure_ascii=False, indent=2) + '\n').encode('utf-8')
+    runtime = receipt_from(execution)['model_identity_evidence'][0]
+    proof = {'schema_version': protocol.PROOF, 'operation_id': 'DATA-ONLY',
+        'subject_digest': codec.canonical_digest(subject), 'policy_identity': subject['policy_identity'],
+        'mode': 'semantic', 'evidence': {'thread_id': runtime['thread_id'], 'turn_id': runtime['turn_id'],
+            'protocol_digest': runtime['protocol_sha256'], 'runtime_configuration': {'model': runtime['model'],
+                'provider': runtime['model_provider'], 'reasoning_effort': 'high'},
+            'provider_actual_model': 'unknown', 'physical_requests': 'unknown'}, 'files': []}
+    buffers = {'subject.json': raw(subject), 'w/prompt.txt': b'Fixture original prompt',
+        'w/schema.json': raw(schema), 'request.txt': prompt.encode('utf-8'),
+        'execution.json': raw(execution), 'w/output.json': output, 'review.json': raw(proof)}
+    operation = {'schema_version': 'newrouge.b-route-adoption-operation.v2', 'operation_id': 'DATA-ONLY'}
+    return rebind_saved_review_fixture(operation, buffers)
+
+
+def rebind_saved_review_fixture(operation, buffers, *, reverse_support=False):
+    import hashlib
+    raw = lambda value: (json.dumps(value, ensure_ascii=False, indent=2) + '\n').encode('utf-8')
+    home = 'logs/ci/b-route-adoption-reviews/' + hashlib.sha256(b'DATA-ONLY').hexdigest()
+    proof = codec.strict_json_loads(buffers['review.json'])
+    proof['files'] = [{'path': home + '/' + name, 'schema_version': 'raw.bytes.v1',
+        'raw_digest': codec.raw_digest(buffers[name])} for name in protocol.SAVED_SUPPORT]
+    if reverse_support: proof['files'].reverse()
+    buffers['review.json'] = raw(proof)
+    ref = {'path': home + '/review.json', 'schema_version': protocol.PROOF,
+           'raw_digest': codec.raw_digest(buffers['review.json'])}
+    subject = codec.strict_json_loads(buffers['subject.json'])
+    request = {**subject['request'], 'host_review_ref': ref}
+    frozen = deepcopy(subject['preview']); frozen['request'] = request
+    frozen['authority_refs'] = sorted([*frozen['authority_refs'], ref, *proof['files']], key=lambda row: row['path'])
+    request_raw = raw(request)
+    operation.update(request_raw_base64=base64.b64encode(request_raw).decode('ascii'),
+        request_raw_digest=codec.raw_digest(request_raw), request_digest=codec.canonical_digest(request),
+        frozen=frozen, frozen_digest=codec.canonical_digest(frozen))
+    return operation, buffers
+
+
+class HistoricalV3SavedReviewDataTests(unittest.TestCase):
+    def test_consistent_synthetic_data_cannot_authenticate_owner_or_grant_compensation(self):
+        operation, buffers = saved_review_fixture()
+        report = protocol.check_saved_review_bindings(operation, buffers)
+        self.assertIs(report['saved_schema_and_protocol_replayed'], True)
+        for key in ('original_policy_reconstructed', 'original_owner_execution_authenticated',
+                    'original_native_execution_authenticated', 'new_authority_granted', 'eligible_for_compensation'):
+            self.assertIs(report[key], False)
+        with self.assertRaises(ValueError): host.AuthenticatedHistory(object(), report)
+
+    def test_rehashed_output_drift_is_rejected_by_full_protocol_replay(self):
+        operation, buffers = saved_review_fixture()
+        buffers['w/output.json'] += b' '
+        rebind_saved_review_fixture(operation, buffers)
+        with self.assertRaises(ValueError): protocol.check_saved_review_bindings(operation, buffers)
+
+    def test_complete_support_order_and_recorded_workspace_are_checked(self):
+        for case in ('order', 'workspace'):
+            operation, buffers = saved_review_fixture()
+            if case == 'workspace':
+                execution = codec.strict_json_loads(buffers['execution.json'])
+                execution['command'][-1] = 'changed-workspace'
+                buffers['execution.json'] = json.dumps(execution).encode('utf-8')
+            rebind_saved_review_fixture(operation, buffers, reverse_support=case == 'order')
+            with self.subTest(case=case), self.assertRaises(ValueError):
+                protocol.check_saved_review_bindings(operation, buffers)
+
+    def test_unsealed_request_cannot_replace_the_embedded_sealed_operation_request(self):
+        operation, buffers = saved_review_fixture()
+        unsealed = codec.strict_json_loads(buffers['subject.json'])['request']
+        raw = json.dumps(unsealed).encode('utf-8')
+        operation.update(request_raw_base64=base64.b64encode(raw).decode('ascii'),
+            request_raw_digest=codec.raw_digest(raw), request_digest=codec.canonical_digest(unsealed))
+        with self.assertRaises(ValueError): protocol.check_saved_review_bindings(operation, buffers)
+
+
 class HistoricalV3PublicDataTests(unittest.TestCase):
     def test_missing_or_private_protection_fields_never_form_a_public_view(self):
         for value in ({},{'private_raw_base64':'never a public semantic field'}):

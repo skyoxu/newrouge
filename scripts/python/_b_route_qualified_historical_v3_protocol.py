@@ -2,6 +2,7 @@
 
 These functions issue no history/Action token and never authenticate a caller
 native dictionary. The worker supplies only same-read original checked bytes.
+Offline saved-review checks return DATA observations only, never owner authority.
 """
 import _b_route_codec as codec
 
@@ -82,3 +83,84 @@ def check_subject_family(private_schema, public_schema):
         ('newrouge.b-route-adoption-review-subject.v2','newrouge.b-route-adoption-model-subject.v2'),
         ('newrouge.b-route-adoption-review-subject.v3','newrouge.b-route-adoption-model-subject.v3')},
         'exact original private/public version pair; no relabelled/mixed old ticket')
+
+
+SAVED_SUPPORT = ('subject.json', 'w/prompt.txt', 'w/schema.json', 'request.txt',
+                 'execution.json', 'w/output.json')
+
+
+def check_saved_review_bindings(operation, buffers):
+    """Replay supplied review bytes without authenticating their owner or origin.
+
+    A self-consistent fabricated bundle can pass these DATA checks. No opaque
+    handle is issued, and this result cannot replace authenticate/verify_capture.
+    Original policy/renderer/native eligibility remain separate obligations.
+    """
+    import base64
+    from copy import deepcopy
+    import hashlib
+    from pathlib import Path, PureWindowsPath
+    import jsonschema
+    from _planning_execution_binding import receipt_from, validate_execution
+
+    need(family(operation) == 'v3', 'explicit original proof3 family')
+    need(set(buffers) == {*SAVED_SUPPORT, 'review.json'}
+         and all(type(value) is bytes for value in buffers.values()), 'complete exact saved review buffers')
+    operation_id = codec.validate_business_id(operation['operation_id'])
+    home = 'logs/ci/b-route-adoption-reviews/' + hashlib.sha256(operation_id.encode('utf-8')).hexdigest()
+    request_raw = base64.b64decode(operation['request_raw_base64'], validate=True)
+    request = codec.strict_json_loads(request_raw)
+    need(codec.raw_digest(request_raw) == operation['request_raw_digest']
+         and codec.canonical_digest(request) == operation['request_digest']
+         and request == operation['frozen']['request'], 'exact embedded sealed operation request')
+    ref = request['host_review_ref']
+    need(ref == {'path': home + '/review.json', 'schema_version': PROOF,
+                 'raw_digest': codec.raw_digest(buffers['review.json'])}, 'original proof raw reference')
+    proof = codec.strict_json_loads(buffers['review.json'])
+    subject = codec.strict_json_loads(buffers['subject.json'])
+    need(set(proof) == {'schema_version', 'operation_id', 'subject_digest', 'policy_identity',
+                       'mode', 'evidence', 'files'}, 'closed original saved proof data')
+    need(proof['schema_version'] == PROOF and subject['schema_version'] == SUBJECT
+         and proof['operation_id'] == subject['operation_id'] == operation_id
+         and proof['subject_digest'] == codec.canonical_digest(subject)
+         and proof['policy_identity'] == subject['policy_identity']
+         and proof['mode'] == 'semantic'
+         and subject['request'] == {key: value for key, value in request.items() if key != 'host_review_ref'},
+         'same original subject, request and recorded policy identity')
+    refs = [{'path': home + '/' + name, 'schema_version': 'raw.bytes.v1',
+             'raw_digest': codec.raw_digest(buffers[name])} for name in SAVED_SUPPORT]
+    need(proof['files'] == refs, 'complete original ordered support raw bindings')
+    frozen = deepcopy(subject['preview'])
+    frozen['request'] = request
+    frozen['authority_refs'] = sorted([*frozen['authority_refs'], ref, *refs], key=lambda row: row['path'])
+    need(codec.canonical_digest(frozen) == operation['frozen_digest']
+         == codec.canonical_digest(operation['frozen']), 'complete original frozen preview and support')
+    execution = codec.strict_json_loads(buffers['execution.json'])
+    receipt = receipt_from(execution)
+    command = execution['command']
+    need(type(command) is list and command.count('--workspace') == 1, 'one recorded historical workspace argument')
+    historical_workspace = PureWindowsPath(command[command.index('--workspace') + 1]).as_posix()
+    need(receipt['workspace'] == historical_workspace, 'recorded command/receipt workspace correspondence')
+    schema = codec.strict_json_loads(buffers['w/schema.json'])
+    output = codec.strict_json_loads(buffers['w/output.json'])
+    jsonschema.Draft202012Validator(schema).validate(output)
+    validate_execution(Path(historical_workspace), execution, receipt, 'auto', buffers['w/output.json'],
+        prompt=buffers['request.txt'].decode('utf-8'), schema=schema,
+        require_runtime=True, expected_reasoning_effort='high')
+    runtime = receipt['model_identity_evidence'][0]
+    need(runtime['model_provider'] == 'openai' and runtime['thread_id'] not in subject['native_threads'],
+         'recorded independent official runtime configuration')
+    evidence = {'thread_id': runtime['thread_id'], 'turn_id': runtime['turn_id'],
+        'protocol_digest': runtime['protocol_sha256'], 'runtime_configuration': {
+            'model': runtime['model'], 'provider': runtime['model_provider'], 'reasoning_effort': 'high'},
+        'provider_actual_model': 'unknown', 'physical_requests': 'unknown'}
+    need(codec.canonical_digest(evidence) == codec.canonical_digest(proof['evidence']),
+         'complete saved proof/runtime data correspondence')
+    return {'schema_version': 'newrouge.b-route-saved-review-bindings-data.v1',
+        'operation_id': operation_id, 'subject_digest': proof['subject_digest'],
+        'frozen_digest': operation['frozen_digest'], 'recorded_policy_identity': proof['policy_identity'],
+        'support_raw_bindings_checked': True, 'saved_schema_and_protocol_replayed': True,
+        'recorded_verdict': output.get('verdict'), 'historical_workspace': historical_workspace,
+        'original_policy_reconstructed': False, 'original_owner_execution_authenticated': False,
+        'original_native_execution_authenticated': False, 'new_authority_granted': False,
+        'eligible_for_compensation': False}

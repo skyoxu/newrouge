@@ -1,0 +1,78 @@
+{
+  "schema_version": "newrouge.b-route-saved-review-bindings-data.v1",
+  "operation_id": "NativeV15Origin03",
+  "subject_digest": "sha256:832ef057e0b4d316ef98f1270871979b86abb9d5435e05edacae6beae55fffce",
+  "frozen_digest": "sha256:551ce99d98a546f13cb8e150cf2ef05156e45e4d0f502993cc2533423d86b894",
+  "recorded_policy_identity": "sha256:1012db222765367c823f7dab0292b60f6248daf489377a65cc47968112d728cf",
+  "support_raw_bindings_checked": true,
+  "saved_schema_and_protocol_replayed": true,
+  "recorded_verdict": "approved",
+  "historical_workspace": "C:/Users/Administrator/Documents/Codex/2026-11-05/task/story27-r52-v15-empty-target-native01/logs/ci/b-route-adoption-reviews/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/w",
+  "original_policy_reconstructed": false,
+  "original_owner_execution_authenticated": false,
+  "original_native_execution_authenticated": false,
+  "new_authority_granted": false,
+  "eligible_for_compensation": false,
+  "historical_target_identity_recorded": {
+    "path": "C:\\Users\\Administrator\\Documents\\Codex\\2026-11-05\\task\\story27-r52-v15-empty-target-native01",
+    "device": 13874145219238003830,
+    "inode": 14636698792553057
+  },
+  "current_target_identity": {
+    "path": "/workspace/newrouge-recovery-data/batch03-05f5fbf9/data/target",
+    "device": 27,
+    "inode": 1576343
+  },
+  "checked_current_buffers": [
+    {
+      "path": "logs/ci/b-route-operations/operations/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/operation.json",
+      "raw_digest": "sha256:ad20fe68bae12bf5805e809c73dad6355db3d876d13000524810b90ccfdafc05",
+      "bytes": 482459
+    },
+    {
+      "path": "logs/ci/b-route-adoption-reviews/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/subject.json",
+      "raw_digest": "sha256:4d5815078dc7ba20fe8df942dcbb8841d56d161616ce6d54f4ab5e21bc048c45",
+      "bytes": 4284819
+    },
+    {
+      "path": "logs/ci/b-route-adoption-reviews/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/w/prompt.txt",
+      "raw_digest": "sha256:858f938c27ccec3a3bbf97fffa51f14d19e5c7de77e3922cda3159593e4a7923",
+      "bytes": 253017
+    },
+    {
+      "path": "logs/ci/b-route-adoption-reviews/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/w/schema.json",
+      "raw_digest": "sha256:2154a8b0541b6c1f2d32db505f7c14dadf8dd4d8c4757e1f60adf750c9499fa1",
+      "bytes": 2399
+    },
+    {
+      "path": "logs/ci/b-route-adoption-reviews/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/request.txt",
+      "raw_digest": "sha256:3982ab8d2317396502a29e9252d37863e6ccf845b90cd8b6f1c5689e158c9a38",
+      "bytes": 255730
+    },
+    {
+      "path": "logs/ci/b-route-adoption-reviews/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/execution.json",
+      "raw_digest": "sha256:b64ef282c88954f7a853e090ae60f5f7c5e1d86458c2eebee963cc0e0b540e53",
+      "bytes": 5993420
+    },
+    {
+      "path": "logs/ci/b-route-adoption-reviews/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/w/output.json",
+      "raw_digest": "sha256:882399951222d6777dbaeddb4e6570ed23808cb29d414035b84c303764564075",
+      "bytes": 7320
+    },
+    {
+      "path": "logs/ci/b-route-adoption-reviews/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/review.json",
+      "raw_digest": "sha256:38c33708bdeabe20a6466ebef85712df09e99218424565ec99513f7fef291f2c",
+      "bytes": 2425
+    }
+  ],
+  "current_replay_sources": {
+    "_b_route_qualified_historical_v3_protocol.py": "sha256:66946ab963651ce85fff1d4f83450c1baf074105f4dd335f82bbfa8ead5e0bf7",
+    "_planning_execution_binding.py": "sha256:347f39c8956118ed578d9f7e2817078ef2a667de44dce00870ad2d992293f979",
+    "_codex_app_server.py": "sha256:598eb7d9e4e2dccec5a1a0ba31cf3b8e9fa0cd1df1d9d5b9263564cef1bdc022",
+    "_b_route_codec.py": "sha256:57b83b6ed9c69676bd721b5a515581df882b12e961e00bf7a4aec33ae6bc0697"
+  },
+  "old_code_executed": false,
+  "model_dispatched": false,
+  "compensation_integration_changed": false,
+  "observed_original_buffers_unchanged": true
+}

@@ -1,0 +1,13 @@
+{
+  "label": "saved-data-bindings-01",
+  "tests_run": 4,
+  "passed": 4,
+  "failures": [],
+  "errors": [],
+  "skipped": [],
+  "successful": true,
+  "elapsed_seconds": 0.21400397700017493,
+  "finished_utc": "2026-11-11T20:04:09.738785+00:00",
+  "new_provider_calls": 0,
+  "qualification": "Focused offline unit/CLI checks only; no provider, Windows durability or formal Story acceptance claim."
+}

@@ -1,0 +1,15 @@
+{
+  "label": "saved-data-bindings-01",
+  "started_utc": "2026-11-11T20:04:09.522666+00:00",
+  "selectors": [
+    "test_b_route_qualified_historical_v3.HistoricalV3SavedReviewDataTests"
+  ],
+  "baseline_commit": "f023eebd46e05507e0c908f0ed352c6d46cfff5f",
+  "changed_files_sha256": {
+    "execution-plans/2026-11-11-cloud-epic2-recovery.md": "dcc11f87f9b2416cc84ce3b3b7549d84ad5682c469a3c9c8e6380870524df789",
+    "scripts/python/_b_route_qualified_historical_v3_protocol.py": "66946ab963651ce85fff1d4f83450c1baf074105f4dd335f82bbfa8ead5e0bf7",
+    "scripts/python/tests/test_b_route_qualified_historical_v3.py": "0cf99be754b2463e9b772146a7341941664c87cd7e88d607d623e3dcfea43201",
+    "workflow.md": "0d65a6edd5893707db866dd3f4d006e1cc48cb1f9f695d496f62c25401b50cfb"
+  },
+  "qualification": "Focused offline unit/CLI checks only; no provider, Windows durability or formal Story acceptance claim."
+}

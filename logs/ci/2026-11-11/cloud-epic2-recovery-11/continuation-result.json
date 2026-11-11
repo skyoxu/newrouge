@@ -1,0 +1,39 @@
+{
+  "schema": "newrouge.authorized-migration-data-check.v1",
+  "updated_utc": "2026-11-11T20:11:46.763163+00:00",
+  "baseline": "f023eebd46e05507e0c908f0ed352c6d46cfff5f",
+  "routine_reapproval_required": false,
+  "implemented": "Pure saved-review DATA binding/protocol checks in existing v3 data module; no authentication or compensation fallback",
+  "focused_methods": 4,
+  "focused_passed": 4,
+  "actual_saved_review_data_checks": "passed",
+  "original_policy_reconstructed": false,
+  "original_owner_execution_authenticated": false,
+  "original_native_execution_authenticated": false,
+  "new_authority_granted": false,
+  "compensation_integration_changed": false,
+  "old_source_schema_preimages": {
+    "required": 51,
+    "exact_Git_blobs": 40,
+    "CRLF_derived_exact_raw_pin_matches": 11,
+    "matched_total": 51,
+    "installed_or_executed": false
+  },
+  "concrete_unresolved_inputs": [
+    "Original full sys.version policy input, not current/numeric version",
+    "15 fixed original producer/control reads not resolved through FILE_INDEX source mappings or indexed raw digest matches; opaque nested payloads not globally searched"
+  ],
+  "new_global_story_gate": false,
+  "new_user_permission_question": false,
+  "new_project_model_calls": 0,
+  "financial_writes": 0,
+  "unknown_or_old_operation_replayed": false,
+  "historical_code_executed": false,
+  "batch_redownloaded": false,
+  "full_suite_rerun": false,
+  "main_merge": false,
+  "remote_write": false,
+  "Fast_setting_changed": false,
+  "capacity_fix_implemented": false,
+  "formal_epic2_acceptance": false
+}
