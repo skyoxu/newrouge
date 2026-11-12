@@ -1,0 +1,22 @@
+{
+  "head_before": "b44d0820778711b4cb6d49e0962b85bb1ed373ca",
+  "branch": "build/cloud-epic2-recovery-20261111",
+  "current_branch_runs_before": 0,
+  "historical_windows_success_run": 41831324047,
+  "workflow_default_unchanged": true,
+  "selector_classes": [
+    "test_b_route_commit_recovery.WindowsRecoveryTests",
+    "test_b_route_compensation.WindowsCompensationTests"
+  ],
+  "collected_tests": 4,
+  "tests_executed_locally": 0,
+  "new_model_calls": 0,
+  "source_policy_unchanged": "sha256:580ab96f584efecb61e870c1539402d041fcbe3369a293204c6f97f5710da05e",
+  "source_pins": 84,
+  "files": {
+    ".github/workflows/b-route-runtime-deterministic.yml": "fdc6699362ad00a00d13839d3714a88caed8935c41e9eb716c0c030032585a4d",
+    "scripts/ci/run_b_route_windows_recovery_checks.py": "e2c20cc486bd0e7a284bc9dc061d0d94d770e765b3c21d0c68a9499ef45acbdf",
+    "logs/ci/2026-11-12/cloud-epic2-recovery-24/PLAN.md": "42ad19794f5923da9990683e46300e0e349045310c2b4dd22c77897a695cdfb4",
+    "logs/ci/2026-11-12/cloud-epic2-recovery-24/windows-scope-assessment.md": "86c70124c207c8c6350e348b5abf90ac0ca1af95877556f8bd53bcc3b78d3f8c"
+  }
+}

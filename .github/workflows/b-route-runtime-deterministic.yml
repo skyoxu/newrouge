@@ -1,6 +1,11 @@
 name: B-route Runtime Deterministic Checks
 
 on:
+  push:
+    branches: [build/cloud-epic2-recovery-20261111]
+    paths:
+      - '.github/workflows/b-route-runtime-deterministic.yml'
+      - 'scripts/ci/run_b_route_windows_recovery_checks.py'
   pull_request:
     branches: [main]
     types: [synchronize, opened, reopened]
@@ -23,6 +28,7 @@ on:
       - 'scripts/python/run_gate_bundle.py'
       - 'scripts/python/gate_bundle_retention.py'
       - 'scripts/ci/prepare_b_route_runtime.ps1'
+      - 'scripts/ci/run_b_route_windows_recovery_checks.py'
       - 'scripts/sc/_delivery_profile.py'
       - 'scripts/sc/config/delivery_profiles.json'
       - 'scripts/python/tests/test_b_route_*.py'
@@ -39,6 +45,12 @@ on:
       - 'scripts/python/tests/fixtures/codex_app_server_stdio_child.py'
       - 'docs/planning/b-route/schemas/**'
   workflow_dispatch:
+    inputs:
+      suite:
+        description: Existing runtime suite or the four Windows recovery controls
+        type: choice
+        default: runtime
+        options: [runtime, windows-recovery]
 
 permissions:
   contents: read
@@ -73,11 +85,24 @@ jobs:
           ./scripts/ci/prepare_b_route_runtime.ps1
 
       - name: Run deterministic runtime, recovery and resource checks
+        if: github.event_name != 'push' && inputs.suite != 'windows-recovery'
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force 'logs/ci/b-route-deterministic' | Out-Null
           $env:PYTHONPATH = @((Join-Path $env:GITHUB_WORKSPACE 'scripts/python'), (Join-Path $env:GITHUB_WORKSPACE 'scripts/python/tests'), (Join-Path $env:GITHUB_WORKSPACE 'scripts/sc'), $env:GITHUB_WORKSPACE) -join [IO.Path]::PathSeparator
           & $env:BR_PYTHON -X dev -B scripts/python/run_gate_bundle.py --mode b-route-runtime --out-dir 'logs/ci/b-route-deterministic' --skip-prune-runs 2>&1 | Tee-Object -FilePath 'logs/ci/b-route-deterministic/unit-tests.log'
+          exit $LASTEXITCODE
+
+      - name: Run four existing Windows recovery controls
+        if: github.event_name == 'push' || inputs.suite == 'windows-recovery'
+        shell: pwsh
+        run: |
+          $env:PYTHONPATH = @((Join-Path $env:GITHUB_WORKSPACE 'scripts/python'), (Join-Path $env:GITHUB_WORKSPACE 'scripts/python/tests'), (Join-Path $env:GITHUB_WORKSPACE 'scripts/sc'), $env:GITHUB_WORKSPACE) -join [IO.Path]::PathSeparator
+          $env:TIKTOKEN_CACHE_DIR = $env:BR_TIKTOKEN_CACHE_DIR
+          $env:TEMP = $env:BR_TEST_TEMP
+          $env:TMP = $env:BR_TEST_TEMP
+          $env:ADOPTION_TEST_TEMP = $env:BR_TEST_TEMP
+          & $env:BR_PYTHON -X dev -B scripts/ci/run_b_route_windows_recovery_checks.py
           exit $LASTEXITCODE
 
       - name: Preserve deterministic test and dependency evidence
