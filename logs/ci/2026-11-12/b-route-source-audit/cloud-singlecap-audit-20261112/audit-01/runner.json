@@ -1,0 +1,22 @@
+{
+  "schema_version": "newrouge.isolated-model-runner.v1",
+  "filesystem_scope": "prompt_only",
+  "fresh_session_per_invocation": true,
+  "can_read_outside_workspace": false,
+  "model": "environment-default",
+  "model_identity_source": "codex-app-server-runtime-configuration",
+  "model_identity_required": true,
+  "model_identity_scope": "runtime_configuration",
+  "evidence_policy": "official-codex-runtime-bound.v1",
+  "provider_identity_verified": false,
+  "tool_access_scope": "none",
+  "transport": "codex-app-server-stdio",
+  "model_tools": [],
+  "request_accounting": "exact_per_runner_invocation",
+  "request_count_semantics": "app-server-turns-not-provider-billing",
+  "supports_batched_session": true,
+  "supports_input_preflight": true,
+  "supports_request_budget": true,
+  "supports_synthesis_budget": true,
+  "requested_reasoning_effort": "high"
+}

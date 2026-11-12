@@ -1,0 +1,153 @@
+{
+  "accounted_ref": "logs/ci/2026-11-12/b-route-sources/cloud-singlecap-source-20261112/account-02/account/report.json",
+  "steps": [
+    {
+      "name": "extract-000001"
+    },
+    {
+      "name": "compare"
+    }
+  ],
+  "citation_provenance": "model-selected frozen-source span references; canonical outputs are decoded views; literal citations unchanged",
+  "observations": [
+    {
+      "path": "logs/ci/2026-11-12/b-route-sources/cloud-singlecap-source-20261112/account-02/account/report.json",
+      "raw_digest": "sha256:a1fa9a34b5478b02f7310042e96d5dc60b5d6a241229bde2a1860153f7667cbf",
+      "archive": "raw/000001.bin",
+      "byte_count": 903
+    },
+    {
+      "path": "logs/ci/2026-11-12/b-route-sources/cloud-singlecap-source-20261112/account-02/account/event.json",
+      "raw_digest": "sha256:c209abde52ad60a57a67fb0f1f6ca115e98fc5386649020b03a09e185a84d2e7",
+      "archive": "raw/000002.bin",
+      "byte_count": 4493
+    },
+    {
+      "path": "logs/ci/2026-11-12/b-route-sources/cloud-singlecap-source-20261112/account-02/account/candidate.snapshot.json",
+      "raw_digest": "sha256:75945967cfc9829f91203b68bd821c80f02fb197997f13c8578c2b6af47c0c72",
+      "archive": "raw/000003.bin",
+      "byte_count": 22410
+    },
+    {
+      "path": "logs/ci/2026-11-12/b-route-sources/cloud-singlecap-source-20261112/account-02/account/request.json",
+      "raw_digest": "sha256:28c8d30def0ebf551dd200e84caef86a311b384ef47edc633b047e017de0e19a",
+      "archive": "raw/000004.bin",
+      "byte_count": 611
+    },
+    {
+      "path": "logs/ci/2026-11-12/b-route-sources/cloud-singlecap-source-20261112/account-02/account/requirement-proposals.json",
+      "raw_digest": "sha256:c719cd93cb225b42d4ea6893e8e2b861d9ff98000210d25cab2fcbd41dc429ac",
+      "archive": "raw/000005.bin",
+      "byte_count": 16799
+    },
+    {
+      "path": "logs/ci/2026-11-12/b-route-sources/cloud-singlecap-source-20261112/account-02/account/source-accounting.json",
+      "raw_digest": "sha256:f7a510d581c0f55b994ecb1b21a54ca9922822e2686285bb14c8dd8ecb60eff6",
+      "archive": "raw/000006.bin",
+      "byte_count": 8952
+    },
+    {
+      "path": "logs/ci/2026-11-12/b-route-sources/cloud-singlecap-source-20261112/prepare-01/prepare/prepared.json",
+      "raw_digest": "sha256:f82cccbb4b0d38e16e014b3975206d286bf942e6ecb1c7ef5084342df12c6110",
+      "archive": "raw/000007.bin",
+      "byte_count": 2224
+    },
+    {
+      "path": "logs/ci/2026-11-12/b-route-sources/cloud-singlecap-source-20261112/prepare-01/prepare/event.json",
+      "raw_digest": "sha256:64d2629fc4ed78d84ec6c9e2381e28ecb5ee0b218871dc46c5293a982e48dce3",
+      "archive": "raw/000008.bin",
+      "byte_count": 3095
+    },
+    {
+      "path": "logs/ci/2026-11-12/b-route-sources/cloud-singlecap-source-20261112/prepare-01/prepare/batch-index.json",
+      "raw_digest": "sha256:db02134f7270bf1ad1e6f9651d6903f211df32cc67caf4a9d1e7ec40fa46ab98",
+      "archive": "raw/000009.bin",
+      "byte_count": 1632
+    },
+    {
+      "path": "logs/ci/2026-11-12/b-route-sources/cloud-singlecap-source-20261112/prepare-01/prepare/batches/batch-0001.json",
+      "raw_digest": "sha256:947042321bddcce1992e46692f5ca1e819a97ff6cd998679ddf3b40b9787fc99",
+      "archive": "raw/000010.bin",
+      "byte_count": 12825
+    },
+    {
+      "path": "logs/ci/2026-11-12/b-route-sources/cloud-singlecap-source-20261112/prepare-01/prepare/candidate.json",
+      "raw_digest": "sha256:3a1b8516b3bb6377265d197c60e1e3673f5ac8ec2cf5615fae7202470ff72ad4",
+      "archive": "raw/000011.bin",
+      "byte_count": 5298
+    },
+    {
+      "path": "logs/ci/2026-11-12/b-route-sources/cloud-singlecap-source-20261112/prepare-01/prepare/raw/000001.bin",
+      "raw_digest": "sha256:499d49af5e6273631d38bd6c51f1a4329fe1f4a8b28b2c4005056a8082dd37c7",
+      "archive": "raw/000012.bin",
+      "byte_count": 283
+    },
+    {
+      "path": "logs/ci/2026-11-12/b-route-sources/cloud-singlecap-source-20261112/prepare-01/prepare/raw/000002.bin",
+      "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+      "archive": "raw/000013.bin",
+      "byte_count": 7059
+    },
+    {
+      "path": "logs/ci/2026-11-12/b-route-sources/cloud-singlecap-source-20261112/prepare-01/prepare/report.json",
+      "raw_digest": "sha256:ce1b23cb4db4944bf8e90bc32fa3190ada1d980fc66ecafcd369d71f2078d36f",
+      "archive": "raw/000014.bin",
+      "byte_count": 1329
+    },
+    {
+      "path": "logs/ci/2026-11-12/b-route-sources/cloud-singlecap-source-20261112/prepare-01/prepare/request.json",
+      "raw_digest": "sha256:194b4ea56701269948a5d8faa7a0354b6cfb29d71244907fa5c6ec028f7865f8",
+      "archive": "raw/000015.bin",
+      "byte_count": 489
+    },
+    {
+      "path": "logs/ci/2026-11-12/b-route-sources/cloud-singlecap-source-20261112/prepare-01/prepare/source-blocks.json",
+      "raw_digest": "sha256:325dd90b430727a37712ce52ebafd66ec0d0d7422a6a6f930b8d202e48005f64",
+      "archive": "raw/000016.bin",
+      "byte_count": 12321
+    },
+    {
+      "path": "logs/ci/2026-11-12/b-route-sources/cloud-singlecap-source-20261112/prepare-01/prepare/source-manifest.json",
+      "raw_digest": "sha256:befed0be57b3e738063e329ba7bda94dbbd1e2106a1dcedbca2e9a4adc03426e",
+      "archive": "raw/000017.bin",
+      "byte_count": 681
+    },
+    {
+      "path": "logs/ci/2026-11-12/b-route-sources/cloud-singlecap-source-20261112/prepare-01/prepare/transport.json",
+      "raw_digest": "sha256:18f9d5e564e23590691979aaeaa1d1d743b62cd1ae1c304123e6ce819dbb1f0a",
+      "archive": "raw/000018.bin",
+      "byte_count": 8635
+    },
+    {
+      "path": "logs/ci/2026-11-12/cloud-epic2-recovery-24/single-capability-input/source-set.json",
+      "raw_digest": "sha256:499d49af5e6273631d38bd6c51f1a4329fe1f4a8b28b2c4005056a8082dd37c7",
+      "archive": "raw/000019.bin",
+      "byte_count": 283
+    },
+    {
+      "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+      "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+      "archive": "raw/000020.bin",
+      "byte_count": 7059
+    },
+    {
+      "path": "logs/ci/2026-11-12/cloud-epic2-recovery-24/single-capability-input/candidate.with-current-prepared-ref.json",
+      "raw_digest": "sha256:75945967cfc9829f91203b68bd821c80f02fb197997f13c8578c2b6af47c0c72",
+      "archive": "raw/000021.bin",
+      "byte_count": 22410
+    }
+  ],
+  "glob_observations": [
+    {
+      "patterns": [
+        "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md"
+      ],
+      "result": {
+        "members": [
+          "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md"
+        ],
+        "missing": []
+      }
+    }
+  ]
+}

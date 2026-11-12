@@ -103,3 +103,5 @@
 - ADR-0056: Cloud published-history compensation - [ADR-0056](../adr/ADR-0056-b-route-published-history-compensation.md). Accepted explicit published-only data/protocol verification with new review profile; no original-owner execution claim, budget increase or Story acceptance.
 
 - ADR-0060: One formal compensation review repair - [ADR-0060](../adr/ADR-0060-one-time-compensation-review-repair.md). Narrow versioned continuation after a completed refusal; preserve original2, allow one explicit additional subscription review, cumulative3; no refund, automatic retry, source re-signing or acceptance inferred.
+
+- ADR-0061: Linux native run publication - [ADR-0061](../adr/ADR-0061-linux-native-run-publication.md). Bounded atomic no-replace host adapter using existing initialization/locks; preserve Windows scope and all occupied prior audits, no new planning lifecycle or resource threshold.

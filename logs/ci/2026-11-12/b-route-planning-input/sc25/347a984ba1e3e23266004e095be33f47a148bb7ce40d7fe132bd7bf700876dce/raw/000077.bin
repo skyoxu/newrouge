@@ -1,0 +1,45 @@
+{
+  "schema_version": "newrouge.mvg-complete-evidence-transport.v3",
+  "context_sha256": "sha256:861dd9caf760a99a22497071c5b44442216d3249c08b64b72c85480c7ef9db03",
+  "phase": "inspect",
+  "core": {
+    "chapter5": {}
+  },
+  "inventory": [
+    {
+      "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+      "sha256": "7e5e1fe8aeb5937c70caa16aea2a9e1784a429c70c30a4f7f4d66601f1880061",
+      "status": "complete",
+      "characters": 7059,
+      "content_sha256": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a"
+    }
+  ],
+  "batches": [
+    {
+      "ordinal": 1,
+      "parts": [
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "source_sha256": "7e5e1fe8aeb5937c70caa16aea2a9e1784a429c70c30a4f7f4d66601f1880061",
+          "start": 0,
+          "end": 7059,
+          "text": "# Exclusive reward resolution test\r\n\r\nEach separate synthetic scenario receives a newly provisioned empty durable journal J and a fixed reward R. Scenarios never share J. Within a scenario, one process handles serial calls; processes never overlap, and J is never reset. The reward controller owns J and the volatile map UI. J has exactly three permitted states: empty, [Commit(R)], or [Cancel(R)]. From empty it can make one atomic durable append of Commit(R) or Cancel(R). Once nonempty it is immutable. Commit grants R exactly once and logically returns to the map. Cancel permanently declines R, grants nothing, and logically returns to the map. Rendering or restoring UI does not grant, cancel or logically return again. Storage succeeds except for the injected crash barriers below.\r\n\r\nThe business entry points are accept(R,id), cancel(R,id), and resume(R,id). Every call has a fresh id. The guard reads J. With empty J, accept appends Commit(R), cancel appends Cancel(R), and resume writes nothing. With nonempty J, no entry point writes: accept cannot override cancellation, cancel cannot reverse a grant, and resume only restores the decision. Finalization renders MapReady for [Commit(R)], MapCancelled for [Cancel(R)], and Idle for empty, then emits exactly one completion C:Complete(i,id,ui). Thus repeat accept after Commit stays MapReady, repeat cancel after Cancel stays MapCancelled, accept after Cancel stays MapCancelled without a grant, and cancel after Commit stays MapReady without a cancellation. No extra user action is required. Shutdown and force-termination are lifecycle controls and are not the business cancel command.\r\n\r\nThe harness owns OS instance handles, an ordered retained external event stream C for each instance, and a fresh control channel Q. start(J) launches the controlled executable with J and these endpoints and returns an owned OS handle i. Each process initially shows Idle and emits C:Ready(i,J) exactly once only after opening J and binding all three business entry points. Startup confirmation independently requires matching live i/J, actual readUI(i)=Idle and readJ(J)=the retained journal. It has a separate 10000ms deadline from start on the harness monotonic clock. Read-only readUI probes rendered UI rather than a reported value; readJ reads every durable record. The harness issues no business call before startup confirmation. shutdown(i) sends Shutdown on Q for normal exit. terminate(i) force-terminates exactly the owned i through the OS. Exit confirmation requires the OS handle signaled and C EOF/drain within a separate 10000ms deadline from shutdown or termination. A timeout fails the scenario.\r\n\r\nFor an ordinary unhooked business call, record CallStart immediately before issue. For a hook call, record it once before armHook as specified below; the same clock includes arming, acknowledgement and issue and is never restarted. A non-crashing call must emit one matching completion and permit independent readUI/readJ observations within 10000ms of CallStart on the same harness clock. Observation reads occur after completion and before another call or lifecycle control, with UI/J unchanged throughout those reads. Verify the matching instance/id, reported versus actual UI, expected complete journal, completion count observed so far and deadline. Missing, duplicate, late or mismatched results fail and cannot be erased by a later crash. ObservationComplete follows all these call-local checks within that original deadline; it permits the next call/control but is provisional. Retain every issued call id and count completions through each instance's C EOF/drain. A non-crashing invocation must have exactly one completion in that final audit; a crash-injected invocation must have zero. A late duplicate after ObservationComplete still fails. The same EOF audit requires exactly one Ready with the correct instance/J, already observed by the startup deadline; missing, wrong or duplicate Ready fails even if detected after startup confirmation. A late Ready cannot repair a startup failure. Final scenario success requires exit confirmation and the final count audit, including the final normal shutdown/exit, with no added reward call or restart during teardown.\r\n\r\nThe only injected within-call crashes are immediately before or after the missing durable append of accept or cancel. Each hook scenario begins with its own empty J. Before issuing the target call, record CallStart, send armHook(i,id,op,before|after) on Q and receive its exact matching acknowledgement, where op is accept or cancel. The one-shot hook applies only to that id/op while J is empty. Before emits C:HookHit(i,id,op,before) after the empty guard and blocks before the atomic append. After emits C:HookHit(i,id,op,after) after the command's append is durable and blocks before UI finalization or Complete. No work can pass either barrier until OS termination; the harness never releases it. Observe exactly one matching acknowledgement and HookHit within the original 10000ms from CallStart, then immediately terminate i and begin its existing exit deadline. These controls are never Complete. Missing, wrong, duplicate or late hook events fail. Before leaves J empty; after leaves exactly the command's Commit or Cancel record. Confirm exit/EOF, start and confirm a new process with the unchanged J, then invoke resume under the ordinary call rule. Hooks are disabled for every other call. Failed-test cleanup cannot erase failure or count as scenario coverage.\r\n\r\nRequired separate scenarios, each with fresh J: two accepts; two cancels; accept then cancel; cancel then accept; empty resume; successful accept followed by ordinary restart and resume; successful cancel followed by ordinary restart and resume; and each of accept-before, accept-after, cancel-before, cancel-after crash/recovery. Ordinary restart occurs only after successful observations: normal shutdown, confirmed exit/EOF, start and confirmed startup, then resume. It is not an injected crash. All earlier non-crashing calls retain their final completion-count obligations across restart. The observed journal and UI must follow the rules above for every step, including no grant after Cancel and no cancellation after Commit. Planning the flow does not claim these scenarios ran.\r\n\r\nThese are required synthetic adapter interfaces to implement, not claims of existing executable endpoints. Protocol-design responsibility belongs to the reward-controller implementer. The downstream implementation plan must choose and document one internally consistent versioned launch/message profile, including the hook acknowledgement representation and return path, used by both controller and harness. No particular Q/C wire encoding or executable argument spelling is prescribed. Every permitted profile must preserve the event identities, command distinctions, ordering, barrier blocking, independent observations, retained completion counts, deadlines and all scenarios above. A plan leaving its selected profile unresolved is incomplete.\r\n",
+          "part_id": "sha256:7c475127ed639d3e9a11909f97ace220187a1fc94fb18a4a8a5d8539b822e135"
+        }
+      ],
+      "input_report": {
+        "request_sha256": "sha256:7e3e0d4a7d4fda45cb7bea4e50e7edf770db735928efdb577ef3e29c25eb774c",
+        "request_chars": 12114,
+        "request_bytes": 12114,
+        "input_token_estimate": 12114,
+        "token_counts": {},
+        "token_counter": "utf8_byte_upper_bound",
+        "max_bytes": 1048576,
+        "max_input_tokens": 96000,
+        "reserved_continuation_tokens": 0,
+        "truncation_allowed": false
+      }
+    }
+  ],
+  "model_encoding": "newrouge.mvg-lossless-context.v1"
+}

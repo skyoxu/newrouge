@@ -2351,8 +2351,31 @@ def create_run(root, run_dir, run_id, prepared_ref, profile):
     return state
 
 
+def _publish_run_directory(staging, run_dir):
+    """Atomically publish without replacing even an empty existing directory."""
+    import os
+    import sys
+    if os.name == "nt":
+        os.rename(staging, run_dir)
+        return
+    if not sys.platform.startswith("linux"):
+        raise OSError("b_route_runtime_initialization_platform_unsupported")
+    import ctypes
+    import errno
+    library = ctypes.CDLL(None, use_errno=True)
+    rename = getattr(library, "renameat2", None)
+    if rename is None:
+        raise OSError(errno.ENOTSUP, "b_route_runtime_atomic_noreplace_unavailable")
+    rename.argtypes = [ctypes.c_int, ctypes.c_char_p, ctypes.c_int, ctypes.c_char_p, ctypes.c_uint]
+    rename.restype = ctypes.c_int
+    # Linux AT_FDCWD and RENAME_NOREPLACE; no ordinary-rename fallback.
+    if rename(-100, os.fsencode(staging), -100, os.fsencode(run_dir), 1) != 0:
+        error = ctypes.get_errno()
+        raise OSError(error, os.strerror(error), str(run_dir))
+
+
 def publish_initial_run(root, run_dir, state, frozen):
-    """Publish a complete new Windows run with one non-overwriting rename.
+    """Publish a complete new run with one atomic non-overwriting rename.
 
     A failed initializer leaves its exclusive staging namespace as evidence.
     It never adopts an old partial target or interprets absent files as proof
@@ -2375,12 +2398,8 @@ def publish_initial_run(root, run_dir, state, frozen):
     if (not same_json(codec.strict_json_loads((staging / "run.json").read_bytes()), state)
             or not same_json(codec.strict_json_loads((staging / "analysis-input/b-route-prepared.json").read_bytes()), frozen)):
         raise ValueError("b_route_runtime_initialization_changed")
-    # Windows os.rename fails for any existing destination directory. Never
-    # use os.replace here. The production worker/CLI contract is Windows-only.
-    if os.name != "nt":
-        raise OSError("b_route_runtime_initialization_requires_windows")
     try:
-        os.rename(staging, run_dir)
+        _publish_run_directory(staging, run_dir)
     except OSError as exc:
         if run_dir.exists():
             raise FileExistsError("b_route_runtime_run_already_exists") from exc

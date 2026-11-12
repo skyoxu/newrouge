@@ -1,0 +1,14 @@
+{
+  "audit_ref": "logs/ci/2026-11-12/b-route-source-audit/cloud-singlecap-audit-20261112/audit-01/report.json",
+  "execution_complete": true,
+  "planning_eligible": true,
+  "semantic_blockers": [],
+  "evidence_class": "real_model",
+  "logical_calls": 2,
+  "physical_requests": "unknown",
+  "actual_model_scope": "official returned runtime configuration; provider actual model unknown",
+  "source_epoch": "before Linux publication adapter",
+  "cold_full_protocol_and_current_identity_verified": true,
+  "native_location": "/workspace/newrouge/logs/ci/mvg-planning/n",
+  "native_location_admitted": true
+}

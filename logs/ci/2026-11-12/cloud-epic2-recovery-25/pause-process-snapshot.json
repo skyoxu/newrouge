@@ -1,0 +1,90 @@
+{
+  "observed_at": "2026-11-12T12:45:59.097986+00:00",
+  "user_instruction": "Pause all new business/model/test execution; preserve then hand off and push existing work",
+  "active_project_model_or_login_or_test_children_observed": false,
+  "audit_onetime_result": {
+    "exit_code": 0,
+    "elapsed_seconds": 338.9435325659997,
+    "automatic_retry": false,
+    "finished_at": "2026-11-12T12:13:55.958074+00:00"
+  },
+  "native_execution_started": false,
+  "new_epoch_audit_started": false,
+  "background_processes_not_blindly_killed": [
+    {
+      "pid": 530,
+      "comm": "codex",
+      "kernel_state": "S",
+      "classification": "environment exec server"
+    },
+    {
+      "pid": 685,
+      "comm": "git",
+      "kernel_state": "Z",
+      "classification": "defunct process; no live execution"
+    },
+    {
+      "pid": 1090,
+      "comm": "git",
+      "kernel_state": "Z",
+      "classification": "defunct process; no live execution"
+    },
+    {
+      "pid": 4019,
+      "comm": "git",
+      "kernel_state": "Z",
+      "classification": "defunct process; no live execution"
+    },
+    {
+      "pid": 4098,
+      "comm": "git",
+      "kernel_state": "Z",
+      "classification": "defunct process; no live execution"
+    },
+    {
+      "pid": 4741,
+      "comm": "git",
+      "kernel_state": "Z",
+      "classification": "defunct process; no live execution"
+    },
+    {
+      "pid": 5137,
+      "comm": "git",
+      "kernel_state": "Z",
+      "classification": "defunct process; no live execution"
+    },
+    {
+      "pid": 5620,
+      "comm": "git",
+      "kernel_state": "Z",
+      "classification": "defunct process; no live execution"
+    },
+    {
+      "pid": 7104,
+      "comm": "git",
+      "kernel_state": "Z",
+      "classification": "defunct process; no live execution"
+    },
+    {
+      "pid": 7354,
+      "comm": "git",
+      "kernel_state": "Z",
+      "classification": "defunct process; no live execution"
+    },
+    {
+      "pid": 7391,
+      "comm": "codex",
+      "kernel_state": "S",
+      "classification": "assistant command sandbox"
+    },
+    {
+      "pid": 7395,
+      "comm": "python3",
+      "kernel_state": "R",
+      "classification": "this read-only handoff metadata collector"
+    }
+  ],
+  "project_process_termination_performed": false,
+  "user_network_choice": "Keep current network settings; do not request official encoding-data host or bypass policy",
+  "business_or_test_or_model_commands_after_stop": 0
+}

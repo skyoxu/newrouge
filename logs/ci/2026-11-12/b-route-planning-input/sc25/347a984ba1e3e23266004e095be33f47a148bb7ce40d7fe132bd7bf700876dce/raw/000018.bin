@@ -1,0 +1,72 @@
+{
+  "schema_version": "newrouge.b-route-sources-report.v1",
+  "accounting_complete": false,
+  "satisfied": false,
+  "independent_audit": false,
+  "formal_adoption": false,
+  "diagnostics": [],
+  "unresolved": [
+    "SB-8C80E96FC81CA641",
+    "SB-3930A390340951B7",
+    "SB-9E135AFD8D79ED3C",
+    "SB-B84109DE92C147BA",
+    "SB-A9833CF255BDF6C0",
+    "SB-F7DB8CD5A9668EF4",
+    "SB-5B889D232D13901F",
+    "SB-83C0467B0FFB419F"
+  ],
+  "model_dispatch_count": 0,
+  "budget_is_billing": false,
+  "billed_cost": "unknown",
+  "reuse_reason": "not_requested",
+  "run_id": "cloud-singlecap-source-20261112",
+  "scope_id": "controlled-exclusive-resolution-v15",
+  "stage": "prepare",
+  "attempt_id": "prepare-01",
+  "event_key": [
+    "cloud-singlecap-source-20261112",
+    "controlled-exclusive-resolution-v15",
+    "prepare",
+    "prepare-01"
+  ],
+  "output_ref": "logs/ci/2026-11-12/b-route-sources/cloud-singlecap-source-20261112/prepare-01/prepare",
+  "prepared_ref": {
+    "path": "logs/ci/2026-11-12/b-route-sources/cloud-singlecap-source-20261112/prepare-01/prepare/prepared.json",
+    "raw_digest": "sha256:f82cccbb4b0d38e16e014b3975206d286bf942e6ecb1c7ef5084342df12c6110"
+  },
+  "source_count": 1,
+  "source_block_count": 8,
+  "termination_reason": "prepared",
+  "active_elapsed_seconds": 0.0410414279995166,
+  "exit_code": 0,
+  "artifacts": {
+    "batch-index.json": "sha256:db02134f7270bf1ad1e6f9651d6903f211df32cc67caf4a9d1e7ec40fa46ab98",
+    "batches/batch-0001.json": "sha256:947042321bddcce1992e46692f5ca1e819a97ff6cd998679ddf3b40b9787fc99",
+    "candidate.json": "sha256:3a1b8516b3bb6377265d197c60e1e3673f5ac8ec2cf5615fae7202470ff72ad4",
+    "prepared.json": "sha256:f82cccbb4b0d38e16e014b3975206d286bf942e6ecb1c7ef5084342df12c6110",
+    "raw/000001.bin": "sha256:499d49af5e6273631d38bd6c51f1a4329fe1f4a8b28b2c4005056a8082dd37c7",
+    "raw/000002.bin": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+    "report.json": "sha256:ce1b23cb4db4944bf8e90bc32fa3190ada1d980fc66ecafcd369d71f2078d36f",
+    "request.json": "sha256:194b4ea56701269948a5d8faa7a0354b6cfb29d71244907fa5c6ec028f7865f8",
+    "source-blocks.json": "sha256:325dd90b430727a37712ce52ebafd66ec0d0d7422a6a6f930b8d202e48005f64",
+    "source-manifest.json": "sha256:befed0be57b3e738063e329ba7bda94dbbd1e2106a1dcedbca2e9a4adc03426e",
+    "transport.json": "sha256:18f9d5e564e23590691979aaeaa1d1d743b62cd1ae1c304123e6ce819dbb1f0a"
+  },
+  "observations": {
+    "logs/ci/2026-11-12/cloud-epic2-recovery-24/single-capability-input/source-set.json": "sha256:499d49af5e6273631d38bd6c51f1a4329fe1f4a8b28b2c4005056a8082dd37c7",
+    "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a"
+  },
+  "glob_observations": [
+    {
+      "patterns": [
+        "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md"
+      ],
+      "result": {
+        "members": [
+          "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md"
+        ],
+        "missing": []
+      }
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+{
+  "schema_version": "newrouge.b-route-source-audit.v1.budget",
+  "run_id": "cloud-singlecap-audit-20261112",
+  "scope_id": "controlled-exclusive-resolution-v15",
+  "request_budget": 2,
+  "active_budget_seconds": 1500
+}

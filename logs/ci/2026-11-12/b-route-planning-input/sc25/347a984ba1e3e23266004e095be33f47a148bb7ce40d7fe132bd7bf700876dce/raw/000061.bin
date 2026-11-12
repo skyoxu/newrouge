@@ -1,0 +1,67 @@
+{
+  "schema_version": "newrouge.b-route-sources-report.v1",
+  "accounting_complete": true,
+  "satisfied": false,
+  "independent_audit": false,
+  "formal_adoption": false,
+  "diagnostics": [],
+  "unresolved": [],
+  "model_dispatch_count": 0,
+  "budget_is_billing": false,
+  "billed_cost": "unknown",
+  "reuse_reason": "not_requested",
+  "run_id": "cloud-singlecap-source-20261112",
+  "scope_id": "controlled-exclusive-resolution-v15",
+  "stage": "account",
+  "attempt_id": "account-02",
+  "event_key": [
+    "cloud-singlecap-source-20261112",
+    "controlled-exclusive-resolution-v15",
+    "account",
+    "account-02"
+  ],
+  "output_ref": "logs/ci/2026-11-12/b-route-sources/cloud-singlecap-source-20261112/account-02/account",
+  "source_count": 1,
+  "source_block_count": 8,
+  "proposal_count": 7,
+  "termination_reason": "accounted",
+  "active_elapsed_seconds": 0.09884674899967649,
+  "exit_code": 0,
+  "artifacts": {
+    "candidate.snapshot.json": "sha256:75945967cfc9829f91203b68bd821c80f02fb197997f13c8578c2b6af47c0c72",
+    "report.json": "sha256:a1fa9a34b5478b02f7310042e96d5dc60b5d6a241229bde2a1860153f7667cbf",
+    "request.json": "sha256:28c8d30def0ebf551dd200e84caef86a311b384ef47edc633b047e017de0e19a",
+    "requirement-proposals.json": "sha256:c719cd93cb225b42d4ea6893e8e2b861d9ff98000210d25cab2fcbd41dc429ac",
+    "source-accounting.json": "sha256:f7a510d581c0f55b994ecb1b21a54ca9922822e2686285bb14c8dd8ecb60eff6"
+  },
+  "observations": {
+    "logs/ci/2026-11-12/b-route-sources/cloud-singlecap-source-20261112/prepare-01/prepare/prepared.json": "sha256:f82cccbb4b0d38e16e014b3975206d286bf942e6ecb1c7ef5084342df12c6110",
+    "logs/ci/2026-11-12/b-route-sources/cloud-singlecap-source-20261112/prepare-01/prepare/event.json": "sha256:64d2629fc4ed78d84ec6c9e2381e28ecb5ee0b218871dc46c5293a982e48dce3",
+    "logs/ci/2026-11-12/b-route-sources/cloud-singlecap-source-20261112/prepare-01/prepare/batch-index.json": "sha256:db02134f7270bf1ad1e6f9651d6903f211df32cc67caf4a9d1e7ec40fa46ab98",
+    "logs/ci/2026-11-12/b-route-sources/cloud-singlecap-source-20261112/prepare-01/prepare/batches/batch-0001.json": "sha256:947042321bddcce1992e46692f5ca1e819a97ff6cd998679ddf3b40b9787fc99",
+    "logs/ci/2026-11-12/b-route-sources/cloud-singlecap-source-20261112/prepare-01/prepare/candidate.json": "sha256:3a1b8516b3bb6377265d197c60e1e3673f5ac8ec2cf5615fae7202470ff72ad4",
+    "logs/ci/2026-11-12/b-route-sources/cloud-singlecap-source-20261112/prepare-01/prepare/raw/000001.bin": "sha256:499d49af5e6273631d38bd6c51f1a4329fe1f4a8b28b2c4005056a8082dd37c7",
+    "logs/ci/2026-11-12/b-route-sources/cloud-singlecap-source-20261112/prepare-01/prepare/raw/000002.bin": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+    "logs/ci/2026-11-12/b-route-sources/cloud-singlecap-source-20261112/prepare-01/prepare/report.json": "sha256:ce1b23cb4db4944bf8e90bc32fa3190ada1d980fc66ecafcd369d71f2078d36f",
+    "logs/ci/2026-11-12/b-route-sources/cloud-singlecap-source-20261112/prepare-01/prepare/request.json": "sha256:194b4ea56701269948a5d8faa7a0354b6cfb29d71244907fa5c6ec028f7865f8",
+    "logs/ci/2026-11-12/b-route-sources/cloud-singlecap-source-20261112/prepare-01/prepare/source-blocks.json": "sha256:325dd90b430727a37712ce52ebafd66ec0d0d7422a6a6f930b8d202e48005f64",
+    "logs/ci/2026-11-12/b-route-sources/cloud-singlecap-source-20261112/prepare-01/prepare/source-manifest.json": "sha256:befed0be57b3e738063e329ba7bda94dbbd1e2106a1dcedbca2e9a4adc03426e",
+    "logs/ci/2026-11-12/b-route-sources/cloud-singlecap-source-20261112/prepare-01/prepare/transport.json": "sha256:18f9d5e564e23590691979aaeaa1d1d743b62cd1ae1c304123e6ce819dbb1f0a",
+    "logs/ci/2026-11-12/cloud-epic2-recovery-24/single-capability-input/source-set.json": "sha256:499d49af5e6273631d38bd6c51f1a4329fe1f4a8b28b2c4005056a8082dd37c7",
+    "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+    "logs/ci/2026-11-12/cloud-epic2-recovery-24/single-capability-input/candidate.with-current-prepared-ref.json": "sha256:75945967cfc9829f91203b68bd821c80f02fb197997f13c8578c2b6af47c0c72"
+  },
+  "glob_observations": [
+    {
+      "patterns": [
+        "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md"
+      ],
+      "result": {
+        "members": [
+          "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md"
+        ],
+        "missing": []
+      }
+    }
+  ]
+}

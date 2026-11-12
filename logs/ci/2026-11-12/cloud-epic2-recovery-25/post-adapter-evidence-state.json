@@ -1,0 +1,13 @@
+{
+  "historical_original_audit_full_protocol_verified": true,
+  "historical_completed_logical_calls": 2,
+  "historical_limit_unchanged": 2,
+  "current_tool_identity_claimed": false,
+  "current_product_policy": "sha256:51b963257a60aae6435d0e68c43064c53bda710e34f754379bf6db333ddc2014",
+  "current_product_pins": 84,
+  "new_epoch_audit_calls_reserved": 0,
+  "new_epoch_audit_calls_executed": 0,
+  "native_calls": 0,
+  "original_compensation_calls_retained": 3,
+  "provider_physical_requests": "unknown"
+}

@@ -1,0 +1,5 @@
+{
+  "run_id": "sc25",
+  "input_stage": "3b",
+  "planning_contract": "logs/ci/2026-11-12/cloud-epic2-recovery-25/singlecap-planning-contract.current.json"
+}

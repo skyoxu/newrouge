@@ -1,0 +1,50 @@
+{
+  "report_ref": "logs/ci/2026-11-12/b-route-source-audit/cloud-singlecap-audit-20261112/audit-01/report.json",
+  "source_files": 1,
+  "source_blocks": 8,
+  "planning_eligible": true,
+  "execution_complete": true,
+  "semantic_blockers": [],
+  "logical_calls_completed": 2,
+  "initial_limit2_retained": true,
+  "calls_after_source_adapter": 0,
+  "source_policy_claim": "genuine completed pre-adapter source epoch, not current changed-source eligibility",
+  "steps": [
+    {
+      "step": "extract-000001",
+      "model_identity": "openai/gpt-6.1-sol",
+      "model_identity_scope": "runtime_configuration",
+      "provider_identity_verified": false,
+      "requested_reasoning_effort": "high",
+      "OS_status": "completed",
+      "OS_returncode": 0,
+      "active_elapsed_seconds": 137.31663113600007,
+      "request_bytes": 45113,
+      "counter": "utf8_byte_upper_bound",
+      "provider_physical_requests": "unknown",
+      "returned_runtime_reasoning_effort": "high",
+      "thread_id": "01a1cfa8-ad72-7b51-964d-f5f430316989",
+      "turn_id": "01a1cfa8-ad97-7530-a67e-b2eb5f5289ac",
+      "protocol_digest": "sha256:72011bed7ae45ade2f7a841395ffaed1e8f3856f05fbcbd4ba80843ff0396fd4",
+      "model_tools": []
+    },
+    {
+      "step": "compare",
+      "model_identity": "openai/gpt-6.1-sol",
+      "model_identity_scope": "runtime_configuration",
+      "provider_identity_verified": false,
+      "requested_reasoning_effort": "high",
+      "OS_status": "completed",
+      "OS_returncode": 0,
+      "active_elapsed_seconds": 191.26490122999894,
+      "request_bytes": 80133,
+      "counter": "utf8_byte_upper_bound",
+      "provider_physical_requests": "unknown",
+      "returned_runtime_reasoning_effort": "high",
+      "thread_id": "01a1cfaa-cada-7523-82b7-0e1b0bce4604",
+      "turn_id": "01a1cfaa-cb02-7b21-a775-4bcbaad04481",
+      "protocol_digest": "sha256:94405d4eaae5032978ad59f30f0762064e1b420c83e27c6bd98cf86896f3ee00",
+      "model_tools": []
+    }
+  ]
+}

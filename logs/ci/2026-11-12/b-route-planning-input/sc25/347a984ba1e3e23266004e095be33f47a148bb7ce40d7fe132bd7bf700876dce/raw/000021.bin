@@ -1,0 +1,161 @@
+{
+  "schema_version": "newrouge.b-route-sources-candidate.v1",
+  "generated_at_utc": "2026-11-12T11:45:03.521789+00:00",
+  "mode": "add",
+  "source_revision": "source-set:45704214c4b741ba6aebe705",
+  "source_manifest_sha256": "sha256:45704214c4b741ba6aebe7052b59de3c26114cc16e8d467b3fab60d33f3f7628",
+  "instructions": {
+    "scope": "Explicit semantic proposals only; no independent audit or adoption authority.",
+    "atoms": "Provide proposal_id (proposal: namespace), kind, statement, source_block_ids, acceptance_intent, prior_requirement_ids and non_task_sinks (sink ID strings).",
+    "dispositions": "Every non-atom disposition needs reason and source_block_ids; unresolved remains blocking.",
+    "completion": "Set batch output_accounted_count after reviewing every block. Counts alone prove no semantics."
+  },
+  "batch_summaries": [
+    {
+      "batch_id": "BATCH-0001",
+      "first_block_id": "SB-8C80E96FC81CA641",
+      "last_block_id": "SB-83C0467B0FFB419F",
+      "input_block_count": 8,
+      "input_char_count": 10678,
+      "output_accounted_count": 0,
+      "reused_accounted_count": 0
+    }
+  ],
+  "block_results": [
+    {
+      "batch_id": "BATCH-0001",
+      "block_id": "SB-8C80E96FC81CA641",
+      "block_content_hash": "sha256:a2442343a89e4258f2d3b6123c60ba5cbc73fbebc2439115dead1de393218fee",
+      "atoms": [],
+      "disposition": "unresolved",
+      "delivery_potential": null,
+      "decision": null,
+      "review_status": "review_required",
+      "reason": "",
+      "source_block_ids": [
+        "SB-8C80E96FC81CA641"
+      ]
+    },
+    {
+      "batch_id": "BATCH-0001",
+      "block_id": "SB-3930A390340951B7",
+      "block_content_hash": "sha256:55db4b5ee8819782146f2eef32dd4e734cec7fbad773cb8a338b60d7bc7c2ca1",
+      "atoms": [],
+      "disposition": "unresolved",
+      "delivery_potential": null,
+      "decision": null,
+      "review_status": "review_required",
+      "reason": "",
+      "source_block_ids": [
+        "SB-3930A390340951B7"
+      ]
+    },
+    {
+      "batch_id": "BATCH-0001",
+      "block_id": "SB-9E135AFD8D79ED3C",
+      "block_content_hash": "sha256:aab1315319a01f666776aa8acfcf86386f3f91c5528b061ad5a02d5cc859fe6c",
+      "atoms": [],
+      "disposition": "unresolved",
+      "delivery_potential": null,
+      "decision": null,
+      "review_status": "review_required",
+      "reason": "",
+      "source_block_ids": [
+        "SB-9E135AFD8D79ED3C"
+      ]
+    },
+    {
+      "batch_id": "BATCH-0001",
+      "block_id": "SB-B84109DE92C147BA",
+      "block_content_hash": "sha256:f5ed5dda35f39c8b3627b3da4ca7b7cb2569d6d299b6401b099069b981bb293e",
+      "atoms": [],
+      "disposition": "unresolved",
+      "delivery_potential": null,
+      "decision": null,
+      "review_status": "review_required",
+      "reason": "",
+      "source_block_ids": [
+        "SB-B84109DE92C147BA"
+      ]
+    },
+    {
+      "batch_id": "BATCH-0001",
+      "block_id": "SB-A9833CF255BDF6C0",
+      "block_content_hash": "sha256:c0cdda0ba2a93cb158bfd5bad8f6081cbbae6594b77e2c49840c38235df9b235",
+      "atoms": [],
+      "disposition": "unresolved",
+      "delivery_potential": null,
+      "decision": null,
+      "review_status": "review_required",
+      "reason": "",
+      "source_block_ids": [
+        "SB-A9833CF255BDF6C0"
+      ]
+    },
+    {
+      "batch_id": "BATCH-0001",
+      "block_id": "SB-F7DB8CD5A9668EF4",
+      "block_content_hash": "sha256:c2364314ef85ff72f8990004163eaf46e0e44bc4e52576c13ff22573427915cb",
+      "atoms": [],
+      "disposition": "unresolved",
+      "delivery_potential": null,
+      "decision": null,
+      "review_status": "review_required",
+      "reason": "",
+      "source_block_ids": [
+        "SB-F7DB8CD5A9668EF4"
+      ]
+    },
+    {
+      "batch_id": "BATCH-0001",
+      "block_id": "SB-5B889D232D13901F",
+      "block_content_hash": "sha256:d738bab9cc43e83608b44937c4b397a80910c9248040412ee2fbb11380352bd5",
+      "atoms": [],
+      "disposition": "unresolved",
+      "delivery_potential": null,
+      "decision": null,
+      "review_status": "review_required",
+      "reason": "",
+      "source_block_ids": [
+        "SB-5B889D232D13901F"
+      ]
+    },
+    {
+      "batch_id": "BATCH-0001",
+      "block_id": "SB-83C0467B0FFB419F",
+      "block_content_hash": "sha256:36fd1db491be5d081cca9c06ee3e5d1032f9b090229e7a44c37211e9a57aeb27",
+      "atoms": [],
+      "disposition": "unresolved",
+      "delivery_potential": null,
+      "decision": null,
+      "review_status": "review_required",
+      "reason": "",
+      "source_block_ids": [
+        "SB-83C0467B0FFB419F"
+      ]
+    }
+  ],
+  "capabilities": [],
+  "reuse_summary": {
+    "previous_source_revision": null,
+    "reused_blocks": [],
+    "review_required_blocks": [
+      "SB-3930A390340951B7",
+      "SB-5B889D232D13901F",
+      "SB-83C0467B0FFB419F",
+      "SB-8C80E96FC81CA641",
+      "SB-9E135AFD8D79ED3C",
+      "SB-A9833CF255BDF6C0",
+      "SB-B84109DE92C147BA",
+      "SB-F7DB8CD5A9668EF4"
+    ],
+    "removed_blocks": [],
+    "reused_capabilities": [],
+    "stale_capabilities": []
+  },
+  "file_results": [],
+  "prepared_ref": {
+    "path": "logs/ci/2026-11-12/b-route-sources/cloud-singlecap-source-20261112/prepare-01/prepare/prepared.json",
+    "raw_digest": "sha256:f82cccbb4b0d38e16e014b3975206d286bf942e6ecb1c7ef5084342df12c6110"
+  }
+}

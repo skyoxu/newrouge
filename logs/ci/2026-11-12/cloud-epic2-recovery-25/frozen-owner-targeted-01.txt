@@ -1,0 +1,10 @@
+test_declared_present_context_uses_frozen_raw_and_citations_without_authorizing_unlisted_evidence (test_b_route_completed_reuse.FollowupFrozenOwnerTests.test_declared_present_context_uses_frozen_raw_and_citations_without_authorizing_unlisted_evidence) ... ok
+test_historical_prefix_never_disables_persistent_recovery_epoch_check (test_b_route_completed_reuse.FollowupFrozenOwnerTests.test_historical_prefix_never_disables_persistent_recovery_epoch_check) ... ok
+test_historical_read_keeps_actual_planning_rules_comparison (test_b_route_completed_reuse.FollowupFrozenOwnerTests.test_historical_read_keeps_actual_planning_rules_comparison) ... ok
+test_resigned_runtime_rules_do_not_authorize_historical_read_or_prefix_or_proof (test_b_route_completed_reuse.FollowupFrozenOwnerTests.test_resigned_runtime_rules_do_not_authorize_historical_read_or_prefix_or_proof) ... ok
+test_unsupported_old_transition_uses_real_owner_and_never_falls_back_to_current_json (test_b_route_completed_reuse.FollowupFrozenOwnerTests.test_unsupported_old_transition_uses_real_owner_and_never_falls_back_to_current_json) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 2.626s
+
+OK

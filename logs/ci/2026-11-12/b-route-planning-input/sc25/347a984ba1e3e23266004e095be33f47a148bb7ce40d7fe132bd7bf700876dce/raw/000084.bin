@@ -1,0 +1,15 @@
+{
+  "capability_id": "controlled-exclusive-resolution-v15",
+  "title": "Complete exclusive reward resolution controlled planning input",
+  "source": {
+    "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+    "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+    "coverage": "entire original file; no excluded blocks"
+  },
+  "acceptance_context": {
+    "purpose": "A new explicit single-Capability input for original Story2.9 controlled acceptance",
+    "historical_completed_item": false,
+    "existing_m4_scope_unchanged": true,
+    "contract": "Preserve every obligation and delegated choice in the complete source; no Task or implementation is supplied"
+  }
+}

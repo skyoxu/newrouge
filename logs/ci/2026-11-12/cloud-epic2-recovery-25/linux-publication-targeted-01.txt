@@ -1,0 +1,10 @@
+test_existing_empty_nonempty_and_file_targets_are_never_replaced (test_b_route_planning_runtime.LinuxInitialPublicationTests.test_existing_empty_nonempty_and_file_targets_are_never_replaced) ... ok
+test_interrupted_staging_is_retained_without_authoritative_partial_run (test_b_route_planning_runtime.LinuxInitialPublicationTests.test_interrupted_staging_is_retained_without_authoritative_partial_run) ... ok
+test_missing_or_unsupported_noreplace_never_uses_ordinary_rename (test_b_route_planning_runtime.LinuxInitialPublicationTests.test_missing_or_unsupported_noreplace_never_uses_ordinary_rename) ... ok
+test_postpublication_interrupt_keeps_complete_identity_for_existing_owner_reentry (test_b_route_planning_runtime.LinuxInitialPublicationTests.test_postpublication_interrupt_keeps_complete_identity_for_existing_owner_reentry) ... ok
+test_two_real_initializers_have_one_complete_winner_and_retained_loser (test_b_route_planning_runtime.LinuxInitialPublicationTests.test_two_real_initializers_have_one_complete_winner_and_retained_loser) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.159s
+
+OK

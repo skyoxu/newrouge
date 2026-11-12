@@ -1,0 +1,149 @@
+{
+  "schema_version": "newrouge.source-blocks.v1",
+  "generated_at_utc": "2026-11-12T11:45:03.516961+00:00",
+  "mode": "add",
+  "source_revision": "source-set:45704214c4b741ba6aebe705",
+  "source_manifest_sha256": "sha256:45704214c4b741ba6aebe7052b59de3c26114cc16e8d467b3fab60d33f3f7628",
+  "parser_inventory": {
+    "heading": 1,
+    "paragraph": 6,
+    "table_row": 1
+  },
+  "blocks": [
+    {
+      "block_id": "SB-8C80E96FC81CA641",
+      "source_path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+      "source_sha256": "7e5e1fe8aeb5937c70caa16aea2a9e1784a429c70c30a4f7f4d66601f1880061",
+      "heading_path": [
+        "Exclusive reward resolution test"
+      ],
+      "block_type": "heading",
+      "ordinal": 1,
+      "line_start": 1,
+      "line_end": 1,
+      "content_hash": "sha256:a2442343a89e4258f2d3b6123c60ba5cbc73fbebc2439115dead1de393218fee",
+      "raw_text": "# Exclusive reward resolution test",
+      "requirement_like_hint": false
+    },
+    {
+      "block_id": "SB-3930A390340951B7",
+      "source_path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+      "source_sha256": "7e5e1fe8aeb5937c70caa16aea2a9e1784a429c70c30a4f7f4d66601f1880061",
+      "heading_path": [
+        "Exclusive reward resolution test"
+      ],
+      "block_type": "paragraph",
+      "ordinal": 1,
+      "line_start": 3,
+      "line_end": 3,
+      "content_hash": "sha256:55db4b5ee8819782146f2eef32dd4e734cec7fbad773cb8a338b60d7bc7c2ca1",
+      "raw_text": "Each separate synthetic scenario receives a newly provisioned empty durable journal J and a fixed reward R. Scenarios never share J. Within a scenario, one process handles serial calls; processes never overlap, and J is never reset. The reward controller owns J and the volatile map UI. J has exactly three permitted states: empty, [Commit(R)], or [Cancel(R)]. From empty it can make one atomic durable append of Commit(R) or Cancel(R). Once nonempty it is immutable. Commit grants R exactly once and logically returns to the map. Cancel permanently declines R, grants nothing, and logically returns to the map. Rendering or restoring UI does not grant, cancel or logically return again. Storage succeeds except for the injected crash barriers below.",
+      "requirement_like_hint": false
+    },
+    {
+      "block_id": "SB-9E135AFD8D79ED3C",
+      "source_path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+      "source_sha256": "7e5e1fe8aeb5937c70caa16aea2a9e1784a429c70c30a4f7f4d66601f1880061",
+      "heading_path": [
+        "Exclusive reward resolution test"
+      ],
+      "block_type": "paragraph",
+      "ordinal": 2,
+      "line_start": 5,
+      "line_end": 5,
+      "content_hash": "sha256:aab1315319a01f666776aa8acfcf86386f3f91c5528b061ad5a02d5cc859fe6c",
+      "raw_text": "The business entry points are accept(R,id), cancel(R,id), and resume(R,id). Every call has a fresh id. The guard reads J. With empty J, accept appends Commit(R), cancel appends Cancel(R), and resume writes nothing. With nonempty J, no entry point writes: accept cannot override cancellation, cancel cannot reverse a grant, and resume only restores the decision. Finalization renders MapReady for [Commit(R)], MapCancelled for [Cancel(R)], and Idle for empty, then emits exactly one completion C:Complete(i,id,ui). Thus repeat accept after Commit stays MapReady, repeat cancel after Cancel stays MapCancelled, accept after Cancel stays MapCancelled without a grant, and cancel after Commit stays MapReady without a cancellation. No extra user action is required. Shutdown and force-termination are lifecycle controls and are not the business cancel command.",
+      "requirement_like_hint": false
+    },
+    {
+      "block_id": "SB-B84109DE92C147BA",
+      "source_path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+      "source_sha256": "7e5e1fe8aeb5937c70caa16aea2a9e1784a429c70c30a4f7f4d66601f1880061",
+      "heading_path": [
+        "Exclusive reward resolution test"
+      ],
+      "block_type": "paragraph",
+      "ordinal": 3,
+      "line_start": 7,
+      "line_end": 7,
+      "content_hash": "sha256:f5ed5dda35f39c8b3627b3da4ca7b7cb2569d6d299b6401b099069b981bb293e",
+      "raw_text": "The harness owns OS instance handles, an ordered retained external event stream C for each instance, and a fresh control channel Q. start(J) launches the controlled executable with J and these endpoints and returns an owned OS handle i. Each process initially shows Idle and emits C:Ready(i,J) exactly once only after opening J and binding all three business entry points. Startup confirmation independently requires matching live i/J, actual readUI(i)=Idle and readJ(J)=the retained journal. It has a separate 10000ms deadline from start on the harness monotonic clock. Read-only readUI probes rendered UI rather than a reported value; readJ reads every durable record. The harness issues no business call before startup confirmation. shutdown(i) sends Shutdown on Q for normal exit. terminate(i) force-terminates exactly the owned i through the OS. Exit confirmation requires the OS handle signaled and C EOF/drain within a separate 10000ms deadline from shutdown or termination. A timeout fails the scenario.",
+      "requirement_like_hint": false
+    },
+    {
+      "block_id": "SB-A9833CF255BDF6C0",
+      "source_path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+      "source_sha256": "7e5e1fe8aeb5937c70caa16aea2a9e1784a429c70c30a4f7f4d66601f1880061",
+      "heading_path": [
+        "Exclusive reward resolution test"
+      ],
+      "block_type": "paragraph",
+      "ordinal": 4,
+      "line_start": 9,
+      "line_end": 9,
+      "content_hash": "sha256:c0cdda0ba2a93cb158bfd5bad8f6081cbbae6594b77e2c49840c38235df9b235",
+      "raw_text": "For an ordinary unhooked business call, record CallStart immediately before issue. For a hook call, record it once before armHook as specified below; the same clock includes arming, acknowledgement and issue and is never restarted. A non-crashing call must emit one matching completion and permit independent readUI/readJ observations within 10000ms of CallStart on the same harness clock. Observation reads occur after completion and before another call or lifecycle control, with UI/J unchanged throughout those reads. Verify the matching instance/id, reported versus actual UI, expected complete journal, completion count observed so far and deadline. Missing, duplicate, late or mismatched results fail and cannot be erased by a later crash. ObservationComplete follows all these call-local checks within that original deadline; it permits the next call/control but is provisional. Retain every issued call id and count completions through each instance's C EOF/drain. A non-crashing invocation must have exactly one completion in that final audit; a crash-injected invocation must have zero. A late duplicate after ObservationComplete still fails. The same EOF audit requires exactly one Ready with the correct instance/J, already observed by the startup deadline; missing, wrong or duplicate Ready fails even if detected after startup confirmation. A late Ready cannot repair a startup failure. Final scenario success requires exit confirmation and the final count audit, including the final normal shutdown/exit, with no added reward call or restart during teardown.",
+      "requirement_like_hint": true
+    },
+    {
+      "block_id": "SB-F7DB8CD5A9668EF4",
+      "source_path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+      "source_sha256": "7e5e1fe8aeb5937c70caa16aea2a9e1784a429c70c30a4f7f4d66601f1880061",
+      "heading_path": [
+        "Exclusive reward resolution test"
+      ],
+      "block_type": "table_row",
+      "ordinal": 1,
+      "line_start": 11,
+      "line_end": 11,
+      "content_hash": "sha256:c2364314ef85ff72f8990004163eaf46e0e44bc4e52576c13ff22573427915cb",
+      "raw_text": "The only injected within-call crashes are immediately before or after the missing durable append of accept or cancel. Each hook scenario begins with its own empty J. Before issuing the target call, record CallStart, send armHook(i,id,op,before|after) on Q and receive its exact matching acknowledgement, where op is accept or cancel. The one-shot hook applies only to that id/op while J is empty. Before emits C:HookHit(i,id,op,before) after the empty guard and blocks before the atomic append. After emits C:HookHit(i,id,op,after) after the command's append is durable and blocks before UI finalization or Complete. No work can pass either barrier until OS termination; the harness never releases it. Observe exactly one matching acknowledgement and HookHit within the original 10000ms from CallStart, then immediately terminate i and begin its existing exit deadline. These controls are never Complete. Missing, wrong, duplicate or late hook events fail. Before leaves J empty; after leaves exactly the command's Commit or Cancel record. Confirm exit/EOF, start and confirm a new process with the unchanged J, then invoke resume under the ordinary call rule. Hooks are disabled for every other call. Failed-test cleanup cannot erase failure or count as scenario coverage.",
+      "requirement_like_hint": false
+    },
+    {
+      "block_id": "SB-5B889D232D13901F",
+      "source_path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+      "source_sha256": "7e5e1fe8aeb5937c70caa16aea2a9e1784a429c70c30a4f7f4d66601f1880061",
+      "heading_path": [
+        "Exclusive reward resolution test"
+      ],
+      "block_type": "paragraph",
+      "ordinal": 5,
+      "line_start": 13,
+      "line_end": 13,
+      "content_hash": "sha256:d738bab9cc43e83608b44937c4b397a80910c9248040412ee2fbb11380352bd5",
+      "raw_text": "Required separate scenarios, each with fresh J: two accepts; two cancels; accept then cancel; cancel then accept; empty resume; successful accept followed by ordinary restart and resume; successful cancel followed by ordinary restart and resume; and each of accept-before, accept-after, cancel-before, cancel-after crash/recovery. Ordinary restart occurs only after successful observations: normal shutdown, confirmed exit/EOF, start and confirmed startup, then resume. It is not an injected crash. All earlier non-crashing calls retain their final completion-count obligations across restart. The observed journal and UI must follow the rules above for every step, including no grant after Cancel and no cancellation after Commit. Planning the flow does not claim these scenarios ran.",
+      "requirement_like_hint": true
+    },
+    {
+      "block_id": "SB-83C0467B0FFB419F",
+      "source_path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+      "source_sha256": "7e5e1fe8aeb5937c70caa16aea2a9e1784a429c70c30a4f7f4d66601f1880061",
+      "heading_path": [
+        "Exclusive reward resolution test"
+      ],
+      "block_type": "paragraph",
+      "ordinal": 6,
+      "line_start": 15,
+      "line_end": 15,
+      "content_hash": "sha256:36fd1db491be5d081cca9c06ee3e5d1032f9b090229e7a44c37211e9a57aeb27",
+      "raw_text": "These are required synthetic adapter interfaces to implement, not claims of existing executable endpoints. Protocol-design responsibility belongs to the reward-controller implementer. The downstream implementation plan must choose and document one internally consistent versioned launch/message profile, including the hook acknowledgement representation and return path, used by both controller and harness. No particular Q/C wire encoding or executable argument spelling is prescribed. Every permitted profile must preserve the event identities, command distinctions, ordering, barrier blocking, independent observations, retained completion counts, deadlines and all scenarios above. A plan leaving its selected profile unresolved is incomplete.",
+      "requirement_like_hint": true
+    }
+  ],
+  "delta": {
+    "unchanged": [],
+    "changed": [],
+    "added": [
+      "SB-8C80E96FC81CA641",
+      "SB-3930A390340951B7",
+      "SB-9E135AFD8D79ED3C",
+      "SB-B84109DE92C147BA",
+      "SB-A9833CF255BDF6C0",
+      "SB-F7DB8CD5A9668EF4",
+      "SB-5B889D232D13901F",
+      "SB-83C0467B0FFB419F"
+    ],
+    "removed": []
+  }
+}

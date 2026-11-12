@@ -1,0 +1,19 @@
+{
+  "schema_version": "chapter3.source-manifest.v1",
+  "generated_at_utc": "2026-11-12T11:45:03.516961+00:00",
+  "mode": "add",
+  "source_revision": "source-set:45704214c4b741ba6aebe705",
+  "manifest_sha256": "sha256:45704214c4b741ba6aebe7052b59de3c26114cc16e8d467b3fab60d33f3f7628",
+  "repository_revision": "92c5532536b77d38730c2b59e9fe5e06b4662445",
+  "source_count": 1,
+  "block_count": 8,
+  "sources": [
+    {
+      "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+      "source_type": "markdown",
+      "sha256": "7e5e1fe8aeb5937c70caa16aea2a9e1784a429c70c30a4f7f4d66601f1880061",
+      "line_count": 15,
+      "block_count": 8
+    }
+  ]
+}

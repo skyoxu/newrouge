@@ -13,6 +13,8 @@ import os
 from pathlib import Path
 import shutil
 import subprocess
+import sys
+import tempfile
 import unittest
 from unittest.mock import patch
 
@@ -32,6 +34,139 @@ import plan_mvg
 import plan_capabilities
 import test_b_route_candidate as candidate_fixture
 import test_codex_app_server_stdio as protocol_fixture
+
+
+@unittest.skipUnless(sys.platform.startswith("linux"), "Actual Linux atomic publication")
+class LinuxInitialPublicationTests(unittest.TestCase):
+    """Actual storage/process boundaries; fixture payloads grant no native proof."""
+
+    def setUp(self):
+        self.temporary = tempfile.TemporaryDirectory(prefix="nr-pub-")
+        self.addCleanup(self.temporary.cleanup)
+        self.root = Path(self.temporary.name)
+
+    def test_existing_empty_nonempty_and_file_targets_are_never_replaced(self):
+        for kind in ("empty", "nonempty", "file"):
+            with self.subTest(kind=kind):
+                source = self.root / ("source-" + kind)
+                source.mkdir()
+                (source / "payload").write_bytes(b"new owned payload")
+                target = self.root / kind
+                if kind == "file":
+                    target.write_bytes(b"foreign file")
+                else:
+                    target.mkdir()
+                    if kind == "nonempty":
+                        (target / "prior").write_bytes(b"foreign directory")
+                inode = target.stat().st_ino
+                with self.assertRaises(FileExistsError):
+                    runtime._publish_run_directory(source, target)
+                self.assertEqual(inode, target.stat().st_ino)
+                self.assertEqual(b"new owned payload", (source / "payload").read_bytes())
+                if kind == "file":
+                    self.assertEqual(b"foreign file", target.read_bytes())
+                elif kind == "nonempty":
+                    self.assertEqual(b"foreign directory", (target / "prior").read_bytes())
+                else:
+                    self.assertEqual([], list(target.iterdir()))
+
+    def test_two_real_initializers_have_one_complete_winner_and_retained_loser(self):
+        import time
+        script = r'''
+import json, sys, time
+from pathlib import Path
+sys.dont_write_bytecode = True
+sys.path.insert(0, sys.argv[3])
+import _b_route_planning_runtime as runtime
+root, owner = Path(sys.argv[1]), sys.argv[2]
+publish = runtime._publish_run_directory
+def synchronized(source, target):
+    (root / ('ready-' + owner)).write_bytes(b'ready')
+    until = time.monotonic() + 10
+    while not (root / 'release').exists():
+        if time.monotonic() > until:
+            raise TimeoutError('Fixture release missing')
+        time.sleep(.01)
+    publish(source, target)
+runtime._publish_run_directory = synchronized
+state = {'run_id':'n', 'runtime_identity':owner, 'fixture_owner':owner}
+try:
+    runtime.publish_initial_run(root, root/'logs/ci/mvg-planning/n', state, {'fixture_owner':owner})
+except FileExistsError:
+    raise SystemExit(17)
+'''
+        processes = [subprocess.Popen([sys.executable, "-B", "-c", script, str(self.root), owner,
+                         str(Path(runtime.__file__).parent)], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                     for owner in ("one", "two")]
+        try:
+            until = time.monotonic() + 10
+            while not all((self.root / ("ready-" + owner)).exists() for owner in ("one", "two")):
+                self.assertTrue(all(p.poll() is None for p in processes))
+                self.assertLess(time.monotonic(), until)
+                time.sleep(.01)
+            (self.root / "release").write_bytes(b"release both initializers")
+            outcomes = [p.communicate(timeout=10) for p in processes]
+            self.assertEqual([0, 17], sorted(p.returncode for p in processes), outcomes)
+        finally:
+            for p in processes:
+                if p.poll() is None:
+                    p.kill()
+                    p.communicate()
+        target = self.root / "logs/ci/mvg-planning/n"
+        state = json.loads((target / "run.json").read_bytes())
+        frozen = json.loads((target / "analysis-input/b-route-prepared.json").read_bytes())
+        initialization = json.loads((target / "initialization.json").read_bytes())
+        self.assertEqual(state["fixture_owner"], frozen["fixture_owner"])
+        self.assertEqual(runtime.canonical_sha(state), initialization["initial_state_sha256"])
+        self.assertEqual(runtime.canonical_sha(frozen), initialization["frozen_sha256"])
+        staging = list(target.parent.glob(".init-*"))
+        self.assertEqual(1, len(staging))
+        self.assertNotEqual(state["fixture_owner"], json.loads((staging[0] / "run.json").read_bytes())["fixture_owner"])
+
+    def test_interrupted_staging_is_retained_without_authoritative_partial_run(self):
+        target = self.root / "logs/ci/mvg-planning/n"
+        original = runtime.atomic_json
+        def fail_before_state(path, value):
+            if path.name == "run.json":
+                raise OSError("fixture_staging_interrupt")
+            return original(path, value)
+        with patch.object(runtime, "atomic_json", side_effect=fail_before_state), self.assertRaisesRegex(OSError, "staging_interrupt"):
+            runtime.publish_initial_run(self.root, target, {"run_id":"n", "runtime_identity":"fixture"}, {"fixture":True})
+        self.assertFalse(target.exists())
+        staging = list(target.parent.glob(".init-*"))
+        self.assertEqual(1, len(staging))
+        self.assertEqual({"fixture":True}, json.loads((staging[0] / "analysis-input/b-route-prepared.json").read_bytes()))
+
+    def test_postpublication_interrupt_keeps_complete_identity_for_existing_owner_reentry(self):
+        target = self.root / "logs/ci/mvg-planning/n"
+        state = {"run_id":"n", "runtime_identity":"fixture"}
+        publish = runtime._publish_run_directory
+        def interrupted(source, destination):
+            publish(source, destination)
+            raise OSError("fixture_after_publication")
+        with patch.object(runtime, "_publish_run_directory", side_effect=interrupted), self.assertRaises(FileExistsError):
+            runtime.publish_initial_run(self.root, target, state, {"fixture":True})
+        self.assertEqual(state, json.loads((target / "run.json").read_bytes()))
+        before = {p.relative_to(target): p.read_bytes() for p in target.rglob("*") if p.is_file()}
+        with self.assertRaises(FileExistsError):
+            runtime.publish_initial_run(self.root, target, state, {"fixture":True})
+        self.assertEqual(before, {p.relative_to(target): p.read_bytes() for p in target.rglob("*") if p.is_file()})
+
+    def test_missing_or_unsupported_noreplace_never_uses_ordinary_rename(self):
+        import ctypes
+        import errno
+        from types import SimpleNamespace
+        source, target = self.root / "source", self.root / "target"
+        source.mkdir()
+        def unsupported(*_args):
+            ctypes.set_errno(errno.EOPNOTSUPP)
+            return -1
+        for library in (SimpleNamespace(), SimpleNamespace(renameat2=unsupported)):
+            with self.subTest(library=library), patch.object(ctypes, "CDLL", return_value=library), \
+                 patch.object(os, "rename", side_effect=AssertionError("No ordinary rename fallback")), self.assertRaises(OSError):
+                runtime._publish_run_directory(source, target)
+            self.assertTrue(source.exists())
+            self.assertFalse(target.exists())
 
 
 def carrier(draft):

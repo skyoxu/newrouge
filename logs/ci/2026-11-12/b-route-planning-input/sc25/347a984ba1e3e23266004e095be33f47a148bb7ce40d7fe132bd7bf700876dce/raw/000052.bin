@@ -1,0 +1,9 @@
+{
+  "ordinal": 1,
+  "attempt_id": "audit-01",
+  "step": "extract-000001",
+  "reserved_requests": 1,
+  "reserved_seconds": 630,
+  "run_id": "cloud-singlecap-audit-20261112",
+  "scope_id": "controlled-exclusive-resolution-v15"
+}

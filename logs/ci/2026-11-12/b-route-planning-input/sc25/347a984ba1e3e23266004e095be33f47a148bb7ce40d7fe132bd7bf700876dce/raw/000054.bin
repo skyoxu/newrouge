@@ -1,0 +1,760 @@
+{
+  "schema_version": "newrouge.b-route-source-audit.v1.extract",
+  "input_identity": "sha256:b2b18400bf585fe2299636f0e261c48e17d73b257e7fb566f07e80e365666ba7",
+  "file": {
+    "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+    "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a"
+  },
+  "file_review": "Reviewed the complete original source, including its heading and all seven substantive blocks, shared constraints, cancellation and return branches, startup, shutdown, crash recovery, final audits and implementation handoff. All eight input blocks are covered in source order. Citations select the supplied exact whole-block UTF-8 byte locators, including CRLF endings. No substantive block is deferred or excluded. Protocol representation is an explicitly bounded choice assigned to the reward-controller implementer, with mandatory selection, documentation and consistent implementation; its unspecified eventual encoding is not an unresolved requirement. No additional semantic conflict or genuinely unassigned design choice was identified. The source specifies synthetic interfaces and required scenarios without establishing existing endpoints or successful execution.",
+  "coverage": [
+    {
+      "block_id": "SB-8C80E96FC81CA641",
+      "disposition": "context",
+      "reason": "The heading identifies the exclusive reward resolution test; it supplies scope but no standalone behavioral requirement.",
+      "basis": [
+        {
+          "span_ref": "span-000001"
+        }
+      ]
+    },
+    {
+      "block_id": "SB-3930A390340951B7",
+      "disposition": "obligation",
+      "reason": "Defines scenario isolation, serial execution, ownership, permitted durable states, atomicity, immutable decisions, reward and logical-return effects, and the storage-success assumption.",
+      "basis": [
+        {
+          "span_ref": "span-000002"
+        }
+      ]
+    },
+    {
+      "block_id": "SB-9E135AFD8D79ED3C",
+      "disposition": "obligation",
+      "reason": "Defines business commands and their empty/nonempty journal branches, UI finalization and completion, repeated and opposing decisions, automatic progress, and separation of cancellation from lifecycle controls.",
+      "basis": [
+        {
+          "span_ref": "span-000003"
+        }
+      ]
+    },
+    {
+      "block_id": "SB-B84109DE92C147BA",
+      "disposition": "obligation",
+      "reason": "Assigns harness resources and requires controlled launch, startup evidence, independent probes, startup gating, normal and forced exit mechanisms, exit evidence and deadlines.",
+      "basis": [
+        {
+          "span_ref": "span-000004"
+        }
+      ]
+    },
+    {
+      "block_id": "SB-A9833CF255BDF6C0",
+      "disposition": "obligation",
+      "reason": "Requires call timing, stable independent observations, identity and state checks, persistent failures, provisional observation completion, retained EOF audits and final teardown conditions.",
+      "basis": [
+        {
+          "span_ref": "span-000005"
+        }
+      ]
+    },
+    {
+      "block_id": "SB-F7DB8CD5A9668EF4",
+      "disposition": "obligation",
+      "reason": "Despite its supplied table_row type, the complete prose specifies crash scope, hook arming and identities, blocking barriers, deadlines, termination, retained-state recovery and cleanup limitations.",
+      "basis": [
+        {
+          "span_ref": "span-000006"
+        }
+      ]
+    },
+    {
+      "block_id": "SB-5B889D232D13901F",
+      "disposition": "obligation",
+      "reason": "Requires eleven separate scenarios, constrains ordinary restart and cross-restart audits, applies journal/UI rules at every step and prohibits treating planning as execution evidence.",
+      "basis": [
+        {
+          "span_ref": "span-000007"
+        }
+      ]
+    },
+    {
+      "block_id": "SB-83C0467B0FFB419F",
+      "disposition": "obligation",
+      "reason": "Requires implementation of synthetic interfaces and assigns a bounded protocol-design handoff: choose and document one shared versioned profile while preserving every specified invariant. Unprescribed encoding and argument spelling are delegated choices, not permission to leave the profile unresolved.",
+      "basis": [
+        {
+          "span_ref": "span-000008"
+        }
+      ]
+    }
+  ],
+  "obligations": [
+    {
+      "local_id": "1",
+      "statement": "Provision each separate synthetic scenario with its own newly empty durable journal J and a fixed reward R; scenarios must never share J.",
+      "kind": "constraint",
+      "citations": [
+        {
+          "span_ref": "span-000002"
+        }
+      ]
+    },
+    {
+      "local_id": "2",
+      "statement": "Within each scenario, process calls serially in one process at a time, never overlap processes and never reset J.",
+      "kind": "constraint",
+      "citations": [
+        {
+          "span_ref": "span-000002"
+        }
+      ]
+    },
+    {
+      "local_id": "3",
+      "statement": "The reward controller owns the durable journal J and the volatile map UI.",
+      "kind": "constraint",
+      "citations": [
+        {
+          "span_ref": "span-000002"
+        }
+      ]
+    },
+    {
+      "local_id": "4",
+      "statement": "Permit exactly three journal states: empty, [Commit(R)] and [Cancel(R)]. From empty, allow one atomic durable append of Commit(R) or Cancel(R); once nonempty, J is immutable.",
+      "kind": "constraint",
+      "citations": [
+        {
+          "span_ref": "span-000002"
+        }
+      ]
+    },
+    {
+      "local_id": "5",
+      "statement": "Commit must grant R exactly once and logically return to the map.",
+      "kind": "obligation",
+      "citations": [
+        {
+          "span_ref": "span-000002"
+        }
+      ]
+    },
+    {
+      "local_id": "6",
+      "statement": "Cancel must permanently decline R, grant nothing and logically return to the map.",
+      "kind": "obligation",
+      "citations": [
+        {
+          "span_ref": "span-000002"
+        }
+      ]
+    },
+    {
+      "local_id": "7",
+      "statement": "Rendering or restoring UI must not grant, cancel or logically return again.",
+      "kind": "constraint",
+      "citations": [
+        {
+          "span_ref": "span-000002"
+        }
+      ]
+    },
+    {
+      "local_id": "8",
+      "statement": "Use the specified synthetic storage model: storage succeeds except for the designated injected crash barriers.",
+      "kind": "constraint",
+      "citations": [
+        {
+          "span_ref": "span-000002"
+        }
+      ]
+    },
+    {
+      "local_id": "9",
+      "statement": "Provide accept(R,id), cancel(R,id) and resume(R,id); every call must have a fresh id, and the decision guard must read J.",
+      "kind": "obligation",
+      "citations": [
+        {
+          "span_ref": "span-000003"
+        }
+      ]
+    },
+    {
+      "local_id": "10",
+      "statement": "With empty J, accept must append Commit(R), cancel must append Cancel(R), and resume must write nothing.",
+      "kind": "obligation",
+      "citations": [
+        {
+          "span_ref": "span-000003"
+        }
+      ]
+    },
+    {
+      "local_id": "11",
+      "statement": "With nonempty J, no business entry point may write: accept cannot override cancellation, cancel cannot reverse a grant, and resume only restores the existing decision.",
+      "kind": "constraint",
+      "citations": [
+        {
+          "span_ref": "span-000003"
+        }
+      ]
+    },
+    {
+      "local_id": "12",
+      "statement": "Business-call finalization must render MapReady for [Commit(R)], MapCancelled for [Cancel(R)] and Idle for empty J, then emit exactly one C:Complete(i,id,ui). A crash-injected invocation is instead blocked before finalization and must have zero completions.",
+      "kind": "obligation",
+      "citations": [
+        {
+          "span_ref": "span-000003"
+        },
+        {
+          "span_ref": "span-000005"
+        },
+        {
+          "span_ref": "span-000006"
+        }
+      ]
+    },
+    {
+      "local_id": "13",
+      "statement": "Repeated accept after Commit must stay MapReady; repeated cancel after Cancel must stay MapCancelled; accept after Cancel must stay MapCancelled without granting; cancel after Commit must stay MapReady without cancellation. No extra user action may be required.",
+      "kind": "obligation",
+      "citations": [
+        {
+          "span_ref": "span-000003"
+        }
+      ]
+    },
+    {
+      "local_id": "14",
+      "statement": "Treat shutdown and force-termination as lifecycle controls distinct from the business cancel command.",
+      "kind": "constraint",
+      "citations": [
+        {
+          "span_ref": "span-000003"
+        }
+      ]
+    },
+    {
+      "local_id": "15",
+      "statement": "The harness must own OS instance handles, an ordered retained external event stream C for each instance and a fresh control channel Q.",
+      "kind": "obligation",
+      "citations": [
+        {
+          "span_ref": "span-000004"
+        }
+      ]
+    },
+    {
+      "local_id": "16",
+      "statement": "start(J) must launch the controlled executable with J and the specified endpoints and return an owned OS handle i.",
+      "kind": "obligation",
+      "citations": [
+        {
+          "span_ref": "span-000004"
+        }
+      ]
+    },
+    {
+      "local_id": "17",
+      "statement": "Every process must initially show Idle and emit C:Ready(i,J) exactly once, only after opening J and binding all three business entry points.",
+      "kind": "obligation",
+      "citations": [
+        {
+          "span_ref": "span-000004"
+        }
+      ]
+    },
+    {
+      "local_id": "18",
+      "statement": "Confirm startup using the matching Ready event, independently matching live i/J, actual readUI(i)=Idle and readJ(J) equal to the retained journal, within a separate 10000ms deadline measured from start on the harness monotonic clock. Issue no business call before startup confirmation.",
+      "kind": "obligation",
+      "citations": [
+        {
+          "span_ref": "span-000004"
+        },
+        {
+          "span_ref": "span-000005"
+        }
+      ]
+    },
+    {
+      "local_id": "19",
+      "statement": "readUI must be a read-only probe of rendered UI rather than a reported value; readJ must read every durable record.",
+      "kind": "constraint",
+      "citations": [
+        {
+          "span_ref": "span-000004"
+        }
+      ]
+    },
+    {
+      "local_id": "20",
+      "statement": "shutdown(i) must send Shutdown on Q for normal exit; terminate(i) must force-terminate exactly the owned instance i through the OS.",
+      "kind": "obligation",
+      "citations": [
+        {
+          "span_ref": "span-000004"
+        }
+      ]
+    },
+    {
+      "local_id": "21",
+      "statement": "Confirm exit only when the OS handle is signaled and C reaches EOF/drain, within a separate 10000ms deadline from shutdown or termination; a timeout fails the scenario.",
+      "kind": "obligation",
+      "citations": [
+        {
+          "span_ref": "span-000004"
+        }
+      ]
+    },
+    {
+      "local_id": "22",
+      "statement": "Record CallStart immediately before issuing an ordinary unhooked business call. For a hook call, record it once before armHook; include arming, acknowledgement and issue in the same timing interval and never restart that clock.",
+      "kind": "obligation",
+      "citations": [
+        {
+          "span_ref": "span-000005"
+        }
+      ]
+    },
+    {
+      "local_id": "23",
+      "statement": "A non-crashing call must emit one matching completion and permit independent readUI/readJ observations within 10000ms of CallStart on the same harness clock.",
+      "kind": "obligation",
+      "citations": [
+        {
+          "span_ref": "span-000005"
+        }
+      ]
+    },
+    {
+      "local_id": "24",
+      "statement": "Perform observation reads after completion and before any subsequent call or lifecycle control; UI and J must remain unchanged throughout those reads.",
+      "kind": "constraint",
+      "citations": [
+        {
+          "span_ref": "span-000005"
+        }
+      ]
+    },
+    {
+      "local_id": "25",
+      "statement": "Check matching instance/id, reported versus actual UI, the expected complete journal, completion count observed so far and the deadline. Missing, duplicate, late or mismatched results fail permanently and cannot be erased by a later crash.",
+      "kind": "obligation",
+      "citations": [
+        {
+          "span_ref": "span-000005"
+        }
+      ]
+    },
+    {
+      "local_id": "26",
+      "statement": "Mark ObservationComplete only after all call-local checks finish within the original call deadline. It permits the next call or control but remains provisional pending the final audit.",
+      "kind": "constraint",
+      "citations": [
+        {
+          "span_ref": "span-000005"
+        }
+      ]
+    },
+    {
+      "local_id": "27",
+      "statement": "Retain every issued call id and count completions through each instance's C EOF/drain. The final audit must find exactly one completion for every non-crashing invocation and zero for every crash-injected invocation; a duplicate arriving after ObservationComplete still fails.",
+      "kind": "obligation",
+      "citations": [
+        {
+          "span_ref": "span-000005"
+        }
+      ]
+    },
+    {
+      "local_id": "28",
+      "statement": "The EOF audit must find exactly one Ready with the correct instance/J, already observed by the startup deadline. Missing, wrong or duplicate Ready fails even if discovered after startup confirmation, and late Ready cannot repair startup failure.",
+      "kind": "obligation",
+      "citations": [
+        {
+          "span_ref": "span-000005"
+        }
+      ]
+    },
+    {
+      "local_id": "29",
+      "statement": "Require exit confirmation and the final count audit for scenario success, including the final normal shutdown/exit. Do not add a reward call or restart during teardown.",
+      "kind": "constraint",
+      "citations": [
+        {
+          "span_ref": "span-000005"
+        }
+      ]
+    },
+    {
+      "local_id": "30",
+      "statement": "Inject within-call crashes only immediately before or after the pending durable append of accept or cancel; each hook scenario must begin with its own empty J.",
+      "kind": "constraint",
+      "citations": [
+        {
+          "span_ref": "span-000006"
+        }
+      ]
+    },
+    {
+      "local_id": "31",
+      "statement": "Before issuing the hook target call, record CallStart, send armHook(i,id,op,before|after) on Q and receive its exact matching acknowledgement, with op restricted to accept or cancel. The one-shot hook must apply only to that id/op while J is empty.",
+      "kind": "obligation",
+      "citations": [
+        {
+          "span_ref": "span-000006"
+        }
+      ]
+    },
+    {
+      "local_id": "32",
+      "statement": "The before hook must emit C:HookHit(i,id,op,before) after the empty guard and block before the atomic append.",
+      "kind": "obligation",
+      "citations": [
+        {
+          "span_ref": "span-000006"
+        }
+      ]
+    },
+    {
+      "local_id": "33",
+      "statement": "The after hook must emit C:HookHit(i,id,op,after) after the command's append is durable and block before UI finalization or Complete.",
+      "kind": "obligation",
+      "citations": [
+        {
+          "span_ref": "span-000006"
+        }
+      ]
+    },
+    {
+      "local_id": "34",
+      "statement": "No work may pass either hook barrier before OS termination, and the harness must never release the barrier.",
+      "kind": "constraint",
+      "citations": [
+        {
+          "span_ref": "span-000006"
+        }
+      ]
+    },
+    {
+      "local_id": "35",
+      "statement": "Observe exactly one matching hook acknowledgement and one matching HookHit within the original 10000ms from CallStart, then immediately terminate i and begin the existing exit deadline.",
+      "kind": "obligation",
+      "citations": [
+        {
+          "span_ref": "span-000006"
+        }
+      ]
+    },
+    {
+      "local_id": "36",
+      "statement": "Hook controls are never Complete events. Missing, wrong, duplicate or late hook events must fail the scenario.",
+      "kind": "constraint",
+      "citations": [
+        {
+          "span_ref": "span-000006"
+        }
+      ]
+    },
+    {
+      "local_id": "37",
+      "statement": "A before-hook crash must leave J empty; an after-hook crash must leave exactly the target command's Commit(R) or Cancel(R) record.",
+      "kind": "obligation",
+      "citations": [
+        {
+          "span_ref": "span-000006"
+        }
+      ]
+    },
+    {
+      "local_id": "38",
+      "statement": "After an injected crash, confirm exit/EOF, start and confirm a new process with unchanged J, then invoke resume under the ordinary call rule.",
+      "kind": "obligation",
+      "citations": [
+        {
+          "span_ref": "span-000006"
+        }
+      ]
+    },
+    {
+      "local_id": "39",
+      "statement": "Disable hooks for every other call. Failed-test cleanup must neither erase failure nor count as scenario coverage.",
+      "kind": "constraint",
+      "citations": [
+        {
+          "span_ref": "span-000006"
+        }
+      ]
+    },
+    {
+      "local_id": "40",
+      "statement": "Provide a separate fresh-J scenario with two accepts; both observed results must be MapReady with exactly [Commit(R)], with R granted exactly once.",
+      "kind": "obligation",
+      "citations": [
+        {
+          "span_ref": "span-000007"
+        },
+        {
+          "span_ref": "span-000003"
+        },
+        {
+          "span_ref": "span-000002"
+        }
+      ]
+    },
+    {
+      "local_id": "41",
+      "statement": "Provide a separate fresh-J scenario with two cancels; both observed results must be MapCancelled with exactly [Cancel(R)], granting nothing.",
+      "kind": "obligation",
+      "citations": [
+        {
+          "span_ref": "span-000007"
+        },
+        {
+          "span_ref": "span-000003"
+        },
+        {
+          "span_ref": "span-000002"
+        }
+      ]
+    },
+    {
+      "local_id": "42",
+      "statement": "Provide a separate fresh-J scenario with accept then cancel; the second call must preserve [Commit(R)] and MapReady without cancelling the grant.",
+      "kind": "obligation",
+      "citations": [
+        {
+          "span_ref": "span-000007"
+        },
+        {
+          "span_ref": "span-000003"
+        }
+      ]
+    },
+    {
+      "local_id": "43",
+      "statement": "Provide a separate fresh-J scenario with cancel then accept; the second call must preserve [Cancel(R)] and MapCancelled without granting R.",
+      "kind": "obligation",
+      "citations": [
+        {
+          "span_ref": "span-000007"
+        },
+        {
+          "span_ref": "span-000003"
+        }
+      ]
+    },
+    {
+      "local_id": "44",
+      "statement": "Provide a separate fresh-J scenario with empty resume; it must leave J empty, render Idle and complete under the ordinary call rule.",
+      "kind": "obligation",
+      "citations": [
+        {
+          "span_ref": "span-000007"
+        },
+        {
+          "span_ref": "span-000003"
+        },
+        {
+          "span_ref": "span-000005"
+        }
+      ]
+    },
+    {
+      "local_id": "45",
+      "statement": "Provide a separate fresh-J scenario with successful accept followed by ordinary restart and resume; resume must restore MapReady from unchanged [Commit(R)] without granting or logically returning again.",
+      "kind": "obligation",
+      "citations": [
+        {
+          "span_ref": "span-000007"
+        },
+        {
+          "span_ref": "span-000003"
+        },
+        {
+          "span_ref": "span-000002"
+        }
+      ]
+    },
+    {
+      "local_id": "46",
+      "statement": "Provide a separate fresh-J scenario with successful cancel followed by ordinary restart and resume; resume must restore MapCancelled from unchanged [Cancel(R)] without granting, cancelling or logically returning again.",
+      "kind": "obligation",
+      "citations": [
+        {
+          "span_ref": "span-000007"
+        },
+        {
+          "span_ref": "span-000003"
+        },
+        {
+          "span_ref": "span-000002"
+        }
+      ]
+    },
+    {
+      "local_id": "47",
+      "statement": "Provide a separate fresh-J accept-before crash/recovery scenario using the specified hook protocol; J must remain empty, the interrupted accept must have zero completions and recovery resume must render Idle under the ordinary call rule.",
+      "kind": "obligation",
+      "citations": [
+        {
+          "span_ref": "span-000007"
+        },
+        {
+          "span_ref": "span-000006"
+        },
+        {
+          "span_ref": "span-000005"
+        },
+        {
+          "span_ref": "span-000003"
+        }
+      ]
+    },
+    {
+      "local_id": "48",
+      "statement": "Provide a separate fresh-J accept-after crash/recovery scenario using the specified hook protocol; J must retain exactly [Commit(R)], the interrupted accept must have zero completions and recovery resume must render MapReady without another grant or logical return.",
+      "kind": "obligation",
+      "citations": [
+        {
+          "span_ref": "span-000007"
+        },
+        {
+          "span_ref": "span-000006"
+        },
+        {
+          "span_ref": "span-000005"
+        },
+        {
+          "span_ref": "span-000003"
+        },
+        {
+          "span_ref": "span-000002"
+        }
+      ]
+    },
+    {
+      "local_id": "49",
+      "statement": "Provide a separate fresh-J cancel-before crash/recovery scenario using the specified hook protocol; J must remain empty, the interrupted cancel must have zero completions and recovery resume must render Idle under the ordinary call rule.",
+      "kind": "obligation",
+      "citations": [
+        {
+          "span_ref": "span-000007"
+        },
+        {
+          "span_ref": "span-000006"
+        },
+        {
+          "span_ref": "span-000005"
+        },
+        {
+          "span_ref": "span-000003"
+        }
+      ]
+    },
+    {
+      "local_id": "50",
+      "statement": "Provide a separate fresh-J cancel-after crash/recovery scenario using the specified hook protocol; J must retain exactly [Cancel(R)], the interrupted cancel must have zero completions and recovery resume must render MapCancelled without granting, cancelling or logically returning again.",
+      "kind": "obligation",
+      "citations": [
+        {
+          "span_ref": "span-000007"
+        },
+        {
+          "span_ref": "span-000006"
+        },
+        {
+          "span_ref": "span-000005"
+        },
+        {
+          "span_ref": "span-000003"
+        },
+        {
+          "span_ref": "span-000002"
+        }
+      ]
+    },
+    {
+      "local_id": "51",
+      "statement": "Ordinary restart may occur only after successful observations and must follow normal shutdown, confirmed exit/EOF, start, confirmed startup and then resume; it is not an injected crash.",
+      "kind": "constraint",
+      "citations": [
+        {
+          "span_ref": "span-000007"
+        }
+      ]
+    },
+    {
+      "local_id": "52",
+      "statement": "Retain all earlier non-crashing calls' final completion-count obligations across restart.",
+      "kind": "constraint",
+      "citations": [
+        {
+          "span_ref": "span-000007"
+        }
+      ]
+    },
+    {
+      "local_id": "53",
+      "statement": "At every step of every required scenario, observed journal and UI must follow all preceding rules, including no grant after Cancel and no cancellation after Commit.",
+      "kind": "obligation",
+      "citations": [
+        {
+          "span_ref": "span-000007"
+        }
+      ]
+    },
+    {
+      "local_id": "54",
+      "statement": "Do not represent planning the flow as a claim that the required scenarios ran.",
+      "kind": "constraint",
+      "citations": [
+        {
+          "span_ref": "span-000007"
+        }
+      ]
+    },
+    {
+      "local_id": "55",
+      "statement": "Implement the required synthetic adapter interfaces; their specification does not establish that executable endpoints already exist.",
+      "kind": "obligation",
+      "citations": [
+        {
+          "span_ref": "span-000008"
+        }
+      ]
+    },
+    {
+      "local_id": "56",
+      "statement": "The reward-controller implementer owns protocol design. The downstream implementation plan must choose and document one internally consistent versioned launch/message profile, including the hook acknowledgement representation and return path, for use by both controller and harness.",
+      "kind": "handoff",
+      "citations": [
+        {
+          "span_ref": "span-000008"
+        }
+      ]
+    },
+    {
+      "local_id": "57",
+      "statement": "The implementer may select Q/C wire encoding and executable argument spelling because none is prescribed, but the plan must resolve its selected profile; leaving that selection unresolved makes the plan incomplete.",
+      "kind": "constraint",
+      "citations": [
+        {
+          "span_ref": "span-000008"
+        }
+      ]
+    },
+    {
+      "local_id": "58",
+      "statement": "Every selected profile must preserve the specified event identities, command distinctions, ordering, barrier blocking, independent observations, retained completion counts, deadlines and all required scenarios.",
+      "kind": "constraint",
+      "citations": [
+        {
+          "span_ref": "span-000008"
+        }
+      ]
+    }
+  ]
+}

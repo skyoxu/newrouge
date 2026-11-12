@@ -1,0 +1,40 @@
+{
+  "schema_version": "newrouge.b-route-planning-prepare-report.v1",
+  "input_stage": "3b",
+  "run_id": "sc25",
+  "stage": "prepare",
+  "status": "blocked",
+  "formal_adoption": false,
+  "implementation_input_set": false,
+  "model_dispatch_count": 0,
+  "runner_dispatch_count": 0,
+  "diagnostics": [
+    {
+      "reason_code": "budget_exhausted",
+      "stage": "content",
+      "entity_id": "logs/ci/2026-11-12/cloud-epic2-recovery-25/singlecap-planning-contract.current.json",
+      "expected": "complete current planning input",
+      "actual": "runner_context_budget_exceeded:estimated_input_tokens=278315;continuation_reserve=2000;limit=96000;complete_request_chars=278315;complete_request_bytes=278315;token_counter=utf8_byte_upper_bound",
+      "resume_ref": "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/report.json"
+    }
+  ],
+  "invalidated_dependencies": [
+    {
+      "prepared_ref": "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/prepared.json",
+      "reason": "incomplete_or_corrupt_prior_event"
+    }
+  ],
+  "input_identity": "sha256:347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce",
+  "scope_id": "controlled-exclusive-resolution-v15",
+  "attempt_id": "347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce",
+  "output_ref": "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce",
+  "resume_ref": "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/report.json",
+  "exit_code": 1,
+  "event_key": [
+    "sc25",
+    "controlled-exclusive-resolution-v15",
+    "prepare",
+    "347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce"
+  ]
+}
+[dev_cli] running: /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3 /workspace/newrouge/scripts/python/plan_mvg.py --repo-root /workspace/newrouge prepare --run-id sc25 --input-stage 3b --planning-contract logs/ci/2026-11-12/cloud-epic2-recovery-25/singlecap-planning-contract.current.json

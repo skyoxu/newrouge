@@ -1,0 +1,10 @@
+{
+  "original_inputs_ref": "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/inputs.json",
+  "request_bytes": 278315,
+  "request_sha256": "dadbc06a583e7edebdbdea08a421827ef9c3814ca00269e25a879162619a0552",
+  "original_gate": "utf8_byte_upper_bound +2000 >96000",
+  "claim": "Exact DATA rederivation of the full common-core lower-bound request before adding source parts; not current audit/admission or final whole-input capacity",
+  "source_parts": 0,
+  "thresholds_changed": false,
+  "new_model_calls": 0
+}

@@ -1,0 +1,11 @@
+# Preservation scope and privacy inspection
+
+The user explicitly paused new business execution, model calls and tests. No such command was started after that instruction. Inspection, byte hashing, privacy scanning, documentation and the explicitly authorized Git commit/push are administrative preservation work.
+
+`preservation-input-audit-01.json` inventories183 then-pending inputs,69,586,772 bytes, including full source-audit execution/protocol buffers and the actual failed3B preparation archive.36 embedded base64 protocol buffers were decoded for inspection. Secret/token/private-key/Bearer/signed-URL patterns had zero matches, and no nonempty user/account identity fields were found. The only email candidates are public dependency-package author/maintainer metadata in dependency-install-report.json: tiktoken, regex, requests and urllib3. They are not user account information. No private auth file, credential home content, account protocol, token, shell environment values or browser profile was read/copied into the preservation inputs. Thread/turn IDs identify the recorded business execution, not a login credential.
+
+All original business/model records are preserved byte-for-byte. `/logs/** -text` prevents Git newline conversion. The failed3B raw archive intentionally repeats original source/proof/execution bytes; retaining this redundancy preserves its own raw-index/digests and failure provenance. The scanner reports identities, categories and email fingerprints without exposing matching values. Its reports do not claim that pattern matching is a proof against every possible secret format.
+
+The four initial unrelated EOL-status paths are explicitly excluded. Their raw bytes equal their0c4d16c1 Git blobs; they remain in the worktree. No reset, checkout overwrite, force push or main merge is authorized.
+
+Private runtime setup outside the repository is not portable project evidence.121 original Python tool preimages are reconstructible from immutable commit0c4d16c1 and their recorded hash manifest. Native/Python/package identities in a future environment must be actually checked; copying an old manifest, old authentication, or re-signing an old proof cannot make changed tools current. Existing one-shot wrappers are historical evidence and must not be executed again.

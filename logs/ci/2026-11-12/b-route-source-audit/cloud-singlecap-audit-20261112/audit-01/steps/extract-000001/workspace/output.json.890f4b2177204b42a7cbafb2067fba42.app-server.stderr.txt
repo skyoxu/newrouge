@@ -1,0 +1,468 @@
+2026-11-12T12:08:20.575182Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.575287Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=15.7µs time.idle=91.8µs
+2026-11-12T12:08:20.575431Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.575518Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=6.06µs time.idle=79.4µs
+2026-11-12T12:08:20.575549Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.575586Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.575595Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=4.08µs time.idle=41.9µs
+2026-11-12T12:08:20.575837Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.575881Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=5.25µs time.idle=292µs
+2026-11-12T12:08:20.575987Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=10.3µs time.idle=139µs
+2026-11-12T12:08:20.576019Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.576059Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=5.09µs time.idle=35.4µs
+2026-11-12T12:08:20.576238Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.576328Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=12.8µs time.idle=77.1µs
+2026-11-12T12:08:20.576392Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.577077Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=14.1µs time.idle=671µs
+2026-11-12T12:08:20.577512Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.577588Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=19.2µs time.idle=56.2µs
+2026-11-12T12:08:20.577514Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.577647Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.577647Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=14.8µs time.idle=119µs
+2026-11-12T12:08:20.577660Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.577668Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.577693Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.577719Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=5.75µs time.idle=20.4µs
+2026-11-12T12:08:20.577730Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=9.00µs time.idle=73.7µs
+2026-11-12T12:08:20.577733Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=5.65µs time.idle=66.5µs
+2026-11-12T12:08:20.577744Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=6.91µs time.idle=69.4µs
+2026-11-12T12:08:20.577752Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.577768Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=5.99µs time.idle=10.1µs
+2026-11-12T12:08:20.577771Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.577796Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=1.88µs time.idle=23.7µs
+2026-11-12T12:08:20.577801Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.577807Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=4.81µs time.idle=1.55µs
+2026-11-12T12:08:20.577812Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.577847Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=9.05µs time.idle=25.9µs
+2026-11-12T12:08:20.577852Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.577878Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=6.14µs time.idle=19.9µs
+2026-11-12T12:08:20.577985Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.578091Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=8.43µs time.idle=97.0µs
+2026-11-12T12:08:20.578138Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.578875Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=10.2µs time.idle=727µs
+2026-11-12T12:08:20.579082Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.579112Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=13.4µs time.idle=16.9µs
+2026-11-12T12:08:20.579143Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.579159Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.579175Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.579190Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.579201Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=4.35µs time.idle=5.96µs
+2026-11-12T12:08:20.579209Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=10.9µs time.idle=55.5µs
+2026-11-12T12:08:20.579216Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=9.86µs time.idle=46.3µs
+2026-11-12T12:08:20.579223Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=9.09µs time.idle=39.0µs
+2026-11-12T12:08:20.579231Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.579243Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=6.82µs time.idle=5.86µs
+2026-11-12T12:08:20.579247Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.579286Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=10.8µs time.idle=28.0µs
+2026-11-12T12:08:20.579302Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.579359Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=9.68µs time.idle=46.8µs
+2026-11-12T12:08:20.579876Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.579912Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=13.8µs time.idle=22.5µs
+2026-11-12T12:08:20.580016Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.580333Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=14.2µs time.idle=302µs
+2026-11-12T12:08:20.580589Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.580613Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=14.8µs time.idle=9.64µs
+2026-11-12T12:08:20.580760Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.582840Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=6.91µs time.idle=2.07ms
+2026-11-12T12:08:20.582925Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.583022Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=12.3µs time.idle=85.3µs
+2026-11-12T12:08:20.583283Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.583354Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=12.7µs time.idle=58.1µs
+2026-11-12T12:08:20.583373Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.583389Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.583399Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.583408Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.583468Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=8.68µs time.idle=87.1µs
+2026-11-12T12:08:20.583477Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=8.35µs time.idle=79.7µs
+2026-11-12T12:08:20.583511Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=8.23µs time.idle=103µs
+2026-11-12T12:08:20.583528Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=49.8µs time.idle=70.6µs
+2026-11-12T12:08:20.583546Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.583618Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=24.5µs time.idle=47.4µs
+2026-11-12T12:08:20.583630Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.583671Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=8.47µs time.idle=32.9µs
+2026-11-12T12:08:20.583703Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.583744Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=27.2µs time.idle=14.7µs
+2026-11-12T12:08:20.590901Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.590976Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=16.5µs time.idle=58.8µs
+2026-11-12T12:08:20.591155Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.591193Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=6.67µs time.idle=31.1µs
+2026-11-12T12:08:20.591205Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.591268Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=13.5µs time.idle=49.2µs
+2026-11-12T12:08:20.591435Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.591504Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=6.27µs time.idle=62.8µs
+2026-11-12T12:08:20.591560Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.591628Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=13.8µs time.idle=55.1µs
+2026-11-12T12:08:20.591764Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.591839Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=14.9µs time.idle=59.5µs
+2026-11-12T12:08:20.591852Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.591899Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=9.00µs time.idle=38.7µs
+2026-11-12T12:08:20.591909Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.591961Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=8.35µs time.idle=43.9µs
+2026-11-12T12:08:20.591970Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.591984Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=7.11µs time.idle=6.65µs
+2026-11-12T12:08:20.591997Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.592072Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=9.12µs time.idle=65.8µs
+2026-11-12T12:08:20.592082Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.592121Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=7.94µs time.idle=31.1µs
+2026-11-12T12:08:20.592130Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.592170Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=7.72µs time.idle=32.4µs
+2026-11-12T12:08:20.592178Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.592217Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=7.92µs time.idle=30.8µs
+2026-11-12T12:08:20.592226Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.592237Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=4.66µs time.idle=6.54µs
+2026-11-12T12:08:20.592246Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.592310Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=8.78µs time.idle=54.9µs
+2026-11-12T12:08:20.592322Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.592338Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.592353Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=7.27µs time.idle=7.19µs
+2026-11-12T12:08:20.592362Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.592374Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=8.58µs time.idle=43.2µs
+2026-11-12T12:08:20.592383Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=5.49µs time.idle=15.8µs
+2026-11-12T12:08:20.592391Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.592403Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=5.59µs time.idle=6.42µs
+2026-11-12T12:08:20.592411Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.592463Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=10.2µs time.idle=41.2µs
+2026-11-12T12:08:20.592484Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.592523Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=9.50µs time.idle=30.3µs
+2026-11-12T12:08:20.592538Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.592576Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=8.32µs time.idle=30.1µs
+2026-11-12T12:08:20.592832Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.592912Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=16.8µs time.idle=63.3µs
+2026-11-12T12:08:20.592922Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.592944Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=20.4µs time.idle=1.87µs
+2026-11-12T12:08:20.592954Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.592970Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.592989Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=9.11µs time.idle=26.1µs
+2026-11-12T12:08:20.592999Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=5.69µs time.idle=23.3µs
+2026-11-12T12:08:20.593007Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.593060Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=8.66µs time.idle=44.5µs
+2026-11-12T12:08:20.593064Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.593087Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=6.05µs time.idle=16.2µs
+2026-11-12T12:08:20.593096Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.593108Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=5.25µs time.idle=7.05µs
+2026-11-12T12:08:20.606607Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.606647Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.606662Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.606765Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=99.3µs time.idle=3.38µs
+2026-11-12T12:08:20.606966Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.606990Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.607031Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.607047Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.607059Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.607165Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.607220Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=36.3µs time.idle=19.4µs
+2026-11-12T12:08:20.607341Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.607368Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.607401Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=10.9µs time.idle=743µs
+2026-11-12T12:08:20.607464Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=36.2µs time.idle=437µs
+2026-11-12T12:08:20.607487Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=11.2µs time.idle=510µs
+2026-11-12T12:08:20.607514Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=7.66µs time.idle=460µs
+2026-11-12T12:08:20.607534Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=8.48µs time.idle=494µs
+2026-11-12T12:08:20.607551Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=12.8µs time.idle=480µs
+2026-11-12T12:08:20.607567Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=8.01µs time.idle=191µs
+2026-11-12T12:08:20.607583Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=10.3µs time.idle=231µs
+2026-11-12T12:08:20.607609Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=7.96µs time.idle=995µs
+2026-11-12T12:08:20.607619Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.607722Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=33.2µs time.idle=48.3µs
+2026-11-12T12:08:20.607742Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.607799Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=12.5µs time.idle=43.9µs
+2026-11-12T12:08:20.607832Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.607925Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=10.4µs time.idle=82.4µs
+2026-11-12T12:08:20.607937Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.607971Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=3.96µs time.idle=30.1µs
+2026-11-12T12:08:20.607979Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.608033Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=11.2µs time.idle=42.7µs
+2026-11-12T12:08:20.608045Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.608061Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=6.43µs time.idle=9.49µs
+2026-11-12T12:08:20.608068Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.608121Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=9.75µs time.idle=42.8µs
+2026-11-12T12:08:20.608128Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.608158Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=1.96µs time.idle=27.8µs
+2026-11-12T12:08:20.608167Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.608221Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=7.71µs time.idle=46.4µs
+2026-11-12T12:08:20.608229Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.608237Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=6.62µs time.idle=1.63µs
+2026-11-12T12:08:20.608240Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.608286Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=8.17µs time.idle=38.5µs
+2026-11-12T12:08:20.608296Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.608311Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=5.80µs time.idle=9.10µs
+2026-11-12T12:08:20.608318Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.608363Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=9.28µs time.idle=35.7µs
+2026-11-12T12:08:20.608381Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.608412Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=3.98µs time.idle=27.3µs
+2026-11-12T12:08:20.608424Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.608439Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=5.92µs time.idle=9.27µs
+2026-11-12T12:08:20.608446Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.608475Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=5.93µs time.idle=22.6µs
+2026-11-12T12:08:20.608483Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.608498Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=5.60µs time.idle=9.42µs
+2026-11-12T12:08:20.614203Z  INFO capability_roots.resolve: codex_exec_server::resolved_capability: new
+2026-11-12T12:08:20.614242Z  INFO capability_roots.resolve: codex_exec_server::resolved_capability: close time.busy=16.8µs time.idle=22.2µs
+2026-11-12T12:08:20.615102Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.615232Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=26.1µs time.idle=104µs
+2026-11-12T12:08:20.615366Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.615407Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.615433Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=11.0µs time.idle=14.6µs
+2026-11-12T12:08:20.615449Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=16.6µs time.idle=65.9µs
+2026-11-12T12:08:20.615468Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.615553Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.615584Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=10.0µs time.idle=106µs
+2026-11-12T12:08:20.615760Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.615800Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=14.6µs time.idle=233µs
+2026-11-12T12:08:20.615809Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.618840Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=16.4µs time.idle=3.06ms
+2026-11-12T12:08:20.618884Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=13.5µs time.idle=3.06ms
+2026-11-12T12:08:20.618926Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.619001Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=10.3µs time.idle=64.7µs
+2026-11-12T12:08:20.619110Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.619120Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.619249Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=119µs time.idle=19.4µs
+2026-11-12T12:08:20.619300Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=13.2µs time.idle=167µs
+2026-11-12T12:08:20.619311Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.619314Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.619360Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=10.1µs time.idle=38.6µs
+2026-11-12T12:08:20.619373Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.619400Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=24.0µs time.idle=2.98µs
+2026-11-12T12:08:20.619413Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.619425Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=8.85µs time.idle=2.78µs
+2026-11-12T12:08:20.619426Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=35.6µs time.idle=76.2µs
+2026-11-12T12:08:20.619459Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.619503Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=8.74µs time.idle=34.8µs
+2026-11-12T12:08:20.619515Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.619526Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.619529Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=10.7µs time.idle=2.88µs
+2026-11-12T12:08:20.619534Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.619577Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=12.6µs time.idle=38.9µs
+2026-11-12T12:08:20.619587Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.619620Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=2.94µs time.idle=83.1µs
+2026-11-12T12:08:20.619634Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.619634Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=8.87µs time.idle=38.1µs
+2026-11-12T12:08:20.619657Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.619752Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=21.3µs time.idle=96.4µs
+2026-11-12T12:08:20.619768Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.619790Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=7.18µs time.idle=126µs
+2026-11-12T12:08:20.619798Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.619805Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=10.1µs time.idle=27.2µs
+2026-11-12T12:08:20.619826Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.619831Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=6.37µs time.idle=26.9µs
+2026-11-12T12:08:20.619846Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=10.5µs time.idle=9.44µs
+2026-11-12T12:08:20.619849Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.619872Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.619902Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.619919Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.619932Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=9.69µs time.idle=72.7µs
+2026-11-12T12:08:20.619939Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.619960Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=20.9µs time.idle=66.3µs
+2026-11-12T12:08:20.619964Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=7.85µs time.idle=54.4µs
+2026-11-12T12:08:20.619973Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=7.75µs time.idle=46.2µs
+2026-11-12T12:08:20.619975Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=8.29µs time.idle=27.6µs
+2026-11-12T12:08:20.619980Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.619983Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.620011Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=25.2µs time.idle=3.25µs
+2026-11-12T12:08:20.620019Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.620020Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=4.28µs time.idle=36.3µs
+2026-11-12T12:08:20.620032Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.620044Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=8.79µs time.idle=3.15µs
+2026-11-12T12:08:20.620050Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.620075Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=10.5µs time.idle=15.3µs
+2026-11-12T12:08:20.620076Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=8.12µs time.idle=49.3µs
+2026-11-12T12:08:20.620082Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.620099Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.620179Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=8.83µs time.idle=70.6µs
+2026-11-12T12:08:20.620173Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=10.8µs time.idle=79.9µs
+2026-11-12T12:08:20.620188Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.620255Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=14.9µs time.idle=51.1µs
+2026-11-12T12:08:20.620278Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.620290Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.620303Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.620315Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=7.65µs time.idle=3.49µs
+2026-11-12T12:08:20.620321Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=10.3µs time.idle=20.6µs
+2026-11-12T12:08:20.620325Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=8.39µs time.idle=38.4µs
+2026-11-12T12:08:20.620337Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.620554Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.620636Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=9.70µs time.idle=288µs
+2026-11-12T12:08:20.620648Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.620707Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=19.9µs time.idle=39.0µs
+2026-11-12T12:08:20.620707Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=13.2µs time.idle=140µs
+2026-11-12T12:08:20.620756Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.620795Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.620741Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.620810Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.620819Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=14.4µs time.idle=49.3µs
+2026-11-12T12:08:20.620840Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=11.8µs time.idle=33.4µs
+2026-11-12T12:08:20.620845Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=2.65µs time.idle=32.9µs
+2026-11-12T12:08:20.620857Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.620885Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=2.13µs time.idle=25.6µs
+2026-11-12T12:08:20.620884Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=9.78µs time.idle=132µs
+2026-11-12T12:08:20.620888Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.620901Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=3.21µs time.idle=9.19µs
+2026-11-12T12:08:20.620923Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.620950Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=11.3µs time.idle=16.5µs
+2026-11-12T12:08:20.620983Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.621055Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=18.1µs time.idle=54.4µs
+2026-11-12T12:08:20.621431Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.621508Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=19.3µs time.idle=58.6µs
+2026-11-12T12:08:20.621537Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.621568Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.621596Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.621624Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=10.9µs time.idle=16.8µs
+2026-11-12T12:08:20.621644Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=13.8µs time.idle=93.4µs
+2026-11-12T12:08:20.621664Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=12.3µs time.idle=83.7µs
+2026-11-12T12:08:20.621707Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.621793Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=15.7µs time.idle=69.2µs
+2026-11-12T12:08:20.621812Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.621856Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=4.57µs time.idle=39.0µs
+2026-11-12T12:08:20.621925Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.621970Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=9.89µs time.idle=34.9µs
+2026-11-12T12:08:20.625568Z  INFO capability_roots.resolve: codex_exec_server::resolved_capability: new
+2026-11-12T12:08:20.625600Z  INFO capability_roots.resolve: codex_exec_server::resolved_capability: close time.busy=11.7µs time.idle=20.1µs
+2026-11-12T12:08:20.628113Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.628221Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=17.7µs time.idle=90.8µs
+2026-11-12T12:08:20.628286Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.628371Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=17.2µs time.idle=67.4µs
+2026-11-12T12:08:20.628400Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:20.628484Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=15.0µs time.idle=68.9µs
+2026-11-12T12:08:21.267247Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:21.267379Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=21.1µs time.idle=112µs
+2026-11-12T12:08:21.267529Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:21.267661Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=11.1µs time.idle=121µs
+2026-11-12T12:08:21.267691Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:21.267719Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=4.22µs time.idle=23.2µs
+2026-11-12T12:08:21.267873Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:21.267944Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=11.1µs time.idle=59.5µs
+2026-11-12T12:08:21.268023Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:21.268127Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=11.7µs time.idle=91.8µs
+2026-11-12T12:08:21.268401Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:21.268472Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=15.0µs time.idle=56.2µs
+2026-11-12T12:08:21.268491Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:21.268505Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:21.268518Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=7.44µs time.idle=5.65µs
+2026-11-12T12:08:21.268527Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:21.268534Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:21.268545Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=8.98µs time.idle=1.95µs
+2026-11-12T12:08:21.268552Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=8.14µs time.idle=52.5µs
+2026-11-12T12:08:21.268554Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=5.43µs time.idle=22.4µs
+2026-11-12T12:08:21.268558Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:21.268609Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=10.9µs time.idle=38.8µs
+2026-11-12T12:08:21.268626Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:21.268675Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=9.92µs time.idle=39.5µs
+2026-11-12T12:08:21.268737Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:21.268772Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=8.66µs time.idle=26.4µs
+2026-11-12T12:08:21.843807Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:21.843887Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=15.4µs time.idle=65.4µs
+2026-11-12T12:08:21.844181Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:21.844280Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=12.2µs time.idle=87.0µs
+2026-11-12T12:08:21.844295Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:21.844338Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=9.94µs time.idle=32.9µs
+2026-11-12T12:08:21.844487Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:21.844599Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=10.9µs time.idle=102µs
+2026-11-12T12:08:21.844655Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:21.844762Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=10.3µs time.idle=97.5µs
+2026-11-12T12:08:21.844838Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:21.844902Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=14.6µs time.idle=49.2µs
+2026-11-12T12:08:21.844911Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:21.844951Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=8.05µs time.idle=32.1µs
+2026-11-12T12:08:21.844958Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:21.844980Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=2.77µs time.idle=18.8µs
+2026-11-12T12:08:21.844988Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:21.845010Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=8.91µs time.idle=13.1µs
+2026-11-12T12:08:21.845024Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:21.845071Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=7.66µs time.idle=38.9µs
+2026-11-12T12:08:21.845079Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:21.845108Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=6.93µs time.idle=21.9µs
+2026-11-12T12:08:21.845115Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:21.845152Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=7.60µs time.idle=29.1µs
+2026-11-12T12:08:21.845159Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:21.845200Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=7.87µs time.idle=33.0µs
+2026-11-12T12:08:21.845208Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:21.845215Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=5.24µs time.idle=1.70µs
+2026-11-12T12:08:21.845219Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:21.845254Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=7.50µs time.idle=27.3µs
+2026-11-12T12:08:21.845266Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:21.845276Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:21.845287Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:21.845296Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=6.70µs time.idle=1.85µs
+2026-11-12T12:08:21.845304Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=8.19µs time.idle=30.5µs
+2026-11-12T12:08:21.845307Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=5.45µs time.idle=25.9µs
+2026-11-12T12:08:21.845311Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:21.845324Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=5.47µs time.idle=7.51µs
+2026-11-12T12:08:21.845327Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:21.845336Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=7.68µs time.idle=1.56µs
+2026-11-12T12:08:21.845339Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:21.845353Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=5.61µs time.idle=7.84µs
+2026-11-12T12:08:21.845370Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:21.845420Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=10.7µs time.idle=38.8µs
+2026-11-12T12:08:21.848203Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:21.848261Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=7.83µs time.idle=50.5µs
+2026-11-12T12:08:21.848274Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:21.848299Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:21.851742Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:21.853600Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=13.7µs time.idle=5.31ms
+2026-11-12T12:08:21.853618Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=13.5µs time.idle=5.31ms
+2026-11-12T12:08:21.853622Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=1.84ms time.idle=42.6µs
+2026-11-12T12:08:21.853630Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:21.853720Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=11.7µs time.idle=77.7µs
+2026-11-12T12:08:21.853741Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:21.853790Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=9.69µs time.idle=39.6µs
+2026-11-12T12:08:21.853802Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:21.853828Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=5.95µs time.idle=19.8µs
+2026-11-12T12:08:22.092141Z  INFO capability_roots.resolve: codex_exec_server::resolved_capability: new
+2026-11-12T12:08:22.092172Z  INFO capability_roots.resolve: codex_exec_server::resolved_capability: close time.busy=3.19µs time.idle=28.2µs
+2026-11-12T12:08:22.327775Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:22.327950Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=20.0µs time.idle=156µs
+2026-11-12T12:08:22.328056Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:22.329295Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=20.1µs time.idle=1.22ms
+2026-11-12T12:08:22.329332Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:22.329675Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=292µs time.idle=50.5µs
+2026-11-12T12:08:22.330323Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:22.330539Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=17.3µs time.idle=198µs
+2026-11-12T12:08:22.330641Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:22.330785Z  INFO fs.read_file{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=39.5µs time.idle=105µs
+2026-11-12T12:08:22.330954Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:22.331061Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=18.2µs time.idle=89.3µs
+2026-11-12T12:08:22.331080Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:22.331127Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=6.80µs time.idle=40.1µs
+2026-11-12T12:08:22.331141Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:22.331215Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=11.2µs time.idle=62.1µs
+2026-11-12T12:08:22.331237Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:22.331367Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=13.5µs time.idle=116µs
+2026-11-12T12:08:22.331401Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:22.331461Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=16.0µs time.idle=43.5µs
+2026-11-12T12:08:22.331475Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:22.331548Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=12.1µs time.idle=60.4µs
+2026-11-12T12:08:22.331568Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:22.331638Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=14.8µs time.idle=55.6µs
+2026-11-12T12:08:22.331660Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:22.331715Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=32.4µs time.idle=22.6µs
+2026-11-12T12:08:22.331730Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:22.331795Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=13.2µs time.idle=51.3µs
+2026-11-12T12:08:22.331815Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:22.331878Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=13.4µs time.idle=49.1µs
+2026-11-12T12:08:22.331900Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:22.331920Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:22.331944Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:22.331973Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=11.9µs time.idle=17.5µs
+2026-11-12T12:08:22.331996Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=8.26µs time.idle=87.2µs
+2026-11-12T12:08:22.332008Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=12.1µs time.idle=76.3µs
+2026-11-12T12:08:22.332023Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:22.332987Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=13.4µs time.idle=941µs
+2026-11-12T12:08:22.333013Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:22.333204Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=139µs time.idle=52.4µs
+2026-11-12T12:08:22.333225Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:22.333279Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=10.5µs time.idle=43.7µs
+2026-11-12T12:08:22.333315Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:22.333360Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=9.23µs time.idle=35.5µs
+2026-11-12T12:08:22.333746Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:22.333825Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=16.4µs time.idle=62.4µs
+2026-11-12T12:08:22.333854Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:22.333955Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:22.334043Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:22.334088Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=12.5µs time.idle=221µs
+2026-11-12T12:08:22.334129Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=9.96µs time.idle=165µs
+2026-11-12T12:08:22.334143Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=11.9µs time.idle=88.5µs
+2026-11-12T12:08:22.334158Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:22.334480Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=25.1µs time.idle=297µs
+2026-11-12T12:08:22.334501Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:22.334529Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=4.49µs time.idle=23.6µs
+2026-11-12T12:08:22.334535Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: new
+2026-11-12T12:08:22.334655Z  INFO fs.get_metadata{sandboxed=false}: codex_exec_server::local_file_system: close time.busy=9.81µs time.idle=110µs

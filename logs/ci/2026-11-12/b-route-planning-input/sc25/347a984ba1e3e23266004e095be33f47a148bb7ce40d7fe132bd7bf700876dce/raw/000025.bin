@@ -1,0 +1,16 @@
+{
+  "stage": "prepare",
+  "run_id": "cloud-singlecap-source-20261112",
+  "scope_id": "controlled-exclusive-resolution-v15",
+  "attempt_id": "prepare-01",
+  "source_set": "logs/ci/2026-11-12/cloud-epic2-recovery-24/single-capability-input/source-set.json",
+  "declaration": null,
+  "previous": null,
+  "prepared": null,
+  "candidate": null,
+  "max_blocks": 24,
+  "max_chars": 24000,
+  "transport_max_bytes": 1048576,
+  "transport_max_input_tokens": 96000,
+  "root": "/workspace/newrouge"
+}

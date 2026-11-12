@@ -1,0 +1,1602 @@
+{
+  "schema_version": "newrouge.b-route-source-audit.v1.compare",
+  "input_identity": "sha256:cbeb936ba7e3d74c7e1fc228657154cabc493f2b1b62cd35a3340b1e9f79e6be",
+  "file_reviews": [
+    {
+      "file": {
+        "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+        "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a"
+      },
+      "reason": "Reviewed the complete restored original, all eight blocks, all 58 extracted obligations, all seven candidate and final proposals, their acceptance intent, empty non_task_sinks, dispositions, accounting and unresolved items. The substantive source text is preserved in the proposals and acceptance intent. Verification obligations remain explicit despite empty sink arrays; the original mandates no named sink. No semantic omission, conflict, unsupported disposition or retained extraction uncertainty was identified. Protocol selection is explicitly assigned to the downstream implementation plan and reward-controller implementer, rather than required to be completed in this semantic proposal. Representation establishes neither existing endpoints nor executed scenarios."
+    }
+  ],
+  "disposition_reviews": [
+    {
+      "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+      "block_id": "SB-8C80E96FC81CA641",
+      "decision": "accepted",
+      "reason": "The context disposition is supported: the heading identifies scope and adds no standalone obligation.",
+      "basis": [
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-8C80E96FC81CA641",
+          "byte_start": 0,
+          "byte_end": 36,
+          "quote": "# Exclusive reward resolution test\r\n"
+        }
+      ],
+      "finding_ids": []
+    },
+    {
+      "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+      "block_id": "SB-3930A390340951B7",
+      "decision": "accepted",
+      "reason": "Atomization into proposal:exclusive-resolution-v15-1 preserves isolation, ownership, atomic immutable decisions and reward effects in both statement and acceptance intent. Its scope classification does not exclude these constraints.",
+      "basis": [
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-3930A390340951B7",
+          "byte_start": 38,
+          "byte_end": 790,
+          "quote": "Each separate synthetic scenario receives a newly provisioned empty durable journal J and a fixed reward R. Scenarios never share J. Within a scenario, one process handles serial calls; processes never overlap, and J is never reset. The reward controller owns J and the volatile map UI. J has exactly three permitted states: empty, [Commit(R)], or [Cancel(R)]. From empty it can make one atomic durable append of Commit(R) or Cancel(R). Once nonempty it is immutable. Commit grants R exactly once and logically returns to the map. Cancel permanently declines R, grants nothing, and logically returns to the map. Rendering or restoring UI does not grant, cancel or logically return again. Storage succeeds except for the injected crash barriers below.\r\n"
+        }
+      ],
+      "finding_ids": []
+    },
+    {
+      "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+      "block_id": "SB-9E135AFD8D79ED3C",
+      "decision": "accepted",
+      "reason": "Proposal:exclusive-resolution-v15-2 preserves every command branch, UI result, completion requirement and distinction between business cancellation and lifecycle controls.",
+      "basis": [
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-9E135AFD8D79ED3C",
+          "byte_start": 792,
+          "byte_end": 1650,
+          "quote": "The business entry points are accept(R,id), cancel(R,id), and resume(R,id). Every call has a fresh id. The guard reads J. With empty J, accept appends Commit(R), cancel appends Cancel(R), and resume writes nothing. With nonempty J, no entry point writes: accept cannot override cancellation, cancel cannot reverse a grant, and resume only restores the decision. Finalization renders MapReady for [Commit(R)], MapCancelled for [Cancel(R)], and Idle for empty, then emits exactly one completion C:Complete(i,id,ui). Thus repeat accept after Commit stays MapReady, repeat cancel after Cancel stays MapCancelled, accept after Cancel stays MapCancelled without a grant, and cancel after Commit stays MapReady without a cancellation. No extra user action is required. Shutdown and force-termination are lifecycle controls and are not the business cancel command.\r\n"
+        }
+      ],
+      "finding_ids": []
+    },
+    {
+      "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+      "block_id": "SB-B84109DE92C147BA",
+      "decision": "accepted",
+      "reason": "Proposal:exclusive-resolution-v15-3 preserves harness ownership, independent startup evidence, observations, lifecycle mechanisms and separate startup and exit deadlines.",
+      "basis": [
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-B84109DE92C147BA",
+          "byte_start": 1652,
+          "byte_end": 2665,
+          "quote": "The harness owns OS instance handles, an ordered retained external event stream C for each instance, and a fresh control channel Q. start(J) launches the controlled executable with J and these endpoints and returns an owned OS handle i. Each process initially shows Idle and emits C:Ready(i,J) exactly once only after opening J and binding all three business entry points. Startup confirmation independently requires matching live i/J, actual readUI(i)=Idle and readJ(J)=the retained journal. It has a separate 10000ms deadline from start on the harness monotonic clock. Read-only readUI probes rendered UI rather than a reported value; readJ reads every durable record. The harness issues no business call before startup confirmation. shutdown(i) sends Shutdown on Q for normal exit. terminate(i) force-terminates exactly the owned i through the OS. Exit confirmation requires the OS handle signaled and C EOF/drain within a separate 10000ms deadline from shutdown or termination. A timeout fails the scenario.\r\n"
+        }
+      ],
+      "finding_ids": []
+    },
+    {
+      "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+      "block_id": "SB-A9833CF255BDF6C0",
+      "decision": "accepted",
+      "reason": "Proposal:exclusive-resolution-v15-4 preserves call timing, stable observations, persistent failures, provisional completion, retained EOF audits and final teardown conditions.",
+      "basis": [
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-A9833CF255BDF6C0",
+          "byte_start": 2667,
+          "byte_end": 4242,
+          "quote": "For an ordinary unhooked business call, record CallStart immediately before issue. For a hook call, record it once before armHook as specified below; the same clock includes arming, acknowledgement and issue and is never restarted. A non-crashing call must emit one matching completion and permit independent readUI/readJ observations within 10000ms of CallStart on the same harness clock. Observation reads occur after completion and before another call or lifecycle control, with UI/J unchanged throughout those reads. Verify the matching instance/id, reported versus actual UI, expected complete journal, completion count observed so far and deadline. Missing, duplicate, late or mismatched results fail and cannot be erased by a later crash. ObservationComplete follows all these call-local checks within that original deadline; it permits the next call/control but is provisional. Retain every issued call id and count completions through each instance's C EOF/drain. A non-crashing invocation must have exactly one completion in that final audit; a crash-injected invocation must have zero. A late duplicate after ObservationComplete still fails. The same EOF audit requires exactly one Ready with the correct instance/J, already observed by the startup deadline; missing, wrong or duplicate Ready fails even if detected after startup confirmation. A late Ready cannot repair a startup failure. Final scenario success requires exit confirmation and the final count audit, including the final normal shutdown/exit, with no added reward call or restart during teardown.\r\n"
+        }
+      ],
+      "finding_ids": []
+    },
+    {
+      "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+      "block_id": "SB-F7DB8CD5A9668EF4",
+      "decision": "accepted",
+      "reason": "The supplied table_row label does not suppress its prose obligations. Proposal:exclusive-resolution-v15-5 preserves hook arming, barriers, identities, deadlines, crash outcomes, recovery and cleanup restrictions.",
+      "basis": [
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-F7DB8CD5A9668EF4",
+          "byte_start": 4244,
+          "byte_end": 5519,
+          "quote": "The only injected within-call crashes are immediately before or after the missing durable append of accept or cancel. Each hook scenario begins with its own empty J. Before issuing the target call, record CallStart, send armHook(i,id,op,before|after) on Q and receive its exact matching acknowledgement, where op is accept or cancel. The one-shot hook applies only to that id/op while J is empty. Before emits C:HookHit(i,id,op,before) after the empty guard and blocks before the atomic append. After emits C:HookHit(i,id,op,after) after the command's append is durable and blocks before UI finalization or Complete. No work can pass either barrier until OS termination; the harness never releases it. Observe exactly one matching acknowledgement and HookHit within the original 10000ms from CallStart, then immediately terminate i and begin its existing exit deadline. These controls are never Complete. Missing, wrong, duplicate or late hook events fail. Before leaves J empty; after leaves exactly the command's Commit or Cancel record. Confirm exit/EOF, start and confirm a new process with the unchanged J, then invoke resume under the ordinary call rule. Hooks are disabled for every other call. Failed-test cleanup cannot erase failure or count as scenario coverage.\r\n"
+        }
+      ],
+      "finding_ids": []
+    },
+    {
+      "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+      "block_id": "SB-5B889D232D13901F",
+      "decision": "accepted",
+      "reason": "Proposal:exclusive-resolution-v15-6 preserves all eleven separate scenarios, ordinary restart ordering, prior completion audits, stepwise invariants and the prohibition on claiming execution from planning.",
+      "basis": [
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-5B889D232D13901F",
+          "byte_start": 5521,
+          "byte_end": 6308,
+          "quote": "Required separate scenarios, each with fresh J: two accepts; two cancels; accept then cancel; cancel then accept; empty resume; successful accept followed by ordinary restart and resume; successful cancel followed by ordinary restart and resume; and each of accept-before, accept-after, cancel-before, cancel-after crash/recovery. Ordinary restart occurs only after successful observations: normal shutdown, confirmed exit/EOF, start and confirmed startup, then resume. It is not an injected crash. All earlier non-crashing calls retain their final completion-count obligations across restart. The observed journal and UI must follow the rules above for every step, including no grant after Cancel and no cancellation after Commit. Planning the flow does not claim these scenarios ran.\r\n"
+        }
+      ],
+      "finding_ids": []
+    },
+    {
+      "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+      "block_id": "SB-83C0467B0FFB419F",
+      "decision": "accepted",
+      "reason": "Proposal:exclusive-resolution-v15-7 preserves interface implementation and the owned, bounded downstream protocol-design handoff. It requires eventual profile selection and documentation, including acknowledgement representation and return path; nothing is deferred or excluded by disposition.",
+      "basis": [
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-83C0467B0FFB419F",
+          "byte_start": 6310,
+          "byte_end": 7059,
+          "quote": "These are required synthetic adapter interfaces to implement, not claims of existing executable endpoints. Protocol-design responsibility belongs to the reward-controller implementer. The downstream implementation plan must choose and document one internally consistent versioned launch/message profile, including the hook acknowledgement representation and return path, used by both controller and harness. No particular Q/C wire encoding or executable argument spelling is prescribed. Every permitted profile must preserve the event identities, command distinctions, ordering, barrier blocking, independent observations, retained completion counts, deadlines and all scenarios above. A plan leaving its selected profile unresolved is incomplete.\r\n"
+        }
+      ],
+      "finding_ids": []
+    }
+  ],
+  "obligation_reviews": [
+    {
+      "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+      "local_id": "1",
+      "decision": "represented",
+      "proposal_ids": [
+        "proposal:exclusive-resolution-v15-1"
+      ],
+      "reason": "Statement and acceptance intent require a newly empty, separate J and fixed R for each scenario.",
+      "basis": [
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-3930A390340951B7",
+          "byte_start": 38,
+          "byte_end": 790,
+          "quote": "Each separate synthetic scenario receives a newly provisioned empty durable journal J and a fixed reward R. Scenarios never share J. Within a scenario, one process handles serial calls; processes never overlap, and J is never reset. The reward controller owns J and the volatile map UI. J has exactly three permitted states: empty, [Commit(R)], or [Cancel(R)]. From empty it can make one atomic durable append of Commit(R) or Cancel(R). Once nonempty it is immutable. Commit grants R exactly once and logically returns to the map. Cancel permanently declines R, grants nothing, and logically returns to the map. Rendering or restoring UI does not grant, cancel or logically return again. Storage succeeds except for the injected crash barriers below.\r\n"
+        }
+      ],
+      "finding_ids": []
+    },
+    {
+      "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+      "local_id": "2",
+      "decision": "represented",
+      "proposal_ids": [
+        "proposal:exclusive-resolution-v15-1"
+      ],
+      "reason": "Serial calls, nonoverlapping processes and the prohibition on resetting J are explicit.",
+      "basis": [
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-3930A390340951B7",
+          "byte_start": 38,
+          "byte_end": 790,
+          "quote": "Each separate synthetic scenario receives a newly provisioned empty durable journal J and a fixed reward R. Scenarios never share J. Within a scenario, one process handles serial calls; processes never overlap, and J is never reset. The reward controller owns J and the volatile map UI. J has exactly three permitted states: empty, [Commit(R)], or [Cancel(R)]. From empty it can make one atomic durable append of Commit(R) or Cancel(R). Once nonempty it is immutable. Commit grants R exactly once and logically returns to the map. Cancel permanently declines R, grants nothing, and logically returns to the map. Rendering or restoring UI does not grant, cancel or logically return again. Storage succeeds except for the injected crash barriers below.\r\n"
+        }
+      ],
+      "finding_ids": []
+    },
+    {
+      "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+      "local_id": "3",
+      "decision": "represented",
+      "proposal_ids": [
+        "proposal:exclusive-resolution-v15-1"
+      ],
+      "reason": "Controller ownership of J and volatile map UI is retained.",
+      "basis": [
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-3930A390340951B7",
+          "byte_start": 38,
+          "byte_end": 790,
+          "quote": "Each separate synthetic scenario receives a newly provisioned empty durable journal J and a fixed reward R. Scenarios never share J. Within a scenario, one process handles serial calls; processes never overlap, and J is never reset. The reward controller owns J and the volatile map UI. J has exactly three permitted states: empty, [Commit(R)], or [Cancel(R)]. From empty it can make one atomic durable append of Commit(R) or Cancel(R). Once nonempty it is immutable. Commit grants R exactly once and logically returns to the map. Cancel permanently declines R, grants nothing, and logically returns to the map. Rendering or restoring UI does not grant, cancel or logically return again. Storage succeeds except for the injected crash barriers below.\r\n"
+        }
+      ],
+      "finding_ids": []
+    },
+    {
+      "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+      "local_id": "4",
+      "decision": "represented",
+      "proposal_ids": [
+        "proposal:exclusive-resolution-v15-1"
+      ],
+      "reason": "All three permitted states, the single atomic durable append and subsequent immutability are explicit acceptance constraints.",
+      "basis": [
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-3930A390340951B7",
+          "byte_start": 38,
+          "byte_end": 790,
+          "quote": "Each separate synthetic scenario receives a newly provisioned empty durable journal J and a fixed reward R. Scenarios never share J. Within a scenario, one process handles serial calls; processes never overlap, and J is never reset. The reward controller owns J and the volatile map UI. J has exactly three permitted states: empty, [Commit(R)], or [Cancel(R)]. From empty it can make one atomic durable append of Commit(R) or Cancel(R). Once nonempty it is immutable. Commit grants R exactly once and logically returns to the map. Cancel permanently declines R, grants nothing, and logically returns to the map. Rendering or restoring UI does not grant, cancel or logically return again. Storage succeeds except for the injected crash barriers below.\r\n"
+        }
+      ],
+      "finding_ids": []
+    },
+    {
+      "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+      "local_id": "5",
+      "decision": "represented",
+      "proposal_ids": [
+        "proposal:exclusive-resolution-v15-1"
+      ],
+      "reason": "Commit retains its exactly-once grant and logical map-return effects.",
+      "basis": [
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-3930A390340951B7",
+          "byte_start": 38,
+          "byte_end": 790,
+          "quote": "Each separate synthetic scenario receives a newly provisioned empty durable journal J and a fixed reward R. Scenarios never share J. Within a scenario, one process handles serial calls; processes never overlap, and J is never reset. The reward controller owns J and the volatile map UI. J has exactly three permitted states: empty, [Commit(R)], or [Cancel(R)]. From empty it can make one atomic durable append of Commit(R) or Cancel(R). Once nonempty it is immutable. Commit grants R exactly once and logically returns to the map. Cancel permanently declines R, grants nothing, and logically returns to the map. Rendering or restoring UI does not grant, cancel or logically return again. Storage succeeds except for the injected crash barriers below.\r\n"
+        }
+      ],
+      "finding_ids": []
+    },
+    {
+      "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+      "local_id": "6",
+      "decision": "represented",
+      "proposal_ids": [
+        "proposal:exclusive-resolution-v15-1"
+      ],
+      "reason": "Cancel retains permanent refusal, no grant and logical return to the map.",
+      "basis": [
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-3930A390340951B7",
+          "byte_start": 38,
+          "byte_end": 790,
+          "quote": "Each separate synthetic scenario receives a newly provisioned empty durable journal J and a fixed reward R. Scenarios never share J. Within a scenario, one process handles serial calls; processes never overlap, and J is never reset. The reward controller owns J and the volatile map UI. J has exactly three permitted states: empty, [Commit(R)], or [Cancel(R)]. From empty it can make one atomic durable append of Commit(R) or Cancel(R). Once nonempty it is immutable. Commit grants R exactly once and logically returns to the map. Cancel permanently declines R, grants nothing, and logically returns to the map. Rendering or restoring UI does not grant, cancel or logically return again. Storage succeeds except for the injected crash barriers below.\r\n"
+        }
+      ],
+      "finding_ids": []
+    },
+    {
+      "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+      "local_id": "7",
+      "decision": "represented",
+      "proposal_ids": [
+        "proposal:exclusive-resolution-v15-1"
+      ],
+      "reason": "Rendering and restoration explicitly cannot repeat any decision or logical-return effect.",
+      "basis": [
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-3930A390340951B7",
+          "byte_start": 38,
+          "byte_end": 790,
+          "quote": "Each separate synthetic scenario receives a newly provisioned empty durable journal J and a fixed reward R. Scenarios never share J. Within a scenario, one process handles serial calls; processes never overlap, and J is never reset. The reward controller owns J and the volatile map UI. J has exactly three permitted states: empty, [Commit(R)], or [Cancel(R)]. From empty it can make one atomic durable append of Commit(R) or Cancel(R). Once nonempty it is immutable. Commit grants R exactly once and logically returns to the map. Cancel permanently declines R, grants nothing, and logically returns to the map. Rendering or restoring UI does not grant, cancel or logically return again. Storage succeeds except for the injected crash barriers below.\r\n"
+        }
+      ],
+      "finding_ids": []
+    },
+    {
+      "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+      "local_id": "8",
+      "decision": "represented",
+      "proposal_ids": [
+        "proposal:exclusive-resolution-v15-1"
+      ],
+      "reason": "The synthetic storage-success assumption and designated crash-barrier exception are preserved.",
+      "basis": [
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-3930A390340951B7",
+          "byte_start": 38,
+          "byte_end": 790,
+          "quote": "Each separate synthetic scenario receives a newly provisioned empty durable journal J and a fixed reward R. Scenarios never share J. Within a scenario, one process handles serial calls; processes never overlap, and J is never reset. The reward controller owns J and the volatile map UI. J has exactly three permitted states: empty, [Commit(R)], or [Cancel(R)]. From empty it can make one atomic durable append of Commit(R) or Cancel(R). Once nonempty it is immutable. Commit grants R exactly once and logically returns to the map. Cancel permanently declines R, grants nothing, and logically returns to the map. Rendering or restoring UI does not grant, cancel or logically return again. Storage succeeds except for the injected crash barriers below.\r\n"
+        }
+      ],
+      "finding_ids": []
+    },
+    {
+      "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+      "local_id": "9",
+      "decision": "represented",
+      "proposal_ids": [
+        "proposal:exclusive-resolution-v15-2"
+      ],
+      "reason": "All three business entry points, fresh call identities and the journal-reading guard are explicit.",
+      "basis": [
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-9E135AFD8D79ED3C",
+          "byte_start": 792,
+          "byte_end": 1650,
+          "quote": "The business entry points are accept(R,id), cancel(R,id), and resume(R,id). Every call has a fresh id. The guard reads J. With empty J, accept appends Commit(R), cancel appends Cancel(R), and resume writes nothing. With nonempty J, no entry point writes: accept cannot override cancellation, cancel cannot reverse a grant, and resume only restores the decision. Finalization renders MapReady for [Commit(R)], MapCancelled for [Cancel(R)], and Idle for empty, then emits exactly one completion C:Complete(i,id,ui). Thus repeat accept after Commit stays MapReady, repeat cancel after Cancel stays MapCancelled, accept after Cancel stays MapCancelled without a grant, and cancel after Commit stays MapReady without a cancellation. No extra user action is required. Shutdown and force-termination are lifecycle controls and are not the business cancel command.\r\n"
+        }
+      ],
+      "finding_ids": []
+    },
+    {
+      "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+      "local_id": "10",
+      "decision": "represented",
+      "proposal_ids": [
+        "proposal:exclusive-resolution-v15-2"
+      ],
+      "reason": "The empty-journal behavior of accept, cancel and resume is preserved without changing their writes.",
+      "basis": [
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-9E135AFD8D79ED3C",
+          "byte_start": 792,
+          "byte_end": 1650,
+          "quote": "The business entry points are accept(R,id), cancel(R,id), and resume(R,id). Every call has a fresh id. The guard reads J. With empty J, accept appends Commit(R), cancel appends Cancel(R), and resume writes nothing. With nonempty J, no entry point writes: accept cannot override cancellation, cancel cannot reverse a grant, and resume only restores the decision. Finalization renders MapReady for [Commit(R)], MapCancelled for [Cancel(R)], and Idle for empty, then emits exactly one completion C:Complete(i,id,ui). Thus repeat accept after Commit stays MapReady, repeat cancel after Cancel stays MapCancelled, accept after Cancel stays MapCancelled without a grant, and cancel after Commit stays MapReady without a cancellation. No extra user action is required. Shutdown and force-termination are lifecycle controls and are not the business cancel command.\r\n"
+        }
+      ],
+      "finding_ids": []
+    },
+    {
+      "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+      "local_id": "11",
+      "decision": "represented",
+      "proposal_ids": [
+        "proposal:exclusive-resolution-v15-2"
+      ],
+      "reason": "All entry points retain the no-write rule for nonempty J and preserve either prior decision.",
+      "basis": [
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-9E135AFD8D79ED3C",
+          "byte_start": 792,
+          "byte_end": 1650,
+          "quote": "The business entry points are accept(R,id), cancel(R,id), and resume(R,id). Every call has a fresh id. The guard reads J. With empty J, accept appends Commit(R), cancel appends Cancel(R), and resume writes nothing. With nonempty J, no entry point writes: accept cannot override cancellation, cancel cannot reverse a grant, and resume only restores the decision. Finalization renders MapReady for [Commit(R)], MapCancelled for [Cancel(R)], and Idle for empty, then emits exactly one completion C:Complete(i,id,ui). Thus repeat accept after Commit stays MapReady, repeat cancel after Cancel stays MapCancelled, accept after Cancel stays MapCancelled without a grant, and cancel after Commit stays MapReady without a cancellation. No extra user action is required. Shutdown and force-termination are lifecycle controls and are not the business cancel command.\r\n"
+        }
+      ],
+      "finding_ids": []
+    },
+    {
+      "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+      "local_id": "12",
+      "decision": "represented",
+      "proposal_ids": [
+        "proposal:exclusive-resolution-v15-2",
+        "proposal:exclusive-resolution-v15-4",
+        "proposal:exclusive-resolution-v15-5"
+      ],
+      "reason": "The proposals jointly preserve journal-dependent UI finalization and one completion for non-crashing calls, with hook barriers and the final audit requiring zero for crash-injected calls.",
+      "basis": [
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-9E135AFD8D79ED3C",
+          "byte_start": 792,
+          "byte_end": 1650,
+          "quote": "The business entry points are accept(R,id), cancel(R,id), and resume(R,id). Every call has a fresh id. The guard reads J. With empty J, accept appends Commit(R), cancel appends Cancel(R), and resume writes nothing. With nonempty J, no entry point writes: accept cannot override cancellation, cancel cannot reverse a grant, and resume only restores the decision. Finalization renders MapReady for [Commit(R)], MapCancelled for [Cancel(R)], and Idle for empty, then emits exactly one completion C:Complete(i,id,ui). Thus repeat accept after Commit stays MapReady, repeat cancel after Cancel stays MapCancelled, accept after Cancel stays MapCancelled without a grant, and cancel after Commit stays MapReady without a cancellation. No extra user action is required. Shutdown and force-termination are lifecycle controls and are not the business cancel command.\r\n"
+        },
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-A9833CF255BDF6C0",
+          "byte_start": 2667,
+          "byte_end": 4242,
+          "quote": "For an ordinary unhooked business call, record CallStart immediately before issue. For a hook call, record it once before armHook as specified below; the same clock includes arming, acknowledgement and issue and is never restarted. A non-crashing call must emit one matching completion and permit independent readUI/readJ observations within 10000ms of CallStart on the same harness clock. Observation reads occur after completion and before another call or lifecycle control, with UI/J unchanged throughout those reads. Verify the matching instance/id, reported versus actual UI, expected complete journal, completion count observed so far and deadline. Missing, duplicate, late or mismatched results fail and cannot be erased by a later crash. ObservationComplete follows all these call-local checks within that original deadline; it permits the next call/control but is provisional. Retain every issued call id and count completions through each instance's C EOF/drain. A non-crashing invocation must have exactly one completion in that final audit; a crash-injected invocation must have zero. A late duplicate after ObservationComplete still fails. The same EOF audit requires exactly one Ready with the correct instance/J, already observed by the startup deadline; missing, wrong or duplicate Ready fails even if detected after startup confirmation. A late Ready cannot repair a startup failure. Final scenario success requires exit confirmation and the final count audit, including the final normal shutdown/exit, with no added reward call or restart during teardown.\r\n"
+        },
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-F7DB8CD5A9668EF4",
+          "byte_start": 4244,
+          "byte_end": 5519,
+          "quote": "The only injected within-call crashes are immediately before or after the missing durable append of accept or cancel. Each hook scenario begins with its own empty J. Before issuing the target call, record CallStart, send armHook(i,id,op,before|after) on Q and receive its exact matching acknowledgement, where op is accept or cancel. The one-shot hook applies only to that id/op while J is empty. Before emits C:HookHit(i,id,op,before) after the empty guard and blocks before the atomic append. After emits C:HookHit(i,id,op,after) after the command's append is durable and blocks before UI finalization or Complete. No work can pass either barrier until OS termination; the harness never releases it. Observe exactly one matching acknowledgement and HookHit within the original 10000ms from CallStart, then immediately terminate i and begin its existing exit deadline. These controls are never Complete. Missing, wrong, duplicate or late hook events fail. Before leaves J empty; after leaves exactly the command's Commit or Cancel record. Confirm exit/EOF, start and confirm a new process with the unchanged J, then invoke resume under the ordinary call rule. Hooks are disabled for every other call. Failed-test cleanup cannot erase failure or count as scenario coverage.\r\n"
+        }
+      ],
+      "finding_ids": []
+    },
+    {
+      "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+      "local_id": "13",
+      "decision": "represented",
+      "proposal_ids": [
+        "proposal:exclusive-resolution-v15-2"
+      ],
+      "reason": "All four repeated or opposing decision outcomes and automatic progress without another user action are explicit.",
+      "basis": [
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-9E135AFD8D79ED3C",
+          "byte_start": 792,
+          "byte_end": 1650,
+          "quote": "The business entry points are accept(R,id), cancel(R,id), and resume(R,id). Every call has a fresh id. The guard reads J. With empty J, accept appends Commit(R), cancel appends Cancel(R), and resume writes nothing. With nonempty J, no entry point writes: accept cannot override cancellation, cancel cannot reverse a grant, and resume only restores the decision. Finalization renders MapReady for [Commit(R)], MapCancelled for [Cancel(R)], and Idle for empty, then emits exactly one completion C:Complete(i,id,ui). Thus repeat accept after Commit stays MapReady, repeat cancel after Cancel stays MapCancelled, accept after Cancel stays MapCancelled without a grant, and cancel after Commit stays MapReady without a cancellation. No extra user action is required. Shutdown and force-termination are lifecycle controls and are not the business cancel command.\r\n"
+        }
+      ],
+      "finding_ids": []
+    },
+    {
+      "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+      "local_id": "14",
+      "decision": "represented",
+      "proposal_ids": [
+        "proposal:exclusive-resolution-v15-2"
+      ],
+      "reason": "Business cancellation remains distinct from shutdown and force-termination.",
+      "basis": [
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-9E135AFD8D79ED3C",
+          "byte_start": 792,
+          "byte_end": 1650,
+          "quote": "The business entry points are accept(R,id), cancel(R,id), and resume(R,id). Every call has a fresh id. The guard reads J. With empty J, accept appends Commit(R), cancel appends Cancel(R), and resume writes nothing. With nonempty J, no entry point writes: accept cannot override cancellation, cancel cannot reverse a grant, and resume only restores the decision. Finalization renders MapReady for [Commit(R)], MapCancelled for [Cancel(R)], and Idle for empty, then emits exactly one completion C:Complete(i,id,ui). Thus repeat accept after Commit stays MapReady, repeat cancel after Cancel stays MapCancelled, accept after Cancel stays MapCancelled without a grant, and cancel after Commit stays MapReady without a cancellation. No extra user action is required. Shutdown and force-termination are lifecycle controls and are not the business cancel command.\r\n"
+        }
+      ],
+      "finding_ids": []
+    },
+    {
+      "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+      "local_id": "15",
+      "decision": "represented",
+      "proposal_ids": [
+        "proposal:exclusive-resolution-v15-3"
+      ],
+      "reason": "Harness ownership includes OS handles, ordered retained per-instance C and fresh Q.",
+      "basis": [
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-B84109DE92C147BA",
+          "byte_start": 1652,
+          "byte_end": 2665,
+          "quote": "The harness owns OS instance handles, an ordered retained external event stream C for each instance, and a fresh control channel Q. start(J) launches the controlled executable with J and these endpoints and returns an owned OS handle i. Each process initially shows Idle and emits C:Ready(i,J) exactly once only after opening J and binding all three business entry points. Startup confirmation independently requires matching live i/J, actual readUI(i)=Idle and readJ(J)=the retained journal. It has a separate 10000ms deadline from start on the harness monotonic clock. Read-only readUI probes rendered UI rather than a reported value; readJ reads every durable record. The harness issues no business call before startup confirmation. shutdown(i) sends Shutdown on Q for normal exit. terminate(i) force-terminates exactly the owned i through the OS. Exit confirmation requires the OS handle signaled and C EOF/drain within a separate 10000ms deadline from shutdown or termination. A timeout fails the scenario.\r\n"
+        }
+      ],
+      "finding_ids": []
+    },
+    {
+      "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+      "local_id": "16",
+      "decision": "represented",
+      "proposal_ids": [
+        "proposal:exclusive-resolution-v15-3"
+      ],
+      "reason": "Controlled launch with J and endpoints, returning the owned OS handle, is retained.",
+      "basis": [
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-B84109DE92C147BA",
+          "byte_start": 1652,
+          "byte_end": 2665,
+          "quote": "The harness owns OS instance handles, an ordered retained external event stream C for each instance, and a fresh control channel Q. start(J) launches the controlled executable with J and these endpoints and returns an owned OS handle i. Each process initially shows Idle and emits C:Ready(i,J) exactly once only after opening J and binding all three business entry points. Startup confirmation independently requires matching live i/J, actual readUI(i)=Idle and readJ(J)=the retained journal. It has a separate 10000ms deadline from start on the harness monotonic clock. Read-only readUI probes rendered UI rather than a reported value; readJ reads every durable record. The harness issues no business call before startup confirmation. shutdown(i) sends Shutdown on Q for normal exit. terminate(i) force-terminates exactly the owned i through the OS. Exit confirmation requires the OS handle signaled and C EOF/drain within a separate 10000ms deadline from shutdown or termination. A timeout fails the scenario.\r\n"
+        }
+      ],
+      "finding_ids": []
+    },
+    {
+      "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+      "local_id": "17",
+      "decision": "represented",
+      "proposal_ids": [
+        "proposal:exclusive-resolution-v15-3"
+      ],
+      "reason": "Initial Idle and exactly one Ready after opening J and binding every business entry point are explicit.",
+      "basis": [
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-B84109DE92C147BA",
+          "byte_start": 1652,
+          "byte_end": 2665,
+          "quote": "The harness owns OS instance handles, an ordered retained external event stream C for each instance, and a fresh control channel Q. start(J) launches the controlled executable with J and these endpoints and returns an owned OS handle i. Each process initially shows Idle and emits C:Ready(i,J) exactly once only after opening J and binding all three business entry points. Startup confirmation independently requires matching live i/J, actual readUI(i)=Idle and readJ(J)=the retained journal. It has a separate 10000ms deadline from start on the harness monotonic clock. Read-only readUI probes rendered UI rather than a reported value; readJ reads every durable record. The harness issues no business call before startup confirmation. shutdown(i) sends Shutdown on Q for normal exit. terminate(i) force-terminates exactly the owned i through the OS. Exit confirmation requires the OS handle signaled and C EOF/drain within a separate 10000ms deadline from shutdown or termination. A timeout fails the scenario.\r\n"
+        }
+      ],
+      "finding_ids": []
+    },
+    {
+      "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+      "local_id": "18",
+      "decision": "represented",
+      "proposal_ids": [
+        "proposal:exclusive-resolution-v15-3",
+        "proposal:exclusive-resolution-v15-4"
+      ],
+      "reason": "Startup confirmation retains matching timely Ready, live identity, independent Idle and journal checks, its own 10000ms deadline and the business-call gate.",
+      "basis": [
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-B84109DE92C147BA",
+          "byte_start": 1652,
+          "byte_end": 2665,
+          "quote": "The harness owns OS instance handles, an ordered retained external event stream C for each instance, and a fresh control channel Q. start(J) launches the controlled executable with J and these endpoints and returns an owned OS handle i. Each process initially shows Idle and emits C:Ready(i,J) exactly once only after opening J and binding all three business entry points. Startup confirmation independently requires matching live i/J, actual readUI(i)=Idle and readJ(J)=the retained journal. It has a separate 10000ms deadline from start on the harness monotonic clock. Read-only readUI probes rendered UI rather than a reported value; readJ reads every durable record. The harness issues no business call before startup confirmation. shutdown(i) sends Shutdown on Q for normal exit. terminate(i) force-terminates exactly the owned i through the OS. Exit confirmation requires the OS handle signaled and C EOF/drain within a separate 10000ms deadline from shutdown or termination. A timeout fails the scenario.\r\n"
+        },
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-A9833CF255BDF6C0",
+          "byte_start": 2667,
+          "byte_end": 4242,
+          "quote": "For an ordinary unhooked business call, record CallStart immediately before issue. For a hook call, record it once before armHook as specified below; the same clock includes arming, acknowledgement and issue and is never restarted. A non-crashing call must emit one matching completion and permit independent readUI/readJ observations within 10000ms of CallStart on the same harness clock. Observation reads occur after completion and before another call or lifecycle control, with UI/J unchanged throughout those reads. Verify the matching instance/id, reported versus actual UI, expected complete journal, completion count observed so far and deadline. Missing, duplicate, late or mismatched results fail and cannot be erased by a later crash. ObservationComplete follows all these call-local checks within that original deadline; it permits the next call/control but is provisional. Retain every issued call id and count completions through each instance's C EOF/drain. A non-crashing invocation must have exactly one completion in that final audit; a crash-injected invocation must have zero. A late duplicate after ObservationComplete still fails. The same EOF audit requires exactly one Ready with the correct instance/J, already observed by the startup deadline; missing, wrong or duplicate Ready fails even if detected after startup confirmation. A late Ready cannot repair a startup failure. Final scenario success requires exit confirmation and the final count audit, including the final normal shutdown/exit, with no added reward call or restart during teardown.\r\n"
+        }
+      ],
+      "finding_ids": []
+    },
+    {
+      "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+      "local_id": "19",
+      "decision": "represented",
+      "proposal_ids": [
+        "proposal:exclusive-resolution-v15-3"
+      ],
+      "reason": "readUI must independently probe rendered UI and readJ must inspect every durable record.",
+      "basis": [
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-B84109DE92C147BA",
+          "byte_start": 1652,
+          "byte_end": 2665,
+          "quote": "The harness owns OS instance handles, an ordered retained external event stream C for each instance, and a fresh control channel Q. start(J) launches the controlled executable with J and these endpoints and returns an owned OS handle i. Each process initially shows Idle and emits C:Ready(i,J) exactly once only after opening J and binding all three business entry points. Startup confirmation independently requires matching live i/J, actual readUI(i)=Idle and readJ(J)=the retained journal. It has a separate 10000ms deadline from start on the harness monotonic clock. Read-only readUI probes rendered UI rather than a reported value; readJ reads every durable record. The harness issues no business call before startup confirmation. shutdown(i) sends Shutdown on Q for normal exit. terminate(i) force-terminates exactly the owned i through the OS. Exit confirmation requires the OS handle signaled and C EOF/drain within a separate 10000ms deadline from shutdown or termination. A timeout fails the scenario.\r\n"
+        }
+      ],
+      "finding_ids": []
+    },
+    {
+      "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+      "local_id": "20",
+      "decision": "represented",
+      "proposal_ids": [
+        "proposal:exclusive-resolution-v15-3"
+      ],
+      "reason": "Normal Shutdown on Q and OS force-termination of exactly the owned instance are preserved.",
+      "basis": [
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-B84109DE92C147BA",
+          "byte_start": 1652,
+          "byte_end": 2665,
+          "quote": "The harness owns OS instance handles, an ordered retained external event stream C for each instance, and a fresh control channel Q. start(J) launches the controlled executable with J and these endpoints and returns an owned OS handle i. Each process initially shows Idle and emits C:Ready(i,J) exactly once only after opening J and binding all three business entry points. Startup confirmation independently requires matching live i/J, actual readUI(i)=Idle and readJ(J)=the retained journal. It has a separate 10000ms deadline from start on the harness monotonic clock. Read-only readUI probes rendered UI rather than a reported value; readJ reads every durable record. The harness issues no business call before startup confirmation. shutdown(i) sends Shutdown on Q for normal exit. terminate(i) force-terminates exactly the owned i through the OS. Exit confirmation requires the OS handle signaled and C EOF/drain within a separate 10000ms deadline from shutdown or termination. A timeout fails the scenario.\r\n"
+        }
+      ],
+      "finding_ids": []
+    },
+    {
+      "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+      "local_id": "21",
+      "decision": "represented",
+      "proposal_ids": [
+        "proposal:exclusive-resolution-v15-3"
+      ],
+      "reason": "Exit requires both a signaled OS handle and C EOF/drain within the separate 10000ms deadline; timeout remains failure.",
+      "basis": [
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-B84109DE92C147BA",
+          "byte_start": 1652,
+          "byte_end": 2665,
+          "quote": "The harness owns OS instance handles, an ordered retained external event stream C for each instance, and a fresh control channel Q. start(J) launches the controlled executable with J and these endpoints and returns an owned OS handle i. Each process initially shows Idle and emits C:Ready(i,J) exactly once only after opening J and binding all three business entry points. Startup confirmation independently requires matching live i/J, actual readUI(i)=Idle and readJ(J)=the retained journal. It has a separate 10000ms deadline from start on the harness monotonic clock. Read-only readUI probes rendered UI rather than a reported value; readJ reads every durable record. The harness issues no business call before startup confirmation. shutdown(i) sends Shutdown on Q for normal exit. terminate(i) force-terminates exactly the owned i through the OS. Exit confirmation requires the OS handle signaled and C EOF/drain within a separate 10000ms deadline from shutdown or termination. A timeout fails the scenario.\r\n"
+        }
+      ],
+      "finding_ids": []
+    },
+    {
+      "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+      "local_id": "22",
+      "decision": "represented",
+      "proposal_ids": [
+        "proposal:exclusive-resolution-v15-4"
+      ],
+      "reason": "CallStart placement and the single non-restarted timing interval, including hook arming and acknowledgement, are explicit.",
+      "basis": [
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-A9833CF255BDF6C0",
+          "byte_start": 2667,
+          "byte_end": 4242,
+          "quote": "For an ordinary unhooked business call, record CallStart immediately before issue. For a hook call, record it once before armHook as specified below; the same clock includes arming, acknowledgement and issue and is never restarted. A non-crashing call must emit one matching completion and permit independent readUI/readJ observations within 10000ms of CallStart on the same harness clock. Observation reads occur after completion and before another call or lifecycle control, with UI/J unchanged throughout those reads. Verify the matching instance/id, reported versus actual UI, expected complete journal, completion count observed so far and deadline. Missing, duplicate, late or mismatched results fail and cannot be erased by a later crash. ObservationComplete follows all these call-local checks within that original deadline; it permits the next call/control but is provisional. Retain every issued call id and count completions through each instance's C EOF/drain. A non-crashing invocation must have exactly one completion in that final audit; a crash-injected invocation must have zero. A late duplicate after ObservationComplete still fails. The same EOF audit requires exactly one Ready with the correct instance/J, already observed by the startup deadline; missing, wrong or duplicate Ready fails even if detected after startup confirmation. A late Ready cannot repair a startup failure. Final scenario success requires exit confirmation and the final count audit, including the final normal shutdown/exit, with no added reward call or restart during teardown.\r\n"
+        }
+      ],
+      "finding_ids": []
+    },
+    {
+      "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+      "local_id": "23",
+      "decision": "represented",
+      "proposal_ids": [
+        "proposal:exclusive-resolution-v15-4"
+      ],
+      "reason": "Matching completion and independent UI/J observations retain the original 10000ms call deadline.",
+      "basis": [
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-A9833CF255BDF6C0",
+          "byte_start": 2667,
+          "byte_end": 4242,
+          "quote": "For an ordinary unhooked business call, record CallStart immediately before issue. For a hook call, record it once before armHook as specified below; the same clock includes arming, acknowledgement and issue and is never restarted. A non-crashing call must emit one matching completion and permit independent readUI/readJ observations within 10000ms of CallStart on the same harness clock. Observation reads occur after completion and before another call or lifecycle control, with UI/J unchanged throughout those reads. Verify the matching instance/id, reported versus actual UI, expected complete journal, completion count observed so far and deadline. Missing, duplicate, late or mismatched results fail and cannot be erased by a later crash. ObservationComplete follows all these call-local checks within that original deadline; it permits the next call/control but is provisional. Retain every issued call id and count completions through each instance's C EOF/drain. A non-crashing invocation must have exactly one completion in that final audit; a crash-injected invocation must have zero. A late duplicate after ObservationComplete still fails. The same EOF audit requires exactly one Ready with the correct instance/J, already observed by the startup deadline; missing, wrong or duplicate Ready fails even if detected after startup confirmation. A late Ready cannot repair a startup failure. Final scenario success requires exit confirmation and the final count audit, including the final normal shutdown/exit, with no added reward call or restart during teardown.\r\n"
+        }
+      ],
+      "finding_ids": []
+    },
+    {
+      "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+      "local_id": "24",
+      "decision": "represented",
+      "proposal_ids": [
+        "proposal:exclusive-resolution-v15-4"
+      ],
+      "reason": "Observations remain after completion and before another call or lifecycle control, with unchanged UI and J throughout.",
+      "basis": [
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-A9833CF255BDF6C0",
+          "byte_start": 2667,
+          "byte_end": 4242,
+          "quote": "For an ordinary unhooked business call, record CallStart immediately before issue. For a hook call, record it once before armHook as specified below; the same clock includes arming, acknowledgement and issue and is never restarted. A non-crashing call must emit one matching completion and permit independent readUI/readJ observations within 10000ms of CallStart on the same harness clock. Observation reads occur after completion and before another call or lifecycle control, with UI/J unchanged throughout those reads. Verify the matching instance/id, reported versus actual UI, expected complete journal, completion count observed so far and deadline. Missing, duplicate, late or mismatched results fail and cannot be erased by a later crash. ObservationComplete follows all these call-local checks within that original deadline; it permits the next call/control but is provisional. Retain every issued call id and count completions through each instance's C EOF/drain. A non-crashing invocation must have exactly one completion in that final audit; a crash-injected invocation must have zero. A late duplicate after ObservationComplete still fails. The same EOF audit requires exactly one Ready with the correct instance/J, already observed by the startup deadline; missing, wrong or duplicate Ready fails even if detected after startup confirmation. A late Ready cannot repair a startup failure. Final scenario success requires exit confirmation and the final count audit, including the final normal shutdown/exit, with no added reward call or restart during teardown.\r\n"
+        }
+      ],
+      "finding_ids": []
+    },
+    {
+      "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+      "local_id": "25",
+      "decision": "represented",
+      "proposal_ids": [
+        "proposal:exclusive-resolution-v15-4"
+      ],
+      "reason": "Every identity, actual-versus-reported UI, full journal, count and deadline check is retained, including failures that survive later crashes.",
+      "basis": [
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-A9833CF255BDF6C0",
+          "byte_start": 2667,
+          "byte_end": 4242,
+          "quote": "For an ordinary unhooked business call, record CallStart immediately before issue. For a hook call, record it once before armHook as specified below; the same clock includes arming, acknowledgement and issue and is never restarted. A non-crashing call must emit one matching completion and permit independent readUI/readJ observations within 10000ms of CallStart on the same harness clock. Observation reads occur after completion and before another call or lifecycle control, with UI/J unchanged throughout those reads. Verify the matching instance/id, reported versus actual UI, expected complete journal, completion count observed so far and deadline. Missing, duplicate, late or mismatched results fail and cannot be erased by a later crash. ObservationComplete follows all these call-local checks within that original deadline; it permits the next call/control but is provisional. Retain every issued call id and count completions through each instance's C EOF/drain. A non-crashing invocation must have exactly one completion in that final audit; a crash-injected invocation must have zero. A late duplicate after ObservationComplete still fails. The same EOF audit requires exactly one Ready with the correct instance/J, already observed by the startup deadline; missing, wrong or duplicate Ready fails even if detected after startup confirmation. A late Ready cannot repair a startup failure. Final scenario success requires exit confirmation and the final count audit, including the final normal shutdown/exit, with no added reward call or restart during teardown.\r\n"
+        }
+      ],
+      "finding_ids": []
+    },
+    {
+      "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+      "local_id": "26",
+      "decision": "represented",
+      "proposal_ids": [
+        "proposal:exclusive-resolution-v15-4"
+      ],
+      "reason": "ObservationComplete follows all timely local checks and remains provisional while permitting subsequent work.",
+      "basis": [
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-A9833CF255BDF6C0",
+          "byte_start": 2667,
+          "byte_end": 4242,
+          "quote": "For an ordinary unhooked business call, record CallStart immediately before issue. For a hook call, record it once before armHook as specified below; the same clock includes arming, acknowledgement and issue and is never restarted. A non-crashing call must emit one matching completion and permit independent readUI/readJ observations within 10000ms of CallStart on the same harness clock. Observation reads occur after completion and before another call or lifecycle control, with UI/J unchanged throughout those reads. Verify the matching instance/id, reported versus actual UI, expected complete journal, completion count observed so far and deadline. Missing, duplicate, late or mismatched results fail and cannot be erased by a later crash. ObservationComplete follows all these call-local checks within that original deadline; it permits the next call/control but is provisional. Retain every issued call id and count completions through each instance's C EOF/drain. A non-crashing invocation must have exactly one completion in that final audit; a crash-injected invocation must have zero. A late duplicate after ObservationComplete still fails. The same EOF audit requires exactly one Ready with the correct instance/J, already observed by the startup deadline; missing, wrong or duplicate Ready fails even if detected after startup confirmation. A late Ready cannot repair a startup failure. Final scenario success requires exit confirmation and the final count audit, including the final normal shutdown/exit, with no added reward call or restart during teardown.\r\n"
+        }
+      ],
+      "finding_ids": []
+    },
+    {
+      "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+      "local_id": "27",
+      "decision": "represented",
+      "proposal_ids": [
+        "proposal:exclusive-resolution-v15-4"
+      ],
+      "reason": "Retained call identities and counts are audited through EOF/drain, requiring one non-crashing completion, zero crash-injected completions and failure on late duplicates.",
+      "basis": [
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-A9833CF255BDF6C0",
+          "byte_start": 2667,
+          "byte_end": 4242,
+          "quote": "For an ordinary unhooked business call, record CallStart immediately before issue. For a hook call, record it once before armHook as specified below; the same clock includes arming, acknowledgement and issue and is never restarted. A non-crashing call must emit one matching completion and permit independent readUI/readJ observations within 10000ms of CallStart on the same harness clock. Observation reads occur after completion and before another call or lifecycle control, with UI/J unchanged throughout those reads. Verify the matching instance/id, reported versus actual UI, expected complete journal, completion count observed so far and deadline. Missing, duplicate, late or mismatched results fail and cannot be erased by a later crash. ObservationComplete follows all these call-local checks within that original deadline; it permits the next call/control but is provisional. Retain every issued call id and count completions through each instance's C EOF/drain. A non-crashing invocation must have exactly one completion in that final audit; a crash-injected invocation must have zero. A late duplicate after ObservationComplete still fails. The same EOF audit requires exactly one Ready with the correct instance/J, already observed by the startup deadline; missing, wrong or duplicate Ready fails even if detected after startup confirmation. A late Ready cannot repair a startup failure. Final scenario success requires exit confirmation and the final count audit, including the final normal shutdown/exit, with no added reward call or restart during teardown.\r\n"
+        }
+      ],
+      "finding_ids": []
+    },
+    {
+      "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+      "local_id": "28",
+      "decision": "represented",
+      "proposal_ids": [
+        "proposal:exclusive-resolution-v15-4"
+      ],
+      "reason": "The EOF Ready audit retains exact count, correct identity, original startup timeliness and failure on missing, wrong, duplicate or reparative late Ready.",
+      "basis": [
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-A9833CF255BDF6C0",
+          "byte_start": 2667,
+          "byte_end": 4242,
+          "quote": "For an ordinary unhooked business call, record CallStart immediately before issue. For a hook call, record it once before armHook as specified below; the same clock includes arming, acknowledgement and issue and is never restarted. A non-crashing call must emit one matching completion and permit independent readUI/readJ observations within 10000ms of CallStart on the same harness clock. Observation reads occur after completion and before another call or lifecycle control, with UI/J unchanged throughout those reads. Verify the matching instance/id, reported versus actual UI, expected complete journal, completion count observed so far and deadline. Missing, duplicate, late or mismatched results fail and cannot be erased by a later crash. ObservationComplete follows all these call-local checks within that original deadline; it permits the next call/control but is provisional. Retain every issued call id and count completions through each instance's C EOF/drain. A non-crashing invocation must have exactly one completion in that final audit; a crash-injected invocation must have zero. A late duplicate after ObservationComplete still fails. The same EOF audit requires exactly one Ready with the correct instance/J, already observed by the startup deadline; missing, wrong or duplicate Ready fails even if detected after startup confirmation. A late Ready cannot repair a startup failure. Final scenario success requires exit confirmation and the final count audit, including the final normal shutdown/exit, with no added reward call or restart during teardown.\r\n"
+        }
+      ],
+      "finding_ids": []
+    },
+    {
+      "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+      "local_id": "29",
+      "decision": "represented",
+      "proposal_ids": [
+        "proposal:exclusive-resolution-v15-4"
+      ],
+      "reason": "Success remains conditional on final normal exit confirmation and count audit, with no extra reward call or restart during teardown.",
+      "basis": [
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-A9833CF255BDF6C0",
+          "byte_start": 2667,
+          "byte_end": 4242,
+          "quote": "For an ordinary unhooked business call, record CallStart immediately before issue. For a hook call, record it once before armHook as specified below; the same clock includes arming, acknowledgement and issue and is never restarted. A non-crashing call must emit one matching completion and permit independent readUI/readJ observations within 10000ms of CallStart on the same harness clock. Observation reads occur after completion and before another call or lifecycle control, with UI/J unchanged throughout those reads. Verify the matching instance/id, reported versus actual UI, expected complete journal, completion count observed so far and deadline. Missing, duplicate, late or mismatched results fail and cannot be erased by a later crash. ObservationComplete follows all these call-local checks within that original deadline; it permits the next call/control but is provisional. Retain every issued call id and count completions through each instance's C EOF/drain. A non-crashing invocation must have exactly one completion in that final audit; a crash-injected invocation must have zero. A late duplicate after ObservationComplete still fails. The same EOF audit requires exactly one Ready with the correct instance/J, already observed by the startup deadline; missing, wrong or duplicate Ready fails even if detected after startup confirmation. A late Ready cannot repair a startup failure. Final scenario success requires exit confirmation and the final count audit, including the final normal shutdown/exit, with no added reward call or restart during teardown.\r\n"
+        }
+      ],
+      "finding_ids": []
+    },
+    {
+      "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+      "local_id": "30",
+      "decision": "represented",
+      "proposal_ids": [
+        "proposal:exclusive-resolution-v15-5"
+      ],
+      "reason": "Injected crashes remain restricted to before or after an accept/cancel append in a fresh empty-J scenario.",
+      "basis": [
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-F7DB8CD5A9668EF4",
+          "byte_start": 4244,
+          "byte_end": 5519,
+          "quote": "The only injected within-call crashes are immediately before or after the missing durable append of accept or cancel. Each hook scenario begins with its own empty J. Before issuing the target call, record CallStart, send armHook(i,id,op,before|after) on Q and receive its exact matching acknowledgement, where op is accept or cancel. The one-shot hook applies only to that id/op while J is empty. Before emits C:HookHit(i,id,op,before) after the empty guard and blocks before the atomic append. After emits C:HookHit(i,id,op,after) after the command's append is durable and blocks before UI finalization or Complete. No work can pass either barrier until OS termination; the harness never releases it. Observe exactly one matching acknowledgement and HookHit within the original 10000ms from CallStart, then immediately terminate i and begin its existing exit deadline. These controls are never Complete. Missing, wrong, duplicate or late hook events fail. Before leaves J empty; after leaves exactly the command's Commit or Cancel record. Confirm exit/EOF, start and confirm a new process with the unchanged J, then invoke resume under the ordinary call rule. Hooks are disabled for every other call. Failed-test cleanup cannot erase failure or count as scenario coverage.\r\n"
+        }
+      ],
+      "finding_ids": []
+    },
+    {
+      "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+      "local_id": "31",
+      "decision": "represented",
+      "proposal_ids": [
+        "proposal:exclusive-resolution-v15-5"
+      ],
+      "reason": "CallStart, armHook on Q and matching acknowledgement precede issue; the one-shot hook remains limited to the specified id/op with empty J.",
+      "basis": [
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-F7DB8CD5A9668EF4",
+          "byte_start": 4244,
+          "byte_end": 5519,
+          "quote": "The only injected within-call crashes are immediately before or after the missing durable append of accept or cancel. Each hook scenario begins with its own empty J. Before issuing the target call, record CallStart, send armHook(i,id,op,before|after) on Q and receive its exact matching acknowledgement, where op is accept or cancel. The one-shot hook applies only to that id/op while J is empty. Before emits C:HookHit(i,id,op,before) after the empty guard and blocks before the atomic append. After emits C:HookHit(i,id,op,after) after the command's append is durable and blocks before UI finalization or Complete. No work can pass either barrier until OS termination; the harness never releases it. Observe exactly one matching acknowledgement and HookHit within the original 10000ms from CallStart, then immediately terminate i and begin its existing exit deadline. These controls are never Complete. Missing, wrong, duplicate or late hook events fail. Before leaves J empty; after leaves exactly the command's Commit or Cancel record. Confirm exit/EOF, start and confirm a new process with the unchanged J, then invoke resume under the ordinary call rule. Hooks are disabled for every other call. Failed-test cleanup cannot erase failure or count as scenario coverage.\r\n"
+        }
+      ],
+      "finding_ids": []
+    },
+    {
+      "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+      "local_id": "32",
+      "decision": "represented",
+      "proposal_ids": [
+        "proposal:exclusive-resolution-v15-5"
+      ],
+      "reason": "The before HookHit remains after the empty guard and blocks before the atomic append.",
+      "basis": [
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-F7DB8CD5A9668EF4",
+          "byte_start": 4244,
+          "byte_end": 5519,
+          "quote": "The only injected within-call crashes are immediately before or after the missing durable append of accept or cancel. Each hook scenario begins with its own empty J. Before issuing the target call, record CallStart, send armHook(i,id,op,before|after) on Q and receive its exact matching acknowledgement, where op is accept or cancel. The one-shot hook applies only to that id/op while J is empty. Before emits C:HookHit(i,id,op,before) after the empty guard and blocks before the atomic append. After emits C:HookHit(i,id,op,after) after the command's append is durable and blocks before UI finalization or Complete. No work can pass either barrier until OS termination; the harness never releases it. Observe exactly one matching acknowledgement and HookHit within the original 10000ms from CallStart, then immediately terminate i and begin its existing exit deadline. These controls are never Complete. Missing, wrong, duplicate or late hook events fail. Before leaves J empty; after leaves exactly the command's Commit or Cancel record. Confirm exit/EOF, start and confirm a new process with the unchanged J, then invoke resume under the ordinary call rule. Hooks are disabled for every other call. Failed-test cleanup cannot erase failure or count as scenario coverage.\r\n"
+        }
+      ],
+      "finding_ids": []
+    },
+    {
+      "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+      "local_id": "33",
+      "decision": "represented",
+      "proposal_ids": [
+        "proposal:exclusive-resolution-v15-5"
+      ],
+      "reason": "The after HookHit remains after durability and blocks before UI finalization or Complete.",
+      "basis": [
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-F7DB8CD5A9668EF4",
+          "byte_start": 4244,
+          "byte_end": 5519,
+          "quote": "The only injected within-call crashes are immediately before or after the missing durable append of accept or cancel. Each hook scenario begins with its own empty J. Before issuing the target call, record CallStart, send armHook(i,id,op,before|after) on Q and receive its exact matching acknowledgement, where op is accept or cancel. The one-shot hook applies only to that id/op while J is empty. Before emits C:HookHit(i,id,op,before) after the empty guard and blocks before the atomic append. After emits C:HookHit(i,id,op,after) after the command's append is durable and blocks before UI finalization or Complete. No work can pass either barrier until OS termination; the harness never releases it. Observe exactly one matching acknowledgement and HookHit within the original 10000ms from CallStart, then immediately terminate i and begin its existing exit deadline. These controls are never Complete. Missing, wrong, duplicate or late hook events fail. Before leaves J empty; after leaves exactly the command's Commit or Cancel record. Confirm exit/EOF, start and confirm a new process with the unchanged J, then invoke resume under the ordinary call rule. Hooks are disabled for every other call. Failed-test cleanup cannot erase failure or count as scenario coverage.\r\n"
+        }
+      ],
+      "finding_ids": []
+    },
+    {
+      "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+      "local_id": "34",
+      "decision": "represented",
+      "proposal_ids": [
+        "proposal:exclusive-resolution-v15-5"
+      ],
+      "reason": "Neither barrier permits further work before OS termination, and the harness is prohibited from releasing either.",
+      "basis": [
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-F7DB8CD5A9668EF4",
+          "byte_start": 4244,
+          "byte_end": 5519,
+          "quote": "The only injected within-call crashes are immediately before or after the missing durable append of accept or cancel. Each hook scenario begins with its own empty J. Before issuing the target call, record CallStart, send armHook(i,id,op,before|after) on Q and receive its exact matching acknowledgement, where op is accept or cancel. The one-shot hook applies only to that id/op while J is empty. Before emits C:HookHit(i,id,op,before) after the empty guard and blocks before the atomic append. After emits C:HookHit(i,id,op,after) after the command's append is durable and blocks before UI finalization or Complete. No work can pass either barrier until OS termination; the harness never releases it. Observe exactly one matching acknowledgement and HookHit within the original 10000ms from CallStart, then immediately terminate i and begin its existing exit deadline. These controls are never Complete. Missing, wrong, duplicate or late hook events fail. Before leaves J empty; after leaves exactly the command's Commit or Cancel record. Confirm exit/EOF, start and confirm a new process with the unchanged J, then invoke resume under the ordinary call rule. Hooks are disabled for every other call. Failed-test cleanup cannot erase failure or count as scenario coverage.\r\n"
+        }
+      ],
+      "finding_ids": []
+    },
+    {
+      "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+      "local_id": "35",
+      "decision": "represented",
+      "proposal_ids": [
+        "proposal:exclusive-resolution-v15-5"
+      ],
+      "reason": "Exactly one matching acknowledgement and HookHit must arrive within the original call deadline, immediately followed by termination and the exit deadline.",
+      "basis": [
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-F7DB8CD5A9668EF4",
+          "byte_start": 4244,
+          "byte_end": 5519,
+          "quote": "The only injected within-call crashes are immediately before or after the missing durable append of accept or cancel. Each hook scenario begins with its own empty J. Before issuing the target call, record CallStart, send armHook(i,id,op,before|after) on Q and receive its exact matching acknowledgement, where op is accept or cancel. The one-shot hook applies only to that id/op while J is empty. Before emits C:HookHit(i,id,op,before) after the empty guard and blocks before the atomic append. After emits C:HookHit(i,id,op,after) after the command's append is durable and blocks before UI finalization or Complete. No work can pass either barrier until OS termination; the harness never releases it. Observe exactly one matching acknowledgement and HookHit within the original 10000ms from CallStart, then immediately terminate i and begin its existing exit deadline. These controls are never Complete. Missing, wrong, duplicate or late hook events fail. Before leaves J empty; after leaves exactly the command's Commit or Cancel record. Confirm exit/EOF, start and confirm a new process with the unchanged J, then invoke resume under the ordinary call rule. Hooks are disabled for every other call. Failed-test cleanup cannot erase failure or count as scenario coverage.\r\n"
+        }
+      ],
+      "finding_ids": []
+    },
+    {
+      "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+      "local_id": "36",
+      "decision": "represented",
+      "proposal_ids": [
+        "proposal:exclusive-resolution-v15-5"
+      ],
+      "reason": "Hook controls remain distinct from Complete, and missing, wrong, duplicate or late hook events fail.",
+      "basis": [
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-F7DB8CD5A9668EF4",
+          "byte_start": 4244,
+          "byte_end": 5519,
+          "quote": "The only injected within-call crashes are immediately before or after the missing durable append of accept or cancel. Each hook scenario begins with its own empty J. Before issuing the target call, record CallStart, send armHook(i,id,op,before|after) on Q and receive its exact matching acknowledgement, where op is accept or cancel. The one-shot hook applies only to that id/op while J is empty. Before emits C:HookHit(i,id,op,before) after the empty guard and blocks before the atomic append. After emits C:HookHit(i,id,op,after) after the command's append is durable and blocks before UI finalization or Complete. No work can pass either barrier until OS termination; the harness never releases it. Observe exactly one matching acknowledgement and HookHit within the original 10000ms from CallStart, then immediately terminate i and begin its existing exit deadline. These controls are never Complete. Missing, wrong, duplicate or late hook events fail. Before leaves J empty; after leaves exactly the command's Commit or Cancel record. Confirm exit/EOF, start and confirm a new process with the unchanged J, then invoke resume under the ordinary call rule. Hooks are disabled for every other call. Failed-test cleanup cannot erase failure or count as scenario coverage.\r\n"
+        }
+      ],
+      "finding_ids": []
+    },
+    {
+      "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+      "local_id": "37",
+      "decision": "represented",
+      "proposal_ids": [
+        "proposal:exclusive-resolution-v15-5"
+      ],
+      "reason": "Before leaves an empty J; after leaves exactly the target command's durable Commit or Cancel.",
+      "basis": [
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-F7DB8CD5A9668EF4",
+          "byte_start": 4244,
+          "byte_end": 5519,
+          "quote": "The only injected within-call crashes are immediately before or after the missing durable append of accept or cancel. Each hook scenario begins with its own empty J. Before issuing the target call, record CallStart, send armHook(i,id,op,before|after) on Q and receive its exact matching acknowledgement, where op is accept or cancel. The one-shot hook applies only to that id/op while J is empty. Before emits C:HookHit(i,id,op,before) after the empty guard and blocks before the atomic append. After emits C:HookHit(i,id,op,after) after the command's append is durable and blocks before UI finalization or Complete. No work can pass either barrier until OS termination; the harness never releases it. Observe exactly one matching acknowledgement and HookHit within the original 10000ms from CallStart, then immediately terminate i and begin its existing exit deadline. These controls are never Complete. Missing, wrong, duplicate or late hook events fail. Before leaves J empty; after leaves exactly the command's Commit or Cancel record. Confirm exit/EOF, start and confirm a new process with the unchanged J, then invoke resume under the ordinary call rule. Hooks are disabled for every other call. Failed-test cleanup cannot erase failure or count as scenario coverage.\r\n"
+        }
+      ],
+      "finding_ids": []
+    },
+    {
+      "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+      "local_id": "38",
+      "decision": "represented",
+      "proposal_ids": [
+        "proposal:exclusive-resolution-v15-5"
+      ],
+      "reason": "Recovery retains confirmed exit/EOF, confirmed new startup with unchanged J and ordinary-rule resume.",
+      "basis": [
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-F7DB8CD5A9668EF4",
+          "byte_start": 4244,
+          "byte_end": 5519,
+          "quote": "The only injected within-call crashes are immediately before or after the missing durable append of accept or cancel. Each hook scenario begins with its own empty J. Before issuing the target call, record CallStart, send armHook(i,id,op,before|after) on Q and receive its exact matching acknowledgement, where op is accept or cancel. The one-shot hook applies only to that id/op while J is empty. Before emits C:HookHit(i,id,op,before) after the empty guard and blocks before the atomic append. After emits C:HookHit(i,id,op,after) after the command's append is durable and blocks before UI finalization or Complete. No work can pass either barrier until OS termination; the harness never releases it. Observe exactly one matching acknowledgement and HookHit within the original 10000ms from CallStart, then immediately terminate i and begin its existing exit deadline. These controls are never Complete. Missing, wrong, duplicate or late hook events fail. Before leaves J empty; after leaves exactly the command's Commit or Cancel record. Confirm exit/EOF, start and confirm a new process with the unchanged J, then invoke resume under the ordinary call rule. Hooks are disabled for every other call. Failed-test cleanup cannot erase failure or count as scenario coverage.\r\n"
+        }
+      ],
+      "finding_ids": []
+    },
+    {
+      "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+      "local_id": "39",
+      "decision": "represented",
+      "proposal_ids": [
+        "proposal:exclusive-resolution-v15-5"
+      ],
+      "reason": "Hooks are disabled for other calls; failed cleanup cannot erase failure or satisfy coverage.",
+      "basis": [
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-F7DB8CD5A9668EF4",
+          "byte_start": 4244,
+          "byte_end": 5519,
+          "quote": "The only injected within-call crashes are immediately before or after the missing durable append of accept or cancel. Each hook scenario begins with its own empty J. Before issuing the target call, record CallStart, send armHook(i,id,op,before|after) on Q and receive its exact matching acknowledgement, where op is accept or cancel. The one-shot hook applies only to that id/op while J is empty. Before emits C:HookHit(i,id,op,before) after the empty guard and blocks before the atomic append. After emits C:HookHit(i,id,op,after) after the command's append is durable and blocks before UI finalization or Complete. No work can pass either barrier until OS termination; the harness never releases it. Observe exactly one matching acknowledgement and HookHit within the original 10000ms from CallStart, then immediately terminate i and begin its existing exit deadline. These controls are never Complete. Missing, wrong, duplicate or late hook events fail. Before leaves J empty; after leaves exactly the command's Commit or Cancel record. Confirm exit/EOF, start and confirm a new process with the unchanged J, then invoke resume under the ordinary call rule. Hooks are disabled for every other call. Failed-test cleanup cannot erase failure or count as scenario coverage.\r\n"
+        }
+      ],
+      "finding_ids": []
+    },
+    {
+      "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+      "local_id": "40",
+      "decision": "represented",
+      "proposal_ids": [
+        "proposal:exclusive-resolution-v15-6",
+        "proposal:exclusive-resolution-v15-2",
+        "proposal:exclusive-resolution-v15-1"
+      ],
+      "reason": "The separate two-accept scenario combines with immutable Commit, MapReady finalization and exactly-once reward semantics.",
+      "basis": [
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-5B889D232D13901F",
+          "byte_start": 5521,
+          "byte_end": 6308,
+          "quote": "Required separate scenarios, each with fresh J: two accepts; two cancels; accept then cancel; cancel then accept; empty resume; successful accept followed by ordinary restart and resume; successful cancel followed by ordinary restart and resume; and each of accept-before, accept-after, cancel-before, cancel-after crash/recovery. Ordinary restart occurs only after successful observations: normal shutdown, confirmed exit/EOF, start and confirmed startup, then resume. It is not an injected crash. All earlier non-crashing calls retain their final completion-count obligations across restart. The observed journal and UI must follow the rules above for every step, including no grant after Cancel and no cancellation after Commit. Planning the flow does not claim these scenarios ran.\r\n"
+        },
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-9E135AFD8D79ED3C",
+          "byte_start": 792,
+          "byte_end": 1650,
+          "quote": "The business entry points are accept(R,id), cancel(R,id), and resume(R,id). Every call has a fresh id. The guard reads J. With empty J, accept appends Commit(R), cancel appends Cancel(R), and resume writes nothing. With nonempty J, no entry point writes: accept cannot override cancellation, cancel cannot reverse a grant, and resume only restores the decision. Finalization renders MapReady for [Commit(R)], MapCancelled for [Cancel(R)], and Idle for empty, then emits exactly one completion C:Complete(i,id,ui). Thus repeat accept after Commit stays MapReady, repeat cancel after Cancel stays MapCancelled, accept after Cancel stays MapCancelled without a grant, and cancel after Commit stays MapReady without a cancellation. No extra user action is required. Shutdown and force-termination are lifecycle controls and are not the business cancel command.\r\n"
+        },
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-3930A390340951B7",
+          "byte_start": 38,
+          "byte_end": 790,
+          "quote": "Each separate synthetic scenario receives a newly provisioned empty durable journal J and a fixed reward R. Scenarios never share J. Within a scenario, one process handles serial calls; processes never overlap, and J is never reset. The reward controller owns J and the volatile map UI. J has exactly three permitted states: empty, [Commit(R)], or [Cancel(R)]. From empty it can make one atomic durable append of Commit(R) or Cancel(R). Once nonempty it is immutable. Commit grants R exactly once and logically returns to the map. Cancel permanently declines R, grants nothing, and logically returns to the map. Rendering or restoring UI does not grant, cancel or logically return again. Storage succeeds except for the injected crash barriers below.\r\n"
+        }
+      ],
+      "finding_ids": []
+    },
+    {
+      "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+      "local_id": "41",
+      "decision": "represented",
+      "proposal_ids": [
+        "proposal:exclusive-resolution-v15-6",
+        "proposal:exclusive-resolution-v15-2",
+        "proposal:exclusive-resolution-v15-1"
+      ],
+      "reason": "The separate two-cancel scenario preserves Cancel and MapCancelled throughout, with no grant.",
+      "basis": [
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-5B889D232D13901F",
+          "byte_start": 5521,
+          "byte_end": 6308,
+          "quote": "Required separate scenarios, each with fresh J: two accepts; two cancels; accept then cancel; cancel then accept; empty resume; successful accept followed by ordinary restart and resume; successful cancel followed by ordinary restart and resume; and each of accept-before, accept-after, cancel-before, cancel-after crash/recovery. Ordinary restart occurs only after successful observations: normal shutdown, confirmed exit/EOF, start and confirmed startup, then resume. It is not an injected crash. All earlier non-crashing calls retain their final completion-count obligations across restart. The observed journal and UI must follow the rules above for every step, including no grant after Cancel and no cancellation after Commit. Planning the flow does not claim these scenarios ran.\r\n"
+        },
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-9E135AFD8D79ED3C",
+          "byte_start": 792,
+          "byte_end": 1650,
+          "quote": "The business entry points are accept(R,id), cancel(R,id), and resume(R,id). Every call has a fresh id. The guard reads J. With empty J, accept appends Commit(R), cancel appends Cancel(R), and resume writes nothing. With nonempty J, no entry point writes: accept cannot override cancellation, cancel cannot reverse a grant, and resume only restores the decision. Finalization renders MapReady for [Commit(R)], MapCancelled for [Cancel(R)], and Idle for empty, then emits exactly one completion C:Complete(i,id,ui). Thus repeat accept after Commit stays MapReady, repeat cancel after Cancel stays MapCancelled, accept after Cancel stays MapCancelled without a grant, and cancel after Commit stays MapReady without a cancellation. No extra user action is required. Shutdown and force-termination are lifecycle controls and are not the business cancel command.\r\n"
+        },
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-3930A390340951B7",
+          "byte_start": 38,
+          "byte_end": 790,
+          "quote": "Each separate synthetic scenario receives a newly provisioned empty durable journal J and a fixed reward R. Scenarios never share J. Within a scenario, one process handles serial calls; processes never overlap, and J is never reset. The reward controller owns J and the volatile map UI. J has exactly three permitted states: empty, [Commit(R)], or [Cancel(R)]. From empty it can make one atomic durable append of Commit(R) or Cancel(R). Once nonempty it is immutable. Commit grants R exactly once and logically returns to the map. Cancel permanently declines R, grants nothing, and logically returns to the map. Rendering or restoring UI does not grant, cancel or logically return again. Storage succeeds except for the injected crash barriers below.\r\n"
+        }
+      ],
+      "finding_ids": []
+    },
+    {
+      "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+      "local_id": "42",
+      "decision": "represented",
+      "proposal_ids": [
+        "proposal:exclusive-resolution-v15-6",
+        "proposal:exclusive-resolution-v15-2"
+      ],
+      "reason": "The separate accept-then-cancel scenario explicitly preserves Commit and MapReady without reversing the grant.",
+      "basis": [
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-5B889D232D13901F",
+          "byte_start": 5521,
+          "byte_end": 6308,
+          "quote": "Required separate scenarios, each with fresh J: two accepts; two cancels; accept then cancel; cancel then accept; empty resume; successful accept followed by ordinary restart and resume; successful cancel followed by ordinary restart and resume; and each of accept-before, accept-after, cancel-before, cancel-after crash/recovery. Ordinary restart occurs only after successful observations: normal shutdown, confirmed exit/EOF, start and confirmed startup, then resume. It is not an injected crash. All earlier non-crashing calls retain their final completion-count obligations across restart. The observed journal and UI must follow the rules above for every step, including no grant after Cancel and no cancellation after Commit. Planning the flow does not claim these scenarios ran.\r\n"
+        },
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-9E135AFD8D79ED3C",
+          "byte_start": 792,
+          "byte_end": 1650,
+          "quote": "The business entry points are accept(R,id), cancel(R,id), and resume(R,id). Every call has a fresh id. The guard reads J. With empty J, accept appends Commit(R), cancel appends Cancel(R), and resume writes nothing. With nonempty J, no entry point writes: accept cannot override cancellation, cancel cannot reverse a grant, and resume only restores the decision. Finalization renders MapReady for [Commit(R)], MapCancelled for [Cancel(R)], and Idle for empty, then emits exactly one completion C:Complete(i,id,ui). Thus repeat accept after Commit stays MapReady, repeat cancel after Cancel stays MapCancelled, accept after Cancel stays MapCancelled without a grant, and cancel after Commit stays MapReady without a cancellation. No extra user action is required. Shutdown and force-termination are lifecycle controls and are not the business cancel command.\r\n"
+        }
+      ],
+      "finding_ids": []
+    },
+    {
+      "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+      "local_id": "43",
+      "decision": "represented",
+      "proposal_ids": [
+        "proposal:exclusive-resolution-v15-6",
+        "proposal:exclusive-resolution-v15-2"
+      ],
+      "reason": "The separate cancel-then-accept scenario explicitly preserves Cancel and MapCancelled without granting.",
+      "basis": [
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-5B889D232D13901F",
+          "byte_start": 5521,
+          "byte_end": 6308,
+          "quote": "Required separate scenarios, each with fresh J: two accepts; two cancels; accept then cancel; cancel then accept; empty resume; successful accept followed by ordinary restart and resume; successful cancel followed by ordinary restart and resume; and each of accept-before, accept-after, cancel-before, cancel-after crash/recovery. Ordinary restart occurs only after successful observations: normal shutdown, confirmed exit/EOF, start and confirmed startup, then resume. It is not an injected crash. All earlier non-crashing calls retain their final completion-count obligations across restart. The observed journal and UI must follow the rules above for every step, including no grant after Cancel and no cancellation after Commit. Planning the flow does not claim these scenarios ran.\r\n"
+        },
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-9E135AFD8D79ED3C",
+          "byte_start": 792,
+          "byte_end": 1650,
+          "quote": "The business entry points are accept(R,id), cancel(R,id), and resume(R,id). Every call has a fresh id. The guard reads J. With empty J, accept appends Commit(R), cancel appends Cancel(R), and resume writes nothing. With nonempty J, no entry point writes: accept cannot override cancellation, cancel cannot reverse a grant, and resume only restores the decision. Finalization renders MapReady for [Commit(R)], MapCancelled for [Cancel(R)], and Idle for empty, then emits exactly one completion C:Complete(i,id,ui). Thus repeat accept after Commit stays MapReady, repeat cancel after Cancel stays MapCancelled, accept after Cancel stays MapCancelled without a grant, and cancel after Commit stays MapReady without a cancellation. No extra user action is required. Shutdown and force-termination are lifecycle controls and are not the business cancel command.\r\n"
+        }
+      ],
+      "finding_ids": []
+    },
+    {
+      "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+      "local_id": "44",
+      "decision": "represented",
+      "proposal_ids": [
+        "proposal:exclusive-resolution-v15-6",
+        "proposal:exclusive-resolution-v15-2",
+        "proposal:exclusive-resolution-v15-4"
+      ],
+      "reason": "The separate empty-resume scenario retains no write, Idle finalization and ordinary completion and observation checks.",
+      "basis": [
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-5B889D232D13901F",
+          "byte_start": 5521,
+          "byte_end": 6308,
+          "quote": "Required separate scenarios, each with fresh J: two accepts; two cancels; accept then cancel; cancel then accept; empty resume; successful accept followed by ordinary restart and resume; successful cancel followed by ordinary restart and resume; and each of accept-before, accept-after, cancel-before, cancel-after crash/recovery. Ordinary restart occurs only after successful observations: normal shutdown, confirmed exit/EOF, start and confirmed startup, then resume. It is not an injected crash. All earlier non-crashing calls retain their final completion-count obligations across restart. The observed journal and UI must follow the rules above for every step, including no grant after Cancel and no cancellation after Commit. Planning the flow does not claim these scenarios ran.\r\n"
+        },
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-9E135AFD8D79ED3C",
+          "byte_start": 792,
+          "byte_end": 1650,
+          "quote": "The business entry points are accept(R,id), cancel(R,id), and resume(R,id). Every call has a fresh id. The guard reads J. With empty J, accept appends Commit(R), cancel appends Cancel(R), and resume writes nothing. With nonempty J, no entry point writes: accept cannot override cancellation, cancel cannot reverse a grant, and resume only restores the decision. Finalization renders MapReady for [Commit(R)], MapCancelled for [Cancel(R)], and Idle for empty, then emits exactly one completion C:Complete(i,id,ui). Thus repeat accept after Commit stays MapReady, repeat cancel after Cancel stays MapCancelled, accept after Cancel stays MapCancelled without a grant, and cancel after Commit stays MapReady without a cancellation. No extra user action is required. Shutdown and force-termination are lifecycle controls and are not the business cancel command.\r\n"
+        },
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-A9833CF255BDF6C0",
+          "byte_start": 2667,
+          "byte_end": 4242,
+          "quote": "For an ordinary unhooked business call, record CallStart immediately before issue. For a hook call, record it once before armHook as specified below; the same clock includes arming, acknowledgement and issue and is never restarted. A non-crashing call must emit one matching completion and permit independent readUI/readJ observations within 10000ms of CallStart on the same harness clock. Observation reads occur after completion and before another call or lifecycle control, with UI/J unchanged throughout those reads. Verify the matching instance/id, reported versus actual UI, expected complete journal, completion count observed so far and deadline. Missing, duplicate, late or mismatched results fail and cannot be erased by a later crash. ObservationComplete follows all these call-local checks within that original deadline; it permits the next call/control but is provisional. Retain every issued call id and count completions through each instance's C EOF/drain. A non-crashing invocation must have exactly one completion in that final audit; a crash-injected invocation must have zero. A late duplicate after ObservationComplete still fails. The same EOF audit requires exactly one Ready with the correct instance/J, already observed by the startup deadline; missing, wrong or duplicate Ready fails even if detected after startup confirmation. A late Ready cannot repair a startup failure. Final scenario success requires exit confirmation and the final count audit, including the final normal shutdown/exit, with no added reward call or restart during teardown.\r\n"
+        }
+      ],
+      "finding_ids": []
+    },
+    {
+      "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+      "local_id": "45",
+      "decision": "represented",
+      "proposal_ids": [
+        "proposal:exclusive-resolution-v15-6",
+        "proposal:exclusive-resolution-v15-2",
+        "proposal:exclusive-resolution-v15-1"
+      ],
+      "reason": "The separate successful-accept restart scenario requires resume from unchanged Commit to MapReady without repeating grant or logical return.",
+      "basis": [
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-5B889D232D13901F",
+          "byte_start": 5521,
+          "byte_end": 6308,
+          "quote": "Required separate scenarios, each with fresh J: two accepts; two cancels; accept then cancel; cancel then accept; empty resume; successful accept followed by ordinary restart and resume; successful cancel followed by ordinary restart and resume; and each of accept-before, accept-after, cancel-before, cancel-after crash/recovery. Ordinary restart occurs only after successful observations: normal shutdown, confirmed exit/EOF, start and confirmed startup, then resume. It is not an injected crash. All earlier non-crashing calls retain their final completion-count obligations across restart. The observed journal and UI must follow the rules above for every step, including no grant after Cancel and no cancellation after Commit. Planning the flow does not claim these scenarios ran.\r\n"
+        },
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-9E135AFD8D79ED3C",
+          "byte_start": 792,
+          "byte_end": 1650,
+          "quote": "The business entry points are accept(R,id), cancel(R,id), and resume(R,id). Every call has a fresh id. The guard reads J. With empty J, accept appends Commit(R), cancel appends Cancel(R), and resume writes nothing. With nonempty J, no entry point writes: accept cannot override cancellation, cancel cannot reverse a grant, and resume only restores the decision. Finalization renders MapReady for [Commit(R)], MapCancelled for [Cancel(R)], and Idle for empty, then emits exactly one completion C:Complete(i,id,ui). Thus repeat accept after Commit stays MapReady, repeat cancel after Cancel stays MapCancelled, accept after Cancel stays MapCancelled without a grant, and cancel after Commit stays MapReady without a cancellation. No extra user action is required. Shutdown and force-termination are lifecycle controls and are not the business cancel command.\r\n"
+        },
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-3930A390340951B7",
+          "byte_start": 38,
+          "byte_end": 790,
+          "quote": "Each separate synthetic scenario receives a newly provisioned empty durable journal J and a fixed reward R. Scenarios never share J. Within a scenario, one process handles serial calls; processes never overlap, and J is never reset. The reward controller owns J and the volatile map UI. J has exactly three permitted states: empty, [Commit(R)], or [Cancel(R)]. From empty it can make one atomic durable append of Commit(R) or Cancel(R). Once nonempty it is immutable. Commit grants R exactly once and logically returns to the map. Cancel permanently declines R, grants nothing, and logically returns to the map. Rendering or restoring UI does not grant, cancel or logically return again. Storage succeeds except for the injected crash barriers below.\r\n"
+        }
+      ],
+      "finding_ids": []
+    },
+    {
+      "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+      "local_id": "46",
+      "decision": "represented",
+      "proposal_ids": [
+        "proposal:exclusive-resolution-v15-6",
+        "proposal:exclusive-resolution-v15-2",
+        "proposal:exclusive-resolution-v15-1"
+      ],
+      "reason": "The separate successful-cancel restart scenario requires restoration of Cancel and MapCancelled without repeating a decision or logical return.",
+      "basis": [
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-5B889D232D13901F",
+          "byte_start": 5521,
+          "byte_end": 6308,
+          "quote": "Required separate scenarios, each with fresh J: two accepts; two cancels; accept then cancel; cancel then accept; empty resume; successful accept followed by ordinary restart and resume; successful cancel followed by ordinary restart and resume; and each of accept-before, accept-after, cancel-before, cancel-after crash/recovery. Ordinary restart occurs only after successful observations: normal shutdown, confirmed exit/EOF, start and confirmed startup, then resume. It is not an injected crash. All earlier non-crashing calls retain their final completion-count obligations across restart. The observed journal and UI must follow the rules above for every step, including no grant after Cancel and no cancellation after Commit. Planning the flow does not claim these scenarios ran.\r\n"
+        },
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-9E135AFD8D79ED3C",
+          "byte_start": 792,
+          "byte_end": 1650,
+          "quote": "The business entry points are accept(R,id), cancel(R,id), and resume(R,id). Every call has a fresh id. The guard reads J. With empty J, accept appends Commit(R), cancel appends Cancel(R), and resume writes nothing. With nonempty J, no entry point writes: accept cannot override cancellation, cancel cannot reverse a grant, and resume only restores the decision. Finalization renders MapReady for [Commit(R)], MapCancelled for [Cancel(R)], and Idle for empty, then emits exactly one completion C:Complete(i,id,ui). Thus repeat accept after Commit stays MapReady, repeat cancel after Cancel stays MapCancelled, accept after Cancel stays MapCancelled without a grant, and cancel after Commit stays MapReady without a cancellation. No extra user action is required. Shutdown and force-termination are lifecycle controls and are not the business cancel command.\r\n"
+        },
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-3930A390340951B7",
+          "byte_start": 38,
+          "byte_end": 790,
+          "quote": "Each separate synthetic scenario receives a newly provisioned empty durable journal J and a fixed reward R. Scenarios never share J. Within a scenario, one process handles serial calls; processes never overlap, and J is never reset. The reward controller owns J and the volatile map UI. J has exactly three permitted states: empty, [Commit(R)], or [Cancel(R)]. From empty it can make one atomic durable append of Commit(R) or Cancel(R). Once nonempty it is immutable. Commit grants R exactly once and logically returns to the map. Cancel permanently declines R, grants nothing, and logically returns to the map. Rendering or restoring UI does not grant, cancel or logically return again. Storage succeeds except for the injected crash barriers below.\r\n"
+        }
+      ],
+      "finding_ids": []
+    },
+    {
+      "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+      "local_id": "47",
+      "decision": "represented",
+      "proposal_ids": [
+        "proposal:exclusive-resolution-v15-6",
+        "proposal:exclusive-resolution-v15-5",
+        "proposal:exclusive-resolution-v15-4",
+        "proposal:exclusive-resolution-v15-2"
+      ],
+      "reason": "Accept-before is a separate fresh-J scenario with the specified hook, empty retained journal, zero interrupted-call completions and ordinary recovery resume to Idle.",
+      "basis": [
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-5B889D232D13901F",
+          "byte_start": 5521,
+          "byte_end": 6308,
+          "quote": "Required separate scenarios, each with fresh J: two accepts; two cancels; accept then cancel; cancel then accept; empty resume; successful accept followed by ordinary restart and resume; successful cancel followed by ordinary restart and resume; and each of accept-before, accept-after, cancel-before, cancel-after crash/recovery. Ordinary restart occurs only after successful observations: normal shutdown, confirmed exit/EOF, start and confirmed startup, then resume. It is not an injected crash. All earlier non-crashing calls retain their final completion-count obligations across restart. The observed journal and UI must follow the rules above for every step, including no grant after Cancel and no cancellation after Commit. Planning the flow does not claim these scenarios ran.\r\n"
+        },
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-F7DB8CD5A9668EF4",
+          "byte_start": 4244,
+          "byte_end": 5519,
+          "quote": "The only injected within-call crashes are immediately before or after the missing durable append of accept or cancel. Each hook scenario begins with its own empty J. Before issuing the target call, record CallStart, send armHook(i,id,op,before|after) on Q and receive its exact matching acknowledgement, where op is accept or cancel. The one-shot hook applies only to that id/op while J is empty. Before emits C:HookHit(i,id,op,before) after the empty guard and blocks before the atomic append. After emits C:HookHit(i,id,op,after) after the command's append is durable and blocks before UI finalization or Complete. No work can pass either barrier until OS termination; the harness never releases it. Observe exactly one matching acknowledgement and HookHit within the original 10000ms from CallStart, then immediately terminate i and begin its existing exit deadline. These controls are never Complete. Missing, wrong, duplicate or late hook events fail. Before leaves J empty; after leaves exactly the command's Commit or Cancel record. Confirm exit/EOF, start and confirm a new process with the unchanged J, then invoke resume under the ordinary call rule. Hooks are disabled for every other call. Failed-test cleanup cannot erase failure or count as scenario coverage.\r\n"
+        },
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-A9833CF255BDF6C0",
+          "byte_start": 2667,
+          "byte_end": 4242,
+          "quote": "For an ordinary unhooked business call, record CallStart immediately before issue. For a hook call, record it once before armHook as specified below; the same clock includes arming, acknowledgement and issue and is never restarted. A non-crashing call must emit one matching completion and permit independent readUI/readJ observations within 10000ms of CallStart on the same harness clock. Observation reads occur after completion and before another call or lifecycle control, with UI/J unchanged throughout those reads. Verify the matching instance/id, reported versus actual UI, expected complete journal, completion count observed so far and deadline. Missing, duplicate, late or mismatched results fail and cannot be erased by a later crash. ObservationComplete follows all these call-local checks within that original deadline; it permits the next call/control but is provisional. Retain every issued call id and count completions through each instance's C EOF/drain. A non-crashing invocation must have exactly one completion in that final audit; a crash-injected invocation must have zero. A late duplicate after ObservationComplete still fails. The same EOF audit requires exactly one Ready with the correct instance/J, already observed by the startup deadline; missing, wrong or duplicate Ready fails even if detected after startup confirmation. A late Ready cannot repair a startup failure. Final scenario success requires exit confirmation and the final count audit, including the final normal shutdown/exit, with no added reward call or restart during teardown.\r\n"
+        },
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-9E135AFD8D79ED3C",
+          "byte_start": 792,
+          "byte_end": 1650,
+          "quote": "The business entry points are accept(R,id), cancel(R,id), and resume(R,id). Every call has a fresh id. The guard reads J. With empty J, accept appends Commit(R), cancel appends Cancel(R), and resume writes nothing. With nonempty J, no entry point writes: accept cannot override cancellation, cancel cannot reverse a grant, and resume only restores the decision. Finalization renders MapReady for [Commit(R)], MapCancelled for [Cancel(R)], and Idle for empty, then emits exactly one completion C:Complete(i,id,ui). Thus repeat accept after Commit stays MapReady, repeat cancel after Cancel stays MapCancelled, accept after Cancel stays MapCancelled without a grant, and cancel after Commit stays MapReady without a cancellation. No extra user action is required. Shutdown and force-termination are lifecycle controls and are not the business cancel command.\r\n"
+        }
+      ],
+      "finding_ids": []
+    },
+    {
+      "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+      "local_id": "48",
+      "decision": "represented",
+      "proposal_ids": [
+        "proposal:exclusive-resolution-v15-6",
+        "proposal:exclusive-resolution-v15-5",
+        "proposal:exclusive-resolution-v15-4",
+        "proposal:exclusive-resolution-v15-2",
+        "proposal:exclusive-resolution-v15-1"
+      ],
+      "reason": "Accept-after retains Commit with zero interrupted-call completions; recovery restores MapReady without another grant or logical return.",
+      "basis": [
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-5B889D232D13901F",
+          "byte_start": 5521,
+          "byte_end": 6308,
+          "quote": "Required separate scenarios, each with fresh J: two accepts; two cancels; accept then cancel; cancel then accept; empty resume; successful accept followed by ordinary restart and resume; successful cancel followed by ordinary restart and resume; and each of accept-before, accept-after, cancel-before, cancel-after crash/recovery. Ordinary restart occurs only after successful observations: normal shutdown, confirmed exit/EOF, start and confirmed startup, then resume. It is not an injected crash. All earlier non-crashing calls retain their final completion-count obligations across restart. The observed journal and UI must follow the rules above for every step, including no grant after Cancel and no cancellation after Commit. Planning the flow does not claim these scenarios ran.\r\n"
+        },
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-F7DB8CD5A9668EF4",
+          "byte_start": 4244,
+          "byte_end": 5519,
+          "quote": "The only injected within-call crashes are immediately before or after the missing durable append of accept or cancel. Each hook scenario begins with its own empty J. Before issuing the target call, record CallStart, send armHook(i,id,op,before|after) on Q and receive its exact matching acknowledgement, where op is accept or cancel. The one-shot hook applies only to that id/op while J is empty. Before emits C:HookHit(i,id,op,before) after the empty guard and blocks before the atomic append. After emits C:HookHit(i,id,op,after) after the command's append is durable and blocks before UI finalization or Complete. No work can pass either barrier until OS termination; the harness never releases it. Observe exactly one matching acknowledgement and HookHit within the original 10000ms from CallStart, then immediately terminate i and begin its existing exit deadline. These controls are never Complete. Missing, wrong, duplicate or late hook events fail. Before leaves J empty; after leaves exactly the command's Commit or Cancel record. Confirm exit/EOF, start and confirm a new process with the unchanged J, then invoke resume under the ordinary call rule. Hooks are disabled for every other call. Failed-test cleanup cannot erase failure or count as scenario coverage.\r\n"
+        },
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-A9833CF255BDF6C0",
+          "byte_start": 2667,
+          "byte_end": 4242,
+          "quote": "For an ordinary unhooked business call, record CallStart immediately before issue. For a hook call, record it once before armHook as specified below; the same clock includes arming, acknowledgement and issue and is never restarted. A non-crashing call must emit one matching completion and permit independent readUI/readJ observations within 10000ms of CallStart on the same harness clock. Observation reads occur after completion and before another call or lifecycle control, with UI/J unchanged throughout those reads. Verify the matching instance/id, reported versus actual UI, expected complete journal, completion count observed so far and deadline. Missing, duplicate, late or mismatched results fail and cannot be erased by a later crash. ObservationComplete follows all these call-local checks within that original deadline; it permits the next call/control but is provisional. Retain every issued call id and count completions through each instance's C EOF/drain. A non-crashing invocation must have exactly one completion in that final audit; a crash-injected invocation must have zero. A late duplicate after ObservationComplete still fails. The same EOF audit requires exactly one Ready with the correct instance/J, already observed by the startup deadline; missing, wrong or duplicate Ready fails even if detected after startup confirmation. A late Ready cannot repair a startup failure. Final scenario success requires exit confirmation and the final count audit, including the final normal shutdown/exit, with no added reward call or restart during teardown.\r\n"
+        },
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-9E135AFD8D79ED3C",
+          "byte_start": 792,
+          "byte_end": 1650,
+          "quote": "The business entry points are accept(R,id), cancel(R,id), and resume(R,id). Every call has a fresh id. The guard reads J. With empty J, accept appends Commit(R), cancel appends Cancel(R), and resume writes nothing. With nonempty J, no entry point writes: accept cannot override cancellation, cancel cannot reverse a grant, and resume only restores the decision. Finalization renders MapReady for [Commit(R)], MapCancelled for [Cancel(R)], and Idle for empty, then emits exactly one completion C:Complete(i,id,ui). Thus repeat accept after Commit stays MapReady, repeat cancel after Cancel stays MapCancelled, accept after Cancel stays MapCancelled without a grant, and cancel after Commit stays MapReady without a cancellation. No extra user action is required. Shutdown and force-termination are lifecycle controls and are not the business cancel command.\r\n"
+        },
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-3930A390340951B7",
+          "byte_start": 38,
+          "byte_end": 790,
+          "quote": "Each separate synthetic scenario receives a newly provisioned empty durable journal J and a fixed reward R. Scenarios never share J. Within a scenario, one process handles serial calls; processes never overlap, and J is never reset. The reward controller owns J and the volatile map UI. J has exactly three permitted states: empty, [Commit(R)], or [Cancel(R)]. From empty it can make one atomic durable append of Commit(R) or Cancel(R). Once nonempty it is immutable. Commit grants R exactly once and logically returns to the map. Cancel permanently declines R, grants nothing, and logically returns to the map. Rendering or restoring UI does not grant, cancel or logically return again. Storage succeeds except for the injected crash barriers below.\r\n"
+        }
+      ],
+      "finding_ids": []
+    },
+    {
+      "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+      "local_id": "49",
+      "decision": "represented",
+      "proposal_ids": [
+        "proposal:exclusive-resolution-v15-6",
+        "proposal:exclusive-resolution-v15-5",
+        "proposal:exclusive-resolution-v15-4",
+        "proposal:exclusive-resolution-v15-2"
+      ],
+      "reason": "Cancel-before is a separate fresh-J scenario with the specified hook, empty retained journal, zero interrupted-call completions and ordinary recovery resume to Idle.",
+      "basis": [
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-5B889D232D13901F",
+          "byte_start": 5521,
+          "byte_end": 6308,
+          "quote": "Required separate scenarios, each with fresh J: two accepts; two cancels; accept then cancel; cancel then accept; empty resume; successful accept followed by ordinary restart and resume; successful cancel followed by ordinary restart and resume; and each of accept-before, accept-after, cancel-before, cancel-after crash/recovery. Ordinary restart occurs only after successful observations: normal shutdown, confirmed exit/EOF, start and confirmed startup, then resume. It is not an injected crash. All earlier non-crashing calls retain their final completion-count obligations across restart. The observed journal and UI must follow the rules above for every step, including no grant after Cancel and no cancellation after Commit. Planning the flow does not claim these scenarios ran.\r\n"
+        },
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-F7DB8CD5A9668EF4",
+          "byte_start": 4244,
+          "byte_end": 5519,
+          "quote": "The only injected within-call crashes are immediately before or after the missing durable append of accept or cancel. Each hook scenario begins with its own empty J. Before issuing the target call, record CallStart, send armHook(i,id,op,before|after) on Q and receive its exact matching acknowledgement, where op is accept or cancel. The one-shot hook applies only to that id/op while J is empty. Before emits C:HookHit(i,id,op,before) after the empty guard and blocks before the atomic append. After emits C:HookHit(i,id,op,after) after the command's append is durable and blocks before UI finalization or Complete. No work can pass either barrier until OS termination; the harness never releases it. Observe exactly one matching acknowledgement and HookHit within the original 10000ms from CallStart, then immediately terminate i and begin its existing exit deadline. These controls are never Complete. Missing, wrong, duplicate or late hook events fail. Before leaves J empty; after leaves exactly the command's Commit or Cancel record. Confirm exit/EOF, start and confirm a new process with the unchanged J, then invoke resume under the ordinary call rule. Hooks are disabled for every other call. Failed-test cleanup cannot erase failure or count as scenario coverage.\r\n"
+        },
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-A9833CF255BDF6C0",
+          "byte_start": 2667,
+          "byte_end": 4242,
+          "quote": "For an ordinary unhooked business call, record CallStart immediately before issue. For a hook call, record it once before armHook as specified below; the same clock includes arming, acknowledgement and issue and is never restarted. A non-crashing call must emit one matching completion and permit independent readUI/readJ observations within 10000ms of CallStart on the same harness clock. Observation reads occur after completion and before another call or lifecycle control, with UI/J unchanged throughout those reads. Verify the matching instance/id, reported versus actual UI, expected complete journal, completion count observed so far and deadline. Missing, duplicate, late or mismatched results fail and cannot be erased by a later crash. ObservationComplete follows all these call-local checks within that original deadline; it permits the next call/control but is provisional. Retain every issued call id and count completions through each instance's C EOF/drain. A non-crashing invocation must have exactly one completion in that final audit; a crash-injected invocation must have zero. A late duplicate after ObservationComplete still fails. The same EOF audit requires exactly one Ready with the correct instance/J, already observed by the startup deadline; missing, wrong or duplicate Ready fails even if detected after startup confirmation. A late Ready cannot repair a startup failure. Final scenario success requires exit confirmation and the final count audit, including the final normal shutdown/exit, with no added reward call or restart during teardown.\r\n"
+        },
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-9E135AFD8D79ED3C",
+          "byte_start": 792,
+          "byte_end": 1650,
+          "quote": "The business entry points are accept(R,id), cancel(R,id), and resume(R,id). Every call has a fresh id. The guard reads J. With empty J, accept appends Commit(R), cancel appends Cancel(R), and resume writes nothing. With nonempty J, no entry point writes: accept cannot override cancellation, cancel cannot reverse a grant, and resume only restores the decision. Finalization renders MapReady for [Commit(R)], MapCancelled for [Cancel(R)], and Idle for empty, then emits exactly one completion C:Complete(i,id,ui). Thus repeat accept after Commit stays MapReady, repeat cancel after Cancel stays MapCancelled, accept after Cancel stays MapCancelled without a grant, and cancel after Commit stays MapReady without a cancellation. No extra user action is required. Shutdown and force-termination are lifecycle controls and are not the business cancel command.\r\n"
+        }
+      ],
+      "finding_ids": []
+    },
+    {
+      "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+      "local_id": "50",
+      "decision": "represented",
+      "proposal_ids": [
+        "proposal:exclusive-resolution-v15-6",
+        "proposal:exclusive-resolution-v15-5",
+        "proposal:exclusive-resolution-v15-4",
+        "proposal:exclusive-resolution-v15-2",
+        "proposal:exclusive-resolution-v15-1"
+      ],
+      "reason": "Cancel-after retains Cancel with zero interrupted-call completions; recovery restores MapCancelled without granting or repeating cancellation or logical return.",
+      "basis": [
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-5B889D232D13901F",
+          "byte_start": 5521,
+          "byte_end": 6308,
+          "quote": "Required separate scenarios, each with fresh J: two accepts; two cancels; accept then cancel; cancel then accept; empty resume; successful accept followed by ordinary restart and resume; successful cancel followed by ordinary restart and resume; and each of accept-before, accept-after, cancel-before, cancel-after crash/recovery. Ordinary restart occurs only after successful observations: normal shutdown, confirmed exit/EOF, start and confirmed startup, then resume. It is not an injected crash. All earlier non-crashing calls retain their final completion-count obligations across restart. The observed journal and UI must follow the rules above for every step, including no grant after Cancel and no cancellation after Commit. Planning the flow does not claim these scenarios ran.\r\n"
+        },
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-F7DB8CD5A9668EF4",
+          "byte_start": 4244,
+          "byte_end": 5519,
+          "quote": "The only injected within-call crashes are immediately before or after the missing durable append of accept or cancel. Each hook scenario begins with its own empty J. Before issuing the target call, record CallStart, send armHook(i,id,op,before|after) on Q and receive its exact matching acknowledgement, where op is accept or cancel. The one-shot hook applies only to that id/op while J is empty. Before emits C:HookHit(i,id,op,before) after the empty guard and blocks before the atomic append. After emits C:HookHit(i,id,op,after) after the command's append is durable and blocks before UI finalization or Complete. No work can pass either barrier until OS termination; the harness never releases it. Observe exactly one matching acknowledgement and HookHit within the original 10000ms from CallStart, then immediately terminate i and begin its existing exit deadline. These controls are never Complete. Missing, wrong, duplicate or late hook events fail. Before leaves J empty; after leaves exactly the command's Commit or Cancel record. Confirm exit/EOF, start and confirm a new process with the unchanged J, then invoke resume under the ordinary call rule. Hooks are disabled for every other call. Failed-test cleanup cannot erase failure or count as scenario coverage.\r\n"
+        },
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-A9833CF255BDF6C0",
+          "byte_start": 2667,
+          "byte_end": 4242,
+          "quote": "For an ordinary unhooked business call, record CallStart immediately before issue. For a hook call, record it once before armHook as specified below; the same clock includes arming, acknowledgement and issue and is never restarted. A non-crashing call must emit one matching completion and permit independent readUI/readJ observations within 10000ms of CallStart on the same harness clock. Observation reads occur after completion and before another call or lifecycle control, with UI/J unchanged throughout those reads. Verify the matching instance/id, reported versus actual UI, expected complete journal, completion count observed so far and deadline. Missing, duplicate, late or mismatched results fail and cannot be erased by a later crash. ObservationComplete follows all these call-local checks within that original deadline; it permits the next call/control but is provisional. Retain every issued call id and count completions through each instance's C EOF/drain. A non-crashing invocation must have exactly one completion in that final audit; a crash-injected invocation must have zero. A late duplicate after ObservationComplete still fails. The same EOF audit requires exactly one Ready with the correct instance/J, already observed by the startup deadline; missing, wrong or duplicate Ready fails even if detected after startup confirmation. A late Ready cannot repair a startup failure. Final scenario success requires exit confirmation and the final count audit, including the final normal shutdown/exit, with no added reward call or restart during teardown.\r\n"
+        },
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-9E135AFD8D79ED3C",
+          "byte_start": 792,
+          "byte_end": 1650,
+          "quote": "The business entry points are accept(R,id), cancel(R,id), and resume(R,id). Every call has a fresh id. The guard reads J. With empty J, accept appends Commit(R), cancel appends Cancel(R), and resume writes nothing. With nonempty J, no entry point writes: accept cannot override cancellation, cancel cannot reverse a grant, and resume only restores the decision. Finalization renders MapReady for [Commit(R)], MapCancelled for [Cancel(R)], and Idle for empty, then emits exactly one completion C:Complete(i,id,ui). Thus repeat accept after Commit stays MapReady, repeat cancel after Cancel stays MapCancelled, accept after Cancel stays MapCancelled without a grant, and cancel after Commit stays MapReady without a cancellation. No extra user action is required. Shutdown and force-termination are lifecycle controls and are not the business cancel command.\r\n"
+        },
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-3930A390340951B7",
+          "byte_start": 38,
+          "byte_end": 790,
+          "quote": "Each separate synthetic scenario receives a newly provisioned empty durable journal J and a fixed reward R. Scenarios never share J. Within a scenario, one process handles serial calls; processes never overlap, and J is never reset. The reward controller owns J and the volatile map UI. J has exactly three permitted states: empty, [Commit(R)], or [Cancel(R)]. From empty it can make one atomic durable append of Commit(R) or Cancel(R). Once nonempty it is immutable. Commit grants R exactly once and logically returns to the map. Cancel permanently declines R, grants nothing, and logically returns to the map. Rendering or restoring UI does not grant, cancel or logically return again. Storage succeeds except for the injected crash barriers below.\r\n"
+        }
+      ],
+      "finding_ids": []
+    },
+    {
+      "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+      "local_id": "51",
+      "decision": "represented",
+      "proposal_ids": [
+        "proposal:exclusive-resolution-v15-6"
+      ],
+      "reason": "Ordinary restart remains gated on successful observations and follows shutdown, confirmed exit/EOF, confirmed startup and resume, distinct from injected crashes.",
+      "basis": [
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-5B889D232D13901F",
+          "byte_start": 5521,
+          "byte_end": 6308,
+          "quote": "Required separate scenarios, each with fresh J: two accepts; two cancels; accept then cancel; cancel then accept; empty resume; successful accept followed by ordinary restart and resume; successful cancel followed by ordinary restart and resume; and each of accept-before, accept-after, cancel-before, cancel-after crash/recovery. Ordinary restart occurs only after successful observations: normal shutdown, confirmed exit/EOF, start and confirmed startup, then resume. It is not an injected crash. All earlier non-crashing calls retain their final completion-count obligations across restart. The observed journal and UI must follow the rules above for every step, including no grant after Cancel and no cancellation after Commit. Planning the flow does not claim these scenarios ran.\r\n"
+        }
+      ],
+      "finding_ids": []
+    },
+    {
+      "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+      "local_id": "52",
+      "decision": "represented",
+      "proposal_ids": [
+        "proposal:exclusive-resolution-v15-6",
+        "proposal:exclusive-resolution-v15-4"
+      ],
+      "reason": "Earlier non-crashing completion-count obligations explicitly survive restart and remain subject to retained EOF auditing.",
+      "basis": [
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-5B889D232D13901F",
+          "byte_start": 5521,
+          "byte_end": 6308,
+          "quote": "Required separate scenarios, each with fresh J: two accepts; two cancels; accept then cancel; cancel then accept; empty resume; successful accept followed by ordinary restart and resume; successful cancel followed by ordinary restart and resume; and each of accept-before, accept-after, cancel-before, cancel-after crash/recovery. Ordinary restart occurs only after successful observations: normal shutdown, confirmed exit/EOF, start and confirmed startup, then resume. It is not an injected crash. All earlier non-crashing calls retain their final completion-count obligations across restart. The observed journal and UI must follow the rules above for every step, including no grant after Cancel and no cancellation after Commit. Planning the flow does not claim these scenarios ran.\r\n"
+        },
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-A9833CF255BDF6C0",
+          "byte_start": 2667,
+          "byte_end": 4242,
+          "quote": "For an ordinary unhooked business call, record CallStart immediately before issue. For a hook call, record it once before armHook as specified below; the same clock includes arming, acknowledgement and issue and is never restarted. A non-crashing call must emit one matching completion and permit independent readUI/readJ observations within 10000ms of CallStart on the same harness clock. Observation reads occur after completion and before another call or lifecycle control, with UI/J unchanged throughout those reads. Verify the matching instance/id, reported versus actual UI, expected complete journal, completion count observed so far and deadline. Missing, duplicate, late or mismatched results fail and cannot be erased by a later crash. ObservationComplete follows all these call-local checks within that original deadline; it permits the next call/control but is provisional. Retain every issued call id and count completions through each instance's C EOF/drain. A non-crashing invocation must have exactly one completion in that final audit; a crash-injected invocation must have zero. A late duplicate after ObservationComplete still fails. The same EOF audit requires exactly one Ready with the correct instance/J, already observed by the startup deadline; missing, wrong or duplicate Ready fails even if detected after startup confirmation. A late Ready cannot repair a startup failure. Final scenario success requires exit confirmation and the final count audit, including the final normal shutdown/exit, with no added reward call or restart during teardown.\r\n"
+        }
+      ],
+      "finding_ids": []
+    },
+    {
+      "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+      "local_id": "53",
+      "decision": "represented",
+      "proposal_ids": [
+        "proposal:exclusive-resolution-v15-6",
+        "proposal:exclusive-resolution-v15-2",
+        "proposal:exclusive-resolution-v15-1"
+      ],
+      "reason": "Every scenario step must follow the preceding journal/UI rules, including permanent cancellation and irreversible grants.",
+      "basis": [
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-5B889D232D13901F",
+          "byte_start": 5521,
+          "byte_end": 6308,
+          "quote": "Required separate scenarios, each with fresh J: two accepts; two cancels; accept then cancel; cancel then accept; empty resume; successful accept followed by ordinary restart and resume; successful cancel followed by ordinary restart and resume; and each of accept-before, accept-after, cancel-before, cancel-after crash/recovery. Ordinary restart occurs only after successful observations: normal shutdown, confirmed exit/EOF, start and confirmed startup, then resume. It is not an injected crash. All earlier non-crashing calls retain their final completion-count obligations across restart. The observed journal and UI must follow the rules above for every step, including no grant after Cancel and no cancellation after Commit. Planning the flow does not claim these scenarios ran.\r\n"
+        },
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-9E135AFD8D79ED3C",
+          "byte_start": 792,
+          "byte_end": 1650,
+          "quote": "The business entry points are accept(R,id), cancel(R,id), and resume(R,id). Every call has a fresh id. The guard reads J. With empty J, accept appends Commit(R), cancel appends Cancel(R), and resume writes nothing. With nonempty J, no entry point writes: accept cannot override cancellation, cancel cannot reverse a grant, and resume only restores the decision. Finalization renders MapReady for [Commit(R)], MapCancelled for [Cancel(R)], and Idle for empty, then emits exactly one completion C:Complete(i,id,ui). Thus repeat accept after Commit stays MapReady, repeat cancel after Cancel stays MapCancelled, accept after Cancel stays MapCancelled without a grant, and cancel after Commit stays MapReady without a cancellation. No extra user action is required. Shutdown and force-termination are lifecycle controls and are not the business cancel command.\r\n"
+        },
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-3930A390340951B7",
+          "byte_start": 38,
+          "byte_end": 790,
+          "quote": "Each separate synthetic scenario receives a newly provisioned empty durable journal J and a fixed reward R. Scenarios never share J. Within a scenario, one process handles serial calls; processes never overlap, and J is never reset. The reward controller owns J and the volatile map UI. J has exactly three permitted states: empty, [Commit(R)], or [Cancel(R)]. From empty it can make one atomic durable append of Commit(R) or Cancel(R). Once nonempty it is immutable. Commit grants R exactly once and logically returns to the map. Cancel permanently declines R, grants nothing, and logically returns to the map. Rendering or restoring UI does not grant, cancel or logically return again. Storage succeeds except for the injected crash barriers below.\r\n"
+        }
+      ],
+      "finding_ids": []
+    },
+    {
+      "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+      "local_id": "54",
+      "decision": "represented",
+      "proposal_ids": [
+        "proposal:exclusive-resolution-v15-6"
+      ],
+      "reason": "Statement and acceptance intent explicitly prohibit treating flow planning as scenario execution.",
+      "basis": [
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-5B889D232D13901F",
+          "byte_start": 5521,
+          "byte_end": 6308,
+          "quote": "Required separate scenarios, each with fresh J: two accepts; two cancels; accept then cancel; cancel then accept; empty resume; successful accept followed by ordinary restart and resume; successful cancel followed by ordinary restart and resume; and each of accept-before, accept-after, cancel-before, cancel-after crash/recovery. Ordinary restart occurs only after successful observations: normal shutdown, confirmed exit/EOF, start and confirmed startup, then resume. It is not an injected crash. All earlier non-crashing calls retain their final completion-count obligations across restart. The observed journal and UI must follow the rules above for every step, including no grant after Cancel and no cancellation after Commit. Planning the flow does not claim these scenarios ran.\r\n"
+        }
+      ],
+      "finding_ids": []
+    },
+    {
+      "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+      "local_id": "55",
+      "decision": "represented",
+      "proposal_ids": [
+        "proposal:exclusive-resolution-v15-7"
+      ],
+      "reason": "Synthetic adapters are explicitly required implementation work, without any assertion that executable endpoints already exist.",
+      "basis": [
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-83C0467B0FFB419F",
+          "byte_start": 6310,
+          "byte_end": 7059,
+          "quote": "These are required synthetic adapter interfaces to implement, not claims of existing executable endpoints. Protocol-design responsibility belongs to the reward-controller implementer. The downstream implementation plan must choose and document one internally consistent versioned launch/message profile, including the hook acknowledgement representation and return path, used by both controller and harness. No particular Q/C wire encoding or executable argument spelling is prescribed. Every permitted profile must preserve the event identities, command distinctions, ordering, barrier blocking, independent observations, retained completion counts, deadlines and all scenarios above. A plan leaving its selected profile unresolved is incomplete.\r\n"
+        }
+      ],
+      "finding_ids": []
+    },
+    {
+      "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+      "local_id": "56",
+      "decision": "represented",
+      "proposal_ids": [
+        "proposal:exclusive-resolution-v15-7"
+      ],
+      "reason": "The reward-controller implementer owns the explicit downstream handoff to select and document one shared versioned profile, including hook acknowledgement representation and return path.",
+      "basis": [
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-83C0467B0FFB419F",
+          "byte_start": 6310,
+          "byte_end": 7059,
+          "quote": "These are required synthetic adapter interfaces to implement, not claims of existing executable endpoints. Protocol-design responsibility belongs to the reward-controller implementer. The downstream implementation plan must choose and document one internally consistent versioned launch/message profile, including the hook acknowledgement representation and return path, used by both controller and harness. No particular Q/C wire encoding or executable argument spelling is prescribed. Every permitted profile must preserve the event identities, command distinctions, ordering, barrier blocking, independent observations, retained completion counts, deadlines and all scenarios above. A plan leaving its selected profile unresolved is incomplete.\r\n"
+        }
+      ],
+      "finding_ids": []
+    },
+    {
+      "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+      "local_id": "57",
+      "decision": "represented",
+      "proposal_ids": [
+        "proposal:exclusive-resolution-v15-7"
+      ],
+      "reason": "Encoding and argument spelling remain permitted design choices, while the downstream plan must resolve its selected profile. This bounded delegation does not leave the semantic proposal incomplete.",
+      "basis": [
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-83C0467B0FFB419F",
+          "byte_start": 6310,
+          "byte_end": 7059,
+          "quote": "These are required synthetic adapter interfaces to implement, not claims of existing executable endpoints. Protocol-design responsibility belongs to the reward-controller implementer. The downstream implementation plan must choose and document one internally consistent versioned launch/message profile, including the hook acknowledgement representation and return path, used by both controller and harness. No particular Q/C wire encoding or executable argument spelling is prescribed. Every permitted profile must preserve the event identities, command distinctions, ordering, barrier blocking, independent observations, retained completion counts, deadlines and all scenarios above. A plan leaving its selected profile unresolved is incomplete.\r\n"
+        }
+      ],
+      "finding_ids": []
+    },
+    {
+      "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+      "local_id": "58",
+      "decision": "represented",
+      "proposal_ids": [
+        "proposal:exclusive-resolution-v15-7"
+      ],
+      "reason": "Every permitted profile must preserve all listed identities, distinctions, ordering, barriers, independent observations, retained counts, deadlines and scenarios.",
+      "basis": [
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+          "block_id": "SB-83C0467B0FFB419F",
+          "byte_start": 6310,
+          "byte_end": 7059,
+          "quote": "These are required synthetic adapter interfaces to implement, not claims of existing executable endpoints. Protocol-design responsibility belongs to the reward-controller implementer. The downstream implementation plan must choose and document one internally consistent versioned launch/message profile, including the hook acknowledgement representation and return path, used by both controller and harness. No particular Q/C wire encoding or executable argument spelling is prescribed. Every permitted profile must preserve the event identities, command distinctions, ordering, barrier blocking, independent observations, retained completion counts, deadlines and all scenarios above. A plan leaving its selected profile unresolved is incomplete.\r\n"
+        }
+      ],
+      "finding_ids": []
+    }
+  ],
+  "findings": []
+}
