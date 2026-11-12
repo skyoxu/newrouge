@@ -1,0 +1,37 @@
+{
+  "status": "passed",
+  "head": "92c5532536b77d38730c2b59e9fe5e06b4662445",
+  "tests_run": 4,
+  "passed_tests": [
+    "test_b_route_commit_recovery.WindowsRecoveryTests.test_fixed_process_crash_then_public_recover_completes_without_replaying_after",
+    "test_b_route_compensation.WindowsCompensationTests.test_actual_windows_origins_sharing_refusal_and_release_resume",
+    "test_b_route_compensation.WindowsCompensationTests.test_actual_windows_pending_delete_refusal_retains_block_until_cleanup",
+    "test_b_route_compensation.WindowsCompensationTests.test_process_exit_and_restart_derive_resolution_from_retained_formal_evidence"
+  ],
+  "failures": [],
+  "errors": [],
+  "skipped": [],
+  "test_timings": [
+    {
+      "test": "test_b_route_commit_recovery.WindowsRecoveryTests.test_fixed_process_crash_then_public_recover_completes_without_replaying_after",
+      "elapsed_seconds": 20.203000000000003
+    },
+    {
+      "test": "test_b_route_compensation.WindowsCompensationTests.test_actual_windows_origins_sharing_refusal_and_release_resume",
+      "elapsed_seconds": 86.094
+    },
+    {
+      "test": "test_b_route_compensation.WindowsCompensationTests.test_actual_windows_pending_delete_refusal_retains_block_until_cleanup",
+      "elapsed_seconds": 93.86000000000001
+    },
+    {
+      "test": "test_b_route_compensation.WindowsCompensationTests.test_process_exit_and_restart_derive_resolution_from_retained_formal_evidence",
+      "elapsed_seconds": 87.34300000000002
+    }
+  ],
+  "elapsed_seconds": 287.578,
+  "changed_source_files": [],
+  "new_model_calls": 0,
+  "upstream_admission_and_review": "explicit synthetic fixtures",
+  "real_model_full_chain_qualification": false
+}

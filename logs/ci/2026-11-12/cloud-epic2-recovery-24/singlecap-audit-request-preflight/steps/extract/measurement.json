@@ -1,0 +1,12 @@
+{
+  "request_sha256": "sha256:5f98cfe29c960d31dd2c47faae3c4f16f34e043935944cdfe2fc7c0929ab4132",
+  "request_chars": 45113,
+  "request_bytes": 45113,
+  "input_token_estimate": 45113,
+  "token_counts": {},
+  "token_counter": "utf8_byte_upper_bound",
+  "max_bytes": 1048576,
+  "max_input_tokens": 96000,
+  "reserved_continuation_tokens": 0,
+  "truncation_allowed": false
+}

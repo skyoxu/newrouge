@@ -1,0 +1,66 @@
+{
+  "schema_version": "newrouge.b-route-sources-prepared.v1",
+  "run_id": "cloud-singlecap-source-20261112",
+  "scope_id": "controlled-exclusive-resolution-v15",
+  "attempt_id": "prepare-01",
+  "source_set": "logs/ci/2026-11-12/cloud-epic2-recovery-24/single-capability-input/source-set.json",
+  "declaration": null,
+  "effective_patterns": [
+    "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md"
+  ],
+  "retired_sources": [],
+  "source_revision": "source-set:45704214c4b741ba6aebe705",
+  "source_manifest_sha256": "sha256:45704214c4b741ba6aebe7052b59de3c26114cc16e8d467b3fab60d33f3f7628",
+  "source_registration": {
+    "schema_version": "chapter3.source-set.v1",
+    "active_patterns": [
+      "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md"
+    ],
+    "active_sources": [
+      "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md"
+    ],
+    "retirements": []
+  },
+  "declaration_content": {
+    "schema_version": "newrouge.b-route-sources-declaration.v1",
+    "additions": [],
+    "retirements": []
+  },
+  "previous_ledger": null,
+  "prior_sources": [
+    "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md"
+  ],
+  "observations": [
+    {
+      "path": "logs/ci/2026-11-12/cloud-epic2-recovery-24/single-capability-input/source-set.json",
+      "raw_digest": "sha256:499d49af5e6273631d38bd6c51f1a4329fe1f4a8b28b2c4005056a8082dd37c7",
+      "archive": "raw/000001.bin",
+      "byte_count": 283
+    },
+    {
+      "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+      "raw_digest": "sha256:46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a",
+      "archive": "raw/000002.bin",
+      "byte_count": 7059
+    }
+  ],
+  "glob_observations": [
+    {
+      "patterns": [
+        "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md"
+      ],
+      "result": {
+        "members": [
+          "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md"
+        ],
+        "missing": []
+      }
+    }
+  ],
+  "limits": {
+    "max_blocks": 24,
+    "max_chars": 24000,
+    "transport_max_bytes": 1048576,
+    "transport_max_input_tokens": 96000
+  }
+}

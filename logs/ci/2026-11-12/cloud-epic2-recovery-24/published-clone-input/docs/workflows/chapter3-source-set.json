@@ -1,0 +1,10 @@
+{
+  "schema_version": "chapter3.source-set.v1",
+  "active_patterns": [
+    "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md"
+  ],
+  "active_sources": [
+    "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md"
+  ],
+  "retirements": []
+}

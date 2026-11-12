@@ -1,0 +1,30 @@
+{
+  "schema_version": "newrouge.b-route-sources-report.v1",
+  "accounting_complete": true,
+  "satisfied": false,
+  "independent_audit": false,
+  "formal_adoption": false,
+  "diagnostics": [],
+  "unresolved": [],
+  "model_dispatch_count": 0,
+  "budget_is_billing": false,
+  "billed_cost": "unknown",
+  "reuse_reason": "not_requested",
+  "run_id": "cloud-singlecap-source-20261112",
+  "scope_id": "controlled-exclusive-resolution-v15",
+  "stage": "account",
+  "attempt_id": "account-02",
+  "event_key": [
+    "cloud-singlecap-source-20261112",
+    "controlled-exclusive-resolution-v15",
+    "account",
+    "account-02"
+  ],
+  "output_ref": "logs/ci/2026-11-12/b-route-sources/cloud-singlecap-source-20261112/account-02/account",
+  "source_count": 1,
+  "source_block_count": 8,
+  "proposal_count": 7,
+  "termination_reason": "accounted",
+  "active_elapsed_seconds": 0.09884674899967649,
+  "exit_code": 0
+}

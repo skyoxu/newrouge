@@ -1,0 +1,38 @@
+{
+  "current_accounted_ref": "logs/ci/2026-11-12/b-route-sources/cloud-singlecap-source-20261112/account-02/account/report.json",
+  "complete_files": 1,
+  "source_blocks": 8,
+  "new_native_input": "one complete explicit capability context, not a reclassified m4",
+  "measurements": {
+    "extract": {
+      "request_sha256": "sha256:5f98cfe29c960d31dd2c47faae3c4f16f34e043935944cdfe2fc7c0929ab4132",
+      "request_chars": 45113,
+      "request_bytes": 45113,
+      "input_token_estimate": 45113,
+      "token_counts": {},
+      "token_counter": "utf8_byte_upper_bound",
+      "max_bytes": 1048576,
+      "max_input_tokens": 96000,
+      "reserved_continuation_tokens": 0,
+      "truncation_allowed": false
+    },
+    "compare-lower": {
+      "request_sha256": "sha256:19cb34a13bd5d18f35f73ece13d85465ad99a6979508f5f154b8f17852843410",
+      "request_chars": 67821,
+      "request_bytes": 67821,
+      "input_token_estimate": 67821,
+      "token_counts": {},
+      "token_counter": "utf8_byte_upper_bound",
+      "max_bytes": 1048576,
+      "max_input_tokens": 96000,
+      "reserved_continuation_tokens": 0,
+      "truncation_allowed": false
+    }
+  },
+  "compare_limit": "lower bound only; actual extracted result must be measured before comparison",
+  "minimum_fresh_logical_reviews": 2,
+  "allowance_reserved": false,
+  "new_model_calls": 0,
+  "no_execution_or_result_fabricated": true,
+  "dispatch_decision": "Do not spend a Linux-bound audit as if it were a current Windows audit; complete on the intended current native host with legitimate subscription authentication"
+}

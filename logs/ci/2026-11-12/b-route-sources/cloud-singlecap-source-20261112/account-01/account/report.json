@@ -1,0 +1,36 @@
+{
+  "schema_version": "newrouge.b-route-sources-report.v1",
+  "accounting_complete": false,
+  "satisfied": false,
+  "independent_audit": false,
+  "formal_adoption": false,
+  "diagnostics": [
+    {
+      "reason_code": "semantic_error",
+      "stage": "content",
+      "entity_id": "logs/ci/2026-11-12/cloud-epic2-recovery-24/single-capability-input/candidate.from-original-proposals.json",
+      "expected": "exact prepared reference and raw identity",
+      "actual": null,
+      "resume_ref": "/workspace/newrouge/logs/ci/2026-11-12/b-route-sources/cloud-singlecap-source-20261112/account-01/account/report.json"
+    }
+  ],
+  "unresolved": [],
+  "model_dispatch_count": 0,
+  "budget_is_billing": false,
+  "billed_cost": "unknown",
+  "reuse_reason": "not_requested",
+  "run_id": "cloud-singlecap-source-20261112",
+  "scope_id": "controlled-exclusive-resolution-v15",
+  "stage": "account",
+  "attempt_id": "account-01",
+  "event_key": [
+    "cloud-singlecap-source-20261112",
+    "controlled-exclusive-resolution-v15",
+    "account",
+    "account-01"
+  ],
+  "output_ref": "logs/ci/2026-11-12/b-route-sources/cloud-singlecap-source-20261112/account-01/account",
+  "termination_reason": "blocked",
+  "active_elapsed_seconds": 0.07517568799994478,
+  "exit_code": 1
+}

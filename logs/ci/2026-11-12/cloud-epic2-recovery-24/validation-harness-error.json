@@ -1,0 +1,9 @@
+{
+  "stage": "local read-only delivery validation",
+  "attempt": 1,
+  "result": "AssertionError comparing raw workflow worktree bytes with the tested Git blob",
+  "cause": "Repository .gitattributes declares CRLF YAML worktrees and LF Git text blobs",
+  "correction": "Normalize only the workflow YAML comparison; retain exact Python and domain-artifact byte checks",
+  "business_transition_or_model_call": false,
+  "windows_run_repeated": false
+}

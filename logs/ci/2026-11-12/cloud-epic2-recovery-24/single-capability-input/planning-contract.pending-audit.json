@@ -1,0 +1,32 @@
+{
+  "schema_version": "newrouge.b-route-planning-contract.v1",
+  "input_stage": "3b",
+  "audit_ref": "logs/ci/2026-11-12/b-route-source-audit/cloud-singlecap-audit-20261112/audit-01/report.json",
+  "scope": {
+    "scope_id": "controlled-exclusive-resolution-v15",
+    "kind": "capability",
+    "ids": [
+      "controlled-exclusive-resolution-v15"
+    ]
+  },
+  "constraints": [
+    {
+      "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+      "format": "text"
+    }
+  ],
+  "contexts": [
+    {
+      "kind": "capability",
+      "path": "logs/ci/2026-11-12/cloud-epic2-recovery-24/single-capability-input/capability.json",
+      "required": true,
+      "format": "json",
+      "absence": null
+    }
+  ],
+  "limits": {
+    "max_bytes": 1048576,
+    "max_input_tokens": 96000,
+    "reserved_tokens": 2000
+  }
+}

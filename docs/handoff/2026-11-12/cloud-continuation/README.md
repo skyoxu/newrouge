@@ -1,5 +1,17 @@
 # NewRogue cloud continuation checkpoint
 
+## Windows controls and independent single-Capability continuation24
+
+Read `logs/ci/2026-11-12/cloud-epic2-recovery-24/REPORT.md` first. A non-Aliyun target-Windows route is now actually exercised: existing workflow, narrow selector commit92c5532536b77d38730c2b59e9fe5e06b4662445, one Actions run43211116759/attempt1,4 tests passed/no skips/287.578s/zero models. The broad suite was skipped. Windows process/sharing/cleanup behavior is real; upstream/native/review fixtures remain synthetic. This contributes to original2.8 AC5 and partially2.10 AC6, not whole-chain acceptance. Decoded full job output/native summary/artifact metadata are retained. Local ZIP materialization failed; do not claim its hash was locally verified or rerun the successful job.
+
+A genuine9-file formal/non-log-source clone without historical logs now reads successfully through the actual public entry, preserving the original receipt and plan revision2. A separate changed-plan copy is rejected with exact digest/resume diagnostics. All9 raw inputs are preserved under continuation24/published-clone-input, so this published-read case is independently restorable without the old external dataset or synthetic admission seams. Original target unchanged, no apply/recover/model replay.
+
+For2.9, a new explicit complete single-Capability context over the unchanged genuine controlled source is prepared. Actual current3A prepare/account succeed with1 file/8 blocks/7 proposals; original normalized block identities/business proposals are retained. Preserve account01's caller typed-reference error; account02 corrects only prepared_ref. No m4 relabeling, registry write or native run occurred. The pending-audit contract is not a formal prepared input or approval.
+
+Old3A proof is not current: Python/packages/transitive tool identities differ and complete old raw audit chain is not present. Fresh current extraction plus comparison is the existing normal route, minimum2 logical calls on the intended authenticated native host; none reserved/dispatched. Exact extraction/lower comparison preflight fits45113/67821 UTF8 upper-bound tokens at unchanged96000/1MiB, but the genuine extraction must be included before final comparison measurement. A Linux audit is not silently a current Windows audit. GitHub's4-test job intentionally carries no model credentials. Use official subscription authentication on the intended native host, never copy Cloud auth or use API keys. Exact commands and remaining boundary are in REPORT.md; no extra fiscal issuer/data-collection/governance prerequisite is introduced.
+
+Current published compensation/proof policy580ab96f.../84 pins and old2+additional1 occupancy remain unchanged. Previous56 focused checks remain applicable; the only added executable is the fixed CI selector. Current Linux-only limitation below is historical: Windows deterministic testing now works, while actual current source-audit/native generation and full2.9/2.10 acceptance remain pending.
+
 ## Committed continuation23 and real entrypoint observations
 
 Read `logs/ci/2026-11-12/cloud-epic2-recovery-23/REPORT.md` first. The reviewed171 source/evidence paths from continuations20–22 were committed/pushed as76d3282359a931b2cd249f8dd41250d36c2bbaff on the same non-main branch; remote SHA was verified. Raw and decoded-protocol credential scans found no matches; the four initial EOL-status paths were excluded and preserved. Older statements about uncommitted changes below are historical checkpoints.

@@ -1,0 +1,38 @@
+{
+  "docs/planning/b-route/catalog.v1.json": {
+    "bytes": 34802,
+    "sha256": "4899a37eee6abe94af79d81f699c619ee682cb0bc04fb83197432b21b9dd595b"
+  },
+  "docs/planning/b-route/commits/NativeV15Origin03.json": {
+    "bytes": 33622,
+    "sha256": "8ec08628ff77980b92ead4de5e076fe4f4b1bc1ed4b2922fa7f2d84b5744535f"
+  },
+  "docs/planning/b-route/commits/NativeV15Origin03Compensation01.json": {
+    "bytes": 70691,
+    "sha256": "1ff4cb42808a535a491fbfcf200c3da3ab0706c92d25df531f5789ebaf2ba21f"
+  },
+  "docs/planning/b-route/plans/PLAN-bed480ce3e404b2cbaf5514d80a7f941/1.json": {
+    "bytes": 99279,
+    "sha256": "965faffefde5731b92e581d30be7ae8854db73844ec5411dd337e0b563e54f20"
+  },
+  "docs/planning/b-route/plans/PLAN-bed480ce3e404b2cbaf5514d80a7f941/2.json": {
+    "bytes": 102012,
+    "sha256": "18c638723cd9742601e2c34b0c73174b0069f4a152099be02c8fe2adca06cb91"
+  },
+  "docs/planning/b-route/policy.v1.json": {
+    "bytes": 265,
+    "sha256": "cc07d8eef84b3285e0ccda33b1f5ae915d9f74dba3c1823f47b988315ae6f7f0"
+  },
+  "docs/planning/b-route/task-origins.v1.json": {
+    "bytes": 146,
+    "sha256": "050a156a25f0fa55585057f06dafbef7419789bfb60ade5215028677e119925e"
+  },
+  "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md": {
+    "bytes": 7044,
+    "sha256": "7e5e1fe8aeb5937c70caa16aea2a9e1784a429c70c30a4f7f4d66601f1880061"
+  },
+  "docs/workflows/chapter3-source-set.json": {
+    "bytes": 283,
+    "sha256": "499d49af5e6273631d38bd6c51f1a4329fe1f4a8b28b2c4005056a8082dd37c7"
+  }
+}

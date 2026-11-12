@@ -1,0 +1,8 @@
+Traceback (most recent call last):
+  File "/workspace/newrouge/logs/ci/2026-11-12/cloud-epic2-recovery-24/prepare_single_capability_material.py", line 61, in <module>
+    account=run('account','account-01','--prepared',prepared_ref,'--candidate',candidate_ref)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/newrouge/logs/ci/2026-11-12/cloud-epic2-recovery-24/prepare_single_capability_material.py", line 45, in run
+    assert result.returncode==0,value
+           ^^^^^^^^^^^^^^^^^^^^
+AssertionError: {'schema_version': 'newrouge.b-route-sources-report.v1', 'accounting_complete': False, 'satisfied': False, 'independent_audit': False, 'formal_adoption': False, 'diagnostics': [{'reason_code': 'semantic_error', 'stage': 'content', 'entity_id': 'logs/ci/2026-11-12/cloud-epic2-recovery-24/single-capability-input/candidate.from-original-proposals.json', 'expected': 'exact prepared reference and raw identity', 'actual': None, 'resume_ref': '/workspace/newrouge/logs/ci/2026-11-12/b-route-sources/cloud-singlecap-source-20261112/account-01/account/report.json'}], 'unresolved': [], 'model_dispatch_count': 0, 'budget_is_billing': False, 'billed_cost': 'unknown', 'reuse_reason': 'not_requested', 'run_id': 'cloud-singlecap-source-20261112', 'scope_id': 'controlled-exclusive-resolution-v15', 'stage': 'account', 'attempt_id': 'account-01', 'event_key': ['cloud-singlecap-source-20261112', 'controlled-exclusive-resolution-v15', 'account', 'account-01'], 'output_ref': 'logs/ci/2026-11-12/b-route-sources/cloud-singlecap-source-20261112/account-01/account', 'termination_reason': 'blocked', 'active_elapsed_seconds': 0.07517568799994478, 'exit_code': 1}

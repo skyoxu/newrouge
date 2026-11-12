@@ -1,0 +1,29 @@
+{
+  "source_policy_unchanged": "sha256:580ab96f584efecb61e870c1539402d041fcbe3369a293204c6f97f5710da05e",
+  "source_pins": 84,
+  "original34_records_unchanged": true,
+  "original10_publication_artifacts_unchanged": true,
+  "old2_plus_additional1_occupied": true,
+  "windows_run": 43211116759,
+  "windows_head": "92c5532536b77d38730c2b59e9fe5e06b4662445",
+  "windows_actual_passed": 4,
+  "windows_skipped": 0,
+  "windows_fixture_upstream": "synthetic",
+  "workflow_and_helper_equal_tested_commit": true,
+  "genuine_clone_exit_codes": [
+    0,
+    2
+  ],
+  "genuine_clone_inputs": 9,
+  "fake_native_or_provider_seams": false,
+  "current_source_account_complete": true,
+  "current_source_blocks": 8,
+  "current_proposals": 7,
+  "original_account_reference_error_retained": true,
+  "current_independent_audit_complete": false,
+  "formal3b_preparation_or_completed_item_minted": false,
+  "new_model_calls": 0,
+  "local_zip_hash_verified": false,
+  "broad_suite_executed": false,
+  "whole_Epic_acceptance": false
+}

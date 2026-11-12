@@ -1,0 +1,33 @@
+{
+  "run_id": 43211116759,
+  "job_id": 131158674714,
+  "head_sha": "92c5532536b77d38730c2b59e9fe5e06b4662445",
+  "url": "https://github.com/skyoxu/newrouge/actions/runs/43211116759",
+  "conclusion": "success",
+  "attempt": 1,
+  "os": "Microsoft Windows Server 2025 10.0.26100",
+  "python": "3.12.10",
+  "test_scope": "four existing Windows controls, synthetic upstream, zero model calls",
+  "broad_suite_step": "skipped",
+  "artifact": {
+    "id": 13941297656,
+    "name": "b-route-deterministic-43211116759-1",
+    "size_in_bytes": 89238,
+    "url": "https://api.github.com/repos/skyoxu/newrouge/actions/artifacts/13941297656",
+    "archive_download_url": "https://api.github.com/repos/skyoxu/newrouge/actions/artifacts/13941297656/zip",
+    "expired": false,
+    "created_at": "2026-11-12T11:45:32Z",
+    "expires_at": "2027-02-10T11:40:08Z",
+    "updated_at": "2026-11-12T11:45:32Z",
+    "digest": "sha256:ba244098fb217e84f0757732c08a0dbc68b8fa5155cb7d340c844c3acc804bad",
+    "workflow_run": {
+      "id": 43211116759,
+      "repository_id": 1142482774,
+      "head_repository_id": 1142482774,
+      "head_branch": "build/cloud-epic2-recovery-20261111",
+      "head_sha": "92c5532536b77d38730c2b59e9fe5e06b4662445"
+    }
+  },
+  "decoded_job_log_sha256_source": "GitHub connector fetched decoded complete job log; raw bytes not attested",
+  "non_fatal_checkout_warning": "GIT_CONFIG_GLOBAL=NUL prevented safe-directory config; checkout and exact-SHA assertion still succeeded"
+}

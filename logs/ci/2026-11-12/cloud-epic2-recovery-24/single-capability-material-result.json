@@ -1,0 +1,37 @@
+{
+  "command": [
+    "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+    "-B",
+    "/workspace/newrouge/scripts/python/dev_cli.py",
+    "b-route-sources",
+    "--root",
+    "/workspace/newrouge",
+    "--stage",
+    "account",
+    "--run-id",
+    "cloud-singlecap-source-20261112",
+    "--scope-id",
+    "controlled-exclusive-resolution-v15",
+    "--attempt-id",
+    "account-02",
+    "--prepared",
+    "logs/ci/2026-11-12/b-route-sources/cloud-singlecap-source-20261112/prepare-01/prepare/prepared.json",
+    "--candidate",
+    "logs/ci/2026-11-12/cloud-epic2-recovery-24/single-capability-input/candidate.with-current-prepared-ref.json"
+  ],
+  "exit_code": 0,
+  "elapsed_seconds": 0.1878778020000027,
+  "prepared_ref": {
+    "path": "logs/ci/2026-11-12/b-route-sources/cloud-singlecap-source-20261112/prepare-01/prepare/prepared.json",
+    "raw_digest": "sha256:f82cccbb4b0d38e16e014b3975206d286bf942e6ecb1c7ef5084342df12c6110"
+  },
+  "accounted_ref": "logs/ci/2026-11-12/b-route-sources/cloud-singlecap-source-20261112/account-02/account/report.json",
+  "accounting_complete": true,
+  "original_failed_attempt_retained": true,
+  "correction": "typed prepared_ref only; original business proposals unchanged",
+  "new_model_calls": 0,
+  "registry_written": false,
+  "native_run_created": false,
+  "formal3b_preparation_complete": false,
+  "current_independent_audit_complete": false
+}

@@ -1,0 +1,854 @@
+{
+  "schema_version": "newrouge.b-route-catalog.v1",
+  "catalog_id": "catalog",
+  "revision": 2,
+  "policy_ref": {
+    "path": "docs/planning/b-route/policy.v1.json",
+    "schema_version": "newrouge.b-route-policy.v1",
+    "entity_id": "policy",
+    "revision": 1,
+    "digest": "sha256:cc07d8eef84b3285e0ccda33b1f5ae915d9f74dba3c1823f47b988315ae6f7f0",
+    "verification_mode": "raw",
+    "codec_version": null
+  },
+  "origins_ref": {
+    "path": "docs/planning/b-route/task-origins.v1.json",
+    "schema_version": "newrouge.b-route-origins.v1",
+    "entity_id": "task-origins",
+    "revision": 1,
+    "digest": "sha256:050a156a25f0fa55585057f06dafbef7419789bfb60ade5215028677e119925e",
+    "verification_mode": "raw",
+    "codec_version": null
+  },
+  "scope_heads": [
+    {
+      "scope_id": "command:141f3839991b437b5679f0d5cbe1aed8d532fb5265432c63f644bab4b5dc54df",
+      "plan_refs": [
+        {
+          "path": "docs/planning/b-route/plans/PLAN-bed480ce3e404b2cbaf5514d80a7f941/2.json",
+          "schema_version": "newrouge.b-route-plan.v1",
+          "entity_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+          "revision": 2,
+          "digest": "sha256:18c638723cd9742601e2c34b0c73174b0069f4a152099be02c8fe2adca06cb91",
+          "verification_mode": "raw",
+          "codec_version": null
+        }
+      ],
+      "binding_refs": [],
+      "receipt_ref": {
+        "path": "docs/planning/b-route/commits/NativeV15Origin03Compensation01.json",
+        "schema_version": "newrouge.b-route-commit.v1",
+        "entity_id": "NativeV15Origin03Compensation01",
+        "revision": 1,
+        "digest": "sha256:1ff4cb42808a535a491fbfcf200c3da3ab0706c92d25df531f5789ebaf2ba21f",
+        "verification_mode": "raw",
+        "codec_version": null
+      }
+    },
+    {
+      "scope_id": "command:2374d91794b79f4fb4ec9587d2cf00aecc4f9953fab3ed1dd12ab147a0b721f9",
+      "plan_refs": [
+        {
+          "path": "docs/planning/b-route/plans/PLAN-bed480ce3e404b2cbaf5514d80a7f941/2.json",
+          "schema_version": "newrouge.b-route-plan.v1",
+          "entity_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+          "revision": 2,
+          "digest": "sha256:18c638723cd9742601e2c34b0c73174b0069f4a152099be02c8fe2adca06cb91",
+          "verification_mode": "raw",
+          "codec_version": null
+        }
+      ],
+      "binding_refs": [],
+      "receipt_ref": {
+        "path": "docs/planning/b-route/commits/NativeV15Origin03Compensation01.json",
+        "schema_version": "newrouge.b-route-commit.v1",
+        "entity_id": "NativeV15Origin03Compensation01",
+        "revision": 1,
+        "digest": "sha256:1ff4cb42808a535a491fbfcf200c3da3ab0706c92d25df531f5789ebaf2ba21f",
+        "verification_mode": "raw",
+        "codec_version": null
+      }
+    },
+    {
+      "scope_id": "command:2beeddda1095565e2324f9383307d6ee9a029ca5ca3ab955be4fdf7f3fd5d761",
+      "plan_refs": [
+        {
+          "path": "docs/planning/b-route/plans/PLAN-bed480ce3e404b2cbaf5514d80a7f941/2.json",
+          "schema_version": "newrouge.b-route-plan.v1",
+          "entity_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+          "revision": 2,
+          "digest": "sha256:18c638723cd9742601e2c34b0c73174b0069f4a152099be02c8fe2adca06cb91",
+          "verification_mode": "raw",
+          "codec_version": null
+        }
+      ],
+      "binding_refs": [],
+      "receipt_ref": {
+        "path": "docs/planning/b-route/commits/NativeV15Origin03Compensation01.json",
+        "schema_version": "newrouge.b-route-commit.v1",
+        "entity_id": "NativeV15Origin03Compensation01",
+        "revision": 1,
+        "digest": "sha256:1ff4cb42808a535a491fbfcf200c3da3ab0706c92d25df531f5789ebaf2ba21f",
+        "verification_mode": "raw",
+        "codec_version": null
+      }
+    },
+    {
+      "scope_id": "command:a83a31320d921b888a48fa5edd0b4b5a29984de6e96bf7b8ac7d29ba06caf616",
+      "plan_refs": [
+        {
+          "path": "docs/planning/b-route/plans/PLAN-bed480ce3e404b2cbaf5514d80a7f941/2.json",
+          "schema_version": "newrouge.b-route-plan.v1",
+          "entity_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+          "revision": 2,
+          "digest": "sha256:18c638723cd9742601e2c34b0c73174b0069f4a152099be02c8fe2adca06cb91",
+          "verification_mode": "raw",
+          "codec_version": null
+        }
+      ],
+      "binding_refs": [],
+      "receipt_ref": {
+        "path": "docs/planning/b-route/commits/NativeV15Origin03Compensation01.json",
+        "schema_version": "newrouge.b-route-commit.v1",
+        "entity_id": "NativeV15Origin03Compensation01",
+        "revision": 1,
+        "digest": "sha256:1ff4cb42808a535a491fbfcf200c3da3ab0706c92d25df531f5789ebaf2ba21f",
+        "verification_mode": "raw",
+        "codec_version": null
+      }
+    },
+    {
+      "scope_id": "command:c125d0397b605657bc89340953f5f2897a7e00a9b7d3474fa53720c8ccbbb3e3",
+      "plan_refs": [
+        {
+          "path": "docs/planning/b-route/plans/PLAN-bed480ce3e404b2cbaf5514d80a7f941/2.json",
+          "schema_version": "newrouge.b-route-plan.v1",
+          "entity_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+          "revision": 2,
+          "digest": "sha256:18c638723cd9742601e2c34b0c73174b0069f4a152099be02c8fe2adca06cb91",
+          "verification_mode": "raw",
+          "codec_version": null
+        }
+      ],
+      "binding_refs": [],
+      "receipt_ref": {
+        "path": "docs/planning/b-route/commits/NativeV15Origin03Compensation01.json",
+        "schema_version": "newrouge.b-route-commit.v1",
+        "entity_id": "NativeV15Origin03Compensation01",
+        "revision": 1,
+        "digest": "sha256:1ff4cb42808a535a491fbfcf200c3da3ab0706c92d25df531f5789ebaf2ba21f",
+        "verification_mode": "raw",
+        "codec_version": null
+      }
+    },
+    {
+      "scope_id": "command:ed98d7ad0f763addbb9d7851664f312dc52d501b07b47b9c3e27a90aea3e2353",
+      "plan_refs": [
+        {
+          "path": "docs/planning/b-route/plans/PLAN-bed480ce3e404b2cbaf5514d80a7f941/2.json",
+          "schema_version": "newrouge.b-route-plan.v1",
+          "entity_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+          "revision": 2,
+          "digest": "sha256:18c638723cd9742601e2c34b0c73174b0069f4a152099be02c8fe2adca06cb91",
+          "verification_mode": "raw",
+          "codec_version": null
+        }
+      ],
+      "binding_refs": [],
+      "receipt_ref": {
+        "path": "docs/planning/b-route/commits/NativeV15Origin03Compensation01.json",
+        "schema_version": "newrouge.b-route-commit.v1",
+        "entity_id": "NativeV15Origin03Compensation01",
+        "revision": 1,
+        "digest": "sha256:1ff4cb42808a535a491fbfcf200c3da3ab0706c92d25df531f5789ebaf2ba21f",
+        "verification_mode": "raw",
+        "codec_version": null
+      }
+    },
+    {
+      "scope_id": "file:1d90a99f81bf109e2e84e659c5364d440a8152728153e578dd38e4884614d32a",
+      "plan_refs": [
+        {
+          "path": "docs/planning/b-route/plans/PLAN-bed480ce3e404b2cbaf5514d80a7f941/2.json",
+          "schema_version": "newrouge.b-route-plan.v1",
+          "entity_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+          "revision": 2,
+          "digest": "sha256:18c638723cd9742601e2c34b0c73174b0069f4a152099be02c8fe2adca06cb91",
+          "verification_mode": "raw",
+          "codec_version": null
+        }
+      ],
+      "binding_refs": [],
+      "receipt_ref": {
+        "path": "docs/planning/b-route/commits/NativeV15Origin03Compensation01.json",
+        "schema_version": "newrouge.b-route-commit.v1",
+        "entity_id": "NativeV15Origin03Compensation01",
+        "revision": 1,
+        "digest": "sha256:1ff4cb42808a535a491fbfcf200c3da3ab0706c92d25df531f5789ebaf2ba21f",
+        "verification_mode": "raw",
+        "codec_version": null
+      }
+    },
+    {
+      "scope_id": "file:25e2729c68b54bec6db9786b047cff3c99055537b52ec1c7db5337e263e56f83",
+      "plan_refs": [
+        {
+          "path": "docs/planning/b-route/plans/PLAN-bed480ce3e404b2cbaf5514d80a7f941/2.json",
+          "schema_version": "newrouge.b-route-plan.v1",
+          "entity_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+          "revision": 2,
+          "digest": "sha256:18c638723cd9742601e2c34b0c73174b0069f4a152099be02c8fe2adca06cb91",
+          "verification_mode": "raw",
+          "codec_version": null
+        }
+      ],
+      "binding_refs": [],
+      "receipt_ref": {
+        "path": "docs/planning/b-route/commits/NativeV15Origin03Compensation01.json",
+        "schema_version": "newrouge.b-route-commit.v1",
+        "entity_id": "NativeV15Origin03Compensation01",
+        "revision": 1,
+        "digest": "sha256:1ff4cb42808a535a491fbfcf200c3da3ab0706c92d25df531f5789ebaf2ba21f",
+        "verification_mode": "raw",
+        "codec_version": null
+      }
+    },
+    {
+      "scope_id": "file:9ac7f5703f06c6b202fdf4d6ec316e1d00629d948428e0e35b57ec7e2be7cad9",
+      "plan_refs": [
+        {
+          "path": "docs/planning/b-route/plans/PLAN-bed480ce3e404b2cbaf5514d80a7f941/2.json",
+          "schema_version": "newrouge.b-route-plan.v1",
+          "entity_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+          "revision": 2,
+          "digest": "sha256:18c638723cd9742601e2c34b0c73174b0069f4a152099be02c8fe2adca06cb91",
+          "verification_mode": "raw",
+          "codec_version": null
+        }
+      ],
+      "binding_refs": [],
+      "receipt_ref": {
+        "path": "docs/planning/b-route/commits/NativeV15Origin03Compensation01.json",
+        "schema_version": "newrouge.b-route-commit.v1",
+        "entity_id": "NativeV15Origin03Compensation01",
+        "revision": 1,
+        "digest": "sha256:1ff4cb42808a535a491fbfcf200c3da3ab0706c92d25df531f5789ebaf2ba21f",
+        "verification_mode": "raw",
+        "codec_version": null
+      }
+    },
+    {
+      "scope_id": "file:b9225658bc9a51c192718df3d4bd9e27a8b7f80581a74cd83fd73e3f15d66249",
+      "plan_refs": [
+        {
+          "path": "docs/planning/b-route/plans/PLAN-bed480ce3e404b2cbaf5514d80a7f941/2.json",
+          "schema_version": "newrouge.b-route-plan.v1",
+          "entity_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+          "revision": 2,
+          "digest": "sha256:18c638723cd9742601e2c34b0c73174b0069f4a152099be02c8fe2adca06cb91",
+          "verification_mode": "raw",
+          "codec_version": null
+        }
+      ],
+      "binding_refs": [],
+      "receipt_ref": {
+        "path": "docs/planning/b-route/commits/NativeV15Origin03Compensation01.json",
+        "schema_version": "newrouge.b-route-commit.v1",
+        "entity_id": "NativeV15Origin03Compensation01",
+        "revision": 1,
+        "digest": "sha256:1ff4cb42808a535a491fbfcf200c3da3ab0706c92d25df531f5789ebaf2ba21f",
+        "verification_mode": "raw",
+        "codec_version": null
+      }
+    },
+    {
+      "scope_id": "flow:0fe05734aec3d51c9c6fe180955ee0fd5e6538cf8246a66a40053a3d1793314b",
+      "plan_refs": [
+        {
+          "path": "docs/planning/b-route/plans/PLAN-bed480ce3e404b2cbaf5514d80a7f941/2.json",
+          "schema_version": "newrouge.b-route-plan.v1",
+          "entity_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+          "revision": 2,
+          "digest": "sha256:18c638723cd9742601e2c34b0c73174b0069f4a152099be02c8fe2adca06cb91",
+          "verification_mode": "raw",
+          "codec_version": null
+        }
+      ],
+      "binding_refs": [],
+      "receipt_ref": {
+        "path": "docs/planning/b-route/commits/NativeV15Origin03Compensation01.json",
+        "schema_version": "newrouge.b-route-commit.v1",
+        "entity_id": "NativeV15Origin03Compensation01",
+        "revision": 1,
+        "digest": "sha256:1ff4cb42808a535a491fbfcf200c3da3ab0706c92d25df531f5789ebaf2ba21f",
+        "verification_mode": "raw",
+        "codec_version": null
+      }
+    },
+    {
+      "scope_id": "plan:211bad3bf57b9c0e50eb4f1036e07594be0edaa11170079e5debc9fecf137f7a",
+      "plan_refs": [
+        {
+          "path": "docs/planning/b-route/plans/PLAN-bed480ce3e404b2cbaf5514d80a7f941/2.json",
+          "schema_version": "newrouge.b-route-plan.v1",
+          "entity_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+          "revision": 2,
+          "digest": "sha256:18c638723cd9742601e2c34b0c73174b0069f4a152099be02c8fe2adca06cb91",
+          "verification_mode": "raw",
+          "codec_version": null
+        }
+      ],
+      "binding_refs": [],
+      "receipt_ref": {
+        "path": "docs/planning/b-route/commits/NativeV15Origin03Compensation01.json",
+        "schema_version": "newrouge.b-route-commit.v1",
+        "entity_id": "NativeV15Origin03Compensation01",
+        "revision": 1,
+        "digest": "sha256:1ff4cb42808a535a491fbfcf200c3da3ab0706c92d25df531f5789ebaf2ba21f",
+        "verification_mode": "raw",
+        "codec_version": null
+      }
+    },
+    {
+      "scope_id": "requirement:0693bf3e4246960d211d696c064e0e8ffe22821de1e98cf33a46c5a9f99eee5a",
+      "plan_refs": [
+        {
+          "path": "docs/planning/b-route/plans/PLAN-bed480ce3e404b2cbaf5514d80a7f941/2.json",
+          "schema_version": "newrouge.b-route-plan.v1",
+          "entity_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+          "revision": 2,
+          "digest": "sha256:18c638723cd9742601e2c34b0c73174b0069f4a152099be02c8fe2adca06cb91",
+          "verification_mode": "raw",
+          "codec_version": null
+        }
+      ],
+      "binding_refs": [],
+      "receipt_ref": {
+        "path": "docs/planning/b-route/commits/NativeV15Origin03Compensation01.json",
+        "schema_version": "newrouge.b-route-commit.v1",
+        "entity_id": "NativeV15Origin03Compensation01",
+        "revision": 1,
+        "digest": "sha256:1ff4cb42808a535a491fbfcf200c3da3ab0706c92d25df531f5789ebaf2ba21f",
+        "verification_mode": "raw",
+        "codec_version": null
+      }
+    },
+    {
+      "scope_id": "requirement:09c260541245f8b30dc2c3a5ce90b3af02db8b41393eb8a1495c3af8513ef2f1",
+      "plan_refs": [
+        {
+          "path": "docs/planning/b-route/plans/PLAN-bed480ce3e404b2cbaf5514d80a7f941/2.json",
+          "schema_version": "newrouge.b-route-plan.v1",
+          "entity_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+          "revision": 2,
+          "digest": "sha256:18c638723cd9742601e2c34b0c73174b0069f4a152099be02c8fe2adca06cb91",
+          "verification_mode": "raw",
+          "codec_version": null
+        }
+      ],
+      "binding_refs": [],
+      "receipt_ref": {
+        "path": "docs/planning/b-route/commits/NativeV15Origin03Compensation01.json",
+        "schema_version": "newrouge.b-route-commit.v1",
+        "entity_id": "NativeV15Origin03Compensation01",
+        "revision": 1,
+        "digest": "sha256:1ff4cb42808a535a491fbfcf200c3da3ab0706c92d25df531f5789ebaf2ba21f",
+        "verification_mode": "raw",
+        "codec_version": null
+      }
+    },
+    {
+      "scope_id": "requirement:1c3182ed2183807f616df9d9955ede4884bd8856184814ec2b28037366dbac55",
+      "plan_refs": [
+        {
+          "path": "docs/planning/b-route/plans/PLAN-bed480ce3e404b2cbaf5514d80a7f941/2.json",
+          "schema_version": "newrouge.b-route-plan.v1",
+          "entity_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+          "revision": 2,
+          "digest": "sha256:18c638723cd9742601e2c34b0c73174b0069f4a152099be02c8fe2adca06cb91",
+          "verification_mode": "raw",
+          "codec_version": null
+        }
+      ],
+      "binding_refs": [],
+      "receipt_ref": {
+        "path": "docs/planning/b-route/commits/NativeV15Origin03Compensation01.json",
+        "schema_version": "newrouge.b-route-commit.v1",
+        "entity_id": "NativeV15Origin03Compensation01",
+        "revision": 1,
+        "digest": "sha256:1ff4cb42808a535a491fbfcf200c3da3ab0706c92d25df531f5789ebaf2ba21f",
+        "verification_mode": "raw",
+        "codec_version": null
+      }
+    },
+    {
+      "scope_id": "requirement:366846984398a728b7ddb335150dd190b71263635708486381ab7ee49fc559c6",
+      "plan_refs": [
+        {
+          "path": "docs/planning/b-route/plans/PLAN-bed480ce3e404b2cbaf5514d80a7f941/2.json",
+          "schema_version": "newrouge.b-route-plan.v1",
+          "entity_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+          "revision": 2,
+          "digest": "sha256:18c638723cd9742601e2c34b0c73174b0069f4a152099be02c8fe2adca06cb91",
+          "verification_mode": "raw",
+          "codec_version": null
+        }
+      ],
+      "binding_refs": [],
+      "receipt_ref": {
+        "path": "docs/planning/b-route/commits/NativeV15Origin03Compensation01.json",
+        "schema_version": "newrouge.b-route-commit.v1",
+        "entity_id": "NativeV15Origin03Compensation01",
+        "revision": 1,
+        "digest": "sha256:1ff4cb42808a535a491fbfcf200c3da3ab0706c92d25df531f5789ebaf2ba21f",
+        "verification_mode": "raw",
+        "codec_version": null
+      }
+    },
+    {
+      "scope_id": "requirement:42d8a10fc0b87e500d28c8d4dc36a2856b12cb677b3f2961c1c4981a584086fa",
+      "plan_refs": [
+        {
+          "path": "docs/planning/b-route/plans/PLAN-bed480ce3e404b2cbaf5514d80a7f941/2.json",
+          "schema_version": "newrouge.b-route-plan.v1",
+          "entity_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+          "revision": 2,
+          "digest": "sha256:18c638723cd9742601e2c34b0c73174b0069f4a152099be02c8fe2adca06cb91",
+          "verification_mode": "raw",
+          "codec_version": null
+        }
+      ],
+      "binding_refs": [],
+      "receipt_ref": {
+        "path": "docs/planning/b-route/commits/NativeV15Origin03Compensation01.json",
+        "schema_version": "newrouge.b-route-commit.v1",
+        "entity_id": "NativeV15Origin03Compensation01",
+        "revision": 1,
+        "digest": "sha256:1ff4cb42808a535a491fbfcf200c3da3ab0706c92d25df531f5789ebaf2ba21f",
+        "verification_mode": "raw",
+        "codec_version": null
+      }
+    },
+    {
+      "scope_id": "requirement:6461da1c884ae7c45733635fc60944027ef3c6059cd7016e133139511020bebb",
+      "plan_refs": [
+        {
+          "path": "docs/planning/b-route/plans/PLAN-bed480ce3e404b2cbaf5514d80a7f941/2.json",
+          "schema_version": "newrouge.b-route-plan.v1",
+          "entity_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+          "revision": 2,
+          "digest": "sha256:18c638723cd9742601e2c34b0c73174b0069f4a152099be02c8fe2adca06cb91",
+          "verification_mode": "raw",
+          "codec_version": null
+        }
+      ],
+      "binding_refs": [],
+      "receipt_ref": {
+        "path": "docs/planning/b-route/commits/NativeV15Origin03Compensation01.json",
+        "schema_version": "newrouge.b-route-commit.v1",
+        "entity_id": "NativeV15Origin03Compensation01",
+        "revision": 1,
+        "digest": "sha256:1ff4cb42808a535a491fbfcf200c3da3ab0706c92d25df531f5789ebaf2ba21f",
+        "verification_mode": "raw",
+        "codec_version": null
+      }
+    },
+    {
+      "scope_id": "requirement:69756236a7af8ee85f3e2251434abca2249a193972b037960224d9421fafd38e",
+      "plan_refs": [
+        {
+          "path": "docs/planning/b-route/plans/PLAN-bed480ce3e404b2cbaf5514d80a7f941/2.json",
+          "schema_version": "newrouge.b-route-plan.v1",
+          "entity_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+          "revision": 2,
+          "digest": "sha256:18c638723cd9742601e2c34b0c73174b0069f4a152099be02c8fe2adca06cb91",
+          "verification_mode": "raw",
+          "codec_version": null
+        }
+      ],
+      "binding_refs": [],
+      "receipt_ref": {
+        "path": "docs/planning/b-route/commits/NativeV15Origin03Compensation01.json",
+        "schema_version": "newrouge.b-route-commit.v1",
+        "entity_id": "NativeV15Origin03Compensation01",
+        "revision": 1,
+        "digest": "sha256:1ff4cb42808a535a491fbfcf200c3da3ab0706c92d25df531f5789ebaf2ba21f",
+        "verification_mode": "raw",
+        "codec_version": null
+      }
+    },
+    {
+      "scope_id": "requirement:7b86ad55a942eadb221fadd4c76bfdfa19372d980ba48ce05ee0e0c54aa99925",
+      "plan_refs": [
+        {
+          "path": "docs/planning/b-route/plans/PLAN-bed480ce3e404b2cbaf5514d80a7f941/2.json",
+          "schema_version": "newrouge.b-route-plan.v1",
+          "entity_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+          "revision": 2,
+          "digest": "sha256:18c638723cd9742601e2c34b0c73174b0069f4a152099be02c8fe2adca06cb91",
+          "verification_mode": "raw",
+          "codec_version": null
+        }
+      ],
+      "binding_refs": [],
+      "receipt_ref": {
+        "path": "docs/planning/b-route/commits/NativeV15Origin03Compensation01.json",
+        "schema_version": "newrouge.b-route-commit.v1",
+        "entity_id": "NativeV15Origin03Compensation01",
+        "revision": 1,
+        "digest": "sha256:1ff4cb42808a535a491fbfcf200c3da3ab0706c92d25df531f5789ebaf2ba21f",
+        "verification_mode": "raw",
+        "codec_version": null
+      }
+    },
+    {
+      "scope_id": "requirement:7d6abbbe60e11edbeb859c6d4b161eae2a6797c2868be88ca058d89a9dc593f1",
+      "plan_refs": [
+        {
+          "path": "docs/planning/b-route/plans/PLAN-bed480ce3e404b2cbaf5514d80a7f941/2.json",
+          "schema_version": "newrouge.b-route-plan.v1",
+          "entity_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+          "revision": 2,
+          "digest": "sha256:18c638723cd9742601e2c34b0c73174b0069f4a152099be02c8fe2adca06cb91",
+          "verification_mode": "raw",
+          "codec_version": null
+        }
+      ],
+      "binding_refs": [],
+      "receipt_ref": {
+        "path": "docs/planning/b-route/commits/NativeV15Origin03Compensation01.json",
+        "schema_version": "newrouge.b-route-commit.v1",
+        "entity_id": "NativeV15Origin03Compensation01",
+        "revision": 1,
+        "digest": "sha256:1ff4cb42808a535a491fbfcf200c3da3ab0706c92d25df531f5789ebaf2ba21f",
+        "verification_mode": "raw",
+        "codec_version": null
+      }
+    },
+    {
+      "scope_id": "requirement:8740a9fb10613e783ef0c6aa3cadad216402215ed8cc29846b0f2618c9573cd3",
+      "plan_refs": [
+        {
+          "path": "docs/planning/b-route/plans/PLAN-bed480ce3e404b2cbaf5514d80a7f941/2.json",
+          "schema_version": "newrouge.b-route-plan.v1",
+          "entity_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+          "revision": 2,
+          "digest": "sha256:18c638723cd9742601e2c34b0c73174b0069f4a152099be02c8fe2adca06cb91",
+          "verification_mode": "raw",
+          "codec_version": null
+        }
+      ],
+      "binding_refs": [],
+      "receipt_ref": {
+        "path": "docs/planning/b-route/commits/NativeV15Origin03Compensation01.json",
+        "schema_version": "newrouge.b-route-commit.v1",
+        "entity_id": "NativeV15Origin03Compensation01",
+        "revision": 1,
+        "digest": "sha256:1ff4cb42808a535a491fbfcf200c3da3ab0706c92d25df531f5789ebaf2ba21f",
+        "verification_mode": "raw",
+        "codec_version": null
+      }
+    },
+    {
+      "scope_id": "requirement:d73f9679825ef62ef23e5a92c86923eb978ca5bebbafc2f573057139fc9a3e14",
+      "plan_refs": [
+        {
+          "path": "docs/planning/b-route/plans/PLAN-bed480ce3e404b2cbaf5514d80a7f941/2.json",
+          "schema_version": "newrouge.b-route-plan.v1",
+          "entity_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+          "revision": 2,
+          "digest": "sha256:18c638723cd9742601e2c34b0c73174b0069f4a152099be02c8fe2adca06cb91",
+          "verification_mode": "raw",
+          "codec_version": null
+        }
+      ],
+      "binding_refs": [],
+      "receipt_ref": {
+        "path": "docs/planning/b-route/commits/NativeV15Origin03Compensation01.json",
+        "schema_version": "newrouge.b-route-commit.v1",
+        "entity_id": "NativeV15Origin03Compensation01",
+        "revision": 1,
+        "digest": "sha256:1ff4cb42808a535a491fbfcf200c3da3ab0706c92d25df531f5789ebaf2ba21f",
+        "verification_mode": "raw",
+        "codec_version": null
+      }
+    },
+    {
+      "scope_id": "requirement:db05e83b1f364b9cf7d6128eb29ae7b0080a25371358df51e6944b7e0287cdec",
+      "plan_refs": [
+        {
+          "path": "docs/planning/b-route/plans/PLAN-bed480ce3e404b2cbaf5514d80a7f941/2.json",
+          "schema_version": "newrouge.b-route-plan.v1",
+          "entity_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+          "revision": 2,
+          "digest": "sha256:18c638723cd9742601e2c34b0c73174b0069f4a152099be02c8fe2adca06cb91",
+          "verification_mode": "raw",
+          "codec_version": null
+        }
+      ],
+      "binding_refs": [],
+      "receipt_ref": {
+        "path": "docs/planning/b-route/commits/NativeV15Origin03Compensation01.json",
+        "schema_version": "newrouge.b-route-commit.v1",
+        "entity_id": "NativeV15Origin03Compensation01",
+        "revision": 1,
+        "digest": "sha256:1ff4cb42808a535a491fbfcf200c3da3ab0706c92d25df531f5789ebaf2ba21f",
+        "verification_mode": "raw",
+        "codec_version": null
+      }
+    },
+    {
+      "scope_id": "requirement:f440de596fa1f027cb3f9fcac50d34f601dd61942b3d7fab8bde04c96a0fd565",
+      "plan_refs": [
+        {
+          "path": "docs/planning/b-route/plans/PLAN-bed480ce3e404b2cbaf5514d80a7f941/2.json",
+          "schema_version": "newrouge.b-route-plan.v1",
+          "entity_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+          "revision": 2,
+          "digest": "sha256:18c638723cd9742601e2c34b0c73174b0069f4a152099be02c8fe2adca06cb91",
+          "verification_mode": "raw",
+          "codec_version": null
+        }
+      ],
+      "binding_refs": [],
+      "receipt_ref": {
+        "path": "docs/planning/b-route/commits/NativeV15Origin03Compensation01.json",
+        "schema_version": "newrouge.b-route-commit.v1",
+        "entity_id": "NativeV15Origin03Compensation01",
+        "revision": 1,
+        "digest": "sha256:1ff4cb42808a535a491fbfcf200c3da3ab0706c92d25df531f5789ebaf2ba21f",
+        "verification_mode": "raw",
+        "codec_version": null
+      }
+    },
+    {
+      "scope_id": "requirement:f9cc6a793f1e79b1fdd4c91cba7c0068259104bf02a8d6c24b7be9f68b06371f",
+      "plan_refs": [
+        {
+          "path": "docs/planning/b-route/plans/PLAN-bed480ce3e404b2cbaf5514d80a7f941/2.json",
+          "schema_version": "newrouge.b-route-plan.v1",
+          "entity_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+          "revision": 2,
+          "digest": "sha256:18c638723cd9742601e2c34b0c73174b0069f4a152099be02c8fe2adca06cb91",
+          "verification_mode": "raw",
+          "codec_version": null
+        }
+      ],
+      "binding_refs": [],
+      "receipt_ref": {
+        "path": "docs/planning/b-route/commits/NativeV15Origin03Compensation01.json",
+        "schema_version": "newrouge.b-route-commit.v1",
+        "entity_id": "NativeV15Origin03Compensation01",
+        "revision": 1,
+        "digest": "sha256:1ff4cb42808a535a491fbfcf200c3da3ab0706c92d25df531f5789ebaf2ba21f",
+        "verification_mode": "raw",
+        "codec_version": null
+      }
+    },
+    {
+      "scope_id": "state:4a73ac20502e63d5f97101b2cf4ccc270fb270e0a62a012acd40475bcc77094b",
+      "plan_refs": [
+        {
+          "path": "docs/planning/b-route/plans/PLAN-bed480ce3e404b2cbaf5514d80a7f941/2.json",
+          "schema_version": "newrouge.b-route-plan.v1",
+          "entity_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+          "revision": 2,
+          "digest": "sha256:18c638723cd9742601e2c34b0c73174b0069f4a152099be02c8fe2adca06cb91",
+          "verification_mode": "raw",
+          "codec_version": null
+        }
+      ],
+      "binding_refs": [],
+      "receipt_ref": {
+        "path": "docs/planning/b-route/commits/NativeV15Origin03Compensation01.json",
+        "schema_version": "newrouge.b-route-commit.v1",
+        "entity_id": "NativeV15Origin03Compensation01",
+        "revision": 1,
+        "digest": "sha256:1ff4cb42808a535a491fbfcf200c3da3ab0706c92d25df531f5789ebaf2ba21f",
+        "verification_mode": "raw",
+        "codec_version": null
+      }
+    },
+    {
+      "scope_id": "state:bb01347a332a266d0a47ba5c82bbafe84600c7f23dd84d6562cfc3e7885dcf3c",
+      "plan_refs": [
+        {
+          "path": "docs/planning/b-route/plans/PLAN-bed480ce3e404b2cbaf5514d80a7f941/2.json",
+          "schema_version": "newrouge.b-route-plan.v1",
+          "entity_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+          "revision": 2,
+          "digest": "sha256:18c638723cd9742601e2c34b0c73174b0069f4a152099be02c8fe2adca06cb91",
+          "verification_mode": "raw",
+          "codec_version": null
+        }
+      ],
+      "binding_refs": [],
+      "receipt_ref": {
+        "path": "docs/planning/b-route/commits/NativeV15Origin03Compensation01.json",
+        "schema_version": "newrouge.b-route-commit.v1",
+        "entity_id": "NativeV15Origin03Compensation01",
+        "revision": 1,
+        "digest": "sha256:1ff4cb42808a535a491fbfcf200c3da3ab0706c92d25df531f5789ebaf2ba21f",
+        "verification_mode": "raw",
+        "codec_version": null
+      }
+    },
+    {
+      "scope_id": "state:d3aa12e8e139472b3682eb0bed8aa0778459777cfc828314a57ad7758332d2c1",
+      "plan_refs": [
+        {
+          "path": "docs/planning/b-route/plans/PLAN-bed480ce3e404b2cbaf5514d80a7f941/2.json",
+          "schema_version": "newrouge.b-route-plan.v1",
+          "entity_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+          "revision": 2,
+          "digest": "sha256:18c638723cd9742601e2c34b0c73174b0069f4a152099be02c8fe2adca06cb91",
+          "verification_mode": "raw",
+          "codec_version": null
+        }
+      ],
+      "binding_refs": [],
+      "receipt_ref": {
+        "path": "docs/planning/b-route/commits/NativeV15Origin03Compensation01.json",
+        "schema_version": "newrouge.b-route-commit.v1",
+        "entity_id": "NativeV15Origin03Compensation01",
+        "revision": 1,
+        "digest": "sha256:1ff4cb42808a535a491fbfcf200c3da3ab0706c92d25df531f5789ebaf2ba21f",
+        "verification_mode": "raw",
+        "codec_version": null
+      }
+    }
+  ],
+  "definition_owners": [
+    {
+      "kind": "command",
+      "definition_id": "accept",
+      "plan_ref": {
+        "path": "docs/planning/b-route/plans/PLAN-bed480ce3e404b2cbaf5514d80a7f941/2.json",
+        "schema_version": "newrouge.b-route-plan.v1",
+        "entity_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+        "revision": 2,
+        "digest": "sha256:18c638723cd9742601e2c34b0c73174b0069f4a152099be02c8fe2adca06cb91",
+        "verification_mode": "raw",
+        "codec_version": null
+      }
+    },
+    {
+      "kind": "command",
+      "definition_id": "cancel",
+      "plan_ref": {
+        "path": "docs/planning/b-route/plans/PLAN-bed480ce3e404b2cbaf5514d80a7f941/2.json",
+        "schema_version": "newrouge.b-route-plan.v1",
+        "entity_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+        "revision": 2,
+        "digest": "sha256:18c638723cd9742601e2c34b0c73174b0069f4a152099be02c8fe2adca06cb91",
+        "verification_mode": "raw",
+        "codec_version": null
+      }
+    },
+    {
+      "kind": "command",
+      "definition_id": "harness-lifecycle-and-observation",
+      "plan_ref": {
+        "path": "docs/planning/b-route/plans/PLAN-bed480ce3e404b2cbaf5514d80a7f941/2.json",
+        "schema_version": "newrouge.b-route-plan.v1",
+        "entity_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+        "revision": 2,
+        "digest": "sha256:18c638723cd9742601e2c34b0c73174b0069f4a152099be02c8fe2adca06cb91",
+        "verification_mode": "raw",
+        "codec_version": null
+      }
+    },
+    {
+      "kind": "command",
+      "definition_id": "profile-and-hooks",
+      "plan_ref": {
+        "path": "docs/planning/b-route/plans/PLAN-bed480ce3e404b2cbaf5514d80a7f941/2.json",
+        "schema_version": "newrouge.b-route-plan.v1",
+        "entity_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+        "revision": 2,
+        "digest": "sha256:18c638723cd9742601e2c34b0c73174b0069f4a152099be02c8fe2adca06cb91",
+        "verification_mode": "raw",
+        "codec_version": null
+      }
+    },
+    {
+      "kind": "command",
+      "definition_id": "render-and-probe-adapter",
+      "plan_ref": {
+        "path": "docs/planning/b-route/plans/PLAN-bed480ce3e404b2cbaf5514d80a7f941/2.json",
+        "schema_version": "newrouge.b-route-plan.v1",
+        "entity_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+        "revision": 2,
+        "digest": "sha256:18c638723cd9742601e2c34b0c73174b0069f4a152099be02c8fe2adca06cb91",
+        "verification_mode": "raw",
+        "codec_version": null
+      }
+    },
+    {
+      "kind": "command",
+      "definition_id": "resume",
+      "plan_ref": {
+        "path": "docs/planning/b-route/plans/PLAN-bed480ce3e404b2cbaf5514d80a7f941/2.json",
+        "schema_version": "newrouge.b-route-plan.v1",
+        "entity_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+        "revision": 2,
+        "digest": "sha256:18c638723cd9742601e2c34b0c73174b0069f4a152099be02c8fe2adca06cb91",
+        "verification_mode": "raw",
+        "codec_version": null
+      }
+    },
+    {
+      "kind": "flow",
+      "definition_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+      "plan_ref": {
+        "path": "docs/planning/b-route/plans/PLAN-bed480ce3e404b2cbaf5514d80a7f941/2.json",
+        "schema_version": "newrouge.b-route-plan.v1",
+        "entity_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+        "revision": 2,
+        "digest": "sha256:18c638723cd9742601e2c34b0c73174b0069f4a152099be02c8fe2adca06cb91",
+        "verification_mode": "raw",
+        "codec_version": null
+      }
+    },
+    {
+      "kind": "state",
+      "definition_id": "decision-journal",
+      "plan_ref": {
+        "path": "docs/planning/b-route/plans/PLAN-bed480ce3e404b2cbaf5514d80a7f941/2.json",
+        "schema_version": "newrouge.b-route-plan.v1",
+        "entity_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+        "revision": 2,
+        "digest": "sha256:18c638723cd9742601e2c34b0c73174b0069f4a152099be02c8fe2adca06cb91",
+        "verification_mode": "raw",
+        "codec_version": null
+      }
+    },
+    {
+      "kind": "state",
+      "definition_id": "rendered-map-ui",
+      "plan_ref": {
+        "path": "docs/planning/b-route/plans/PLAN-bed480ce3e404b2cbaf5514d80a7f941/2.json",
+        "schema_version": "newrouge.b-route-plan.v1",
+        "entity_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+        "revision": 2,
+        "digest": "sha256:18c638723cd9742601e2c34b0c73174b0069f4a152099be02c8fe2adca06cb91",
+        "verification_mode": "raw",
+        "codec_version": null
+      }
+    },
+    {
+      "kind": "state",
+      "definition_id": "retained-scenario-audit",
+      "plan_ref": {
+        "path": "docs/planning/b-route/plans/PLAN-bed480ce3e404b2cbaf5514d80a7f941/2.json",
+        "schema_version": "newrouge.b-route-plan.v1",
+        "entity_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+        "revision": 2,
+        "digest": "sha256:18c638723cd9742601e2c34b0c73174b0069f4a152099be02c8fe2adca06cb91",
+        "verification_mode": "raw",
+        "codec_version": null
+      }
+    }
+  ],
+  "task_index": []
+}
