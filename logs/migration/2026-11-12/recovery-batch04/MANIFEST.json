@@ -1,0 +1,170 @@
+{
+  "schema": "newrouge.public-historical-twelve-file-index.v1",
+  "prepared_utc": "2026-11-12T03:38:39.118146+00:00",
+  "original_task_root": "C:\\Users\\Administrator\\Documents\\Codex\\2026-11-05\\task",
+  "scope": "Exactly twelve retained historical control/config/receipt files; data transfer only. No new execution or admission.",
+  "files": [
+    {
+      "source_task_relative": "logs/ci/2026-11-09/story27-r52-atomic-review-prepare-seal-01/config.json",
+      "archive_path": "logs/ci/2026-11-09/story27-r52-atomic-review-prepare-seal-01/config.json",
+      "size_bytes": 710409,
+      "sha256": "d6f1eec3a9e9bf7dc5b94608db02d069c4f84404625587bfe9ebd7e64658067d",
+      "kind": "filled_historical_execution_admission_config",
+      "byte_exact_original": true,
+      "unchanged_from_prior_exact_file_review": true,
+      "credential_findings": [],
+      "redactions": []
+    },
+    {
+      "source_task_relative": "logs/ci/2026-11-09/story27-r52-atomic-review-prepare-01/reader-stderr.bin",
+      "archive_path": "logs/ci/2026-11-09/story27-r52-atomic-review-prepare-01/reader-stderr.bin",
+      "size_bytes": 13913,
+      "sha256": "ab643f2520346c6a2443c201fd3fe10779da2546ba9e263f563778827c40740e",
+      "kind": "reader_stderr",
+      "byte_exact_original": true,
+      "unchanged_from_prior_exact_file_review": true,
+      "credential_findings": [],
+      "redactions": []
+    },
+    {
+      "source_task_relative": "logs/ci/2026-11-09/story27-r52-atomic-review-prepare-01/reader-held-started.json",
+      "archive_path": "logs/ci/2026-11-09/story27-r52-atomic-review-prepare-01/reader-held-started.json",
+      "size_bytes": 239,
+      "sha256": "012731090b820c06579e91ab3a3daf851051fa328da954ebdf29d59155330354",
+      "kind": "reader_start_identity_receipt",
+      "byte_exact_original": true,
+      "unchanged_from_prior_exact_file_review": true,
+      "credential_findings": [],
+      "redactions": []
+    },
+    {
+      "source_task_relative": "logs/ci/2026-11-09/story27-r52-atomic-review-prepare-01/reader-held-terminal.json",
+      "archive_path": "logs/ci/2026-11-09/story27-r52-atomic-review-prepare-01/reader-held-terminal.json",
+      "size_bytes": 691,
+      "sha256": "f8ccd45bf89c799692636bf77aa7c5aa8d08c2b0f669a3ed994984a754b66e42",
+      "kind": "reader_terminal_receipt",
+      "byte_exact_original": true,
+      "unchanged_from_prior_exact_file_review": true,
+      "credential_findings": [],
+      "redactions": []
+    },
+    {
+      "source_task_relative": "logs/ci/2026-11-09/story27-r52-atomic-review-prepare-01/stop.json",
+      "archive_path": "logs/ci/2026-11-09/story27-r52-atomic-review-prepare-01/stop.json",
+      "size_bytes": 55125,
+      "sha256": "8eeb2cb2399a4706316831564ec1d49042757fe6c02bccd8e485a4fbf2ed7f60",
+      "kind": "stop_receipt_with_call_and_lock_observations",
+      "byte_exact_original": true,
+      "unchanged_from_prior_exact_file_review": true,
+      "credential_findings": [],
+      "redactions": []
+    },
+    {
+      "source_task_relative": "logs/ci/2026-11-09/story27-r52-atomic-review-prepare-supervision-01/result.json",
+      "archive_path": "logs/ci/2026-11-09/story27-r52-atomic-review-prepare-supervision-01/result.json",
+      "size_bytes": 1680,
+      "sha256": "0e43c191bd9da4ec0110f82bece80bf72e547bbc4a8dd894ff533489d64f01ab",
+      "kind": "supervisor_result",
+      "byte_exact_original": true,
+      "unchanged_from_prior_exact_file_review": true,
+      "credential_findings": [],
+      "redactions": []
+    },
+    {
+      "source_task_relative": "logs/ci/2026-11-09/story27-r52-atomic-review-prepare-supervision-01/supervisor-started.json",
+      "archive_path": "logs/ci/2026-11-09/story27-r52-atomic-review-prepare-supervision-01/supervisor-started.json",
+      "size_bytes": 1909,
+      "sha256": "8487cfa42819c94fd8481cc2af5436eecb3d166e42731a432bfe001272f33ab7",
+      "kind": "supervisor_start_with_argv",
+      "byte_exact_original": true,
+      "unchanged_from_prior_exact_file_review": true,
+      "credential_findings": [],
+      "redactions": []
+    },
+    {
+      "source_task_relative": "logs/ci/2026-11-09/story27-r52-atomic-review-prepare-supervision-01/child-started.json",
+      "archive_path": "logs/ci/2026-11-09/story27-r52-atomic-review-prepare-supervision-01/child-started.json",
+      "size_bytes": 867,
+      "sha256": "afc066d65dd521c1ea22375a9f359ed5c76af93b06f74273685c571d53998a8a",
+      "kind": "child_start_with_argv",
+      "byte_exact_original": true,
+      "unchanged_from_prior_exact_file_review": true,
+      "credential_findings": [],
+      "redactions": []
+    },
+    {
+      "source_task_relative": "logs/ci/2026-11-09/story27-r52-atomic-review-prepare-supervision-01/child-terminal.json",
+      "archive_path": "logs/ci/2026-11-09/story27-r52-atomic-review-prepare-supervision-01/child-terminal.json",
+      "size_bytes": 712,
+      "sha256": "8b44bd98f93be1f9380ed81da84a3f71febfe4e397516ac0a814532b9ffea9a6",
+      "kind": "child_terminal_receipt",
+      "byte_exact_original": true,
+      "unchanged_from_prior_exact_file_review": true,
+      "credential_findings": [],
+      "redactions": []
+    },
+    {
+      "source_task_relative": "night-handoff/story27-r52-atomic-review-prepare-thin-controls-01/manifest.json",
+      "archive_path": "night-handoff/story27-r52-atomic-review-prepare-thin-controls-01/manifest.json",
+      "size_bytes": 1700,
+      "sha256": "88a551e4a57a09a621990758ae6355d0de70651824a36faabc01ec991810fa25",
+      "kind": "original_unexecuted_draft_manifest_not_later_execution_proof",
+      "byte_exact_original": true,
+      "unchanged_from_prior_exact_file_review": true,
+      "credential_findings": [],
+      "redactions": []
+    },
+    {
+      "source_task_relative": "night-handoff/story27-r52-atomic-review-prepare-thin-controls-01/run_review_prepare.Root-only.py",
+      "archive_path": "night-handoff/story27-r52-atomic-review-prepare-thin-controls-01/run_review_prepare.Root-only.py",
+      "size_bytes": 9158,
+      "sha256": "71e7f9241ae4485a525868060bff75db537fff15e1a6c2d4ce82f5c3fd4916c8",
+      "kind": "historical_control_entrypoint_source",
+      "byte_exact_original": true,
+      "unchanged_from_prior_exact_file_review": true,
+      "credential_findings": [],
+      "redactions": []
+    },
+    {
+      "source_task_relative": "night-handoff/story27-r52-atomic-review-prepare-thin-controls-01/control_common.py",
+      "archive_path": "night-handoff/story27-r52-atomic-review-prepare-thin-controls-01/control_common.py",
+      "size_bytes": 5544,
+      "sha256": "0ea4c7774dec93207fd1b5470ac29232fbcdf0d01b20b06f8db570d85c32ccbe",
+      "kind": "historical_dynamic_loader_and_source_controls",
+      "byte_exact_original": true,
+      "unchanged_from_prior_exact_file_review": true,
+      "credential_findings": [],
+      "redactions": []
+    }
+  ],
+  "original_bytes_total": 801947,
+  "authority_file_included": false,
+  "authority_file_read_for_this_batch": false,
+  "scope_notes": [
+    "Includes the specifically selected filled execution-admission config, complete historical invocation/path/lock information and dynamic control sources.",
+    "No passwords, service tokens, private keys, cookie stores, auth.json or sessions are included.",
+    "Manifest status and Root flags are historical records, not current cloud runtime authority.",
+    "Original source bytes remain unchanged; no original script imported, compiled or executed."
+  ],
+  "archive": {
+    "path": "history-files.zip",
+    "size_bytes": 171350,
+    "sha256": "664e6f1ba102877d9fbcf5a3cf0536504a537d7740e4e0fcd7c2aa784d4b78ac",
+    "original_files": 12,
+    "additional_index_files": 1,
+    "path_layout": "Original paths relative to original Task root; extract only into a new isolated directory."
+  },
+  "actions": {
+    "original_code_executions": 0,
+    "driver_executions": 0,
+    "project_model_calls": 0,
+    "financial_writes": 0,
+    "project_tests_started": 0,
+    "new_project_development": false,
+    "originals_modified": false,
+    "force_push": false,
+    "main_merge": false,
+    "Fast_enabled": false,
+    "S2_or_monitor_operations": false
+  }
+}
