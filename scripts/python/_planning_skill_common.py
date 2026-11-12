@@ -738,6 +738,7 @@ def run_isolated_model(
     execution_log: Path | None = None,
     wall_timeout_sec: int | None = None,
     suppress_bytecode: bool = False,
+    reasoning_effort: str | None = None,
 ) -> dict[str, Any]:
     cmd = [
         *_runner_prefix(executable, suppress_bytecode=suppress_bytecode),
@@ -759,6 +760,9 @@ def run_isolated_model(
         "stdout": subprocess.PIPE,
         "stderr": subprocess.STDOUT,
     }
+    if reasoning_effort is not None:
+        if reasoning_effort != 'high':raise ValueError('isolated_runner_requires_high')
+        kwargs['env']={**os.environ,'NEWROGUE_CODEX_REASONING_EFFORT':reasoning_effort}
     if os.name == "nt":
         kwargs["creationflags"] = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
     else:

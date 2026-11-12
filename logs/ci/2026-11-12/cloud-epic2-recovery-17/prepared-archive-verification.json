@@ -1,0 +1,47 @@
+{
+  "prepared_actual": true,
+  "node_count": 2,
+  "required_checks_total": 9,
+  "nodes": [
+    {
+      "node_id": "business",
+      "complete_literal_request_bytes": 69836,
+      "measurement_matches_actual_public_prepare": true,
+      "actual_parent_outputs_present": false,
+      "intent_exists": false,
+      "execution_exists": false
+    },
+    {
+      "node_id": "governance-joint",
+      "complete_literal_request_bytes": 67979,
+      "measurement_matches_actual_public_prepare": true,
+      "actual_parent_outputs_present": false,
+      "intent_exists": false,
+      "execution_exists": false
+    }
+  ],
+  "source_policy": "sha256:46df19f07d0e665b6fecd50d27ecb36fb506252b257555897525b4b1084100a6",
+  "source_pin_count": 84,
+  "all_current_source_pins_match": true,
+  "original_critical_files_unchanged": {
+    "docs/planning/b-route/catalog.v1.json": true,
+    "docs/planning/b-route/commits/NativeV15Origin03.json": true,
+    "logs/ci/b-route-operations/operations/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/operation.json": true
+  },
+  "budget_dependency": {
+    "status": "dependency_unavailable",
+    "diagnostic": {
+      "reason_code": "dependency_unavailable",
+      "stage": "bundle",
+      "entity_id": null,
+      "expected": "installed genuine compensation budget issuer; original unknowns retained",
+      "actual": "compensation_budget_owner_unavailable",
+      "resume_ref": null
+    },
+    "read_only": true
+  },
+  "new_real_model_calls": 0,
+  "new_financial_actions": 0,
+  "workflow_raw_equal_HEAD": true,
+  "publication_scope": "auxiliary review subject/plan only; no business journal, host_review_ref or semantic approval"
+}

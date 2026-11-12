@@ -61,7 +61,8 @@ def selected(original):
         original_host.family(original)
         return True
     if version=='newrouge.b-route-compensation-operation.v2':
-        return proof in (PROOF,profiles.PUBLISHED.name('proof'))
+        from _b_route_compensation_segmented_execution import PROOF as SEGMENTED_PROOF
+        return proof in (PROOF,profiles.PUBLISHED.name('proof'),SEGMENTED_PROOF)
     return False
 
 
@@ -105,7 +106,8 @@ class SavedHistory:
             'materials_digest':inputs.proof['materials_digest'],'roles_digest':inputs.proof['roles_digest'],
             'presentation_digest':inputs.proof['presentation_digest'],
             'historical_auth_digest':inputs.proof['historical_auth_digest'],
-            'request_raw_digest':inputs.proof['request_raw_digest'],'original_runtime':inputs.evidence,
+            **({'segmented_requests_digest':inputs.proof['requests_digest']} if 'requests_digest' in inputs.proof
+               else {'request_raw_digest':inputs.proof['request_raw_digest']}),'original_runtime':inputs.evidence,
             'files':deepcopy(inputs.refs)}
     def identity(self):return self._binding['subject_digest']
     def binding(self):return deepcopy(self._binding)
@@ -120,6 +122,9 @@ class SavedHistory:
         return values
     def roles(self):
         home=review.location(self._operation['operation_id'])
+        if 'requests_digest' in self._inputs.proof:
+            from _b_route_compensation_segmented_execution import labels as segmented_labels
+            return {home+'/'+k:v for k,v in segmented_labels(self._inputs.buffers).items()}|{home+'/review.json':'host:proof'}
         return {home+'/'+k:v for k,v in labels().items()}
     def operation_view(self):
         s=self._inputs.subject
@@ -215,7 +220,10 @@ def original_review(snapshot,original, *, profile=profiles.ORIGINAL):
     subject=handle.subject();threads=set(subject['native_threads'])
     binding=handle.binding();evidence=binding.get('original_runtime',{})
     if type(evidence.get('thread_id')) is str:threads.add(evidence['thread_id'])
-    return sorted(threads),list(subject['native_turns'])
+    turns=set(subject['native_turns'])
+    if type(evidence.get('turn_id')) is str:turns.add(evidence['turn_id'])
+    for node in evidence.get('nodes',[]):threads.add(node['thread_id']);turns.add(node['turn_id'])
+    return sorted(threads),sorted(turns)
 
 
 def read_subject(root,operation_id):
@@ -336,6 +344,10 @@ def _protocol(root,subject,buffers,schema):
 
 
 def _inputs(root,subject, *, proof=None):
+    from _b_route_compensation_segmented_execution import selected as is_segmented,inputs as segmented_inputs,PROOF as SEGMENTED_PROOF
+    if is_segmented(root,subject['operation_id']):
+        need(proof is None or proof.get('schema_version')==SEGMENTED_PROOF,'explicit segmented saved proof route')
+        return segmented_inputs(root,subject,proof=proof)
     root=Path(root).absolute();home=review.location(subject['operation_id'])
     buffers={name:review.path(root,home+'/'+name).read_bytes() for name in support_names()}
     need(buffers['subject.json']==raw(subject),'same actual private saved subject bytes')
@@ -356,6 +368,8 @@ def _inputs(root,subject, *, proof=None):
 
 
 def _complete(inputs):
+    from _b_route_compensation_segmented_execution import selected as is_segmented,complete_inputs
+    if is_segmented(inputs.root,inputs.subject['operation_id']):return complete_inputs(inputs)
     with action():
         d=model_packet(inputs.root,inputs.subject,context=inputs)
         expected=artifacts(inputs.root,inputs.subject,packet=d,delivery=profiles.subject(inputs.subject).name('delivery'))
@@ -366,6 +380,8 @@ def _complete(inputs):
 
 
 def produce_proof(root,operation_id):
+    from _b_route_compensation_segmented_execution import selected as is_segmented,produce_proof as segmented_proof
+    if is_segmented(root,operation_id):return segmented_proof(root,operation_id)[0]
     subject=read_subject(root,operation_id);inputs=_inputs(root,subject)
     d=_complete(inputs);b=bindings(subject,d)
     return {'schema_version':profiles.subject(subject).name('proof'),'operation_id':operation_id,'subject_digest':codec.canonical_digest(subject),
@@ -375,6 +391,8 @@ def produce_proof(root,operation_id):
 
 
 def _verify_saved(root,request):
+    from _b_route_compensation_segmented_execution import PROOF as SEGMENTED_PROOF,verify_saved_private
+    if request.get('host_review_ref',{}).get('schema_version')==SEGMENTED_PROOF:return verify_saved_private(root,request)
     ref=request.get('host_review_ref');home=review.location(request['operation_id'])
     review.shape(ref,('path','schema_version','raw_digest'),'qualified proof reference')
     need(ref['path']==home+'/review.json' and ref['schema_version'] in (PROOF,profiles.PUBLISHED.name('proof')),'exact owned new proof family/path')
@@ -403,6 +421,12 @@ def verify_saved(root,request):
 
 
 def seal(root,operation_id,value):
+    from _b_route_compensation_segmented_execution import PROOF as SEGMENTED_PROOF
+    if value.get('schema_version')==SEGMENTED_PROOF:
+        need(value['operation_id']==operation_id and value['policy_identity']==review.policy_identity(),
+             'same actual segmented proof/current policy')
+        home=review.location(operation_id);review.write_once(root,home+'/review.json',raw(value))
+        return {'path':home+'/review.json','schema_version':SEGMENTED_PROOF,'raw_digest':codec.raw_digest(raw(value))}
     need(value['schema_version'] in (PROOF,profiles.PUBLISHED.name('proof')) and value['operation_id']==operation_id
          and value['policy_identity']==review.policy_identity(),'same actual qualified proof/current policy')
     _proof_shape(value)
@@ -426,6 +450,11 @@ def bind_action(snapshot):
 
 
 def verify_semantic(root,subject, *, packet=None,buffers=None):
+    from _b_route_compensation_segmented_execution import selected as is_segmented,complete_inputs
+    if is_segmented(root,subject['operation_id']):
+        saved=_inputs(root,subject);complete_inputs(saved)
+        need(buffers is None or buffers==saved.buffers,'same actual complete segmented support')
+        return deepcopy(saved.evidence)
     with action():
         inputs=_inputs(root,subject)
         if buffers is not None:

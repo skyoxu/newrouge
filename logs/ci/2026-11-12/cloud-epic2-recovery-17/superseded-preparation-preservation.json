@@ -1,0 +1,52 @@
+{
+  "action": "relocated own auxiliary preparation to immutable evidence backup",
+  "original_namespace": "/workspace/newrouge-recovery-data/batch03-05f5fbf9/work/target-compensation-prepare/logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864",
+  "backup": "/workspace/newrouge-recovery-data/batch03-05f5fbf9/work/superseded-unexecuted-segmented-preparation-17a",
+  "reason": "previous ready used workspace prompt instead of complete prompt/output_schema JSON; not accepted as final admission",
+  "files": {
+    "historical-auth.json": {
+      "bytes": 2189,
+      "sha256": "808d32bc3cdebf15348e6ce848d737951108a9acc12119556f824b92a94f0620"
+    },
+    "materials.json": {
+      "bytes": 1371024,
+      "sha256": "c4e95e062f2429ba7f728214443443eb407b652cd2df13dc9a5440c40cd7d56f"
+    },
+    "presentation.json": {
+      "bytes": 1021,
+      "sha256": "949518617848571cb23ee81012b527a026999b84adc3919eb0ed9003bc6733d7"
+    },
+    "roles.json": {
+      "bytes": 24827,
+      "sha256": "88e9e85d9b54a124783383bd1843f15a0d6398ff704f896caf81be547538b218"
+    },
+    "segmented/nodes/000/base-prompt.txt": {
+      "bytes": 68119,
+      "sha256": "d26098d2a91b2cac87b7d92db42b94de133b9b1967551326988552a85d64aded"
+    },
+    "segmented/nodes/001/base-prompt.txt": {
+      "bytes": 66141,
+      "sha256": "3ec3fce8d1234c3f56c2b7332cfc1bc313151b7d515402e869ef829d3292c882"
+    },
+    "segmented/plan.json": {
+      "bytes": 2995,
+      "sha256": "287c179ffc5a6a91643776e4816d6585bac3b44a742061a9c7bc00991bc4beb2"
+    },
+    "segmented/source-pins.json": {
+      "bytes": 12385,
+      "sha256": "2e95e57565239ade5f08e07639452b20ef6077630acf5fba78dcb3d9831dac11"
+    },
+    "subject.json": {
+      "bytes": 996681,
+      "sha256": "5a75e4979e9de2e7b9b12756955864936a7f49eb9bdbe1692eec5e2176049a47"
+    }
+  },
+  "original_business_operation_exists": false,
+  "any_node_intent_or_execution": false,
+  "host_review_ref_exists": false,
+  "model_calls": 0,
+  "budget_actions": 0,
+  "unknown_released": false,
+  "new_operation_id_created": false,
+  "same_id_can_be_prepared_with_correct_contract": true
+}

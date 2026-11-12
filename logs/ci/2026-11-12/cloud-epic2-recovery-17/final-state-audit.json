@@ -1,0 +1,48 @@
+{
+  "corrected_preparation_unchanged_after_read_only_resume": true,
+  "current_auxiliary_files": [
+    "capability-coordinator.lock",
+    "historical-auth.json",
+    "materials.json",
+    "presentation.json",
+    "roles.json",
+    "segmented/nodes/000/base-prompt.txt",
+    "segmented/nodes/001/base-prompt.txt",
+    "segmented/plan.json",
+    "segmented/source-pins.json",
+    "subject.json"
+  ],
+  "read_only_resume_coordination_file": "capability-coordinator.lock",
+  "old_mismeasured_preparation_bytes_preserved": true,
+  "business_operation_exists": false,
+  "node_intents_or_execution": false,
+  "review_proof_exists": false,
+  "budget_owner_installed": false,
+  "actual_public_resume": {
+    "status": "blocked",
+    "operation_id": "NativeV15Origin03Compensation01",
+    "scope_ids": null,
+    "state": null,
+    "formal_adoption": false,
+    "readiness": false,
+    "runtime_verified": false,
+    "diagnostics": [
+      {
+        "reason_code": "dependency_unavailable",
+        "stage": "bundle",
+        "entity_id": "NativeV15Origin03Compensation01",
+        "expected": "installed genuine compensation budget issuer; original unknowns retained",
+        "actual": "compensation_budget_owner_unavailable",
+        "resume_ref": null
+      }
+    ]
+  },
+  "original_critical_files_unchanged": {
+    "docs/planning/b-route/catalog.v1.json": true,
+    "docs/planning/b-route/commits/NativeV15Origin03.json": true,
+    "logs/ci/b-route-operations/operations/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/operation.json": true
+  },
+  "project_model_calls": 0,
+  "financial_actions": 0,
+  "unknown_replay_or_release": 0
+}

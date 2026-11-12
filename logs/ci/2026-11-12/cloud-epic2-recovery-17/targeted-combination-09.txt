@@ -1,0 +1,48 @@
+test_changed_prefix_and_low_measurement_reject_before_dispatch (test_b_route_compensation_segmented_execution.SegmentedExecutionDataTests.test_changed_prefix_and_low_measurement_reject_before_dispatch) ... ok
+test_completed_owner_outcome_repairs_publication_without_dispatch (test_b_route_compensation_segmented_execution.SegmentedExecutionDataTests.test_completed_owner_outcome_repairs_publication_without_dispatch) ... ok
+test_finite_budget_refusal_prevents_dispatch (test_b_route_compensation_segmented_execution.SegmentedExecutionDataTests.test_finite_budget_refusal_prevents_dispatch) ... ok
+test_full_parent_outputs_are_remeasured_before_next_reservation (test_b_route_compensation_segmented_execution.SegmentedExecutionDataTests.test_full_parent_outputs_are_remeasured_before_next_reservation) ... ok
+test_high_is_set_only_in_child_environment_before_launch (test_b_route_compensation_segmented_execution.SegmentedExecutionDataTests.test_high_is_set_only_in_child_environment_before_launch) ... ok
+test_missing_actual_issuer_and_caller_dict_cannot_dispatch (test_b_route_compensation_segmented_execution.SegmentedExecutionDataTests.test_missing_actual_issuer_and_caller_dict_cannot_dispatch) ... ok
+test_modified_proof_cannot_mint_before_view_context (test_b_route_compensation_segmented_execution.SegmentedExecutionDataTests.test_modified_proof_cannot_mint_before_view_context) ... ok
+test_outer_rpc_escaping_is_admitted_before_any_reservation (test_b_route_compensation_segmented_execution.SegmentedExecutionDataTests.test_outer_rpc_escaping_is_admitted_before_any_reservation) ... ok
+test_output_reserve_is_not_a_new_output_size_cap (test_b_route_compensation_segmented_execution.SegmentedExecutionDataTests.test_output_reserve_is_not_a_new_output_size_cap) ... ok
+test_owner_partition_cannot_be_replaced_by_a_caller_rehash (test_b_route_compensation_segmented_execution.SegmentedExecutionDataTests.test_owner_partition_cannot_be_replaced_by_a_caller_rehash) ... ok
+test_reserve_unknown_keeps_intent_without_second_reserve (test_b_route_compensation_segmented_execution.SegmentedExecutionDataTests.test_reserve_unknown_keeps_intent_without_second_reserve) ... ok
+test_reused_thread_rejects_no_next_node (test_b_route_compensation_segmented_execution.SegmentedExecutionDataTests.test_reused_thread_rejects_no_next_node) ... ok
+test_reused_turn_rejects_no_next_node (test_b_route_compensation_segmented_execution.SegmentedExecutionDataTests.test_reused_turn_rejects_no_next_node) ... ok
+test_saved_history_routes_all_node_roles_and_ancestor_identities (test_b_route_compensation_segmented_execution.SegmentedExecutionDataTests.test_saved_history_routes_all_node_roles_and_ancestor_identities) ... ok
+test_three_nodes_real_replay_proof_and_no_second_dispatch (test_b_route_compensation_segmented_execution.SegmentedExecutionDataTests.test_three_nodes_real_replay_proof_and_no_second_dispatch) ... ok
+test_unknown_stops_and_resume_does_not_retry_or_refund (test_b_route_compensation_segmented_execution.SegmentedExecutionDataTests.test_unknown_stops_and_resume_does_not_retry_or_refund) ... ok
+test_business_object_with_same_named_fields_is_not_normalized (test_b_route_compensation_partition.PreservingPartitionDataTests.test_business_object_with_same_named_fields_is_not_normalized) ... ok
+test_exact_atom_restoration_and_wrong_type_overlap_rejection (test_b_route_compensation_partition.PreservingPartitionDataTests.test_exact_atom_restoration_and_wrong_type_overlap_rejection) ... ok
+test_existing_formal_dependency_uses_whole_fallback (test_b_route_compensation_partition.PreservingPartitionDataTests.test_existing_formal_dependency_uses_whole_fallback) ... ok
+test_identity_spelling_roundtrip_is_ordered_typed_and_full_width (test_b_route_compensation_partition.PreservingPartitionDataTests.test_identity_spelling_roundtrip_is_ordered_typed_and_full_width) ... ok
+test_revision_rebind_is_exact_typed_self_use_only (test_b_route_compensation_partition.PreservingPartitionDataTests.test_revision_rebind_is_exact_typed_self_use_only) ... ok
+test_b_route_compensation_segmented_input (unittest.loader._FailedTest.test_b_route_compensation_segmented_input) ... ERROR
+test_auth_storage_data_boundary_rejects_before_publishing_bytes (test_b_route_qualified_render_retention_v2.AuthStorageDataTests.test_auth_storage_data_boundary_rejects_before_publishing_bytes) ... ok
+test_failed_freeze_keeps_original_graph_and_exhausted_account (test_b_route_qualified_render_retention_v2.AuthStorageDataTests.test_failed_freeze_keeps_original_graph_and_exhausted_account) ... ok
+test_full_original_auth_bytes_replace_the_retained_graph_once (test_b_route_qualified_render_retention_v2.AuthStorageDataTests.test_full_original_auth_bytes_replace_the_retained_graph_once) ... ok
+test_saved_context_and_its_full_buffers_remain_charged (test_b_route_qualified_render_retention_v2.AuthStorageDataTests.test_saved_context_and_its_full_buffers_remain_charged) ... ok
+test_admitted_capacity_keeps_the_existing_artifact_path (test_b_route_qualified_render_retention_v2.QualifiedCapacityDiagnosticTests.test_admitted_capacity_keeps_the_existing_artifact_path) ... ok
+test_capacity_refusal_preserves_reason_and_details_through_public_boundary (test_b_route_qualified_render_retention_v2.QualifiedCapacityDiagnosticTests.test_capacity_refusal_preserves_reason_and_details_through_public_boundary) ... ok
+test_frame_reservation_and_released_temporaries_follow_actual_phases (test_b_route_qualified_render_retention_v2.QualifiedWarmLifecycleTests.test_frame_reservation_and_released_temporaries_follow_actual_phases) ... ok
+test_json_shaped_semantic_corruption_rejects_after_full_real_roundtrip (test_b_route_qualified_render_retention_v2.QualifiedWarmLifecycleTests.test_json_shaped_semantic_corruption_rejects_after_full_real_roundtrip) ... ok
+test_producer_errors_bad_body_and_current_mutation_fail_closed (test_b_route_qualified_render_retention_v2.QualifiedWarmLifecycleTests.test_producer_errors_bad_body_and_current_mutation_fail_closed) ... ok
+test_small_original_fixture_preserves_full_canonical_wire_and_auth (test_b_route_qualified_render_retention_v2.QualifiedWarmLifecycleTests.test_small_original_fixture_preserves_full_canonical_wire_and_auth) ... ok
+
+======================================================================
+ERROR: test_b_route_compensation_segmented_input (unittest.loader._FailedTest.test_b_route_compensation_segmented_input)
+----------------------------------------------------------------------
+ImportError: Failed to import test module: test_b_route_compensation_segmented_input
+Traceback (most recent call last):
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/unittest/loader.py", line 137, in loadTestsFromName
+    module = __import__(module_name)
+             ^^^^^^^^^^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'test_b_route_compensation_segmented_input'
+
+
+----------------------------------------------------------------------
+Ran 32 tests in 24.047s
+
+FAILED (errors=1)

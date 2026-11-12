@@ -1,0 +1,48 @@
+{
+  "completed": false,
+  "genuine_factory": true,
+  "work_before_spec": 16189688,
+  "work_after_spec": 130405775,
+  "work_limit": 170000000,
+  "nodes": [
+    {
+      "node_id": "business",
+      "status": "literal_ready",
+      "measurement": {
+        "request_sha256": "sha256:73f274755222d0f56193f2c2cbb36f3851ddc0e75be095f6fddfef7ccaa97795",
+        "request_chars": 67401,
+        "request_bytes": 67401,
+        "input_token_estimate": 67401,
+        "token_counts": {},
+        "token_counter": "utf8_byte_upper_bound",
+        "max_bytes": 1048576,
+        "max_input_tokens": 96000,
+        "reserved_continuation_tokens": 2000,
+        "truncation_allowed": false
+      },
+      "parent_outputs_present": false
+    },
+    {
+      "node_id": "governance-joint",
+      "status": "literal_ready",
+      "measurement": {
+        "request_sha256": "sha256:2d2aa95f1825a2162a564355492d239b9d157ad4a0bce4289578a14abdf13225",
+        "request_chars": 69672,
+        "request_bytes": 69672,
+        "input_token_estimate": 69672,
+        "token_counts": {},
+        "token_counter": "utf8_byte_upper_bound",
+        "max_bytes": 1048576,
+        "max_input_tokens": 96000,
+        "reserved_continuation_tokens": 2000,
+        "truncation_allowed": false
+      },
+      "parent_outputs_present": false
+    }
+  ],
+  "resource_refusals": [],
+  "publication_performed": false,
+  "model_dispatched": false,
+  "budget_action": false,
+  "scope": "real unchanged owner/guard/spec; only persistence callback observed instead of publishing"
+}

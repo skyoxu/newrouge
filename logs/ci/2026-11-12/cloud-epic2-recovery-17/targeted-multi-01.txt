@@ -1,0 +1,31 @@
+test_changed_prefix_and_low_measurement_reject_before_dispatch (test_b_route_compensation_segmented_execution.SegmentedExecutionDataTests.test_changed_prefix_and_low_measurement_reject_before_dispatch) ... ok
+test_completed_owner_outcome_repairs_publication_without_dispatch (test_b_route_compensation_segmented_execution.SegmentedExecutionDataTests.test_completed_owner_outcome_repairs_publication_without_dispatch) ... ok
+test_finite_budget_refusal_prevents_dispatch (test_b_route_compensation_segmented_execution.SegmentedExecutionDataTests.test_finite_budget_refusal_prevents_dispatch) ... ok
+test_missing_actual_issuer_and_caller_dict_cannot_dispatch (test_b_route_compensation_segmented_execution.SegmentedExecutionDataTests.test_missing_actual_issuer_and_caller_dict_cannot_dispatch) ... ok
+test_reserve_unknown_keeps_intent_without_second_reserve (test_b_route_compensation_segmented_execution.SegmentedExecutionDataTests.test_reserve_unknown_keeps_intent_without_second_reserve) ... ok
+test_reused_thread_or_turn_rejects_no_next_node (test_b_route_compensation_segmented_execution.SegmentedExecutionDataTests.test_reused_thread_or_turn_rejects_no_next_node) ... ok
+test_three_nodes_real_replay_proof_and_no_second_dispatch (test_b_route_compensation_segmented_execution.SegmentedExecutionDataTests.test_three_nodes_real_replay_proof_and_no_second_dispatch) ... ERROR
+test_unknown_stops_and_resume_does_not_retry_or_refund (test_b_route_compensation_segmented_execution.SegmentedExecutionDataTests.test_unknown_stops_and_resume_does_not_retry_or_refund) ... ok
+
+======================================================================
+ERROR: test_three_nodes_real_replay_proof_and_no_second_dispatch (test_b_route_compensation_segmented_execution.SegmentedExecutionDataTests.test_three_nodes_real_replay_proof_and_no_second_dispatch)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/newrouge/scripts/python/tests/test_b_route_compensation_segmented_execution.py", line 129, in test_three_nodes_real_replay_proof_and_no_second_dispatch
+    proof,saved,_=engine.produce_proof(self.root,'DATA-Multi')
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/newrouge/scripts/python/_b_route_compensation_segmented_execution.py", line 361, in produce_proof
+    d=complete_inputs(saved);b=qualified.bindings(subject,d);plan=codec.strict_json_loads(saved.buffers[MARKER])
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/newrouge/scripts/python/_b_route_qualified_compensation_review_v2.py", line 253, in bindings
+    need(type(derived) is materials.Derived and same(derived.subject,subject),'same actual qualified derivation')
+  File "/workspace/newrouge/scripts/python/_b_route_qualified_compensation_review_v2.py", line 34, in need
+    review.require(ok,expected,actual)
+  File "/workspace/newrouge/scripts/python/_b_route_adoption_review.py", line 42, in require
+    raise codec.CodecError(codec.Diagnostic(code, codec.Stage.BUNDLE, expected=expected, actual=actual))
+_b_route_codec.CodecError: identity_unprovable
+
+----------------------------------------------------------------------
+Ran 8 tests in 1.061s
+
+FAILED (errors=1)

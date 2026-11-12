@@ -1,0 +1,49 @@
+{
+  "completed": false,
+  "traceback": "Traceback (most recent call last):\n  File \"/workspace/newrouge/scripts/python/_b_route_adoption.py\", line 761, in checked\n    return function(root, operation_id=operation_id, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/workspace/newrouge/scripts/python/_b_route_adoption.py\", line 942, in segmented_compensation_review\n    return compensation.review_preview(root,request,delivery=PUBLISHED.name('delivery'),segmented_action=stage)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/workspace/newrouge/scripts/python/_b_route_compensation.py\", line 721, in review_preview\n    return _review_preview_body(root, request, seal=seal, delivery=delivery,segmented_preflight=segmented_preflight,\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/workspace/newrouge/scripts/python/_b_route_compensation.py\", line 552, in _review_preview_body\n    result=(segment_prepare(root,derived) if segmented_action=='prepare' else\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/unittest/mock.py\", line 1139, in __call__\n    return self._mock_call(*args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/unittest/mock.py\", line 1143, in _mock_call\n    return self._execute_mock_call(*args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/unittest/mock.py\", line 1204, in _execute_mock_call\n    result = effect(*args, **kwargs)\n             ^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/workspace/newrouge/logs/ci/2026-11-12/cloud-epic2-recovery-17/genuine_partition_preflight03.py\", line 33, in observe_prepare\n    derived.recheck();policy,pins=review.policy_observations();records.update(source_policy=policy,source_pin_count=len(pins),source_pins=pins)\n    ^^^^^^^^^^^^^^^^^\n  File \"/workspace/newrouge/scripts/python/_b_route_qualified_compensation_materials_v2.py\", line 90, in recheck\n    handle.recheck()\n  File \"/workspace/newrouge/scripts/python/_b_route_published_history.py\", line 63, in recheck\n    need(review.policy_identity() == self._binding['current_verifier_policy'], 'unchanged current published verifier policy')\n  File \"/workspace/newrouge/scripts/python/_b_route_published_history.py\", line 22, in need\n    raise codec.CodecError(codec.Diagnostic(codec.ReasonCode.IDENTITY_UNPROVABLE,\n_b_route_codec.CodecError: identity_unprovable\n\nThe above exception was the direct cause of the following exception:\n\nTraceback (most recent call last):\n  File \"/workspace/newrouge/logs/ci/2026-11-12/cloud-epic2-recovery-17/genuine_partition_preflight03.py\", line 37, in <module>\n    result=adoption.segmented_compensation_review(ROOT,operation_id='NativeV15Origin03Compensation01',stage='prepare',request_ref='logs/ci/b-route-requests/native-v15-origin03-compensation-01/request.json')\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/workspace/newrouge/scripts/python/_b_route_adoption.py\", line 766, in checked\n    raise codec.CodecError(diagnostic) from error\n_b_route_codec.CodecError: identity_unprovable\n",
+  "genuine_factory": true,
+  "work_before_spec": 16189688,
+  "work_after_spec": 130405775,
+  "work_limit": 170000000,
+  "nodes": [
+    {
+      "node_id": "business",
+      "status": "literal_ready",
+      "measurement": {
+        "request_sha256": "sha256:73f274755222d0f56193f2c2cbb36f3851ddc0e75be095f6fddfef7ccaa97795",
+        "request_chars": 67401,
+        "request_bytes": 67401,
+        "input_token_estimate": 67401,
+        "token_counts": {},
+        "token_counter": "utf8_byte_upper_bound",
+        "max_bytes": 1048576,
+        "max_input_tokens": 96000,
+        "reserved_continuation_tokens": 2000,
+        "truncation_allowed": false
+      },
+      "parent_outputs_present": false
+    },
+    {
+      "node_id": "governance-joint",
+      "status": "literal_ready",
+      "measurement": {
+        "request_sha256": "sha256:2d2aa95f1825a2162a564355492d239b9d157ad4a0bce4289578a14abdf13225",
+        "request_chars": 69672,
+        "request_bytes": 69672,
+        "input_token_estimate": 69672,
+        "token_counts": {},
+        "token_counter": "utf8_byte_upper_bound",
+        "max_bytes": 1048576,
+        "max_input_tokens": 96000,
+        "reserved_continuation_tokens": 2000,
+        "truncation_allowed": false
+      },
+      "parent_outputs_present": false
+    }
+  ],
+  "resource_refusals": [],
+  "publication_performed": false,
+  "model_dispatched": false,
+  "budget_action": false,
+  "scope": "real unchanged owner/guard/spec; only persistence callback observed instead of publishing"
+}

@@ -294,3 +294,27 @@ encoding finish before WRITER; proof support pins use the validated buffers.
 Original byte/token/transcript/codec budgets, admission, unknown and campaign
 fences continue unchanged. Root must measure capacity and execute regressions
 against the final frozen source; author static checks do not qualify execution.
+
+## Explicit compensation multi-segment review
+
+For a new published-history compensation request, use the existing adoption CLI
+with `--stage review-segmented-prepare --operation-id <id> --request <request-ref>`.
+Preparation derives and freezes the genuine owner plan and complete originals;
+it does not reserve funds, run a model or create a business operation. Inspect
+the returned per-node measurements. Literal readiness excludes future parent
+outputs, which are measured in full before each actual reservation.
+
+The explicit `review-segmented-execute` stage dispatches the finite sequence only
+through an installed genuine original compensation budget owner; absence returns
+`dependency_unavailable`. `review-segmented-resume` verifies completed/pending
+publication without issuing a new model call. Use the same operation ID. A
+pending/unknown intent requires its original owner's reconciliation; neither
+stage invents allowance, refunds unknowns or restarts with a replacement ID.
+After actual verified execution, `review-complete` seals the distinct segmented
+proof; normal business prepare/reserve/commit/recover remain their existing
+separate operations. No preparation or DATA test establishes model approval.
+
+[ADR-0058](../adr/ADR-0058-compensation-multisegment-consumer.md) specifies the
+proved two-closure family, complete RPC measurement, original fiscal boundary
+and lossless identity spelling. Other families keep a complete closure. The CLI
+owns partition, sequence, capacity and continuation; the LLM only reviews content.

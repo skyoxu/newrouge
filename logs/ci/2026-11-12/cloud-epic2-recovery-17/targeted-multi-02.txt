@@ -1,0 +1,14 @@
+test_changed_prefix_and_low_measurement_reject_before_dispatch (test_b_route_compensation_segmented_execution.SegmentedExecutionDataTests.test_changed_prefix_and_low_measurement_reject_before_dispatch) ... ok
+test_completed_owner_outcome_repairs_publication_without_dispatch (test_b_route_compensation_segmented_execution.SegmentedExecutionDataTests.test_completed_owner_outcome_repairs_publication_without_dispatch) ... ok
+test_finite_budget_refusal_prevents_dispatch (test_b_route_compensation_segmented_execution.SegmentedExecutionDataTests.test_finite_budget_refusal_prevents_dispatch) ... ok
+test_missing_actual_issuer_and_caller_dict_cannot_dispatch (test_b_route_compensation_segmented_execution.SegmentedExecutionDataTests.test_missing_actual_issuer_and_caller_dict_cannot_dispatch) ... ok
+test_reserve_unknown_keeps_intent_without_second_reserve (test_b_route_compensation_segmented_execution.SegmentedExecutionDataTests.test_reserve_unknown_keeps_intent_without_second_reserve) ... ok
+test_reused_thread_rejects_no_next_node (test_b_route_compensation_segmented_execution.SegmentedExecutionDataTests.test_reused_thread_rejects_no_next_node) ... ok
+test_reused_turn_rejects_no_next_node (test_b_route_compensation_segmented_execution.SegmentedExecutionDataTests.test_reused_turn_rejects_no_next_node) ... ok
+test_three_nodes_real_replay_proof_and_no_second_dispatch (test_b_route_compensation_segmented_execution.SegmentedExecutionDataTests.test_three_nodes_real_replay_proof_and_no_second_dispatch) ... ok
+test_unknown_stops_and_resume_does_not_retry_or_refund (test_b_route_compensation_segmented_execution.SegmentedExecutionDataTests.test_unknown_stops_and_resume_does_not_retry_or_refund) ... ok
+
+----------------------------------------------------------------------
+Ran 9 tests in 1.319s
+
+OK

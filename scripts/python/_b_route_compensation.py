@@ -502,7 +502,7 @@ def _persist_review(root, subject, artifacts):
     return value
 
 
-def _review_preview_body(root, request, *, seal=False, delivery=None, segmented_preflight=False):
+def _review_preview_body(root, request, *, seal=False, delivery=None, segmented_preflight=False,segmented_action=None):
     from _b_route_operation_scope import business_guard, writer_boundary
     require(not seal or delivery is None, 'saved delivery inferred only during review completion', delivery)
     require(not segmented_preflight or (not seal and delivery==profiles.PUBLISHED.name('delivery')),
@@ -543,6 +543,16 @@ def _review_preview_body(root, request, *, seal=False, delivery=None, segmented_
             result=segments.prepare(root,derived)
             snapshot.verify()
             return result
+        if segmented_action is not None:
+            from _b_route_compensation_segmented_execution import prepare as segment_prepare,execute as segment_execute
+            require(segmented_action in ('prepare','execute','resume') and not seal
+                and subject['schema_version']==profiles.PUBLISHED.name('subject'),
+                'explicit published-history segmented execution action',segmented_action)
+            derived=qualified.model_packet(root,subject)
+            result=(segment_prepare(root,derived) if segmented_action=='prepare' else
+                segment_execute(root,subject['operation_id'],publication_only=segmented_action=='resume',derived=derived))
+            snapshot.verify()
+            return result
         artifacts = None if seal else review.review_artifacts(root, subject, delivery=delivery)
         qualified.bind_action(snapshot)
         policy, pins = review.policy_observations()
@@ -557,6 +567,8 @@ def _review_preview_body(root, request, *, seal=False, delivery=None, segmented_
                 value = {'status': 'reviewed', 'host_review_ref': review.seal(root, request['operation_id'], proof), **FLAGS}
                 if subject['schema_version'] == qualified.SUBJECT:
                     value.update(subject_schema=qualified.SUBJECT, review_delivery=qualified.DELIVERY, review_claim=qualified.CLAIM)
+                    from _b_route_compensation_segmented_execution import PROOF as SEGMENTED_PROOF,DELIVERY as SEGMENTED_DELIVERY
+                    if proof['schema_version']==SEGMENTED_PROOF:value['review_delivery']=SEGMENTED_DELIVERY
                 return value
             return _persist_review(root, subject, artifacts)
 
@@ -703,10 +715,11 @@ def prove_resolution(root, successor, original, graph):
         task_join=adoption._task_context(adoption.Snapshot(root)), verify_tasks=False)
 
 
-def review_preview(root, request, *, seal=False, delivery=None, segmented_preflight=False):
+def review_preview(root, request, *, seal=False, delivery=None, segmented_preflight=False,segmented_action=None):
     from _b_route_qualified_compensation_dispatch import action
     with action():
-        return _review_preview_body(root, request, seal=seal, delivery=delivery,segmented_preflight=segmented_preflight)
+        return _review_preview_body(root, request, seal=seal, delivery=delivery,segmented_preflight=segmented_preflight,
+                                   segmented_action=segmented_action)
 
 
 def run(root, operation_id, request_raw, *, reserve_only=False):

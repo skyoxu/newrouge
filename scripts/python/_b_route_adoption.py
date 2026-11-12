@@ -928,6 +928,21 @@ def preflight_segmented_compensation(root, *, operation_id, request_ref, compens
 
 
 @public
+def segmented_compensation_review(root, *, operation_id, stage,request_ref=None):
+    import _b_route_compensation as compensation
+    from _b_route_compensation_review_profiles import PUBLISHED
+    root=Path(root).resolve()
+    if stage=='prepare':
+        request=journal.validate_operation_request(safe_path(root,request_ref).read_bytes())
+    else:
+        import _b_route_qualified_compensation_review_v2 as qualified
+        request=qualified.read_subject(root,operation_id)['request']
+    require(request['operation_id']==operation_id and request['schema_version']==journal.COMPENSATION_REQUEST
+        and 'host_review_ref' not in request,'fresh source for explicit segmented review',operation_id)
+    return compensation.review_preview(root,request,delivery=PUBLISHED.name('delivery'),segmented_action=stage)
+
+
+@public
 def complete_review(root, *, operation_id):
     import _b_route_adoption_review as review
     root = Path(root).resolve()
