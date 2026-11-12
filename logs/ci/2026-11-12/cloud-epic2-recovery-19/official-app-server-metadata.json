@@ -1,0 +1,95 @@
+{
+  "kind": "official metadata only",
+  "model_turns": 0,
+  "rpc_methods": [
+    "initialize",
+    "model/list",
+    "config/read",
+    "account/read"
+  ],
+  "cache_before": false,
+  "initialize_ok": true,
+  "model_list_error": {},
+  "model_list": [
+    {
+      "id": "gpt-6.1-sol",
+      "model": "gpt-6.1-sol",
+      "isDefault": true
+    },
+    {
+      "id": "gpt-6-astra",
+      "model": "gpt-6-astra",
+      "isDefault": false
+    },
+    {
+      "id": "gpt-6-sol",
+      "model": "gpt-6-sol",
+      "isDefault": false
+    },
+    {
+      "id": "gpt-6-luna",
+      "model": "gpt-6-luna",
+      "isDefault": false
+    },
+    {
+      "id": "gpt-5.6-sol",
+      "model": "gpt-5.6-sol",
+      "isDefault": false
+    },
+    {
+      "id": "gpt-5.6-terra",
+      "model": "gpt-5.6-terra",
+      "isDefault": false
+    },
+    {
+      "id": "gpt-5.6-luna",
+      "model": "gpt-5.6-luna",
+      "isDefault": false
+    },
+    {
+      "id": "gpt-daybreak-blue-latest",
+      "model": "gpt-daybreak-blue-latest",
+      "isDefault": false
+    },
+    {
+      "id": "gpt-daybreak-red-latest",
+      "model": "gpt-daybreak-red-latest",
+      "isDefault": false
+    },
+    {
+      "id": "gpt-5.5",
+      "model": "gpt-5.5",
+      "isDefault": false
+    },
+    {
+      "id": "codex-auto-review",
+      "model": "codex-auto-review",
+      "isDefault": false
+    }
+  ],
+  "effective_nonsecret_config": {
+    "model": null,
+    "model_provider": null,
+    "model_reasoning_effort": null,
+    "service_tier": null
+  },
+  "account_metadata": {
+    "type": "chatgpt",
+    "planType": "unknown"
+  },
+  "requires_openai_auth": true,
+  "process_exit": 0,
+  "pipe_threads_stopped": true,
+  "official_cache_created": false,
+  "stderr_http_categories": [
+    "401"
+  ],
+  "stderr_error_categories": {
+    "failed to refresh": true,
+    "unauthorized": true,
+    "forbidden": false,
+    "sqlite": false,
+    "read-only": false,
+    "error": true
+  }
+}

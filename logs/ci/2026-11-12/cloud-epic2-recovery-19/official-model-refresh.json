@@ -1,0 +1,12 @@
+{
+  "command": "codex debug models",
+  "official_refresh_attempts": 1,
+  "timeout": false,
+  "exit_code": 0,
+  "official_cache_created": false,
+  "http_error_codes_seen": [],
+  "reported_refresh_error": false,
+  "model_turns": 0,
+  "API_business_calls": 0,
+  "proxy_or_network_policy_changes": false
+}

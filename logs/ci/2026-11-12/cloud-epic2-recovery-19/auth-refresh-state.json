@@ -1,0 +1,12 @@
+{
+  "isolated_auth_unchanged_from_inherited": true,
+  "auth_mode": "chatgpt",
+  "access_token_present": true,
+  "refresh_token_present": true,
+  "official_models_cache_exists": false,
+  "credential_values_logged": false,
+  "account_refresh_rpc_errors": {},
+  "fresh_online_model_metadata_qualification": false,
+  "subscription_business_turns": 0,
+  "next_action": "restore supported effective ChatGPT login for this runtime; no API payment approval needed"
+}

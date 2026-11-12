@@ -1,0 +1,13 @@
+{
+  "action": "supported isolated CODEX_HOME with inherited existing ChatGPT login",
+  "isolated_home": "/workspace/newrouge-tools/codex-runtime-epic2-20261112",
+  "original_home_unchanged": true,
+  "original_metadata_cache_exists": false,
+  "login_status_exit_code": 0,
+  "login_status_reports_chatgpt": true,
+  "login_status_reports_api_key": false,
+  "credential_values_logged": false,
+  "proxy_or_auth_settings_overridden": false,
+  "model_turns": 0,
+  "API_calls": 0
+}

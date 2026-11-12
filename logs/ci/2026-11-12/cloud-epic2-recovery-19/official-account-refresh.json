@@ -1,0 +1,29 @@
+{
+  "kind": "official metadata only",
+  "model_turns": 0,
+  "rpc_methods": [
+    "initialize",
+    "account/read"
+  ],
+  "cache_before": false,
+  "purpose": "one supported account refresh after official model metadata HTTP401",
+  "initialize_ok": true,
+  "account_refresh_error": {},
+  "account_metadata": {
+    "type": "chatgpt",
+    "planType": "unknown"
+  },
+  "requires_openai_auth": true,
+  "process_exit": 0,
+  "pipe_threads_stopped": true,
+  "official_cache_created": false,
+  "stderr_http_categories": [],
+  "stderr_error_categories": {
+    "failed to refresh": false,
+    "unauthorized": false,
+    "forbidden": false,
+    "sqlite": false,
+    "read-only": false,
+    "error": false
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "source_pins_unchanged": 83,
+  "original_critical_files_unchanged": {
+    "docs/planning/b-route/catalog.v1.json": true,
+    "docs/planning/b-route/commits/NativeV15Origin03.json": true,
+    "logs/ci/b-route-operations/operations/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/operation.json": true
+  },
+  "no_new_call_limit_intent_execution_proof": true,
+  "authorized_subscription_business_calls": 2,
+  "used_subscription_business_calls": 0,
+  "remaining_plan_logical_slots": 2,
+  "new_API_payment_or_credentials": false,
+  "fiscal_ledger_writes": 0,
+  "unknown_replay_or_release": 0,
+  "official_cache_fabricated": false,
+  "network_or_proxy_bypassed": false,
+  "repository_source_modified": false,
+  "workflow_raw_equal_HEAD": true,
+  "actual_blocker": "official model metadata refresh HTTP401; official account/rateLimits/read HTTP401 after one account refresh; no official cache created"
+}

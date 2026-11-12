@@ -1,0 +1,34 @@
+{
+  "kind": "official metadata only",
+  "model_turns": 0,
+  "rpc_methods": [
+    "initialize",
+    "account/rateLimits/read"
+  ],
+  "cache_before": false,
+  "purpose": "one non-business subscription status check after account refresh",
+  "initialize_ok": true,
+  "subscription_status_error": {
+    "rpc_error_code": -32603,
+    "rpc_error_http_categories": [
+      "401"
+    ]
+  },
+  "subscription_status_returned": false,
+  "response_fields_only": [
+    "rpc_error_code",
+    "rpc_error_http_categories"
+  ],
+  "process_exit": 0,
+  "pipe_threads_stopped": true,
+  "official_cache_created": false,
+  "stderr_http_categories": [],
+  "stderr_error_categories": {
+    "failed to refresh": false,
+    "unauthorized": false,
+    "forbidden": false,
+    "sqlite": false,
+    "read-only": false,
+    "error": false
+  }
+}
