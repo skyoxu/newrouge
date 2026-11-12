@@ -1,0 +1,1 @@
+{"status": "blocked", "reason": "authorization_required", "next_node": "business", "required_lifetime_logical_calls": 2, "model_dispatched": false, "runner_dispatch_attempts": 0, "budget_claim": "operation_lifetime_logical_calls_only;not_funding_or_campaign_reconciliation", "formal_adoption": false, "readiness": false, "runtime_verified": false}

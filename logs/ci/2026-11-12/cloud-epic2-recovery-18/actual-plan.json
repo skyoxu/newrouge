@@ -1,0 +1,64 @@
+{
+  "schema_version": "newrouge.b-route-compensation-segmented-execution-plan.v1",
+  "operation_id": "NativeV15Origin03Compensation01",
+  "subject_digest": "sha256:3cdad762ffd4a38db0d2388d5adab7e0becdaf4903b0fcb75e01cdda62816ff8",
+  "source_policy": "sha256:65e75d61df84da606dd80eca6bbcb2d7fc9a1c3f3ddf08f3c96795ecc8c6d4c5",
+  "presentation_digest": "sha256:c6480f96f0803c3a4d797864f8f874fd2d814aaccc70220cee7bd8bc501460ab",
+  "nodes": [
+    {
+      "node_id": "business",
+      "dependencies": [],
+      "check_ids": [
+        "cumulative_requirements_and_obligations",
+        "existing_formal_semantic_sources"
+      ],
+      "source_paths": [
+        "/materials/frames/1/semantic_fields/source",
+        "/materials/frames/1/semantic_fields/native_content",
+        "/materials/frames/1/semantic_fields/current_selection",
+        "/materials/frames/1/semantic_fields/allocations",
+        "/materials/frames/1/semantic_fields/identity_alignment",
+        "/materials/frames/1/semantic_fields/review_scope/source_set",
+        "/materials/frames/1/semantic_fields/review_scope/protection/authorization",
+        "/materials/frames/1/semantic_fields/review_scope/protection/verification_limits",
+        "/materials/frames/1/semantic_fields/review_scope/protection/legacy_manifest_requirement/schema_version",
+        "/materials/frames/1/semantic_fields/review_scope/protection/legacy_manifest_requirement/state",
+        "/materials/frames/1/semantic_fields/review_scope/protection/legacy_manifest_requirement/reason",
+        "/materials/frames/0/semantic_fields/request",
+        "/materials/frames/0/semantic_fields/preview/compensation",
+        "/materials/documents/2",
+        "/materials/documents/3",
+        "/materials/documents/7",
+        "/materials/documents/8"
+      ],
+      "ordinal": 0,
+      "base_prompt_digest": "sha256:d1dce96a1d126a21a05987ae596c0b8ed26e1eceafa199453ad1422f5ee86586"
+    },
+    {
+      "node_id": "governance-joint",
+      "dependencies": [
+        "business"
+      ],
+      "check_ids": [
+        "b_source_and_binding_retention",
+        "complete_old_current_new_scope",
+        "current_before_and_later_edits",
+        "exact_pending_claim_relation",
+        "original_raw_frozen_effects",
+        "target:0",
+        "task_status_acceptance_history"
+      ],
+      "source_paths": [
+        "/"
+      ],
+      "ordinal": 1,
+      "base_prompt_digest": "sha256:0d42e523f2e63f064038b7ddcf6f70adf2ff9430f8d2e7270ec252d56fbb92df"
+    }
+  ],
+  "orchestrator": "deterministic-cli",
+  "output_reserve": 2000,
+  "timeout_sec": 1800,
+  "history_claim": "complete_recorded_public_semantics_with_published_history_byte_verification",
+  "execution_claim": "complete_owner_dependency_closures_with_independent_sequential_runtime_reviews",
+  "plan_digest": "sha256:676d20d0e5230771350269b411d7008bb4cc8c37f6659f5809e1f0b9b0285e83"
+}

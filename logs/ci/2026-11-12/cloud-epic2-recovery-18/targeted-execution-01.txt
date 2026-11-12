@@ -1,0 +1,32 @@
+test_changed_prefix_and_low_measurement_reject_before_dispatch (test_b_route_compensation_segmented_execution.SegmentedExecutionDataTests.test_changed_prefix_and_low_measurement_reject_before_dispatch) ... ok
+test_execute_saved_validation_keeps_genuine_factory_account (test_b_route_compensation_segmented_execution.SegmentedExecutionDataTests.test_execute_saved_validation_keeps_genuine_factory_account) ... ok
+test_explicit_limit_covers_entire_plan_before_first_intent (test_b_route_compensation_segmented_execution.SegmentedExecutionDataTests.test_explicit_limit_covers_entire_plan_before_first_intent) ... ok
+test_full_parent_outputs_are_remeasured_before_next_reservation (test_b_route_compensation_segmented_execution.SegmentedExecutionDataTests.test_full_parent_outputs_are_remeasured_before_next_reservation) ... ok
+test_high_is_set_only_in_child_environment_before_launch (test_b_route_compensation_segmented_execution.SegmentedExecutionDataTests.test_high_is_set_only_in_child_environment_before_launch) ... ok
+test_intent_write_interruption_keeps_occupied_slot_without_dispatch (test_b_route_compensation_segmented_execution.SegmentedExecutionDataTests.test_intent_write_interruption_keeps_occupied_slot_without_dispatch) ... ok
+test_modified_proof_cannot_mint_before_view_context (test_b_route_compensation_segmented_execution.SegmentedExecutionDataTests.test_modified_proof_cannot_mint_before_view_context) ... ok
+test_no_limit_is_authorization_required_and_readonly_is_ready (test_b_route_compensation_segmented_execution.SegmentedExecutionDataTests.test_no_limit_is_authorization_required_and_readonly_is_ready) ... ok
+test_outer_rpc_escaping_is_admitted_before_any_reservation (test_b_route_compensation_segmented_execution.SegmentedExecutionDataTests.test_outer_rpc_escaping_is_admitted_before_any_reservation) ... ok
+test_output_reserve_is_not_a_new_output_size_cap (test_b_route_compensation_segmented_execution.SegmentedExecutionDataTests.test_output_reserve_is_not_a_new_output_size_cap) ... ok
+test_owner_partition_cannot_be_replaced_by_a_caller_rehash (test_b_route_compensation_segmented_execution.SegmentedExecutionDataTests.test_owner_partition_cannot_be_replaced_by_a_caller_rehash) ... ok
+test_result_without_complete_marker_remains_pending (test_b_route_compensation_segmented_execution.SegmentedExecutionDataTests.test_result_without_complete_marker_remains_pending) ... ok
+test_reused_thread_rejects_no_next_node (test_b_route_compensation_segmented_execution.SegmentedExecutionDataTests.test_reused_thread_rejects_no_next_node) ... ok
+test_reused_turn_rejects_no_next_node (test_b_route_compensation_segmented_execution.SegmentedExecutionDataTests.test_reused_turn_rejects_no_next_node) ... ok
+test_saved_history_routes_all_node_roles_and_ancestor_identities (test_b_route_compensation_segmented_execution.SegmentedExecutionDataTests.test_saved_history_routes_all_node_roles_and_ancestor_identities) ... ok
+test_saved_limit_cannot_be_increased_on_reentry (test_b_route_compensation_segmented_execution.SegmentedExecutionDataTests.test_saved_limit_cannot_be_increased_on_reentry) ... ok
+test_three_nodes_real_replay_proof_and_no_second_dispatch (test_b_route_compensation_segmented_execution.SegmentedExecutionDataTests.test_three_nodes_real_replay_proof_and_no_second_dispatch) ... ok
+test_unknown_stops_and_resume_does_not_retry_or_refund (test_b_route_compensation_segmented_execution.SegmentedExecutionDataTests.test_unknown_stops_and_resume_does_not_retry_or_refund) ... ERROR
+
+======================================================================
+ERROR: test_unknown_stops_and_resume_does_not_retry_or_refund (test_b_route_compensation_segmented_execution.SegmentedExecutionDataTests.test_unknown_stops_and_resume_does_not_retry_or_refund)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/newrouge/scripts/python/tests/test_b_route_compensation_segmented_execution.py", line 153, in test_unknown_stops_and_resume_does_not_retry_or_refund
+    self.assertEqual('unknown',list(self.budget.rows.values())[-1]['state'])
+                                    ^^^^^^^^^^^
+AttributeError: 'SegmentedExecutionDataTests' object has no attribute 'budget'
+
+----------------------------------------------------------------------
+Ran 18 tests in 2.840s
+
+FAILED (errors=1)

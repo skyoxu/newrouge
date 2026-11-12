@@ -1,0 +1,222 @@
+{
+  "scope": "bounded read-only actual historical configs and ledgers; original personal/authority bodies not copied",
+  "historical_only": true,
+  "not_current_spendable_balance": true,
+  "hosts": [
+    {
+      "source": "/workspace/newrouge-recovery-data/batch03-05f5fbf9/data/task/story29-host1-allocation-Root-01/config.json",
+      "sha256": "359f234379479b6eaf320a8f4208428fc0108f8a422d5903a93750ccc9ca1b0e",
+      "schema": "task.synthetic-v15.public-adoption-host1.v1",
+      "namespace": "story29-host1-allocation-Root-01",
+      "dispatch_cap": 1,
+      "hold": {
+        "host": 1
+      },
+      "guard_after": 179,
+      "paid_or_unknown_after_intent": 81,
+      "released": 0,
+      "ledger": [
+        {
+          "file": "000001.json",
+          "sha256": "4cc6b017d01b4dd54cf365efd66ac46e49ffc8ffde8fa985db15925e56f1feed",
+          "sequence": 1,
+          "event_fields": [
+            "base",
+            "config_sha256",
+            "guard_occupancy",
+            "hold",
+            "identity",
+            "kind",
+            "released"
+          ],
+          "event_scalars": {
+            "guard_occupancy": 179,
+            "hold": 1,
+            "kind": "claim",
+            "released": 0
+          }
+        },
+        {
+          "file": "000002.json",
+          "sha256": "4d7d2708014440c296c3b4c487745050a8d4dc5d104b295157d257f3f842486c",
+          "sequence": 2,
+          "event_fields": [
+            "command",
+            "guard_occupancy",
+            "identity",
+            "kind",
+            "paid_or_unknown",
+            "released",
+            "role"
+          ],
+          "event_scalars": {
+            "guard_occupancy": 179,
+            "kind": "intent",
+            "paid_or_unknown": 81,
+            "released": 0
+          }
+        },
+        {
+          "file": "STOP.json",
+          "sha256": "d8654aa82924c3b91c3d217c7c4f76de56ecbbe62e59fd445cfa9d9e6d72195c",
+          "sequence": null,
+          "event_fields": [],
+          "event_scalars": {},
+          "STOP": {
+            "guard_occupancy": 179,
+            "retry_allowed": false,
+            "released": 0,
+            "reason": "RuntimeError('paid_host:exact original paid Popen audit')"
+          }
+        }
+      ]
+    },
+    {
+      "source": "/workspace/newrouge-recovery-data/batch03-05f5fbf9/data/task/story29-host2-allocation-Root-01/config.json",
+      "sha256": "47f44136b18f0f99bcfec18b4dd27e7c06456807c443e7119fd58c81f20ff669",
+      "schema": "task.synthetic-v15.public-adoption-host2.v1",
+      "namespace": "story29-host2-allocation-Root-01",
+      "dispatch_cap": 1,
+      "hold": {
+        "host": 1
+      },
+      "guard_after": 180,
+      "paid_or_unknown_after_intent": 82,
+      "released": 0,
+      "ledger": [
+        {
+          "file": "000001.json",
+          "sha256": "feb85934e992ee15666a966c462ce4855740d0004219d491c07bc0272284dfc8",
+          "sequence": 1,
+          "event_fields": [
+            "base",
+            "config_sha256",
+            "guard_occupancy",
+            "hold",
+            "identity",
+            "kind",
+            "released"
+          ],
+          "event_scalars": {
+            "guard_occupancy": 180,
+            "hold": 1,
+            "kind": "claim",
+            "released": 0
+          }
+        },
+        {
+          "file": "000002.json",
+          "sha256": "fd4223e7200ce0c3bde3514234016abb4eef69ce4bce16637d36c505bfe7803c",
+          "sequence": 2,
+          "event_fields": [
+            "command",
+            "guard_occupancy",
+            "identity",
+            "kind",
+            "paid_or_unknown",
+            "released",
+            "role"
+          ],
+          "event_scalars": {
+            "guard_occupancy": 180,
+            "kind": "intent",
+            "paid_or_unknown": 82,
+            "released": 0
+          }
+        },
+        {
+          "file": "STOP.json",
+          "sha256": "7271f0b6cb9ca33b55a10ad7869dd388ea5914e1b0410c93e34390dfa86aab21",
+          "sequence": null,
+          "event_fields": [],
+          "event_scalars": {},
+          "STOP": {
+            "guard_occupancy": 180,
+            "retry_allowed": false,
+            "released": 0,
+            "reason": "CodecError('semantic_error')"
+          }
+        }
+      ]
+    },
+    {
+      "source": "/workspace/newrouge-recovery-data/batch03-05f5fbf9/data/task/story29-host3-allocation-Root-01/config.json",
+      "sha256": "db1cdbb40e622ca40a5b6cbe21f36d559838c71d85a8be29705dd163d7b0df7e",
+      "schema": "task.synthetic-v15.public-adoption-host3-linked.v2",
+      "namespace": "story29-host3-allocation-Root-01",
+      "dispatch_cap": 1,
+      "hold": {
+        "host": 1
+      },
+      "guard_after": 181,
+      "paid_or_unknown_after_intent": 83,
+      "released": 0,
+      "ledger": [
+        {
+          "file": "000001.json",
+          "sha256": "eea50a72d655e834f509271a7c983af558b0a79fe0b568b019091f070cff218c",
+          "sequence": 1,
+          "event_fields": [
+            "base",
+            "config_sha256",
+            "guard_occupancy",
+            "hold",
+            "identity",
+            "kind",
+            "released"
+          ],
+          "event_scalars": {
+            "guard_occupancy": 181,
+            "hold": 1,
+            "kind": "claim",
+            "released": 0
+          }
+        },
+        {
+          "file": "000002.json",
+          "sha256": "44b4f6fc8286f5df0150f84abed86097ec24f2d352e78086ebf924fe5245369a",
+          "sequence": 2,
+          "event_fields": [
+            "command",
+            "guard_occupancy",
+            "identity",
+            "kind",
+            "paid_or_unknown",
+            "released",
+            "role"
+          ],
+          "event_scalars": {
+            "guard_occupancy": 181,
+            "kind": "intent",
+            "paid_or_unknown": 83,
+            "released": 0
+          }
+        },
+        {
+          "file": "000003.json",
+          "sha256": "94a7aa1ce76020d45f47c6dedd2947811e4da9897498c9b16a6b27cfd3acc8f3",
+          "sequence": 3,
+          "event_fields": [
+            "evidence",
+            "guard_occupancy",
+            "kind",
+            "paid_or_unknown",
+            "released",
+            "status"
+          ],
+          "event_scalars": {
+            "guard_occupancy": 181,
+            "kind": "outcome",
+            "paid_or_unknown": 83,
+            "released": 0,
+            "status": "owner_verified_completed"
+          }
+        }
+      ]
+    }
+  ],
+  "current_compensation_issuer_first_commit": "7c820200",
+  "unit_canonical_absence_source": "batch03 transport/MISSING_AND_SCOPE.json /unit_canonical_config",
+  "model_calls": 0,
+  "financial_actions": 0
+}

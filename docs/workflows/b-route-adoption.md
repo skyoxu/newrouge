@@ -304,17 +304,26 @@ it does not reserve funds, run a model or create a business operation. Inspect
 the returned per-node measurements. Literal readiness excludes future parent
 outputs, which are measured in full before each actual reservation.
 
-The explicit `review-segmented-execute` stage dispatches the finite sequence only
-through an installed genuine original compensation budget owner; absence returns
-`dependency_unavailable`. `review-segmented-resume` verifies completed/pending
-publication without issuing a new model call. Use the same operation ID. A
-pending/unknown intent requires its original owner's reconciliation; neither
-stage invents allowance, refunds unknowns or restarts with a replacement ID.
-After actual verified execution, `review-complete` seals the distinct segmented
-proof; normal business prepare/reserve/commit/recover remain their existing
-separate operations. No preparation or DATA test establishes model approval.
+The explicit `review-segmented-execute` stage accepts `--model-request-budget`
+as an operator-specified logical call ceiling for this exact operation/plan's
+entire lifetime. Supply it only after applicable real authorization and cumulative
+budget/unknown accounting are established. There is no default; it is not a
+funding grant, old campaign balance or new pool. It must cover the complete finite
+plan, is saved once, and cannot be reset or increased on reentry. Every intent,
+including failed/unknown, occupies its fixed slot. Each runner still gets budget1.
+
+Without that parameter, execute verifies completed nodes then returns
+`authorization_required` before the first new intent/call. `review-segmented-resume`
+only replays the completed prefix and returns ready at an undispatched node.
+Neither needs a fiscal issuer. An intent without an independently verified complete
+publication remains pending/unknown even when execution/output/result files exist;
+no retry/refund or replacement ID is invented. After genuine verified execution,
+`review-complete` seals the distinct semantic proof. It proves no monetary funds
+or old ledger settlement. Business prepare/reserve/commit/recover remain separate.
+No preparation or DATA test establishes model approval.
 
 [ADR-0058](../adr/ADR-0058-compensation-multisegment-consumer.md) specifies the
-proved two-closure family, complete RPC measurement, original fiscal boundary
-and lossless identity spelling. Other families keep a complete closure. The CLI
+proved two-closure family, complete RPC measurement, lossless identity spelling and original budget constraints.
+[ADR-0059](../adr/ADR-0059-compensation-logical-call-limit.md) removes the
+unnecessary fixed issuer and defines the logical limit and pure replay boundary. Other families keep a complete closure. The CLI
 owns partition, sequence, capacity and continuation; the LLM only reviews content.

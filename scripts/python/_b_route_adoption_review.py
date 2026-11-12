@@ -171,15 +171,12 @@ def policy_observations():
         '_b_route_compensation_review_profiles.py',
         '_b_route_compensation_segments.py',
         '_b_route_compensation_segmented_execution.py',
-        '_b_route_compensation_segment_funding.py',
         '_b_route_compensation_partition.py',
         '_b_route_segmented_requests.py',
         '_b_route_published_history.py',
         '_b_route_published_compensation_review.py',
     )
     sources = {name: codec.raw_digest((directory / name).read_bytes()) for name in names}
-    budget_owner=directory/'_b_route_compensation_budget_owner.py'
-    if budget_owner.is_file():sources[budget_owner.name]=codec.raw_digest(budget_owner.read_bytes())
     schemas = {name: codec.raw_digest(data) for name, data in resources.resources(auxiliary=True)}
     intent_path = directory.parents[1] / 'docs/planning/b-route/schemas/commit-intent.schema.json'
     intent_digest = codec.raw_digest(intent_path.read_bytes())

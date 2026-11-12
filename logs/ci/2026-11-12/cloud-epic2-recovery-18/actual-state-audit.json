@@ -1,0 +1,59 @@
+{
+  "current_preparation_and_no_limit_execute_verified": true,
+  "actual_execute": {
+    "status": "blocked",
+    "reason": "authorization_required",
+    "next_node": "business",
+    "required_lifetime_logical_calls": 2,
+    "model_dispatched": false,
+    "runner_dispatch_attempts": 0,
+    "budget_claim": "operation_lifetime_logical_calls_only;not_funding_or_campaign_reconciliation",
+    "formal_adoption": false,
+    "readiness": false,
+    "runtime_verified": false
+  },
+  "node_count": 2,
+  "nodes": [
+    {
+      "node": "business",
+      "checks": [
+        "cumulative_requirements_and_obligations",
+        "existing_formal_semantic_sources"
+      ],
+      "full_rpc_bytes": 66079,
+      "counter": "utf8_byte_upper_bound",
+      "actual_parent_outputs_present": false
+    },
+    {
+      "node": "governance-joint",
+      "checks": [
+        "b_source_and_binding_retention",
+        "complete_old_current_new_scope",
+        "current_before_and_later_edits",
+        "exact_pending_claim_relation",
+        "original_raw_frozen_effects",
+        "target:0",
+        "task_status_acceptance_history"
+      ],
+      "full_rpc_bytes": 68307,
+      "counter": "utf8_byte_upper_bound",
+      "actual_parent_outputs_present": false
+    }
+  ],
+  "source_policy": "sha256:65e75d61df84da606dd80eca6bbcb2d7fc9a1c3f3ddf08f3c96795ecc8c6d4c5",
+  "source_pin_count": 83,
+  "all_current_source_pins_match": true,
+  "no_admission_or_intent_or_execution_or_review_proof": true,
+  "new_business_operation_exists": false,
+  "budget_factory_module_deleted": true,
+  "original_critical_files_unchanged": {
+    "docs/planning/b-route/catalog.v1.json": true,
+    "docs/planning/b-route/commits/NativeV15Origin03.json": true,
+    "logs/ci/b-route-operations/operations/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/operation.json": true
+  },
+  "previous_preparation_bytes_preserved": true,
+  "workflow_raw_equal_HEAD": true,
+  "real_project_model_calls": 0,
+  "financial_actions": 0,
+  "unknown_replay_or_release": 0
+}

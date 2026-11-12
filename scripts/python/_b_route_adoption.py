@@ -928,7 +928,7 @@ def preflight_segmented_compensation(root, *, operation_id, request_ref, compens
 
 
 @public
-def segmented_compensation_review(root, *, operation_id, stage,request_ref=None):
+def segmented_compensation_review(root, *, operation_id, stage,request_ref=None,model_request_budget=None):
     import _b_route_compensation as compensation
     from _b_route_compensation_review_profiles import PUBLISHED
     root=Path(root).resolve()
@@ -939,7 +939,7 @@ def segmented_compensation_review(root, *, operation_id, stage,request_ref=None)
         request=qualified.read_subject(root,operation_id)['request']
     require(request['operation_id']==operation_id and request['schema_version']==journal.COMPENSATION_REQUEST
         and 'host_review_ref' not in request,'fresh source for explicit segmented review',operation_id)
-    return compensation.review_preview(root,request,delivery=PUBLISHED.name('delivery'),segmented_action=stage)
+    return compensation.review_preview(root,request,delivery=PUBLISHED.name('delivery'),segmented_action=stage,model_request_budget=model_request_budget)
 
 
 @public

@@ -1,0 +1,51 @@
+{
+  "action": "preserve own known-unexecuted auxiliary data before new policy preparation",
+  "original": "/workspace/newrouge-recovery-data/batch03-05f5fbf9/work/target-compensation-prepare/logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864",
+  "backup": "/workspace/newrouge-recovery-data/batch03-05f5fbf9/work/superseded-unexecuted-segmented-preparation-18a",
+  "files": {
+    "capability-coordinator.lock": {
+      "bytes": 1,
+      "sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9"
+    },
+    "historical-auth.json": {
+      "bytes": 2189,
+      "sha256": "8ba4950f25cb20ff5f4a7ae7f87a91da3b5f11ceccc83e08b532722c8b29894f"
+    },
+    "materials.json": {
+      "bytes": 1371024,
+      "sha256": "9ea694216929f48cdd82beb61fec0841ca5087a9a6b83a7d03a41c0c88d3b7b2"
+    },
+    "presentation.json": {
+      "bytes": 1021,
+      "sha256": "2303122c506c0bcd82f66327263fadb03bb36ae3e66a0079e339769ac952ae69"
+    },
+    "roles.json": {
+      "bytes": 24827,
+      "sha256": "45049ff4d6885b605929ea89860037827b0eda2977575baf333633c171fe3519"
+    },
+    "segmented/nodes/000/base-prompt.txt": {
+      "bytes": 63098,
+      "sha256": "d1dce96a1d126a21a05987ae596c0b8ed26e1eceafa199453ad1422f5ee86586"
+    },
+    "segmented/nodes/001/base-prompt.txt": {
+      "bytes": 65055,
+      "sha256": "0dd5d5b5706098e899fc9708d5136eb62feca7a5b71f70e4ad4b39cc02deeca4"
+    },
+    "segmented/plan.json": {
+      "bytes": 2872,
+      "sha256": "2bc63a5500c6e42eb5cdfc439cae3285e159d25bde7f1a5b3de5425eaef549a3"
+    },
+    "segmented/source-pins.json": {
+      "bytes": 12385,
+      "sha256": "bcf04592c8c1ca1ab8aa3ff5072d4c0c47aac8c00bc9104267a5c635733276a4"
+    },
+    "subject.json": {
+      "bytes": 996681,
+      "sha256": "f79f027ee67ae203e7545e8e6308ce74c31833e59e73ef3290bb7d973f1111da"
+    }
+  },
+  "business_operation_exists": false,
+  "any_intent_execution_proof_or_call_limit": false,
+  "unknown_released": false,
+  "reason": "replace added fixed issuer design with explicit logical limit; original epoch17 pass/failure evidence retained"
+}

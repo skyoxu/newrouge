@@ -1,7 +1,7 @@
 """Finite compensation review consumer; CLI alone owns order and continuation.
 
-Every node is replayed from exact inputs, runtime protocol and the original
-budget owner. This is distinct from both the old single-turn proof and the
+Every node is replayed from exact inputs and runtime protocol. Explicit logical
+call limits never prove funding entitlement or campaign reconciliation. This is distinct from both the old single-turn proof and the
 offline capacity archive. No arbitrary caller plan issues semantic authority.
 """
 from copy import deepcopy
@@ -12,7 +12,6 @@ import _b_route_adoption_review as review
 import _b_route_qualified_compensation_review_v2 as qualified
 import _b_route_qualified_compensation_materials_v2 as materials
 from _b_route_compensation_review_profiles import PUBLISHED
-import _b_route_compensation_segment_funding as funding
 from _b_route_segmented_requests import _measurement, MAX_REQUEST_BYTES, CONTEXT_TOKEN_LIMIT
 from _capability_input_integrity import request_measurement
 from _planning_execution_binding import receipt_from, validate_execution
@@ -27,6 +26,8 @@ CLAIM='complete_owner_dependency_closures_with_independent_sequential_runtime_re
 RESERVE=2000
 TIMEOUT=1800
 MARKER='segmented/plan.json'
+ADMISSION='segmented/call-limit.json'
+BUDGET_CLAIM='operation_lifetime_logical_calls_only;not_funding_or_campaign_reconciliation'
 STATIC=('subject.json','materials.json','roles.json','presentation.json','historical-auth.json','segmented/source-pins.json',MARKER)
 
 def need(ok,expected,actual='segmented compensation mismatch'):
@@ -159,7 +160,7 @@ def prepare(root,derived):
     for name,data in values.items():review.write_once(root,home+'/'+name,data)
     return {'status':'blocked' if any(r['status']=='blocked' for r in reports) else 'review_segmented_prepared',
         'operation_id':subject['operation_id'],'plan_ref':home+'/'+MARKER,'nodes':reports,
-        'model_dispatched':False,'budget_authority':'not acquired','host_review_ref':None,
+        'model_dispatched':False,'budget_claim':BUDGET_CLAIM,'model_request_budget':None,'host_review_ref':None,
         'formal_adoption':False,'readiness':False,'runtime_verified':False}
 
 def _saved(root,subject, *, work=None,packet=None):
@@ -188,13 +189,14 @@ def _identity(plan,node,prefix,request,schema,report):
         'schema_digest':codec.raw_digest(_schema_bytes(schema)),'measurement':report,'source_policy':plan['source_policy'],
         'timeout_sec':TIMEOUT,'output_reserve':RESERVE}
 
-def _replay(root,subject,plan,packet,node,prefix,session, *, completed=True,publish_result=False):
+def _replay(root,subject,plan,packet,node,prefix):
     home=_home(subject);directory=_dir(home,node);workspace=review.path(root,directory+'/w')
     base=_read(root,directory+'/base-prompt.txt').decode('utf-8')
     prompt,schema,request,report=_request(subject,packet,plan,node,base,prefix)
     identity=_identity(plan,node,prefix,request,schema,report)
+    _saved_admission(root,subject,plan);admission_ref=_ref(root,home+'/'+ADMISSION)
     intent=_json(root,directory+'/intent.json');key=codec.canonical_digest(identity)
-    need(intent=={'schema_version':DELIVERY,'key':key,'identity':identity},'original exact pending intent')
+    need(intent=={'schema_version':DELIVERY,'key':key,'identity':identity,'admission':admission_ref},'original exact pending intent')
     need(_read(root,directory+'/w/prompt.txt')==prompt.encode('utf-8')
         and _read(root,directory+'/w/schema.json')==_schema_bytes(schema)
         and _read(root,directory+'/request.txt')==request.encode('utf-8')
@@ -210,17 +212,14 @@ def _replay(root,subject,plan,packet,node,prefix,session, *, completed=True,publ
     need(evidence['model_provider']=='openai' and evidence['thread_id'] not in threads
          and evidence['turn_id'] not in turns,'official high/no-tools thread and turn independent of all ancestors and nodes')
     verdict=codec.strict_json_loads(output);_verdict(verdict,schema,node)
-    reservation=_json(root,directory+'/reservation.json')
     outcome={'output_digest':codec.raw_digest(output),'execution_digest':codec.raw_digest(_read(root,directory+'/execution.json'))}
-    session.verify(reservation,key,identity,outcome)
-    result={'schema_version':DELIVERY,'node_id':node['node_id'],'identity':identity,'reservation':reservation,
+    result={'schema_version':DELIVERY,'node_id':node['node_id'],'identity':identity,'admission':admission_ref,
         'outcome':outcome,'evidence':{'thread_id':evidence['thread_id'],'turn_id':evidence['turn_id'],
         'protocol_digest':evidence['protocol_sha256'],'runtime_configuration':{'model':evidence['model'],
         'provider':evidence['model_provider'],'reasoning_effort':'high'},'provider_actual_model':'unknown','physical_requests':'unknown'}}
-    if publish_result and not _exists(root,directory+'/result.json'):_write(root,directory+'/result.json',result)
     need(_read(root,directory+'/result.json')==review.raw(result),'exact original verified node result')
     result_ref=_ref(root,directory+'/result.json')
-    if completed:need(_json(root,directory+'/completed.json')==result_ref,'durable completed node publication')
+    need(_json(root,directory+'/completed.json')==result_ref,'durable completed node publication')
     return {'node_id':node['node_id'],'result_digest':result_ref['raw_digest'],'verdict':verdict,'evidence':result['evidence']}
 
 def verify_current_plan(root,derived):
@@ -234,51 +233,62 @@ def verify_current_plan(root,derived):
     need(_read(root,home+'/historical-auth.json')==derived.freeze_auth(),'same actual historical verification')
     derived.recheck()
 
-def execute(root,operation_id, *, publication_only=False,derived=None):
-    """Sequential finite CLI consumer. Unknown never becomes a new dispatch."""
+def _saved_admission(root,subject,plan):
+    value=_json(root,_home(subject)+'/'+ADMISSION)
+    review.shape(value,('schema_version','operation_id','plan_digest','model_request_budget','claim'),'logical call limit')
+    need(value['schema_version']==DELIVERY+'.call-limit' and value['operation_id']==subject['operation_id']
+        and value['plan_digest']==plan['plan_digest'] and value['claim']==BUDGET_CLAIM
+        and type(value['model_request_budget']) is int and value['model_request_budget']>=len(plan['nodes']),
+        'same operation-lifetime limit; no fiscal or old-owner identity claim')
+    return value
+
+
+def execute(root,operation_id, *, publication_only=False,derived=None,model_request_budget=None):
+    """CLI quota is an operator ceiling, never proof of external paid authority."""
     subject=qualified.read_subject(root,operation_id)
     derived=qualified.model_packet(root,subject) if derived is None else derived
-    # Share the genuine factory account and graph. verify_current_plan checks
-    # every saved packet byte before funding; do not retain a second packet.
     home,plan,packet=_saved(root,subject,work=derived.work,packet=derived.packet)
     verify_current_plan(root,derived)
     with coordinator_lock(review.path(root,home)):
-        session=funding.capture(root,plan,read_only=publication_only);funding.require_session(session)
         prefix=[];dispatch_attempts=0
         for node in plan['nodes']:
             derived.recheck()
-            need(review.policy_identity()==plan['source_policy'],'unchanged current source before node reservation/replay')
+            need(review.policy_identity()==plan['source_policy'],'unchanged current source before node replay/dispatch')
             directory=_dir(home,node)
             if _exists(root,directory+'/completed.json'):
-                prefix.append(_replay(root,subject,plan,packet,node,prefix,session));continue
+                prefix.append(_replay(root,subject,plan,packet,node,prefix));continue
             if _exists(root,directory+'/intent.json'):
-                # Only an original owner-confirmed completed outcome and all
-                # actual saved bytes can finish a missing local publication.
-                if all(_exists(root,directory+'/'+n) for n in ('execution.json','reservation.json','w/output.json')):
-                    row=_replay(root,subject,plan,packet,node,prefix,session,completed=False,publish_result=True)
-                    _write(root,directory+'/completed.json',_ref(root,directory+'/result.json'))
-                    prefix.append(row);continue
-                return {'status':'blocked','reason':'pending_or_unknown_requires_original_owner_reconciliation',
+                return {'status':'blocked','reason':'pending_or_unknown_requires_original_outcome_reconciliation',
                     'node_id':node['node_id'],'automatic_retry':False,'model_dispatched':dispatch_attempts>0,
                     'runner_dispatch_attempts':dispatch_attempts}
             if publication_only:return {'status':'ready','next_node':node['node_id'],'model_dispatched':False,'runner_dispatch_attempts':0}
+            if model_request_budget is None:
+                return {'status':'blocked','reason':'authorization_required','next_node':node['node_id'],
+                    'required_lifetime_logical_calls':len(plan['nodes']),'model_dispatched':False,'runner_dispatch_attempts':0,
+                    'budget_claim':BUDGET_CLAIM}
+            need(type(model_request_budget) is int and model_request_budget>=len(plan['nodes']),
+                 'explicit operator logical call ceiling covers the entire finite plan; no implicit allowance')
+            if _exists(root,home+'/'+ADMISSION):
+                need(_saved_admission(root,subject,plan)['model_request_budget']==model_request_budget,
+                     'same lifetime call ceiling on continuation; no reset or topup')
             base=_read(root,directory+'/base-prompt.txt').decode('utf-8')
             prompt,schema,request,report=_request(subject,packet,plan,node,base,prefix)
             identity=_identity(plan,node,prefix,request,schema,report);key=codec.canonical_digest(identity)
+            _write(root,home+'/'+ADMISSION,{'schema_version':DELIVERY+'.call-limit','operation_id':operation_id,
+                'plan_digest':plan['plan_digest'],'model_request_budget':model_request_budget,'claim':BUDGET_CLAIM})
+            admission_ref=_ref(root,home+'/'+ADMISSION)
             workspace=review.path(root,directory+'/w')
             for name,data in {'w/prompt.txt':prompt.encode('utf-8'),'w/schema.json':_schema_bytes(schema),
                 'request.txt':request.encode('utf-8'),'measurement.json':review.raw(report)}.items():
                 review.write_once(root,directory+'/'+name,data)
-            _write(root,directory+'/intent.json',{'schema_version':DELIVERY,'key':key,'identity':identity})
-            reservation=None;outcome=None;settled=False
+            # One fixed node has one permanent consumed intent. Failed/unknown
+            # attempts remain occupied and never gain another call by reentry.
+            _write(root,directory+'/intent.json',{'schema_version':DELIVERY,'key':key,'identity':identity,'admission':admission_ref})
             try:
-                reservation=session.reserve(key,identity,len(plan['nodes'])-len(prefix))
-                _write(root,directory+'/reservation.json',reservation)
-                # Recheck exact inputs before invoking; no model owns continuation.
                 need(_read(root,directory+'/request.txt')==request.encode('utf-8')
                     and _read(root,directory+'/w/prompt.txt')==prompt.encode('utf-8')
                     and _read(root,directory+'/w/schema.json')==_schema_bytes(schema)
-                    and {p.name for p in workspace.iterdir()}=={'prompt.txt','schema.json'},'unchanged complete reserved input files')
+                    and {p.name for p in workspace.iterdir()}=={'prompt.txt','schema.json'},'unchanged complete input files')
                 dispatch_attempts+=1
                 run_isolated_model(Path(__file__).with_name('codex_isolated_model_runner.py'),workspace=workspace,
                     prompt_path=workspace/'prompt.txt',output_path=workspace/'output.json',timeout_sec=TIMEOUT,
@@ -290,38 +300,34 @@ def execute(root,operation_id, *, publication_only=False,derived=None):
                                    require_runtime=True,expected_reasoning_effort='high')
                 derived.recheck()
                 need(review.policy_identity()==plan['source_policy'],'unchanged current source after node execution')
-                outcome={'output_digest':codec.raw_digest(output),'execution_digest':codec.raw_digest(_read(root,directory+'/execution.json'))}
-                session.complete(reservation,key,identity,outcome)
-                settled=True
                 evidence=receipt['model_identity_evidence'][0]
-                result={'schema_version':DELIVERY,'node_id':node['node_id'],'identity':identity,'reservation':reservation,
-                    'outcome':outcome,'evidence':{'thread_id':evidence['thread_id'],'turn_id':evidence['turn_id'],
+                _verdict(codec.strict_json_loads(output),schema,node)
+                need(evidence['model_provider']=='openai' and evidence['thread_id'] not in
+                    set(subject['native_threads'])|{r['evidence']['thread_id'] for r in prefix}
+                    and evidence['turn_id'] not in set(subject['native_turns'])|{r['evidence']['turn_id'] for r in prefix},
+                    'independent official high/no-tools node thread and turn')
+                result={'schema_version':DELIVERY,'node_id':node['node_id'],'identity':identity,'admission':admission_ref,
+                    'outcome':{'output_digest':codec.raw_digest(output),'execution_digest':codec.raw_digest(_read(root,directory+'/execution.json'))},
+                    'evidence':{'thread_id':evidence['thread_id'],'turn_id':evidence['turn_id'],
                     'protocol_digest':evidence['protocol_sha256'],'runtime_configuration':{'model':evidence['model'],
                     'provider':evidence['model_provider'],'reasoning_effort':'high'},'provider_actual_model':'unknown','physical_requests':'unknown'}}
                 _write(root,directory+'/result.json',result)
-                row=_replay(root,subject,plan,packet,node,prefix,session,completed=False)
-                _write(root,directory+'/completed.json',_ref(root,directory+'/result.json'));prefix.append(row)
+                _write(root,directory+'/completed.json',_ref(root,directory+'/result.json'))
+                prefix.append(_replay(root,subject,plan,packet,node,prefix))
             except BaseException as error:
-                settlement_error=None
-                if not settled and reservation is not None and outcome is not None:
-                    try:session.verify(reservation,key,identity,outcome);settled=True
-                    except BaseException:pass
-                if not settled:
-                    try:session.unknown(reservation,key,identity,type(error).__name__)
-                    except BaseException as secondary:settlement_error=type(secondary).__name__
-                _write(root,directory+('/blocked.json' if settled else '/unknown.json'),{'schema_version':DELIVERY,'key':key,
-                    'error_type':type(error).__name__,'owner_recording_error_type':settlement_error})
+                _write(root,directory+'/unknown.json',{'schema_version':DELIVERY,'key':key,'error_type':type(error).__name__})
                 raise
         return {'status':'review_segmented_executed','completed_nodes':len(prefix),'model_dispatched':dispatch_attempts>0,
-                'runner_dispatch_attempts':dispatch_attempts,
-                'physical_provider_requests':'unknown','host_review_ref':None}
+                'runner_dispatch_attempts':dispatch_attempts,'physical_provider_requests':'unknown',
+                'budget_claim':BUDGET_CLAIM,'host_review_ref':None}
+
 
 def _buffers(root,home,plan):
-    names=list(STATIC)
+    names=[*STATIC,ADMISSION]
     for node in plan['nodes']:
         base='segmented/nodes/'+str(node['ordinal']).zfill(3)+'/'
         names += [base+n for n in ('base-prompt.txt','w/prompt.txt','w/schema.json','request.txt','measurement.json',
-            'intent.json','reservation.json','execution.json','w/output.json','result.json','completed.json')]
+            'intent.json','execution.json','w/output.json','result.json','completed.json')]
         for auxiliary in ('unknown.json','blocked.json'):
             if _exists(root,home+'/'+base+auxiliary):names.append(base+auxiliary)
     return {name:_read(root,home+'/'+name) for name in names}
@@ -341,9 +347,8 @@ def labels(buffers):
 def inputs(root,subject, *, proof=None):
     work=__import__('_b_route_compact_literal')._work(None)
     home,plan,packet=_saved(root,subject,work=work)
-    session=funding.capture(root,plan,read_only=True);funding.require_session(session)
     prefix=[]
-    for node in plan['nodes']:prefix.append(_replay(root,subject,plan,packet,node,prefix,session))
+    for node in plan['nodes']:prefix.append(_replay(root,subject,plan,packet,node,prefix))
     buffers=_buffers(root,home,plan)
     refs=[{'path':home+'/'+n,'schema_version':'raw.bytes.v1','raw_digest':codec.raw_digest(data)} for n,data in buffers.items()]
     evidence={'nodes':[r['evidence'] for r in prefix],'scope':'verified_independent_sequence',
@@ -370,7 +375,7 @@ def _proof_value(subject,packet,plan,refs,evidence,requests):
     p=packet['presentation']
     return {'schema_version':PROOF,'operation_id':subject['operation_id'],'subject_digest':codec.canonical_digest(subject),
         'policy_identity':subject['policy_identity'],'delivery':DELIVERY,'claim':CLAIM,'history_claim':PUBLISHED.claim,
-        'plan_digest':plan['plan_digest'],'requests_digest':codec.canonical_digest(requests),'evidence':evidence,
+        'plan_digest':plan['plan_digest'],'budget_claim':BUDGET_CLAIM,'requests_digest':codec.canonical_digest(requests),'evidence':evidence,
         'files':refs,**{k:p[k] for k in ('materials_digest','roles_digest','historical_auth_digest')},
         'presentation_digest':codec.canonical_digest(p)}
 

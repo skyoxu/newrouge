@@ -36,6 +36,7 @@ def register_arguments(parser):
         help="Include original retained/published context; inspect/read only, no reuse or resume")
     parser.epilog = CONTEXT_HELP
     parser.add_argument("--operation-id", required=True)
+    parser.add_argument("--model-request-budget",type=int,help="Explicit operation-lifetime logical call ceiling; segmented execute only, not funding authority")
     parser.add_argument("--request", help="Complete request reference; review-prepare, review-segmented-preflight, review-segmented-prepare or prepare only")
     parser.add_argument('--compensation-review-delivery', choices=(
         'newrouge.b-route-compensation-review-delivery.v3',
@@ -141,6 +142,8 @@ def _execute(args):
             entity_id=args.operation_id, expected="--request on review-prepare, review-segmented-preflight, review-segmented-prepare or prepare only",
             actual={"stage": args.stage, "request_supplied": args.request is not None}))
     compensation_delivery = getattr(args, 'compensation_review_delivery', None)
+    if args.model_request_budget is not None and args.stage!='review-segmented-execute':
+        raise codec.CodecError(codec.Diagnostic(codec.ReasonCode.INVALID_ARGUMENT,expected='--model-request-budget on review-segmented-execute only',actual=args.stage))
     if compensation_delivery is not None and args.stage not in ('review-prepare','review-segmented-preflight'):
         raise codec.CodecError(codec.Diagnostic(codec.ReasonCode.INVALID_ARGUMENT,
             entity_id=args.operation_id, expected='delivery selection on compensation review-prepare only',
@@ -193,7 +196,7 @@ def _execute(args):
         value = service.execute(root, operation_id=args.operation_id, stage=args.stage)
     elif args.stage in ('review-segmented-prepare','review-segmented-execute','review-segmented-resume'):
         value=service.segmented_compensation_review(root,operation_id=args.operation_id,
-            stage=args.stage.removeprefix('review-segmented-'),request_ref=args.request)
+            stage=args.stage.removeprefix('review-segmented-'),request_ref=args.request,model_request_budget=args.model_request_budget)
     elif args.stage == 'review-segmented-preflight':
         value=service.preflight_segmented_compensation(root,operation_id=args.operation_id,
             request_ref=args.request,compensation_delivery=compensation_delivery)

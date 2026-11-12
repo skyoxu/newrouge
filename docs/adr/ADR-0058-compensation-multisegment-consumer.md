@@ -19,8 +19,15 @@ Every admission measures the complete logical `prompt + output_schema` JSON RPC 
 
 Each durable node binds exact request/schema/measurement, current source policy, stable intent, original reservation/outcome, independent high/no-tools runtime protocol, substantive check verdict and preceding results. Every thread and turn differs from all native ancestors and prior nodes. The explicit segmented proof binds every node and complete originals; it never reuses a one-turn request digest to represent several turns. Verification rederives the genuine source partition and full saved input bindings before minting a historical before-view.
 
-Funding is a fixed optional installed original-owner adapter, not a new accounting pool or caller assertion. Without that genuine issuer, prepare and offline development remain possible while execution and fiscal-proof replay refuse with dependency_unavailable. Installation must bind actual applicable authorization, remaining finite plan budget and retained original unknowns. No new allowance, zero-use inference, Host ledger substitution or silent historical STOP release is introduced. Durable intent precedes reservation. Completed nodes replay without dispatch; a caller interruption after original ledger completion can finish local publication only from all original saved bytes and owner-confirmed outcome. Other pending/unknown intents stop without automatic reserve/retry/refund or a replacement operation ID.
+The initial7c820200 design required a fixed installed original funding issuer for dispatch and fiscal-proof replay. [ADR-0059](ADR-0059-compensation-logical-call-limit.md) supersedes that added dependency: current CLI uses an explicit operation/plan lifetime logical call ceiling and sealed semantic replay. The ceiling does not prove funds or old campaign reconciliation. Completed nodes replay without a live issuer; an intent without a verified completed publication stays pending, even with execution/output/result files. No automatic retry/refund, replacement ID, Host ledger substitution or historical STOP release is introduced. Applicable actual authorization and cumulative unknown occupancy still apply before new dispatch.
 
 ## Evidence boundary
 
 Synthetic DATA tests exercise the actual consumer, App Server protocol replay, proof/seal/history integration and failures with explicitly substituted model/business/budget factories. They do not qualify real execution, funding or old-owner identity. Actual preparation/capacity verification uses restored genuine materials, without a model or fiscal action. Historical DATA verification remains distinct from old owner execution authentication under proposed ADR-0053. Final AC4 still requires the new genuine review and applicable commit/recovery; AC5 and Story2.9/2.10 acceptance retain their own evidence requirements.
+
+## Superseded fiscal dependency
+
+ADR-0059 supersedes the fixed issuer/live fiscal replay paragraph above. That
+paragraph describes the7c820200 design and preserved dependency refusal, not an
+original Story requirement or migration loss. Current CLI uses explicit logical
+lifetime limits and sealed semantic replay; neither proves external funds.
