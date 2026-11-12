@@ -1,0 +1,117 @@
+{
+  "observed_at_utc": "2026-11-12T09:30:42.250379+00:00",
+  "repository": "skyoxu/newrouge",
+  "remote_url": "https://github.com/skyoxu/newrouge.git",
+  "target_branch": "build/cloud-epic2-recovery-20261111",
+  "source_head_before_handoff_commit": "f7e09f06079fa0c5b850f02ad7ed64670f7d1c15",
+  "base_migration_commit": "e568f1ff1c8a4a57ba7e511102ed6177481d836b",
+  "not_yet_published_cloud_commits": [
+    {
+      "sha": "dcf6b34889d76a4d8702de406b5641fd2ee82c67",
+      "subject": "chore: recover and integrate migrated Epic 2 source checkpoint"
+    },
+    {
+      "sha": "6edb6b2f76dc96a8a8da4c4861cab10ae43c469c",
+      "subject": "test: isolate historical rule controls from Windows publication"
+    },
+    {
+      "sha": "2c693a30f05522273a1294ba7cf20451834b8f91",
+      "subject": "fix: retain public receipt resume references in adoption reads"
+    },
+    {
+      "sha": "ed498487108456bf0b2ecbc6dc1fe6930d3635d5",
+      "subject": "chore: retain verified original prepare11 recovery evidence"
+    },
+    {
+      "sha": "db452a0ca561a98eb5d0dd90392cc0c09b260990",
+      "subject": "docs: consolidate Epic 2 recovery materials and verify batch02"
+    },
+    {
+      "sha": "a77e8bbe55135995393f628af1791696abcbab4c",
+      "subject": "fix: retain receipt resume path when context reread loses the file"
+    },
+    {
+      "sha": "bc79557eec16fb1a379595f1b03b29046e5c3be1",
+      "subject": "docs: record verified batch03 recovery and actual published reads"
+    },
+    {
+      "sha": "f023eebd46e05507e0c908f0ed352c6d46cfff5f",
+      "subject": "fix: distinguish uninstalled historical owner from invalid evidence"
+    },
+    {
+      "sha": "fb7472576c91875b6e7003a8d49171c623c92833",
+      "subject": "feat: verify migrated review data without granting owner authority"
+    },
+    {
+      "sha": "c7b75892b5d0e320d643f741a69e0ceb13f4efdb",
+      "subject": "docs: recover exact producer data and narrow remaining handoff"
+    },
+    {
+      "sha": "61bc8f8e4beb44a0a817a6b7a074b5c69ba73010",
+      "subject": "docs: verify original policy build input and verdict data"
+    },
+    {
+      "sha": "53e7eddd8c594b23b1620d2e737e84b2b12c88ab",
+      "subject": "Verify batch04 producer records and bound migration authority"
+    },
+    {
+      "sha": "efcf329e03257f02f79b6a3bd84ecf804199475e",
+      "subject": "Add explicit published-history compensation for Codex Cloud"
+    },
+    {
+      "sha": "8bf19d5b2fadee28147da5889b6d318a4517f414",
+      "subject": "Add deterministic offline compensation segment preflight"
+    },
+    {
+      "sha": "7c820200c1c2503397dbbdadf256ffcd9766e4b2",
+      "subject": "feat(b-route): execute deterministic compensation review segments"
+    },
+    {
+      "sha": "bf22858fcf47ab62569bde13be10f0c6ba2f0029",
+      "subject": "fix(b-route): remove added compensation fiscal issuer gate"
+    },
+    {
+      "sha": "f7e09f06079fa0c5b850f02ad7ed64670f7d1c15",
+      "subject": "docs(epic2): record authorized subscription runtime authentication blocker"
+    }
+  ],
+  "remote_target_branch_observed_absent": true,
+  "remote_recovery_branch": "migration/newrogue-20261111/recovery-batch01-public",
+  "remote_recovery_head": "94761e6caca45061d36a260f6c3116cb83a56530",
+  "current_environment_id": "ccarenv_b64_Y2NhcmVudl81Mjc4MjUxYjdiNDA4MTkxYjc4OWRhMjY2ZDZlN2RkMQ",
+  "visible_current_network_custom_hosts": [
+    "chatgpt.com"
+  ],
+  "auth_domain_allow_rule_present": false,
+  "one_connectivity_check": {
+    "target": "https://auth.openai.com/",
+    "method": "HEAD; inherited proxy",
+    "curl_exit": 56,
+    "proxy_error": "CONNECT tunnel failed, response403",
+    "http_status": "000"
+  },
+  "device_auth_process_active": false,
+  "device_auth_restarted_this_turn": false,
+  "business_model_calls_this_turn": 0,
+  "uncommitted_tracked_file": "workflow.md; existing EOL status noise only, raw bytes equal HEAD",
+  "publication_scope": "tracked approved source and sanitized evidence only; all337 introduced blobs/4,820,094 bytes screened for high-confidence credential patterns with no hits",
+  "excluded": [
+    "all auth files/credentials/one-time codes",
+    "private CLI runtime/home and raw account protocol/logs",
+    "external recovered data and superseded auxiliary preparation directories",
+    "tool installations/caches",
+    "workflow.md preexisting normalization status"
+  ],
+  "recovery_materials": [
+    {
+      "commit": "05f5fbf98d8727aae1837cd4d19e58d3ee70aec0",
+      "path": "logs/migration/2026-11-11/recovery-batch03",
+      "meaning": "original screened data transport,6zip parts139176639bytes; read manifest/missing scope before restoration"
+    },
+    {
+      "commit": "94761e6caca45061d36a260f6c3116cb83a56530",
+      "path": "logs/migration/2026-11-12/recovery-batch04",
+      "meaning": "12original producer records; zip171350bytes sha256664e6f1ba102877d9fbcf5a3cf0536504a537d7740e4e0fcd7c2aa784d4b78ac"
+    }
+  ]
+}
