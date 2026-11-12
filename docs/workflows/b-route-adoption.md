@@ -322,6 +322,31 @@ no retry/refund or replacement ID is invented. After genuine verified execution,
 or old ledger settlement. Business prepare/reserve/commit/recover remain separate.
 No preparation or DATA test establishes model approval.
 
+### One explicit completed-refusal repair
+
+For the known published-history two-closure family, the same public CLI supports
+`review-segmented-repair-prepare`, `review-segmented-repair-execute` and
+`review-segmented-repair-resume`. Prepare requires `--original-source-root` with
+the exact original public source DATA; it never executes that source. Execute
+requires `--model-request-budget 1` and `--review-authorization-source` recording
+the actual operator authorization. The existing original limit2 and both calls
+remain occupied; the separate one-call repair makes the cumulative bound3.
+This is not a funding grant or automatic retry. A second repair is unsupported.
+
+Only complete official original protocols with an approved business prefix and
+a completed explicit governance refusal qualify. Unfinished/transport-unknown
+turns cannot qualify. The owner verifies exact business/decoder equivalence and
+current-before semantics, derives and measures the complete new request, writes
+the additional allowance/intent once, and dispatches one independent high/no-tools
+review. A repair intent without completed publication blocks reentry. Original
+records and source preimages remain intact.
+
+`review-complete` seals the explicit segmented proof.v2 only after genuine new
+approval, full protocol/source/input replay and complete proof binding. That
+proof routes through the original saved/history/before-view and compensation
+commit consumers. It explicitly distinguishes the retained old-source business
+review and fresh current-source governance review. See [ADR-0060](../adr/ADR-0060-one-time-compensation-review-repair.md).
+
 [ADR-0058](../adr/ADR-0058-compensation-multisegment-consumer.md) specifies the
 proved two-closure family, complete RPC measurement, lossless identity spelling and original budget constraints.
 [ADR-0059](../adr/ADR-0059-compensation-logical-call-limit.md) removes the

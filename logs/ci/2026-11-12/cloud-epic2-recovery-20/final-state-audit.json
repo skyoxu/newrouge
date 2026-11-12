@@ -1,0 +1,85 @@
+{
+  "operation_id": "NativeV15Origin03Compensation01",
+  "logical_call_limit": {
+    "schema_version": "newrouge.b-route-compensation-segmented-delivery.v1.call-limit",
+    "operation_id": "NativeV15Origin03Compensation01",
+    "plan_digest": "sha256:d3638701c7d61a3c9216ba733f12e7cad27efca606c6864e667aacdd34b0d13b",
+    "model_request_budget": 2,
+    "claim": "operation_lifetime_logical_calls_only;not_funding_or_campaign_reconciliation"
+  },
+  "logical_intents_occupied": 2,
+  "remaining_logical_slots": 0,
+  "nodes": [
+    {
+      "node_id": "business",
+      "intent_occupied": true,
+      "runner_status": "completed",
+      "runner_returncode": 0,
+      "runner_dispatch_count": 1,
+      "runtime_configuration": [
+        {
+          "model": "gpt-6.1-sol",
+          "modelProvider": "openai",
+          "reasoningEffort": "high",
+          "serviceTier": null
+        }
+      ],
+      "official_turn_terminal_status": [
+        "completed"
+      ],
+      "runtime_configuration_is_not_provider_attestation": true,
+      "verdict": "approved",
+      "blocked_check_ids": [],
+      "finding_count": 0,
+      "blocked_rationale_count": 0,
+      "findings_match_exact_blocked_rationales": true,
+      "durably_completed": true,
+      "unknown_retained": false,
+      "full_rpc_bytes": 66079,
+      "output_sha256": "1fbad7776e4a3d62f0e8070263e155dfe4a95f5a325cd2b8033b3c3fae9ec667"
+    },
+    {
+      "node_id": "governance-joint",
+      "intent_occupied": true,
+      "runner_status": "completed",
+      "runner_returncode": 0,
+      "runner_dispatch_count": 1,
+      "runtime_configuration": [
+        {
+          "model": "gpt-6.1-sol",
+          "modelProvider": "openai",
+          "reasoningEffort": "high",
+          "serviceTier": null
+        }
+      ],
+      "official_turn_terminal_status": [
+        "completed"
+      ],
+      "runtime_configuration_is_not_provider_attestation": true,
+      "verdict": "blocked",
+      "blocked_check_ids": [
+        "b_source_and_binding_retention",
+        "complete_old_current_new_scope",
+        "current_before_and_later_edits",
+        "target:0"
+      ],
+      "finding_count": 1,
+      "blocked_rationale_count": 4,
+      "findings_match_exact_blocked_rationales": false,
+      "durably_completed": false,
+      "unknown_retained": true,
+      "full_rpc_bytes": 69512,
+      "output_sha256": "15556da514225c340f7ae5f2e188372ba9fec4198ffc1bac0ac92692c3f81434"
+    }
+  ],
+  "first_completed_prefix_preserved": true,
+  "second_pending_or_unknown_preserved": true,
+  "automatic_retry": false,
+  "review_proof_sealed": false,
+  "new_business_operation_created": false,
+  "compensation_commit_or_publish": false,
+  "original_critical_files_unchanged": true,
+  "83_source_pins_match": true,
+  "physical_provider_request_count": "unknown",
+  "historical_unknowns_released": false
+}

@@ -1,0 +1,10 @@
+{
+  "parsed_json_files": 23,
+  "high_confidence_secret_pattern_hits": 0,
+  "source_implementation_changed": false,
+  "four_preexisting_EOL_status_items_raw_equal_HEAD": true,
+  "branch": "build/cloud-epic2-recovery-20261111",
+  "head": "f94847e2b7b4d5092984294b46a2905212528f30",
+  "new_commits": 0,
+  "pushes": 0
+}

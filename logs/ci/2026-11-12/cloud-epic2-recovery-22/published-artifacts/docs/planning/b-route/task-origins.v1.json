@@ -1,0 +1,7 @@
+{
+  "schema_version": "newrouge.b-route-origins.v1",
+  "origins_id": "task-origins",
+  "revision": 1,
+  "tasks": [],
+  "frozen_legacy_refs": []
+}

@@ -1,0 +1,25 @@
+{
+  "command": [
+    "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+    "-B",
+    "/workspace/newrouge/scripts/python/dev_cli.py",
+    "b-route-adoption",
+    "--root",
+    "/workspace/newrouge-recovery-data/batch03-05f5fbf9/work/target-compensation-prepare",
+    "--stage",
+    "review-segmented-execute",
+    "--operation-id",
+    "NativeV15Origin03Compensation01",
+    "--model-request-budget",
+    "2"
+  ],
+  "started_at": "2026-11-12T09:44:23.425193+00:00",
+  "operation_lifetime_logical_call_limit": 2,
+  "model": "gpt-6.1-sol",
+  "reasoning_effort": "high",
+  "service_tier": null,
+  "automatic_retry": false,
+  "exit_code": 2,
+  "elapsed_seconds": 253.25085656400006,
+  "finished_at": "2026-11-12T09:48:36.676372+00:00"
+}

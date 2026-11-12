@@ -1,0 +1,31 @@
+{
+  "schema_version": "newrouge.b-route-compensation-review-repair.v1",
+  "identity": {
+    "plan_digest": "sha256:3877dc95f7b1e2b08ab783cbe839f8151209d78c601d7a957291f7fb5bc5d98f",
+    "node_id": "governance-joint",
+    "ordinal": 1,
+    "prefix_digest": "sha256:bbad9d781084004f65342cf882af05f8c00e9d9c2f3524a83c6dc547c808d33b",
+    "request_digest": "sha256:c08a877e4d190a444ede7c5d94d5cc61170e4a2ecd7a1b89783f8024152787a0",
+    "schema_digest": "sha256:00bed2afff15adb1d476cc096fca232e3f7dfcad62395d903c8885e5eae7d5b1",
+    "measurement": {
+      "request_sha256": "sha256:c08a877e4d190a444ede7c5d94d5cc61170e4a2ecd7a1b89783f8024152787a0",
+      "request_chars": 69718,
+      "request_bytes": 69718,
+      "input_token_estimate": 69718,
+      "token_counts": {},
+      "token_counter": "utf8_byte_upper_bound",
+      "max_bytes": 1048576,
+      "max_input_tokens": 96000,
+      "reserved_continuation_tokens": 2000,
+      "truncation_allowed": false
+    },
+    "source_policy": "sha256:580ab96f584efecb61e870c1539402d041fcbe3369a293204c6f97f5710da05e",
+    "timeout_sec": 1800,
+    "output_reserve": 2000
+  },
+  "allowance": {
+    "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/allowance.json",
+    "schema_version": "raw.bytes.v1",
+    "raw_digest": "sha256:5e06d9c5705d3538691cdf3764fc96ced9468b4104427eee0fa4d45538dfda5d"
+  }
+}

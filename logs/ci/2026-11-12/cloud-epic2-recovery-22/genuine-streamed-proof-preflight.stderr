@@ -1,0 +1,23 @@
+Traceback (most recent call last):
+  File "/workspace/newrouge/logs/ci/2026-11-12/cloud-epic2-recovery-22/genuine_pre_dispatch.py", line 58, in <module>
+    spec=engine._spec(derived)
+         ^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/newrouge/scripts/python/_b_route_compensation_segmented_execution.py", line 50, in _spec
+    partition=preserving_partition(derived)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/newrouge/scripts/python/_b_route_compensation_partition.py", line 362, in build
+    try:business,governance=_prepare_data(derived.packet,w,metrics,buffers)
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/newrouge/scripts/python/_b_route_compensation_partition.py", line 272, in _prepare_data
+    family(r.equal(restored_envelope,envelope))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/newrouge/scripts/python/_b_route_compensation_partition.py", line 75, in equal
+    right,_=accounting._ordered(b,self.w,self.metrics,(*self.buffers,lm[5]),'partition.compare.right')
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/newrouge/scripts/python/_b_route_compensation_review_materials.py", line 353, in _ordered
+    _live(work, phase, (*metrics, measured), (*buffers, measured[5]))
+  File "/workspace/newrouge/scripts/python/_b_route_compensation_review_materials.py", line 345, in _live
+    compact._metric(size, nodes, depth, phase=phase)
+  File "/workspace/newrouge/scripts/python/_b_route_compact_literal.py", line 1809, in _metric
+    raise ValueError("Compact input exceeds " + RESOURCE_POLICY +
+ValueError: Compact input exceeds newrouge.b-route-resource-pipeline.v4; bytes_bound=67114400; nodes_bound=145031; depth_bound=19; phase=partition.compare.right

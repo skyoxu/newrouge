@@ -20,6 +20,8 @@ from _mvg_capability_checkpoint import coordinator_lock
 
 DELIVERY='newrouge.b-route-compensation-segmented-delivery.v1'
 PROOF='newrouge.b-route-compensation-segmented-proof.v1'
+REPAIR_PROOF='newrouge.b-route-compensation-segmented-proof.v2'
+PROOFS=(PROOF,REPAIR_PROOF)
 PLAN='newrouge.b-route-compensation-segmented-execution-plan.v1'
 VERDICT='newrouge.b-route-compensation-segmented-verdict.v1'
 CLAIM='complete_owner_dependency_closures_with_independent_sequential_runtime_reviews'
@@ -107,7 +109,8 @@ def _request(subject,packet,plan,node,base,completed):
              for r in completed if r['node_id'] in node['dependencies']]
     context={'plan_digest':plan['plan_digest'],'node_id':node['node_id'],'prefix_digest':prefix,
         'parents':parents,
-        'rule':'Return the schema checks only. Parent verdicts do not replace required originals. CLI controls continuation.'}
+        'rule':'Each check once with a substantive rationale; findings must exactly equal blocked check rationales. '
+            'Verdict is blocked iff any check is blocked. Parent verdicts do not replace originals. CLI owns continuation.'}
     prompt=base+'\n\nCLI NODE CONTEXT (data):\n'+review.text(context)
     schema=_schema(subject,packet,plan,node,prefix)
     # Match the shared segmented renderer: admission binds the full logical
@@ -345,6 +348,8 @@ def labels(buffers):
     return {name:role(name) for name in buffers}
 
 def inputs(root,subject, *, proof=None):
+    import _b_route_compensation_review_repair as repair
+    if repair.selected(root,subject['operation_id']):return repair.inputs(root,subject,proof=proof)
     work=__import__('_b_route_compact_literal')._work(None)
     home,plan,packet=_saved(root,subject,work=work)
     prefix=[]
@@ -360,6 +365,8 @@ def inputs(root,subject, *, proof=None):
     return qualified._SavedInputs(qualified._MINT,Path(root).absolute(),subject,buffers,proof,refs,evidence,work)
 
 def complete_inputs(saved):
+    import _b_route_compensation_review_repair as repair
+    if repair.selected(saved.root,saved.subject['operation_id']):return repair.complete_inputs(saved)
     d=qualified.model_packet(saved.root,saved.subject,context=saved)
     spec=_spec(d);plan=_plan(saved.subject,d.packet,spec);home=_home(saved.subject)
     need(saved.buffers[MARKER]==review.raw(plan),'genuine source rederived complete semantic partition')
@@ -380,6 +387,8 @@ def _proof_value(subject,packet,plan,refs,evidence,requests):
         'presentation_digest':codec.canonical_digest(p)}
 
 def produce_proof(root,operation_id, *, proof=None):
+    import _b_route_compensation_review_repair as repair
+    if repair.selected(root,operation_id):return repair.produce_proof(root,operation_id,proof=proof)
     subject=qualified.read_subject(root,operation_id);saved=inputs(root,subject,proof=proof)
     d=complete_inputs(saved);qualified.bindings(subject,d);plan=codec.strict_json_loads(saved.buffers[MARKER])
     requests=[_ref(root,_dir(_home(subject),n)+'/request.txt') for n in plan['nodes']]
@@ -387,6 +396,9 @@ def produce_proof(root,operation_id, *, proof=None):
     return value,saved,d
 
 def verify_saved_private(root,request):
+    if request['host_review_ref']['schema_version']==REPAIR_PROOF:
+        from _b_route_compensation_review_repair import verify_saved_private as verify_repair
+        return verify_repair(root,request)
     ref=request['host_review_ref'];home=review.location(request['operation_id'])
     review.shape(ref,('path','schema_version','raw_digest'),'closed owned segmented proof reference')
     need(ref.get('schema_version')==PROOF and ref.get('path')==home+'/review.json','exact owned segmented proof reference')

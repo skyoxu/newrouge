@@ -101,3 +101,5 @@
 - ADR-0055: B 路线固定工作政策的实测校准 — [ADR-0055](../adr/ADR-0055-b-route-fixed-work-policy-calibration.md)。Accepted 本地技术政策：依据完整 DATA 组件计量将当前同账工作界显式定为170M／resource-pipeline.v4；只局部 supersede 原100M，不改变其他资源、模型预算或原生验收门。
 
 - ADR-0056: Cloud published-history compensation - [ADR-0056](../adr/ADR-0056-b-route-published-history-compensation.md). Accepted explicit published-only data/protocol verification with new review profile; no original-owner execution claim, budget increase or Story acceptance.
+
+- ADR-0060: One formal compensation review repair - [ADR-0060](../adr/ADR-0060-one-time-compensation-review-repair.md). Narrow versioned continuation after a completed refusal; preserve original2, allow one explicit additional subscription review, cumulative3; no refund, automatic retry, source re-signing or acceptance inferred.

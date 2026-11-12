@@ -1,0 +1,107 @@
+{
+  "transport_commit": "94761e6caca45061d36a260f6c3116cb83a56530",
+  "source_head_before": "f94847e2b7b4d5092984294b46a2905212528f30",
+  "transport_objects": [
+    {
+      "path": "logs/migration/2026-11-12/recovery-batch04/README.md",
+      "bytes": 1045,
+      "sha256": "9c52114cee541976ccc2712a97b0b3e6e6b5cb710f658c0ff6885de395b938eb",
+      "git_blob": "cf5fdab296a79a983bd8bda8c5efb4cae10c51db"
+    },
+    {
+      "path": "logs/migration/2026-11-12/recovery-batch04/MANIFEST.json",
+      "bytes": 8285,
+      "sha256": "503b7dac911b7457038757051bc76543dd05acf5d85b0d8ffaaae64ec1a10895",
+      "git_blob": "b161fea179fab4a8cb2b6251d45a02b9bbbacbcd"
+    },
+    {
+      "path": "logs/migration/2026-11-12/recovery-batch04/history-files.zip",
+      "bytes": 171350,
+      "sha256": "664e6f1ba102877d9fbcf5a3cf0536504a537d7740e4e0fcd7c2aa784d4b78ac",
+      "git_blob": "a0a043b3a3c68570420e4f91ec28067cf2802e35"
+    }
+  ],
+  "data_directory": "/workspace/newrouge-recovery-data/batch04-94761e6c/data",
+  "archive_integrity_verified": true,
+  "all12_independent_original_pins_verified": true,
+  "original_files_verified": 12,
+  "original_bytes_verified": 801947,
+  "files": [
+    {
+      "original_task_relative_path": "logs/ci/2026-11-09/story27-r52-atomic-review-prepare-seal-01/config.json",
+      "data_path": "/workspace/newrouge-recovery-data/batch04-94761e6c/data/logs/ci/2026-11-09/story27-r52-atomic-review-prepare-seal-01/config.json",
+      "bytes": 710409,
+      "sha256": "d6f1eec3a9e9bf7dc5b94608db02d069c4f84404625587bfe9ebd7e64658067d"
+    },
+    {
+      "original_task_relative_path": "logs/ci/2026-11-09/story27-r52-atomic-review-prepare-01/reader-stderr.bin",
+      "data_path": "/workspace/newrouge-recovery-data/batch04-94761e6c/data/logs/ci/2026-11-09/story27-r52-atomic-review-prepare-01/reader-stderr.bin",
+      "bytes": 13913,
+      "sha256": "ab643f2520346c6a2443c201fd3fe10779da2546ba9e263f563778827c40740e"
+    },
+    {
+      "original_task_relative_path": "logs/ci/2026-11-09/story27-r52-atomic-review-prepare-01/reader-held-started.json",
+      "data_path": "/workspace/newrouge-recovery-data/batch04-94761e6c/data/logs/ci/2026-11-09/story27-r52-atomic-review-prepare-01/reader-held-started.json",
+      "bytes": 239,
+      "sha256": "012731090b820c06579e91ab3a3daf851051fa328da954ebdf29d59155330354"
+    },
+    {
+      "original_task_relative_path": "logs/ci/2026-11-09/story27-r52-atomic-review-prepare-01/reader-held-terminal.json",
+      "data_path": "/workspace/newrouge-recovery-data/batch04-94761e6c/data/logs/ci/2026-11-09/story27-r52-atomic-review-prepare-01/reader-held-terminal.json",
+      "bytes": 691,
+      "sha256": "f8ccd45bf89c799692636bf77aa7c5aa8d08c2b0f669a3ed994984a754b66e42"
+    },
+    {
+      "original_task_relative_path": "logs/ci/2026-11-09/story27-r52-atomic-review-prepare-01/stop.json",
+      "data_path": "/workspace/newrouge-recovery-data/batch04-94761e6c/data/logs/ci/2026-11-09/story27-r52-atomic-review-prepare-01/stop.json",
+      "bytes": 55125,
+      "sha256": "8eeb2cb2399a4706316831564ec1d49042757fe6c02bccd8e485a4fbf2ed7f60"
+    },
+    {
+      "original_task_relative_path": "logs/ci/2026-11-09/story27-r52-atomic-review-prepare-supervision-01/result.json",
+      "data_path": "/workspace/newrouge-recovery-data/batch04-94761e6c/data/logs/ci/2026-11-09/story27-r52-atomic-review-prepare-supervision-01/result.json",
+      "bytes": 1680,
+      "sha256": "0e43c191bd9da4ec0110f82bece80bf72e547bbc4a8dd894ff533489d64f01ab"
+    },
+    {
+      "original_task_relative_path": "logs/ci/2026-11-09/story27-r52-atomic-review-prepare-supervision-01/supervisor-started.json",
+      "data_path": "/workspace/newrouge-recovery-data/batch04-94761e6c/data/logs/ci/2026-11-09/story27-r52-atomic-review-prepare-supervision-01/supervisor-started.json",
+      "bytes": 1909,
+      "sha256": "8487cfa42819c94fd8481cc2af5436eecb3d166e42731a432bfe001272f33ab7"
+    },
+    {
+      "original_task_relative_path": "logs/ci/2026-11-09/story27-r52-atomic-review-prepare-supervision-01/child-started.json",
+      "data_path": "/workspace/newrouge-recovery-data/batch04-94761e6c/data/logs/ci/2026-11-09/story27-r52-atomic-review-prepare-supervision-01/child-started.json",
+      "bytes": 867,
+      "sha256": "afc066d65dd521c1ea22375a9f359ed5c76af93b06f74273685c571d53998a8a"
+    },
+    {
+      "original_task_relative_path": "logs/ci/2026-11-09/story27-r52-atomic-review-prepare-supervision-01/child-terminal.json",
+      "data_path": "/workspace/newrouge-recovery-data/batch04-94761e6c/data/logs/ci/2026-11-09/story27-r52-atomic-review-prepare-supervision-01/child-terminal.json",
+      "bytes": 712,
+      "sha256": "8b44bd98f93be1f9380ed81da84a3f71febfe4e397516ac0a814532b9ffea9a6"
+    },
+    {
+      "original_task_relative_path": "night-handoff/story27-r52-atomic-review-prepare-thin-controls-01/manifest.json",
+      "data_path": "/workspace/newrouge-recovery-data/batch04-94761e6c/data/night-handoff/story27-r52-atomic-review-prepare-thin-controls-01/manifest.json",
+      "bytes": 1700,
+      "sha256": "88a551e4a57a09a621990758ae6355d0de70651824a36faabc01ec991810fa25"
+    },
+    {
+      "original_task_relative_path": "night-handoff/story27-r52-atomic-review-prepare-thin-controls-01/run_review_prepare.Root-only.py",
+      "data_path": "/workspace/newrouge-recovery-data/batch04-94761e6c/data/night-handoff/story27-r52-atomic-review-prepare-thin-controls-01/run_review_prepare.Root-only.py",
+      "bytes": 9158,
+      "sha256": "71e7f9241ae4485a525868060bff75db537fff15e1a6c2d4ce82f5c3fd4916c8"
+    },
+    {
+      "original_task_relative_path": "night-handoff/story27-r52-atomic-review-prepare-thin-controls-01/control_common.py",
+      "data_path": "/workspace/newrouge-recovery-data/batch04-94761e6c/data/night-handoff/story27-r52-atomic-review-prepare-thin-controls-01/control_common.py",
+      "bytes": 5544,
+      "sha256": "0ea4c7774dec93207fd1b5470ac29232fbcdf0d01b20b06f8db570d85c32ccbe"
+    }
+  ],
+  "old_code_executed": false,
+  "owner_authentication_claimed": false,
+  "new_authority_granted": false,
+  "qualification": "Exact authorized transport/original byte receipt only; not an old-owner execution or current admission."
+}

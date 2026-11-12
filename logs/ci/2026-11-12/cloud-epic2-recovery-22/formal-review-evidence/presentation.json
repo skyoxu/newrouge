@@ -1,0 +1,20 @@
+{
+  "schema_version": "newrouge.b-route-qualified-compensation-review-presentation.v3",
+  "claim": "complete_recorded_public_semantics_with_published_history_byte_verification",
+  "full_subject_digest": "sha256:f816e7a535e32e4e36f4af2dc4baa77a223155d73f660cdf0435daa87ea32e84",
+  "policy_identity": "sha256:580ab96f584efecb61e870c1539402d041fcbe3369a293204c6f97f5710da05e",
+  "required_checks": [
+    "b_source_and_binding_retention",
+    "complete_old_current_new_scope",
+    "cumulative_requirements_and_obligations",
+    "current_before_and_later_edits",
+    "exact_pending_claim_relation",
+    "existing_formal_semantic_sources",
+    "original_raw_frozen_effects",
+    "target:0",
+    "task_status_acceptance_history"
+  ],
+  "materials_digest": "sha256:1e2fc172e993b68d78c1530cd8a852e9ba271a08d7d456ffadecdff68341079b",
+  "roles_digest": "sha256:a285c2d7e4cbca764624e41946917137e4d24ba60d4eed431381e9711f3d5d41",
+  "historical_auth_digest": "sha256:c3f2c14c739457f77c1d31b2f4cf843fbe1d5ba0bedeffae324ed73f0cd8bdff"
+}

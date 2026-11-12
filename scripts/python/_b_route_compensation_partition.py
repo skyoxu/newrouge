@@ -17,10 +17,11 @@ import _b_route_records as records
 
 WIRE='newrouge.b-route-compensation-preserving-closures.v1'
 INSTRUCTION=(
-    'Collective compensation review. History is publication/byte verified; no old-owner '
-    'execution or reauthentication. Read this closure completely. Atom links equal complete '
-    'originals reviewed in the predecessor. Block missing semantic dependencies. CLI owns '
-    'order and continuation. Use projection_decoder/json2_decoder as wire definitions. ')
+    'Collective compensation review. History verifies publication/bytes, not old-owner execution. '
+    'Host checks retained-native-execution-binding.v2 request/material/capsule links; this evidence '
+    'is not a formal B binding or new approval. Read all visible meaning; block missing semantic '
+    'relationships. Atom links equal complete originals reviewed in the predecessor. CLI owns '
+    'continuation. Use projection_decoder/json2_decoder as wire definitions. ')
 PROJECTION=(
     'Typed view decoder: the original native object is complete, including all14 fields. '
     'For original_current_plan, replace only each typed_native_projection_field with that '

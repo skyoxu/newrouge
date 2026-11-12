@@ -1,5 +1,25 @@
 # NewRogue cloud continuation checkpoint
 
+## Formal repair and publication22
+
+Read `logs/ci/2026-11-12/cloud-epic2-recovery-22/REPORT.md` and `final-state-audit.json` first. The independently assessed ADR0060 same-operation lane consumed exactly one additional subscription review and sealed genuine proof.v2. All seven fresh checks approved. Original2/2, both original intents, full refusal and old unknown remain byte-exact; additional1 is also occupied, cumulative3. Continuation21's diagnostic-only proposal was never dispatched and is superseded.
+
+Public prepare/reserve/apply/verify/publish/read all succeeded for NativeV15Origin03Compensation01. Plan PLAN-bed480ce3e404b2cbaf5514d80a7f941 is revision2, new receipt revision1/catalog revision2. formal_adoption=true; readiness/runtime_verified/default_b_enabled=false. Original NativeV15Origin03 is resolved_by this compensation; no active operation or pending marker remains. Original34 review records and old receipt/operation bytes are unchanged. The catalog legitimately changed through publication. Do not replay any one-shot script or dispatch another repair.
+
+Current source policy580ab96f584efecb61e870c1539402d041fcbe3369a293204c6f97f5710da05e/84 pins and56 affected passing tests are recorded in continuation22. Exact new model/proof artifacts and published/terminal records are preserved there with manifests. Credentials remain private. Code/evidence are local uncommitted/unpushed on build/cloud-epic2-recovery-20261111, HEAD f94847e2b7b4d5092984294b46a2905212528f30; preserve the four original EOL-status files.
+
+This closes the restored Cloud compensation, not original Windows/native AC5 or remaining Story2.9/2.10 whole acceptance. No completed-unit reuse/global completion is inferred. No further call is needed for this resolved operation; the original2 and explicitly appended1 are spent, with no reset/refund or general subscription shortage established. All older checkpoints below describe their historical observation times.
+
+## Subsequent bounded repair21
+
+Read logs/ci/2026-11-12/cloud-epic2-recovery-21/REPORT.md first. Two prompt-only corrections distinguish retained execution evidence from formal B bindings and state the existing exact findings/rationale contract. Both actual original inputs restore the full original packet exactly;28 affected tests pass and genuine offline capacity remains below70000. Original34 records and83 source preimages are preserved; original2/2 is still occupied and the second unknown remains. No new model call, proof or business write occurred. One concrete diagnostic-only additional call is prepared in next-diagnostic-call.json, not dispatched or usable to seal the old exhausted plan. Production repair-attempt continuation is a separate assessed scope/authorization decision.
+
+## Subsequent authenticated continuation20
+
+The republished environment now enforces auth.openai.com access. Official device login exited0 and online subscription metadata succeeds. The authorized deterministic two-node execution has now consumed both lifetime logical slots under NativeV15Origin03Compensation01: business completed/approved; governance-joint's official turn completed but its semantic verdict is blocked and its findings do not equal all four blocked rationales. The CLI retains the second node's unknown state and exits2; no semantic proof or compensation business operation/write exists. Do not repeat login, replay either node, reset/top up the limit, replace the ID or release unknowns. Authentication is no longer the blocker.
+
+Read logs/ci/2026-11-12/cloud-epic2-recovery-20/REPORT.md and final-state-audit.json before the older checkpoint below. The referenced binding original exists and is machine-verified; its retained-native-execution role differs from a formal B binding. Its omission as a model semantic document and the actual refusal require reconciliation, not an assumed approval. All83 source pins and original catalog/receipt/operation bytes remain unchanged. Private credentials remain outside Git. The older statements that both calls are unused describe the prior checkpoint only.
+
 Restore `build/cloud-epic2-recovery-20261111`, not default main. MANIFEST.json fixes all17 previously unpublished cloud commits, their original r62 base and the public recovery-data branch/head. This handoff commit is an additional administrative checkpoint. No force push/main merge is authorized.
 
 ## Actual current checkpoint

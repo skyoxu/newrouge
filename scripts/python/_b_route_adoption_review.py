@@ -171,6 +171,7 @@ def policy_observations():
         '_b_route_compensation_review_profiles.py',
         '_b_route_compensation_segments.py',
         '_b_route_compensation_segmented_execution.py',
+        '_b_route_compensation_review_repair.py',
         '_b_route_compensation_partition.py',
         '_b_route_segmented_requests.py',
         '_b_route_published_history.py',
@@ -542,8 +543,8 @@ def _verification_graph():
 
 def verified_historical_support(root, original):
     """Replay the original saved owner; never reinterpret old raw as new wire."""
-    from _b_route_compensation_segmented_execution import PROOF as SEGMENTED_PROOF
-    if original['frozen']['request'].get('host_review_ref',{}).get('schema_version')==SEGMENTED_PROOF:
+    from _b_route_compensation_segmented_execution import PROOFS as SEGMENTED_PROOFS
+    if original['frozen']['request'].get('host_review_ref',{}).get('schema_version') in SEGMENTED_PROOFS:
         handle=_qualified_owner_v2().history(root,original,profile=profiles.PUBLISHED)
         return {'subject':handle.subject(),'files':handle.files(),'roles':handle.roles()}
     if (original.get('schema_version') == 'newrouge.b-route-adoption-operation.v2'
@@ -895,8 +896,8 @@ def produce_proof(root, operation_id):
 
 def seal(root, operation_id, value):
     """Commit the already verified proof under its caller's complete scopes."""
-    from _b_route_compensation_segmented_execution import PROOF as SEGMENTED_PROOF
-    if value.get('schema_version')==SEGMENTED_PROOF:return _qualified_owner_v2().seal(root,operation_id,value)
+    from _b_route_compensation_segmented_execution import PROOFS as SEGMENTED_PROOFS
+    if value.get('schema_version') in SEGMENTED_PROOFS:return _qualified_owner_v2().seal(root,operation_id,value)
     if value.get('schema_version') in ('newrouge.b-route-qualified-compensation-review-proof.v2', 'newrouge.b-route-qualified-compensation-review-proof.v3'):
         return _qualified_owner_v2().seal(root, operation_id, value)
     if value.get('schema_version') == 'newrouge.b-route-qualified-compensation-review-proof.v1':
@@ -940,8 +941,8 @@ def verify_saved(root, request):
 
 
 def _verify_saved(root, request):
-    from _b_route_compensation_segmented_execution import PROOF as SEGMENTED_PROOF,verify_saved_private
-    if request.get('host_review_ref',{}).get('schema_version')==SEGMENTED_PROOF:
+    from _b_route_compensation_segmented_execution import PROOFS as SEGMENTED_PROOFS,verify_saved_private
+    if request.get('host_review_ref',{}).get('schema_version') in SEGMENTED_PROOFS:
         require(request.get('schema_version')=='newrouge.b-route-compensation-request.v2'
             and request.get('producer')=='compensation','exact segmented compensation request family',request.get('schema_version'))
         saved,_derived=verify_saved_private(root,request)

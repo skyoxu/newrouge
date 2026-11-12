@@ -1,0 +1,44 @@
+EEE
+======================================================================
+ERROR: test_b_route_compensation_partition (unittest.loader._FailedTest.test_b_route_compensation_partition)
+----------------------------------------------------------------------
+ImportError: Failed to import test module: test_b_route_compensation_partition
+Traceback (most recent call last):
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/unittest/loader.py", line 137, in loadTestsFromName
+    module = __import__(module_name)
+             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/newrouge/scripts/python/tests/test_b_route_compensation_partition.py", line 6, in <module>
+    import _b_route_compensation_partition as partition
+ModuleNotFoundError: No module named '_b_route_compensation_partition'
+
+
+======================================================================
+ERROR: test_b_route_compensation_segmented_execution (unittest.loader._FailedTest.test_b_route_compensation_segmented_execution)
+----------------------------------------------------------------------
+ImportError: Failed to import test module: test_b_route_compensation_segmented_execution
+Traceback (most recent call last):
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/unittest/loader.py", line 137, in loadTestsFromName
+    module = __import__(module_name)
+             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/newrouge/scripts/python/tests/test_b_route_compensation_segmented_execution.py", line 19, in <module>
+    import _b_route_compensation_segmented_execution as engine
+ModuleNotFoundError: No module named '_b_route_compensation_segmented_execution'
+
+
+======================================================================
+ERROR: test_b_route_compensation_segmented_execution (unittest.loader._FailedTest.test_b_route_compensation_segmented_execution)
+----------------------------------------------------------------------
+ImportError: Failed to import test module: test_b_route_compensation_segmented_execution
+Traceback (most recent call last):
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/unittest/loader.py", line 137, in loadTestsFromName
+    module = __import__(module_name)
+             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/newrouge/scripts/python/tests/test_b_route_compensation_segmented_execution.py", line 19, in <module>
+    import _b_route_compensation_segmented_execution as engine
+ModuleNotFoundError: No module named '_b_route_compensation_segmented_execution'
+
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.000s
+
+FAILED (errors=3)

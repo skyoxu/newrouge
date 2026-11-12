@@ -1,0 +1,26 @@
+Traceback (most recent call last):
+  File "/workspace/newrouge/logs/ci/2026-11-12/cloud-epic2-recovery-22/genuine_pre_dispatch.py", line 53, in <module>
+    spec=engine._spec(derived)
+         ^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/newrouge/scripts/python/_b_route_compensation_segmented_execution.py", line 50, in _spec
+    partition=preserving_partition(derived)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/newrouge/scripts/python/_b_route_compensation_partition.py", line 362, in build
+    try:business,governance=_prepare_data(derived.packet,w,metrics,buffers)
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/newrouge/scripts/python/_b_route_compensation_partition.py", line 169, in _prepare_data
+    envelope=materials._json_views(packet,work,r.metrics,r.buffers);r.keep('envelope',envelope)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/newrouge/scripts/python/_b_route_qualified_compensation_materials_v2.py", line 745, in _json_views
+    if not accounting._json2_equals(value,text,w,(*held,vm),(*buffers,metric[5])):
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/newrouge/scripts/python/_b_route_compensation_review_materials.py", line 390, in _json2_equals
+    text, raw, bound = _json2(source, work, metrics, (*buffers, target_bytes))
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/newrouge/scripts/python/_b_route_compensation_review_materials.py", line 377, in _json2
+    _live(work, 'transport.json2.allocate', (*metrics, measured), (*buffers, 6 * bound + 2, 3 * bound))
+  File "/workspace/newrouge/scripts/python/_b_route_compensation_review_materials.py", line 345, in _live
+    compact._metric(size, nodes, depth, phase=phase)
+  File "/workspace/newrouge/scripts/python/_b_route_compact_literal.py", line 1809, in _metric
+    raise ValueError("Compact input exceeds " + RESOURCE_POLICY +
+ValueError: Compact input exceeds newrouge.b-route-resource-pipeline.v4; bytes_bound=68060099; nodes_bound=89127; depth_bound=18; phase=transport.json2.allocate

@@ -1,0 +1,11 @@
+{
+  "known_original_protocols_complete": true,
+  "business_approved_and_durably_completed": true,
+  "governance_completed_blocked_unknown_retained": true,
+  "original_source_files_verified": 83,
+  "original_source_policy": "sha256:65e75d61df84da606dd80eca6bbcb2d7fc9a1c3f3ddf08f3c96795ecc8c6d4c5",
+  "old_limit": 2,
+  "old_occupied_intents": 2,
+  "model_dispatches": 0,
+  "old_code_executed": false
+}

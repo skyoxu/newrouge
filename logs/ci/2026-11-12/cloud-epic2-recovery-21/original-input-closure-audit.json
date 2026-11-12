@@ -1,0 +1,12 @@
+{
+  "actual_original_input_canonical_decoding": true,
+  "full_restored_packet_equals_original_saved_packet": true,
+  "frame_count": 2,
+  "literal_document_count": 11,
+  "required_check_count": 9,
+  "original_business_atom_count": 9,
+  "encoding_work_charged": 62891344,
+  "encoding_work_limit": 170000000,
+  "model_calls": 0,
+  "proof_or_old_record_writes": false
+}

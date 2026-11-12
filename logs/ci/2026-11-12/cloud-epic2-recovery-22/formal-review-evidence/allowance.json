@@ -1,0 +1,10 @@
+{
+  "schema_version": "newrouge.b-route-compensation-review-repair.v1",
+  "original_plan_digest": "sha256:d3638701c7d61a3c9216ba733f12e7cad27efca606c6864e667aacdd34b0d13b",
+  "current_plan_digest": "sha256:3877dc95f7b1e2b08ab783cbe839f8151209d78c601d7a957291f7fb5bc5d98f",
+  "original_limit": 2,
+  "additional_limit": 1,
+  "cumulative_limit": 3,
+  "authorization_source": "User instruction 2026-11-12: ongoing Epic2 Codex subscription reviews; one necessary formal repair review, original2 retained plus additional1, cumulative3.",
+  "claim": "operation_lifetime_logical_calls_only;not_funding_or_campaign_reconciliation"
+}

@@ -68,6 +68,34 @@ class SegmentedExecutionDataTests(unittest.TestCase):
 
     def intents(self):return list(self.root.rglob('intent.json'))
 
+    def test_full_node_prompt_explicitly_requires_exact_blocked_rationale_accounting(self):
+        plan=engine._plan(self.subject,self.packet,self.spec)
+        node=plan['nodes'][0]
+        prompt,_schema,_request,_report=engine._request(self.subject,self.packet,plan,node,
+            self.spec[0]['base_prompt'],[])
+        context=json.loads(prompt.split('CLI NODE CONTEXT (data):\n',1)[1])
+        self.assertIn('Each check once',context['rule'])
+        self.assertIn('findings must exactly equal blocked check rationales',context['rule'])
+        self.assertIn('Parent verdicts do not replace originals',context['rule'])
+        self.assertEqual([],self.calls);self.assertEqual([],self.intents())
+
+    def test_blocked_semantics_remain_rejected_with_summary_or_exact_findings(self):
+        plan=engine._plan(self.subject,self.packet,self.spec);node=plan['nodes'][0]
+        schema=engine._schema(self.subject,self.packet,plan,node,engine._prefix([]))
+        value={k:v['const'] for k,v in schema['properties'].items() if 'const' in v}
+        rationales=['Unresolved semantic relationship '+key for key in node['check_ids']]
+        value.update(verdict='blocked',findings=['Summary of unresolved semantics'],
+            checks=[{'id':key,'verdict':'blocked','rationale':reason}
+                for key,reason in zip(node['check_ids'],rationales,strict=True)])
+        with self.assertRaises(codec.CodecError) as summary:
+            engine._verdict(value,schema,node)
+        self.assertEqual('exact blocked node findings',summary.exception.diagnostic.expected)
+        value['findings']=rationales
+        with self.assertRaises(codec.CodecError) as exact:
+            engine._verdict(value,schema,node)
+        self.assertEqual('no unresolved node findings',exact.exception.diagnostic.expected)
+        self.assertEqual([],self.calls);self.assertEqual([],self.intents())
+
     def test_outer_rpc_escaping_is_admitted_before_any_reservation(self):
         plan=engine._plan(self.subject,self.packet,self.spec)
         node=plan['nodes'][0];base='"'*35000
@@ -95,6 +123,9 @@ class SegmentedExecutionDataTests(unittest.TestCase):
         schema=json.loads(output_schema.read_text());verdict={k:v['const'] for k,v in schema['properties'].items() if 'const' in v}
         verdict.update(verdict='approved',findings=[],checks=[{'id':key,'verdict':'approved','rationale':self.rationale}
             for key in schema['properties']['checks']['items']['properties']['id']['enum']])
+        if getattr(self,'blocked_call',None)==number:
+            verdict['verdict']='blocked';verdict['checks'][0]['verdict']='blocked'
+            verdict['findings']=['DATA summary differs from exact blocked rationale']
         output=review.text(verdict)
         request=engine._frame(prompt_path.read_text(),schema)
         from openai_isolated_model_runner import workspace_payload
@@ -110,8 +141,8 @@ class SegmentedExecutionDataTests(unittest.TestCase):
         def rename(v):
             if type(v) is dict:return {k:rename(x) for k,x in v.items()}
             if type(v) is list:return [rename(x) for x in v]
-            if v=='fresh-thread':return 'ancestor-thread' if self.ancestor_thread else 'DATA-thread-'+str(1 if self.reused_thread else number)
-            if v=='fresh-turn':return 'ancestor-turn' if self.ancestor_turn else 'DATA-turn-'+str(1 if self.reused_turn else number)
+            if v=='fresh-thread':return 'ancestor-thread' if self.ancestor_thread else 'DATA-thread-'+str(getattr(self,'reused_thread_number',1) if self.reused_thread else number)
+            if v=='fresh-turn':return 'ancestor-turn' if self.ancestor_turn else 'DATA-turn-'+str(getattr(self,'reused_turn_number',1) if self.reused_turn else number)
             return v
         for row in rows:
             if row['direction']=='client' and row['message'].get('method')=='thread/start':

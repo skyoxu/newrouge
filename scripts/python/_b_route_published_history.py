@@ -270,8 +270,8 @@ def _saved_current_before(root, operation, context):
     proof_ref = consumer['frozen']['request']['host_review_ref']
     proof_raw = codec.read_reference_bytes(root, proof_ref['path'])
     proof = codec.strict_json_loads(proof_raw)
-    from _b_route_compensation_segmented_execution import PROOF as SEGMENTED_PROOF
-    need(proof_ref['schema_version'] == proof['schema_version'] and proof['schema_version'] in (PUBLISHED.name('proof'),SEGMENTED_PROOF)
+    from _b_route_compensation_segmented_execution import PROOFS as SEGMENTED_PROOFS
+    need(proof_ref['schema_version'] == proof['schema_version'] and proof['schema_version'] in (PUBLISHED.name('proof'),*SEGMENTED_PROOFS)
          and codec.raw_digest(proof_raw) == proof_ref['raw_digest']
          and proof['subject_digest'] == codec.canonical_digest(subject)
          and context.proof is not None and same(proof, context.proof), 'actual exact saved new proof and context')

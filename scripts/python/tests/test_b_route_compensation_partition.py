@@ -1,5 +1,6 @@
 """Typed DATA transformation regressions, never owner/model qualification."""
 from copy import deepcopy
+from types import SimpleNamespace
 import unittest
 
 import _b_route_compensation_partition as partition
@@ -7,6 +8,15 @@ import _b_route_compact_literal as compact
 
 
 class PreservingPartitionDataTests(unittest.TestCase):
+    def test_render_distinguishes_execution_support_from_formal_binding_without_exempting_missing_meaning(self):
+        derived=SimpleNamespace(packet={},work=compact._work(None),
+            freeze_auth=lambda:None,private_metrics=lambda:([],[]))
+        prompt=partition._render(derived,{'complete':'original DATA meaning'})
+        header,_body=prompt.split('\n',1)
+        self.assertIn('retained-native-execution-binding.v2',header)
+        self.assertIn('not a formal B binding',header)
+        self.assertIn('block missing semantic relationships',header)
+
     def test_identity_spelling_roundtrip_is_ordered_typed_and_full_width(self):
         digest='sha256:'+bytes(range(32)).hex()
         value={digest:[digest,'~h64:literal','~~literal','sha256:'+'A'*64,True,1,1.0,-0.0]}

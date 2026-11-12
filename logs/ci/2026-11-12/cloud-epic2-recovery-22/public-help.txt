@@ -1,0 +1,40 @@
+usage: dev_cli.py [-h] [--root ROOT] [--origin-profile ORIGIN_PROFILE] --stage
+                  {origin-prepare,review-prepare,review-segmented-preflight,review-segmented-prepare,review-segmented-execute,review-segmented-resume,review-segmented-repair-prepare,review-segmented-repair-execute,review-segmented-repair-resume,review-complete,prepare,reserve,inspect,apply,verify,publish,read,recover-inspect,recover}
+                  [--context] --operation-id OPERATION_ID
+                  [--model-request-budget MODEL_REQUEST_BUDGET]
+                  [--original-source-root ORIGINAL_SOURCE_ROOT]
+                  [--review-authorization-source REVIEW_AUTHORIZATION_SOURCE]
+                  [--request REQUEST]
+                  [--compensation-review-delivery {newrouge.b-route-compensation-review-delivery.v3,newrouge.b-route-compensation-review-delivery.v4,newrouge.b-route-qualified-compensation-review-delivery.v1,newrouge.b-route-qualified-compensation-review-delivery.v2,newrouge.b-route-qualified-compensation-review-delivery.v3}]
+
+Shared adoption and explicit commit stages; no default-route activation.
+
+options:
+  -h, --help            show this help message and exit
+  --root ROOT
+  --origin-profile ORIGIN_PROFILE
+                        Existing finite profile; origin-prepare only
+  --stage {origin-prepare,review-prepare,review-segmented-preflight,review-segmented-prepare,review-segmented-execute,review-segmented-resume,review-segmented-repair-prepare,review-segmented-repair-execute,review-segmented-repair-resume,review-complete,prepare,reserve,inspect,apply,verify,publish,read,recover-inspect,recover}
+  --context             Include original retained/published context;
+                        inspect/read only, no reuse or resume
+  --operation-id OPERATION_ID
+  --model-request-budget MODEL_REQUEST_BUDGET
+                        Explicit operation-lifetime logical call ceiling;
+                        segmented execute only, not funding authority
+  --original-source-root ORIGINAL_SOURCE_ROOT
+                        Exact original public source DATA; one-time segmented
+                        repair prepare only
+  --review-authorization-source REVIEW_AUTHORIZATION_SOURCE
+                        Recorded operator authorization provenance; one-time
+                        repair execute only
+  --request REQUEST     Complete request reference; review-prepare, review-
+                        segmented-preflight, review-segmented-prepare or
+                        prepare only
+  --compensation-review-delivery {newrouge.b-route-compensation-review-delivery.v3,newrouge.b-route-compensation-review-delivery.v4,newrouge.b-route-qualified-compensation-review-delivery.v1,newrouge.b-route-qualified-compensation-review-delivery.v2,newrouge.b-route-qualified-compensation-review-delivery.v3}
+                        Explicit compensation review transport; segmented
+                        preflight requires qualified delivery.v3
+
+--context on inspect/read presents original operation/plan/revision
+references; inspect is read-only; read retains its original coordination lock
+metadata. Completed-unit reuse/epoch/reopen is unsupported here. No default B
+activation.

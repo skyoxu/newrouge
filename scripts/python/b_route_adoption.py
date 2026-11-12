@@ -30,13 +30,15 @@ class _Parser(argparse.ArgumentParser):
 def register_arguments(parser):
     parser.add_argument("--root", default=".")
     parser.add_argument("--origin-profile", help="Existing finite profile; origin-prepare only")
-    parser.add_argument("--stage", choices=("origin-prepare", "review-prepare", "review-segmented-preflight", "review-segmented-prepare", "review-segmented-execute", "review-segmented-resume", "review-complete", "prepare", "reserve", "inspect",
+    parser.add_argument("--stage", choices=("origin-prepare", "review-prepare", "review-segmented-preflight", "review-segmented-prepare", "review-segmented-execute", "review-segmented-resume", "review-segmented-repair-prepare", "review-segmented-repair-execute", "review-segmented-repair-resume", "review-complete", "prepare", "reserve", "inspect",
                                           "apply", "verify", "publish", "read", "recover-inspect", "recover"), required=True)
     parser.add_argument("--context", action="store_true",
         help="Include original retained/published context; inspect/read only, no reuse or resume")
     parser.epilog = CONTEXT_HELP
     parser.add_argument("--operation-id", required=True)
     parser.add_argument("--model-request-budget",type=int,help="Explicit operation-lifetime logical call ceiling; segmented execute only, not funding authority")
+    parser.add_argument('--original-source-root',help='Exact original public source DATA; one-time segmented repair prepare only')
+    parser.add_argument('--review-authorization-source',help='Recorded operator authorization provenance; one-time repair execute only')
     parser.add_argument("--request", help="Complete request reference; review-prepare, review-segmented-preflight, review-segmented-prepare or prepare only")
     parser.add_argument('--compensation-review-delivery', choices=(
         'newrouge.b-route-compensation-review-delivery.v3',
@@ -134,7 +136,8 @@ def _execute(args):
         return prepare_origin(Path(args.root).absolute(), operation_id=args.operation_id, profile=args.origin_profile)
     if getattr(args, 'origin_profile', None) is not None:
         raise ValueError('origin-profile is only accepted by origin-prepare')
-    if args.stage not in ("review-prepare", "review-segmented-preflight", "review-segmented-prepare", "review-segmented-execute", "review-segmented-resume", "review-complete", "prepare", "reserve", "inspect", "apply", "verify", "publish", "read", "recover-inspect", "recover"):
+    repair_stage=args.stage in ('review-segmented-repair-prepare','review-segmented-repair-execute','review-segmented-repair-resume')
+    if args.stage not in ("review-prepare", "review-segmented-preflight", "review-segmented-prepare", "review-segmented-execute", "review-segmented-resume", "review-complete", "prepare", "reserve", "inspect", "apply", "verify", "publish", "read", "recover-inspect", "recover") and not repair_stage:
         raise codec.CodecError(codec.Diagnostic(codec.ReasonCode.INVALID_ARGUMENT,
             entity_id=args.operation_id, expected="prepare|reserve|inspect", actual=args.stage))
     if (args.stage in ("review-prepare", "review-segmented-preflight", "review-segmented-prepare", "prepare")) != (args.request is not None):
@@ -142,8 +145,12 @@ def _execute(args):
             entity_id=args.operation_id, expected="--request on review-prepare, review-segmented-preflight, review-segmented-prepare or prepare only",
             actual={"stage": args.stage, "request_supplied": args.request is not None}))
     compensation_delivery = getattr(args, 'compensation_review_delivery', None)
-    if args.model_request_budget is not None and args.stage!='review-segmented-execute':
+    if args.model_request_budget is not None and args.stage not in ('review-segmented-execute','review-segmented-repair-execute'):
         raise codec.CodecError(codec.Diagnostic(codec.ReasonCode.INVALID_ARGUMENT,expected='--model-request-budget on review-segmented-execute only',actual=args.stage))
+    if (getattr(args,'original_source_root',None) is not None)!=(args.stage=='review-segmented-repair-prepare'):
+        raise codec.CodecError(codec.Diagnostic(codec.ReasonCode.INVALID_ARGUMENT,expected='--original-source-root on repair prepare only',actual=args.stage))
+    if getattr(args,'review_authorization_source',None) is not None and args.stage!='review-segmented-repair-execute':
+        raise codec.CodecError(codec.Diagnostic(codec.ReasonCode.INVALID_ARGUMENT,expected='authorization provenance on repair execute only',actual=args.stage))
     if compensation_delivery is not None and args.stage not in ('review-prepare','review-segmented-preflight'):
         raise codec.CodecError(codec.Diagnostic(codec.ReasonCode.INVALID_ARGUMENT,
             entity_id=args.operation_id, expected='delivery selection on compensation review-prepare only',
@@ -194,6 +201,10 @@ def _execute(args):
         value = service.recover(root, operation_id=args.operation_id)
     elif commit_stage:
         value = service.execute(root, operation_id=args.operation_id, stage=args.stage)
+    elif repair_stage:
+        value=service.repair_segmented_compensation_review(root,operation_id=args.operation_id,
+            stage=args.stage.removeprefix('review-segmented-repair-'),original_source_root=args.original_source_root,
+            model_request_budget=args.model_request_budget,authorization_source=args.review_authorization_source)
     elif args.stage in ('review-segmented-prepare','review-segmented-execute','review-segmented-resume'):
         value=service.segmented_compensation_review(root,operation_id=args.operation_id,
             stage=args.stage.removeprefix('review-segmented-'),request_ref=args.request,model_request_budget=args.model_request_budget)

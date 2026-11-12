@@ -1,0 +1,138 @@
+{
+  "materials.json": {
+    "bytes": 1371024,
+    "sha256": "70fb6efccd3a77588f93084ba52edad9e0d0820585e96cc89a3ce569b9f6f6ff"
+  },
+  "historical-auth.json": {
+    "bytes": 2188,
+    "sha256": "2307e68770f93444ff75c39f56c50c4c34f2a19107d404f01210850160abc29f"
+  },
+  "roles.json": {
+    "bytes": 24827,
+    "sha256": "e1a1748df8c99e7175bbccaaed93d5b941031cd1f16c2eabbeb8401606427796"
+  },
+  "capability-coordinator.lock": {
+    "bytes": 1,
+    "sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9"
+  },
+  "subject.json": {
+    "bytes": 996681,
+    "sha256": "aa85669cc11915c494d0b1451492bb77463148a3ca8267621e394f37b92aa5ed"
+  },
+  "presentation.json": {
+    "bytes": 1021,
+    "sha256": "6045e2bd41a8323f9ceb31e3a7ddf66e3cf76dc1ea1268566c7c5ccc6b799792"
+  },
+  "segmented/plan.json": {
+    "bytes": 2872,
+    "sha256": "21038eaf31f8a98e6159ab4be002e089ff889b203f892775c42e79a182f64d9a"
+  },
+  "segmented/call-limit.json": {
+    "bytes": 354,
+    "sha256": "9b778854c7cd1823a68659311fdd0c20821711344b15b0ec4672de18f50d68b0"
+  },
+  "segmented/source-pins.json": {
+    "bytes": 12229,
+    "sha256": "5b0cfd34e630c3458f75c2bb78f8fbb15db912e1b582bb1f8fd6d777b9855f16"
+  },
+  "segmented/nodes/001/request.txt": {
+    "bytes": 69512,
+    "sha256": "1db9232a64adc1cc9564577929dab003374a40d189732d33fea2496cfb2d6337"
+  },
+  "segmented/nodes/001/intent.json": {
+    "bytes": 1495,
+    "sha256": "ed2f322899baede9b23735d3e55e46d89f46198936f510d046e2693b8babd7c2"
+  },
+  "segmented/nodes/001/unknown.json": {
+    "bytes": 192,
+    "sha256": "4da502e12b461a07d9b42a2867c3a5e1fc64989be4fffd91afd1d5be322bd6f8"
+  },
+  "segmented/nodes/001/execution.json": {
+    "bytes": 3118226,
+    "sha256": "4bb3c1850971c904a5a1b17d380e07fb2385cc6f1ba93bac9fecdce8a7cb7536"
+  },
+  "segmented/nodes/001/base-prompt.txt": {
+    "bytes": 65006,
+    "sha256": "1df3a192b3789024dd8068de3d070a867d2fc0fc1186ebeee8e04f1af21fd837"
+  },
+  "segmented/nodes/001/measurement.json": {
+    "bytes": 373,
+    "sha256": "dec95ffb9cb50b872058d35b7ba46014c9968e889ef599bba5471f8848a97168"
+  },
+  "segmented/nodes/000/request.txt": {
+    "bytes": 66079,
+    "sha256": "b76e6c96076b22616e1f2792409aa15e4fd0eab114ab67cffa228c0e151b2dd8"
+  },
+  "segmented/nodes/000/intent.json": {
+    "bytes": 1487,
+    "sha256": "1bef27dc0e15782b6ab1658a4ad17f728bbe22a90a45e2c213db9c6122f49cd4"
+  },
+  "segmented/nodes/000/execution.json": {
+    "bytes": 2826193,
+    "sha256": "d053e67070126869e8f0acaf71f4e80f3d4202f729569ca8175870660cd61d82"
+  },
+  "segmented/nodes/000/completed.json": {
+    "bytes": 273,
+    "sha256": "88db8f82b3c4dee3649c39466b57698ded48f13c859f0596f5458b8ee3636de6"
+  },
+  "segmented/nodes/000/result.json": {
+    "bytes": 2077,
+    "sha256": "db9195382561469e4d44f7d5efa2de16a005bfc9c7705a013dd2723887be54d7"
+  },
+  "segmented/nodes/000/base-prompt.txt": {
+    "bytes": 63098,
+    "sha256": "d1dce96a1d126a21a05987ae596c0b8ed26e1eceafa199453ad1422f5ee86586"
+  },
+  "segmented/nodes/000/measurement.json": {
+    "bytes": 373,
+    "sha256": "9581d60914ff8b4dda50c1521acfea9cada86a9aee318972ce512b98156e8cc1"
+  },
+  "segmented/nodes/001/w/output.json": {
+    "bytes": 2526,
+    "sha256": "15556da514225c340f7ae5f2e188372ba9fec4198ffc1bac0ac92692c3f81434"
+  },
+  "segmented/nodes/001/w/output.json.087ec7f905f24d68a970a85a17b561fd.app-server.jsonl": {
+    "bytes": 999975,
+    "sha256": "f6447c1e65f10ea137dd61b33ea68261756b3fa43a06b79cc104aa24ebdeb28f"
+  },
+  "segmented/nodes/001/w/prompt.txt": {
+    "bytes": 66568,
+    "sha256": "c4eb31e9c59ba6f73b42cb97b113e48b23a40384087c583cd205eae92fc64b5c"
+  },
+  "segmented/nodes/001/w/schema.json": {
+    "bytes": 1169,
+    "sha256": "4e51988fe1ecc781bc3569a3019c758be7a882da1720f09fd9f8bd791ca72223"
+  },
+  "segmented/nodes/001/w/runner-input-integrity.json": {
+    "bytes": 115,
+    "sha256": "17f102be47bf3a9c3fde176f30a4aed1b7839ec82e9b5e763c7354359976248b"
+  },
+  "segmented/nodes/001/w/output.json.087ec7f905f24d68a970a85a17b561fd.app-server.stderr.txt": {
+    "bytes": 59931,
+    "sha256": "a893ff07c2e1e85d5c410f67e8acc9f038a4ca1c127a55a7ca4b769a6a07c1b6"
+  },
+  "segmented/nodes/000/w/output.json": {
+    "bytes": 1073,
+    "sha256": "1fbad7776e4a3d62f0e8070263e155dfe4a95f5a325cd2b8033b3c3fae9ec667"
+  },
+  "segmented/nodes/000/w/output.json.2b098deaa952488e9a33aa4aee2b0f6d.app-server.stderr.txt": {
+    "bytes": 59930,
+    "sha256": "c5d3ddae634444a7f0d0bdab414e04123c8dcb1dab92dc5967b38483d1cbbfd8"
+  },
+  "segmented/nodes/000/w/prompt.txt": {
+    "bytes": 63456,
+    "sha256": "66264ce22b7e5c41e58b721480458fc222f775a3f090d1d6b9099b7e22162898"
+  },
+  "segmented/nodes/000/w/schema.json": {
+    "bytes": 1034,
+    "sha256": "371b657f118fa4440b075493c7bde613a154d34ad3487d0176ab79360fe65204"
+  },
+  "segmented/nodes/000/w/runner-input-integrity.json": {
+    "bytes": 115,
+    "sha256": "17f102be47bf3a9c3fde176f30a4aed1b7839ec82e9b5e763c7354359976248b"
+  },
+  "segmented/nodes/000/w/output.json.2b098deaa952488e9a33aa4aee2b0f6d.app-server.jsonl": {
+    "bytes": 906106,
+    "sha256": "3a721edcd967149556a7336b0346e7f3cf11aba393c45611603f4e4a0ba9e3c5"
+  }
+}

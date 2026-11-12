@@ -1,0 +1,41 @@
+{
+  "operation_id": "NativeV15Origin03Compensation01",
+  "all6_public_compensation_stages_succeeded": true,
+  "proof_version": "newrouge.b-route-compensation-segmented-proof.v2",
+  "new_plan_revision": 2,
+  "receipt_revision": 1,
+  "catalog_revision": 2,
+  "catalog_raw_digest": "sha256:4899a37eee6abe94af79d81f699c619ee682cb0bc04fb83197432b21b9dd595b",
+  "formal_adoption": true,
+  "readiness": false,
+  "runtime_verified": false,
+  "default_b_enabled": false,
+  "original34_review_files_unchanged": true,
+  "old_receipt_and_operation_unchanged": true,
+  "catalog_changed_only_via_authorized_publication": true,
+  "original_limit2_retained": true,
+  "old_two_intents_and_refusal_unknown_retained": true,
+  "new_logical_calls": 1,
+  "cumulative_logical_calls": 3,
+  "new_model_unknown": false,
+  "source_policy": "sha256:580ab96f584efecb61e870c1539402d041fcbe3369a293204c6f97f5710da05e",
+  "current_source_pins_verified": 84,
+  "resolution": {
+    "operation_ids": [
+      "NativeV15Origin03",
+      "NativeV15Origin03Compensation01"
+    ],
+    "terminals": [
+      "NativeV15Origin03",
+      "NativeV15Origin03Compensation01"
+    ],
+    "resolved_by": {
+      "NativeV15Origin03": "NativeV15Origin03Compensation01"
+    },
+    "active_operation_ids": []
+  },
+  "commit_marker_absent": true,
+  "no_financial_ledger_actions_or_historical_unknown_release": true,
+  "full_suite_executed": false,
+  "formal_Epic2_acceptance": "pending original Windows/native and Story2.9/2.10 scope"
+}

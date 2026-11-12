@@ -1,0 +1,115 @@
+{
+  "operation_id": "NativeV15Origin03Compensation01",
+  "stages": [
+    {
+      "stage": "prepare",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "/workspace/newrouge/scripts/python/dev_cli.py",
+        "b-route-adoption",
+        "--root",
+        "/workspace/newrouge-recovery-data/batch03-05f5fbf9/work/target-compensation-prepare",
+        "--stage",
+        "prepare",
+        "--operation-id",
+        "NativeV15Origin03Compensation01",
+        "--request",
+        "logs/ci/b-route-requests/native-v15-origin03-compensation-01/request.with-reviewed-repair.json"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 73.97201420599959
+    },
+    {
+      "stage": "reserve",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "/workspace/newrouge/scripts/python/dev_cli.py",
+        "b-route-adoption",
+        "--root",
+        "/workspace/newrouge-recovery-data/batch03-05f5fbf9/work/target-compensation-prepare",
+        "--stage",
+        "reserve",
+        "--operation-id",
+        "NativeV15Origin03Compensation01"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 77.4646135819994
+    },
+    {
+      "stage": "apply",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "/workspace/newrouge/scripts/python/dev_cli.py",
+        "b-route-adoption",
+        "--root",
+        "/workspace/newrouge-recovery-data/batch03-05f5fbf9/work/target-compensation-prepare",
+        "--stage",
+        "apply",
+        "--operation-id",
+        "NativeV15Origin03Compensation01"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 146.8580793579995
+    },
+    {
+      "stage": "verify",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "/workspace/newrouge/scripts/python/dev_cli.py",
+        "b-route-adoption",
+        "--root",
+        "/workspace/newrouge-recovery-data/batch03-05f5fbf9/work/target-compensation-prepare",
+        "--stage",
+        "verify",
+        "--operation-id",
+        "NativeV15Origin03Compensation01"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 260.17398413699993
+    },
+    {
+      "stage": "publish",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "/workspace/newrouge/scripts/python/dev_cli.py",
+        "b-route-adoption",
+        "--root",
+        "/workspace/newrouge-recovery-data/batch03-05f5fbf9/work/target-compensation-prepare",
+        "--stage",
+        "publish",
+        "--operation-id",
+        "NativeV15Origin03Compensation01"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 364.49651092300064
+    },
+    {
+      "stage": "read",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "/workspace/newrouge/scripts/python/dev_cli.py",
+        "b-route-adoption",
+        "--root",
+        "/workspace/newrouge-recovery-data/batch03-05f5fbf9/work/target-compensation-prepare",
+        "--stage",
+        "read",
+        "--operation-id",
+        "NativeV15Origin03Compensation01",
+        "--context"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 105.30761910000001
+    }
+  ],
+  "all_public_stages_succeeded": true,
+  "elapsed_seconds": 1028.2755039329995,
+  "model_calls": 0,
+  "automatic_retry": false,
+  "observed_at": "2026-11-12T11:09:46.045298+00:00"
+}

@@ -1,0 +1,74 @@
+{
+  "proof.json": {
+    "bytes": 48291,
+    "sha256": "7623d2b46fd9e8f09f1935b92f3ecc4ad1e2a755b7d2bb5cac71099fef0e97ff"
+  },
+  "manifest.json": {
+    "bytes": 19820,
+    "sha256": "ba673d8a82c8391ecac7ce84b6feb1c3eb7af445e9cac2c23d37e461f67674cc"
+  },
+  "allowance.json": {
+    "bytes": 624,
+    "sha256": "5e06d9c5705d3538691cdf3764fc96ced9468b4104427eee0fa4d45538dfda5d"
+  },
+  "intent.json": {
+    "bytes": 1419,
+    "sha256": "e26cff6421806e2c1c8c8e3a9e1a36ac61f8f9a187118e27e309ddfee4005d2f"
+  },
+  "measurement.json": {
+    "bytes": 373,
+    "sha256": "449ba851562a2cdfb16ea6315a353783c19567c33ea88e664f2471b7be5d8a34"
+  },
+  "execution.json": {
+    "bytes": 3237829,
+    "sha256": "f81c2d7c2d18f27e107330c308905e1207a51a468a00007465bd1c506d09f140"
+  },
+  "w/output.json": {
+    "bytes": 2859,
+    "sha256": "4ee6e8bbaefc31f3601740223bb650a4e36c7a004d7787f5a5795b558fc16217"
+  },
+  "result.json": {
+    "bytes": 2045,
+    "sha256": "1434820f87774891ab01690150403c1f07e4e15edfad6816c9beb018d33f3e5d"
+  },
+  "completed.json": {
+    "bytes": 277,
+    "sha256": "fe8e3516fc5294f0827bb0e259e3f987aed7207740e57042f2baa2427f0d43f4"
+  },
+  "subject.json": {
+    "bytes": 996681,
+    "sha256": "0f94c34c0504d4b3c16a78f997540e790f5f3af6986d00a0739e6cf5992c38cc"
+  },
+  "historical-auth.json": {
+    "bytes": 2188,
+    "sha256": "b63a8e405ed5fbbd10dc86aab09a97cb66fabc6e44100977616cef31fd2f74ff"
+  },
+  "plan.json": {
+    "bytes": 2872,
+    "sha256": "1a689999a531e7530d9e06d9ff82f47d33dfafca5757a47c8e4adcdade734f6f"
+  },
+  "source-pins.json": {
+    "bytes": 12383,
+    "sha256": "3654b67b1fb660e5fd16ff648006940db449881185316e19c76fe5decc4647ff"
+  },
+  "business-base.txt": {
+    "bytes": 63202,
+    "sha256": "8570a11b8e3f76416328bf6bfc398121fda336224c29cc202d98576ec24c4fd6"
+  },
+  "governance-base.txt": {
+    "bytes": 65111,
+    "sha256": "039ae3545a92d79f97746d5fda884ce85362d4e736359b586790866d7ee40eb9"
+  },
+  "materials.json": {
+    "bytes": 1371024,
+    "sha256": "0a052fb16a188414dddd9142c2f8858a6c512a1e6fd4b287c9e062f905d61904"
+  },
+  "roles.json": {
+    "bytes": 24827,
+    "sha256": "9d145277612e64a55b01614e02e4dc567007082909bc05ac2fe777977f2c9de8"
+  },
+  "presentation.json": {
+    "bytes": 1021,
+    "sha256": "8ed2e9b57a91cbf3c01ed568fee256882864aeeae501910ae66f8d67c478db38"
+  }
+}

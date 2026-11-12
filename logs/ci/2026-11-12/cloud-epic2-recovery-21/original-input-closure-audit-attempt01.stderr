@@ -1,0 +1,5 @@
+Traceback (most recent call last):
+  File "/workspace/newrouge/logs/ci/2026-11-12/cloud-epic2-recovery-21/inspect_original_closures.py", line 31, in <module>
+    assert materials.ordered(packet)==materials.ordered(saved)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError

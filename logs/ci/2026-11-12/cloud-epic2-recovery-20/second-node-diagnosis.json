@@ -1,0 +1,15 @@
+{
+  "binding_exists": true,
+  "path": "logs/ci/b-route-retained-executions/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/binding.json",
+  "raw_bytes": 155979,
+  "raw_digest": "sha256:887561fa589b72c77147beeb2047b275f5335dae9462ef7d02e9edc3ea656c6b",
+  "schema_version": "newrouge.b-route-retained-native-execution-binding.v2",
+  "formal_B_binding_schema": "newrouge.b-route-binding.v1",
+  "same_as_formal_B_binding_schema": false,
+  "recorded_material_binding_identity_mode": "none",
+  "present_as_model_literal_document": false,
+  "host_verifier_reads_and_validates_binding": "scripts/python/_b_route_published_history.py:212-229; check_retained in _b_route_qualified_historical_v3_protocol.py:37-78",
+  "finding_disposition": "unresolved semantic review refusal; original file is available and machine verified. Host-evidence/formal-B-binding distinction may be unclear in model presentation; no actual semantic approval inferred.",
+  "protocol_failure": "one findings summary differs from the exact four blocked check rationales; contract compares rationales, not check IDs",
+  "no_output_repair_or_approval_substitution": true
+}

@@ -567,8 +567,11 @@ def _review_preview_body(root, request, *, seal=False, delivery=None, segmented_
                 value = {'status': 'reviewed', 'host_review_ref': review.seal(root, request['operation_id'], proof), **FLAGS}
                 if subject['schema_version'] == qualified.SUBJECT:
                     value.update(subject_schema=qualified.SUBJECT, review_delivery=qualified.DELIVERY, review_claim=qualified.CLAIM)
-                    from _b_route_compensation_segmented_execution import PROOF as SEGMENTED_PROOF,DELIVERY as SEGMENTED_DELIVERY
+                    from _b_route_compensation_segmented_execution import PROOF as SEGMENTED_PROOF,DELIVERY as SEGMENTED_DELIVERY,REPAIR_PROOF
                     if proof['schema_version']==SEGMENTED_PROOF:value['review_delivery']=SEGMENTED_DELIVERY
+                    elif proof['schema_version']==REPAIR_PROOF:
+                        from _b_route_compensation_review_repair import DELIVERY as REPAIR_DELIVERY
+                        value['review_delivery']=REPAIR_DELIVERY
                 return value
             return _persist_review(root, subject, artifacts)
 
@@ -720,6 +723,40 @@ def review_preview(root, request, *, seal=False, delivery=None, segmented_prefli
     with action():
         return _review_preview_body(root, request, seal=seal, delivery=delivery,segmented_preflight=segmented_preflight,
                                    segmented_action=segmented_action,model_request_budget=model_request_budget)
+
+
+def repair_segmented_review(root,*,operation_id,stage,original_source_root=None,
+                            model_request_budget=None,authorization_source=None):
+    """Explicit one-review continuation, under the existing business/coordination locks."""
+    from _b_route_qualified_compensation_dispatch import action
+    from _b_route_operation_scope import business_guard
+    from _mvg_capability_checkpoint import coordinator_lock
+    import _b_route_compensation_review_repair as repair
+    import _b_route_qualified_compensation_review_v2 as qualified
+    require(stage in ('prepare','execute','resume'),'known explicit repair stage',stage)
+    root=Path(root).absolute();base=review.location(operation_id)
+    with action():
+        saved=(qualified.read_subject(root,operation_id) if stage!='prepare' else
+            codec.strict_json_loads(review.path(root,base+'/subject.json').read_bytes()))
+        request=saved['request']
+        require(request['operation_id']==operation_id and request['schema_version']==REQUEST and
+            'host_review_ref' not in request,'same original unsealed compensation request',operation_id)
+        snapshot,frozen=build(root,request,allocations=saved['preview']['allocations'],review_profile=profiles.PUBLISHED)
+        with business_guard(root,frozen['scope_ids'],operation_id=operation_id,review_only=True), \
+             coordinator_lock(review.path(root,base)):
+            snapshot,checked=build(root,request,allocations=frozen['allocations'],review_profile=profiles.PUBLISHED)
+            require(checked==frozen,'same current complete compensation under repair scopes',operation_id)
+            subject=make_subject(snapshot,request,frozen)
+            derived=qualified.model_packet(root,subject)
+            if stage=='prepare':
+                require(original_source_root is not None and model_request_budget is None and authorization_source is None,
+                    'original source DATA only during repair prepare',operation_id)
+                result=repair.prepare(root,derived,Path(original_source_root).absolute())
+            else:
+                require(original_source_root is None,'no source replacement during repair execution',operation_id)
+                result=repair.execute(root,derived,model_request_budget=model_request_budget,
+                    authorization_source=authorization_source,publication_only=stage=='resume')
+            snapshot.verify();return result
 
 
 def run(root, operation_id, request_raw, *, reserve_only=False):

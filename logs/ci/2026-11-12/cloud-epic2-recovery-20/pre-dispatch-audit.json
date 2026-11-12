@@ -1,0 +1,22 @@
+{
+  "same_plan_digest_as_old_environment": false,
+  "prior_plan_digest": "sha256:676d20d0e5230771350269b411d7008bb4cc8c37f6659f5809e1f0b9b0285e83",
+  "current_plan_digest": "sha256:d3638701c7d61a3c9216ba733f12e7cad27efca606c6864e667aacdd34b0d13b",
+  "same_operation_and_fixed_node_order_and_all9_checks": true,
+  "same_business_closure_bytes": true,
+  "reason_for_reprepare": "new current filesystem root identity requires genuine rederivation; no old prepared inputs or proofs re-signed",
+  "prepared_files": {
+    "materials.json": "70fb6efccd3a77588f93084ba52edad9e0d0820585e96cc89a3ce569b9f6f6ff",
+    "historical-auth.json": "2307e68770f93444ff75c39f56c50c4c34f2a19107d404f01210850160abc29f",
+    "roles.json": "e1a1748df8c99e7175bbccaaed93d5b941031cd1f16c2eabbeb8401606427796",
+    "subject.json": "aa85669cc11915c494d0b1451492bb77463148a3ca8267621e394f37b92aa5ed",
+    "presentation.json": "6045e2bd41a8323f9ceb31e3a7ddf66e3cf76dc1ea1268566c7c5ccc6b799792",
+    "segmented/plan.json": "21038eaf31f8a98e6159ab4be002e089ff889b203f892775c42e79a182f64d9a",
+    "segmented/source-pins.json": "5b0cfd34e630c3458f75c2bb78f8fbb15db912e1b582bb1f8fd6d777b9855f16",
+    "segmented/nodes/001/base-prompt.txt": "1df3a192b3789024dd8068de3d070a867d2fc0fc1186ebeee8e04f1af21fd837",
+    "segmented/nodes/000/base-prompt.txt": "d1dce96a1d126a21a05987ae596c0b8ed26e1eceafa199453ad1422f5ee86586"
+  },
+  "no_intent_or_call_limit_or_execution": true,
+  "source_pins_match": true,
+  "first_audit_assumption_error": "old and new plan digests were initially assumed equal; assertion failed before dispatch; no business state changed"
+}

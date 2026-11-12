@@ -1,0 +1,24 @@
+{
+  "genuine_same_root_subject_and_source_transition": true,
+  "same_wire_decoder_and_exact_business_body": true,
+  "all9_checks_preserved": true,
+  "complete_rpc_measurement": {
+    "request_sha256": "sha256:c08a877e4d190a444ede7c5d94d5cc61170e4a2ecd7a1b89783f8024152787a0",
+    "request_chars": 69718,
+    "request_bytes": 69718,
+    "input_token_estimate": 69718,
+    "token_counts": {},
+    "token_counter": "utf8_byte_upper_bound",
+    "max_bytes": 1048576,
+    "max_input_tokens": 96000,
+    "reserved_continuation_tokens": 2000,
+    "truncation_allowed": false
+  },
+  "source_policy": "sha256:580ab96f584efecb61e870c1539402d041fcbe3369a293204c6f97f5710da05e",
+  "strict_work_charged": 152798345,
+  "work_limit": 170000000,
+  "legacy_validation_passes_in_same_work_account": 2,
+  "model_calls": 0,
+  "new_intent_or_allowance_or_proof": false,
+  "reserved_proof_buffer_bytes": 50000
+}

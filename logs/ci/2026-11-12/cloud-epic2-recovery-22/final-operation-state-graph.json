@@ -1,0 +1,14 @@
+{
+  "operation_ids": [
+    "NativeV15Origin03",
+    "NativeV15Origin03Compensation01"
+  ],
+  "terminals": [
+    "NativeV15Origin03",
+    "NativeV15Origin03Compensation01"
+  ],
+  "resolved_by": {
+    "NativeV15Origin03": "NativeV15Origin03Compensation01"
+  },
+  "active_operation_ids": []
+}

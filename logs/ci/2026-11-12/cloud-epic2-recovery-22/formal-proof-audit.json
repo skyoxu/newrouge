@@ -1,0 +1,85 @@
+{
+  "proof_version": "newrouge.b-route-compensation-segmented-proof.v2",
+  "proof_digest": "sha256:7623d2b46fd9e8f09f1935b92f3ecc4ad1e2a755b7d2bb5cac71099fef0e97ff",
+  "proof_support_files": 138,
+  "old34_records_unchanged": true,
+  "old2_limit": 2,
+  "old2_intents_retained": true,
+  "old_second_unknown_retained": true,
+  "additional_allowance": {
+    "schema_version": "newrouge.b-route-compensation-review-repair.v1",
+    "original_plan_digest": "sha256:d3638701c7d61a3c9216ba733f12e7cad27efca606c6864e667aacdd34b0d13b",
+    "current_plan_digest": "sha256:3877dc95f7b1e2b08ab783cbe839f8151209d78c601d7a957291f7fb5bc5d98f",
+    "original_limit": 2,
+    "additional_limit": 1,
+    "cumulative_limit": 3,
+    "authorization_source": "User instruction 2026-11-12: ongoing Epic2 Codex subscription reviews; one necessary formal repair review, original2 retained plus additional1, cumulative3.",
+    "claim": "operation_lifetime_logical_calls_only;not_funding_or_campaign_reconciliation"
+  },
+  "new_verdict": "approved",
+  "new_checks": [
+    {
+      "id": "b_source_and_binding_retention",
+      "verdict": "approved"
+    },
+    {
+      "id": "complete_old_current_new_scope",
+      "verdict": "approved"
+    },
+    {
+      "id": "current_before_and_later_edits",
+      "verdict": "approved"
+    },
+    {
+      "id": "exact_pending_claim_relation",
+      "verdict": "approved"
+    },
+    {
+      "id": "original_raw_frozen_effects",
+      "verdict": "approved"
+    },
+    {
+      "id": "target:0",
+      "verdict": "approved"
+    },
+    {
+      "id": "task_status_acceptance_history",
+      "verdict": "approved"
+    }
+  ],
+  "new_completed_publication": true,
+  "no_new_unknown": true,
+  "source_policy": "sha256:580ab96f584efecb61e870c1539402d041fcbe3369a293204c6f97f5710da05e",
+  "evidence_nodes": [
+    {
+      "thread_id": "01a1cf25-8acf-7582-b7fb-a60cae9d6206",
+      "turn_id": "01a1cf25-8af9-7d93-aa11-5d3d1db3bcbf",
+      "protocol_digest": "sha256:3a721edcd967149556a7336b0346e7f3cf11aba393c45611603f4e4a0ba9e3c5",
+      "runtime_configuration": {
+        "model": "gpt-6.1-sol",
+        "provider": "openai",
+        "reasoning_effort": "high"
+      },
+      "provider_actual_model": "unknown",
+      "physical_requests": "unknown",
+      "source_policy": "sha256:65e75d61df84da606dd80eca6bbcb2d7fc9a1c3f3ddf08f3c96795ecc8c6d4c5",
+      "scope": "retained_exact_business_closure"
+    },
+    {
+      "thread_id": "01a1cf5f-ff2f-7c70-8008-83b09f6792ad",
+      "turn_id": "01a1cf5f-ff5d-74d3-b809-92a2bdd103cb",
+      "protocol_digest": "sha256:8389519993559409c7b47a94cb2b0f1516541dbe318c821b2fe51025a48b7c9f",
+      "runtime_configuration": {
+        "model": "gpt-6.1-sol",
+        "provider": "openai",
+        "reasoning_effort": "high"
+      },
+      "provider_actual_model": "unknown",
+      "physical_requests": "unknown",
+      "source_policy": "sha256:580ab96f584efecb61e870c1539402d041fcbe3369a293204c6f97f5710da05e",
+      "scope": "fresh_current_governance_closure"
+    }
+  ],
+  "physical_requests": "unknown",
+  "new_business_model_calls_this_continuation": 1
+}

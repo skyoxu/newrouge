@@ -1,0 +1,30 @@
+{
+  "offline_genuine_preparation": true,
+  "target": "/workspace/newrouge-recovery-data/offline-presentation21/target",
+  "source_policy": "sha256:445a1b06ef74fa1f222fec09f2343987c643cbfe52dfec02009835ddf347ed21",
+  "business_body_byte_identical_to_original_approved_node": true,
+  "same_9_checks_and_two_node_order": true,
+  "measurements": [
+    {
+      "node": "business",
+      "full_rpc_bytes": 66284,
+      "input_token_estimate": 66284,
+      "counter": "utf8_byte_upper_bound",
+      "capacity_admitted": true,
+      "actual_prior_output_used_for_measurement_only": false,
+      "new_prefix_runtime_credit": false
+    },
+    {
+      "node": "governance-joint",
+      "full_rpc_bytes": 69766,
+      "input_token_estimate": 69766,
+      "counter": "utf8_byte_upper_bound",
+      "capacity_admitted": true,
+      "actual_prior_output_used_for_measurement_only": true,
+      "new_prefix_runtime_credit": false
+    }
+  ],
+  "new_model_calls": 0,
+  "new_call_limits_or_intents": false,
+  "old_prefix_used_as_current_source_execution_evidence": false
+}

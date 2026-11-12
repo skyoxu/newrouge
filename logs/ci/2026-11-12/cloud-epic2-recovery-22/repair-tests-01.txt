@@ -1,0 +1,248 @@
+test_additional_limit_is_one_and_requires_provenance_before_intent (test_b_route_compensation_review_repair.FormalRepairDataTests.test_additional_limit_is_one_and_requires_provenance_before_intent) ... ERROR
+test_altered_proof_cannot_mint_saved_before_scope (test_b_route_compensation_review_repair.FormalRepairDataTests.test_altered_proof_cannot_mint_saved_before_scope) ... ERROR
+test_complete_output_without_completion_marker_is_not_published (test_b_route_compensation_review_repair.FormalRepairDataTests.test_complete_output_without_completion_marker_is_not_published) ... ERROR
+test_completed_refusal_adds_one_formal_review_and_proof_without_reset (test_b_route_compensation_review_repair.FormalRepairDataTests.test_completed_refusal_adds_one_formal_review_and_proof_without_reset) ... ERROR
+test_current_semantic_change_is_not_a_source_only_transition (test_b_route_compensation_review_repair.FormalRepairDataTests.test_current_semantic_change_is_not_a_source_only_transition) ... ERROR
+test_interruption_after_repair_intent_never_dispatches_on_reentry (test_b_route_compensation_review_repair.FormalRepairDataTests.test_interruption_after_repair_intent_never_dispatches_on_reentry) ... ERROR
+test_new_failure_permanently_occupies_repair_and_cannot_repeat_prepare (test_b_route_compensation_review_repair.FormalRepairDataTests.test_new_failure_permanently_occupies_repair_and_cannot_repeat_prepare) ... ERROR
+test_new_review_cannot_reuse_rejected_previous_thread (test_b_route_compensation_review_repair.FormalRepairDataTests.test_new_review_cannot_reuse_rejected_previous_thread) ... ERROR
+test_only_explicit_new_version_routes_to_published_owner (test_b_route_compensation_review_repair.FormalRepairDataTests.test_only_explicit_new_version_routes_to_published_owner) ... ok
+test_original_complete_marker_or_tampered_prefix_refuses (test_b_route_compensation_review_repair.FormalRepairDataTests.test_original_complete_marker_or_tampered_prefix_refuses) ... ERROR
+test_original_unknown_or_incomplete_protocol_never_enters_repair (test_b_route_compensation_review_repair.FormalRepairDataTests.test_original_unknown_or_incomplete_protocol_never_enters_repair) ... ERROR
+test_partial_manifest_cannot_select_or_fall_back_to_original (test_b_route_compensation_review_repair.FormalRepairDataTests.test_partial_manifest_cannot_select_or_fall_back_to_original) ... ok
+test_same_body_with_changed_historical_decoder_is_not_equivalent (test_b_route_compensation_review_repair.FormalRepairDataTests.test_same_body_with_changed_historical_decoder_is_not_equivalent) ... ok
+test_same_home_preparation_is_exclusive_and_existing_records_are_not_replaced (test_b_route_compensation_review_repair.FormalRepairDataTests.test_same_home_preparation_is_exclusive_and_existing_records_are_not_replaced) ... ERROR
+
+======================================================================
+ERROR: test_additional_limit_is_one_and_requires_provenance_before_intent (test_b_route_compensation_review_repair.FormalRepairDataTests.test_additional_limit_is_one_and_requires_provenance_before_intent)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/newrouge/scripts/python/tests/test_b_route_compensation_review_repair.py", line 98, in test_additional_limit_is_one_and_requires_provenance_before_intent
+    self.prepare()
+  File "/workspace/newrouge/scripts/python/tests/test_b_route_compensation_review_repair.py", line 51, in prepare
+    def prepare(self):return repair.prepare(self.root,self.derived,self.root)
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/newrouge/scripts/python/_b_route_compensation_review_repair.py", line 232, in prepare
+    old=original(root,derived.subject['operation_id'],source_root,work=derived.work);spec=engine._spec(derived)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/newrouge/scripts/python/_b_route_compensation_review_repair.py", line 150, in original
+    rule=_rule(raws['scripts/python/_b_route_compensation_segmented_execution.py'])
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/newrouge/scripts/python/_b_route_compensation_review_repair.py", line 88, in _rule
+    for key,val in zip(node.keys,node.values()):
+                                 ^^^^^^^^^^^^^
+TypeError: 'list' object is not callable
+
+======================================================================
+ERROR: test_altered_proof_cannot_mint_saved_before_scope (test_b_route_compensation_review_repair.FormalRepairDataTests.test_altered_proof_cannot_mint_saved_before_scope)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/newrouge/scripts/python/tests/test_b_route_compensation_review_repair.py", line 135, in test_altered_proof_cannot_mint_saved_before_scope
+    self.prepare();self.execute();proof,_saved,_=repair.produce_proof(self.root,'DATA-Multi')
+    ^^^^^^^^^^^^^^
+  File "/workspace/newrouge/scripts/python/tests/test_b_route_compensation_review_repair.py", line 51, in prepare
+    def prepare(self):return repair.prepare(self.root,self.derived,self.root)
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/newrouge/scripts/python/_b_route_compensation_review_repair.py", line 232, in prepare
+    old=original(root,derived.subject['operation_id'],source_root,work=derived.work);spec=engine._spec(derived)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/newrouge/scripts/python/_b_route_compensation_review_repair.py", line 150, in original
+    rule=_rule(raws['scripts/python/_b_route_compensation_segmented_execution.py'])
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/newrouge/scripts/python/_b_route_compensation_review_repair.py", line 88, in _rule
+    for key,val in zip(node.keys,node.values()):
+                                 ^^^^^^^^^^^^^
+TypeError: 'list' object is not callable
+
+======================================================================
+ERROR: test_complete_output_without_completion_marker_is_not_published (test_b_route_compensation_review_repair.FormalRepairDataTests.test_complete_output_without_completion_marker_is_not_published)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/newrouge/scripts/python/tests/test_b_route_compensation_review_repair.py", line 122, in test_complete_output_without_completion_marker_is_not_published
+    self.prepare();original=repair.write
+    ^^^^^^^^^^^^^^
+  File "/workspace/newrouge/scripts/python/tests/test_b_route_compensation_review_repair.py", line 51, in prepare
+    def prepare(self):return repair.prepare(self.root,self.derived,self.root)
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/newrouge/scripts/python/_b_route_compensation_review_repair.py", line 232, in prepare
+    old=original(root,derived.subject['operation_id'],source_root,work=derived.work);spec=engine._spec(derived)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/newrouge/scripts/python/_b_route_compensation_review_repair.py", line 150, in original
+    rule=_rule(raws['scripts/python/_b_route_compensation_segmented_execution.py'])
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/newrouge/scripts/python/_b_route_compensation_review_repair.py", line 88, in _rule
+    for key,val in zip(node.keys,node.values()):
+                                 ^^^^^^^^^^^^^
+TypeError: 'list' object is not callable
+
+======================================================================
+ERROR: test_completed_refusal_adds_one_formal_review_and_proof_without_reset (test_b_route_compensation_review_repair.FormalRepairDataTests.test_completed_refusal_adds_one_formal_review_and_proof_without_reset)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/newrouge/scripts/python/tests/test_b_route_compensation_review_repair.py", line 59, in test_completed_refusal_adds_one_formal_review_and_proof_without_reset
+    self.prepare();result=self.execute()
+    ^^^^^^^^^^^^^^
+  File "/workspace/newrouge/scripts/python/tests/test_b_route_compensation_review_repair.py", line 51, in prepare
+    def prepare(self):return repair.prepare(self.root,self.derived,self.root)
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/newrouge/scripts/python/_b_route_compensation_review_repair.py", line 232, in prepare
+    old=original(root,derived.subject['operation_id'],source_root,work=derived.work);spec=engine._spec(derived)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/newrouge/scripts/python/_b_route_compensation_review_repair.py", line 150, in original
+    rule=_rule(raws['scripts/python/_b_route_compensation_segmented_execution.py'])
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/newrouge/scripts/python/_b_route_compensation_review_repair.py", line 88, in _rule
+    for key,val in zip(node.keys,node.values()):
+                                 ^^^^^^^^^^^^^
+TypeError: 'list' object is not callable
+
+======================================================================
+ERROR: test_current_semantic_change_is_not_a_source_only_transition (test_b_route_compensation_review_repair.FormalRepairDataTests.test_current_semantic_change_is_not_a_source_only_transition)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/newrouge/scripts/python/tests/test_b_route_compensation_review_repair.py", line 89, in test_current_semantic_change_is_not_a_source_only_transition
+    with self.assertRaises(codec.CodecError):self.prepare()
+                                             ^^^^^^^^^^^^^^
+  File "/workspace/newrouge/scripts/python/tests/test_b_route_compensation_review_repair.py", line 51, in prepare
+    def prepare(self):return repair.prepare(self.root,self.derived,self.root)
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/newrouge/scripts/python/_b_route_compensation_review_repair.py", line 232, in prepare
+    old=original(root,derived.subject['operation_id'],source_root,work=derived.work);spec=engine._spec(derived)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/newrouge/scripts/python/_b_route_compensation_review_repair.py", line 150, in original
+    rule=_rule(raws['scripts/python/_b_route_compensation_segmented_execution.py'])
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/newrouge/scripts/python/_b_route_compensation_review_repair.py", line 88, in _rule
+    for key,val in zip(node.keys,node.values()):
+                                 ^^^^^^^^^^^^^
+TypeError: 'list' object is not callable
+
+======================================================================
+ERROR: test_interruption_after_repair_intent_never_dispatches_on_reentry (test_b_route_compensation_review_repair.FormalRepairDataTests.test_interruption_after_repair_intent_never_dispatches_on_reentry)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/newrouge/scripts/python/tests/test_b_route_compensation_review_repair.py", line 113, in test_interruption_after_repair_intent_never_dispatches_on_reentry
+    self.prepare();original=repair.write
+    ^^^^^^^^^^^^^^
+  File "/workspace/newrouge/scripts/python/tests/test_b_route_compensation_review_repair.py", line 51, in prepare
+    def prepare(self):return repair.prepare(self.root,self.derived,self.root)
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/newrouge/scripts/python/_b_route_compensation_review_repair.py", line 232, in prepare
+    old=original(root,derived.subject['operation_id'],source_root,work=derived.work);spec=engine._spec(derived)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/newrouge/scripts/python/_b_route_compensation_review_repair.py", line 150, in original
+    rule=_rule(raws['scripts/python/_b_route_compensation_segmented_execution.py'])
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/newrouge/scripts/python/_b_route_compensation_review_repair.py", line 88, in _rule
+    for key,val in zip(node.keys,node.values()):
+                                 ^^^^^^^^^^^^^
+TypeError: 'list' object is not callable
+
+======================================================================
+ERROR: test_new_failure_permanently_occupies_repair_and_cannot_repeat_prepare (test_b_route_compensation_review_repair.FormalRepairDataTests.test_new_failure_permanently_occupies_repair_and_cannot_repeat_prepare)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/newrouge/scripts/python/tests/test_b_route_compensation_review_repair.py", line 106, in test_new_failure_permanently_occupies_repair_and_cannot_repeat_prepare
+    self.prepare();self.owner.failure=3
+    ^^^^^^^^^^^^^^
+  File "/workspace/newrouge/scripts/python/tests/test_b_route_compensation_review_repair.py", line 51, in prepare
+    def prepare(self):return repair.prepare(self.root,self.derived,self.root)
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/newrouge/scripts/python/_b_route_compensation_review_repair.py", line 232, in prepare
+    old=original(root,derived.subject['operation_id'],source_root,work=derived.work);spec=engine._spec(derived)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/newrouge/scripts/python/_b_route_compensation_review_repair.py", line 150, in original
+    rule=_rule(raws['scripts/python/_b_route_compensation_segmented_execution.py'])
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/newrouge/scripts/python/_b_route_compensation_review_repair.py", line 88, in _rule
+    for key,val in zip(node.keys,node.values()):
+                                 ^^^^^^^^^^^^^
+TypeError: 'list' object is not callable
+
+======================================================================
+ERROR: test_new_review_cannot_reuse_rejected_previous_thread (test_b_route_compensation_review_repair.FormalRepairDataTests.test_new_review_cannot_reuse_rejected_previous_thread)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/newrouge/scripts/python/tests/test_b_route_compensation_review_repair.py", line 130, in test_new_review_cannot_reuse_rejected_previous_thread
+    self.prepare();self.owner.reused_thread=True
+    ^^^^^^^^^^^^^^
+  File "/workspace/newrouge/scripts/python/tests/test_b_route_compensation_review_repair.py", line 51, in prepare
+    def prepare(self):return repair.prepare(self.root,self.derived,self.root)
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/newrouge/scripts/python/_b_route_compensation_review_repair.py", line 232, in prepare
+    old=original(root,derived.subject['operation_id'],source_root,work=derived.work);spec=engine._spec(derived)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/newrouge/scripts/python/_b_route_compensation_review_repair.py", line 150, in original
+    rule=_rule(raws['scripts/python/_b_route_compensation_segmented_execution.py'])
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/newrouge/scripts/python/_b_route_compensation_review_repair.py", line 88, in _rule
+    for key,val in zip(node.keys,node.values()):
+                                 ^^^^^^^^^^^^^
+TypeError: 'list' object is not callable
+
+======================================================================
+ERROR: test_original_complete_marker_or_tampered_prefix_refuses (test_b_route_compensation_review_repair.FormalRepairDataTests.test_original_complete_marker_or_tampered_prefix_refuses)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/newrouge/scripts/python/tests/test_b_route_compensation_review_repair.py", line 78, in test_original_complete_marker_or_tampered_prefix_refuses
+    with self.assertRaises(codec.CodecError):self.prepare()
+                                             ^^^^^^^^^^^^^^
+  File "/workspace/newrouge/scripts/python/tests/test_b_route_compensation_review_repair.py", line 51, in prepare
+    def prepare(self):return repair.prepare(self.root,self.derived,self.root)
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/newrouge/scripts/python/_b_route_compensation_review_repair.py", line 232, in prepare
+    old=original(root,derived.subject['operation_id'],source_root,work=derived.work);spec=engine._spec(derived)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/newrouge/scripts/python/_b_route_compensation_review_repair.py", line 150, in original
+    rule=_rule(raws['scripts/python/_b_route_compensation_segmented_execution.py'])
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/newrouge/scripts/python/_b_route_compensation_review_repair.py", line 88, in _rule
+    for key,val in zip(node.keys,node.values()):
+                                 ^^^^^^^^^^^^^
+TypeError: 'list' object is not callable
+
+======================================================================
+ERROR: test_original_unknown_or_incomplete_protocol_never_enters_repair (test_b_route_compensation_review_repair.FormalRepairDataTests.test_original_unknown_or_incomplete_protocol_never_enters_repair)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/newrouge/scripts/python/tests/test_b_route_compensation_review_repair.py", line 73, in test_original_unknown_or_incomplete_protocol_never_enters_repair
+    with self.assertRaises(OSError):self.prepare()
+                                    ^^^^^^^^^^^^^^
+  File "/workspace/newrouge/scripts/python/tests/test_b_route_compensation_review_repair.py", line 51, in prepare
+    def prepare(self):return repair.prepare(self.root,self.derived,self.root)
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/newrouge/scripts/python/_b_route_compensation_review_repair.py", line 232, in prepare
+    old=original(root,derived.subject['operation_id'],source_root,work=derived.work);spec=engine._spec(derived)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/newrouge/scripts/python/_b_route_compensation_review_repair.py", line 150, in original
+    rule=_rule(raws['scripts/python/_b_route_compensation_segmented_execution.py'])
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/newrouge/scripts/python/_b_route_compensation_review_repair.py", line 88, in _rule
+    for key,val in zip(node.keys,node.values()):
+                                 ^^^^^^^^^^^^^
+TypeError: 'list' object is not callable
+
+======================================================================
+ERROR: test_same_home_preparation_is_exclusive_and_existing_records_are_not_replaced (test_b_route_compensation_review_repair.FormalRepairDataTests.test_same_home_preparation_is_exclusive_and_existing_records_are_not_replaced)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/newrouge/scripts/python/tests/test_b_route_compensation_review_repair.py", line 147, in test_same_home_preparation_is_exclusive_and_existing_records_are_not_replaced
+    self.prepare()
+  File "/workspace/newrouge/scripts/python/tests/test_b_route_compensation_review_repair.py", line 51, in prepare
+    def prepare(self):return repair.prepare(self.root,self.derived,self.root)
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/newrouge/scripts/python/_b_route_compensation_review_repair.py", line 232, in prepare
+    old=original(root,derived.subject['operation_id'],source_root,work=derived.work);spec=engine._spec(derived)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/newrouge/scripts/python/_b_route_compensation_review_repair.py", line 150, in original
+    rule=_rule(raws['scripts/python/_b_route_compensation_segmented_execution.py'])
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/newrouge/scripts/python/_b_route_compensation_review_repair.py", line 88, in _rule
+    for key,val in zip(node.keys,node.values()):
+                                 ^^^^^^^^^^^^^
+TypeError: 'list' object is not callable
+
+----------------------------------------------------------------------
+Ran 14 tests in 2.720s
+
+FAILED (errors=11)

@@ -1,0 +1,91 @@
+{
+  "kind": "official metadata only",
+  "model_turns": 0,
+  "rpc_methods": [
+    "initialize",
+    "model/list",
+    "config/read",
+    "account/read",
+    "account/rateLimits/read"
+  ],
+  "cache_before": false,
+  "initialize_ok": true,
+  "model_list_error": {},
+  "model_list": [
+    {
+      "id": "gpt-6.1-sol",
+      "model": "gpt-6.1-sol",
+      "isDefault": true
+    },
+    {
+      "id": "gpt-6-astra",
+      "model": "gpt-6-astra",
+      "isDefault": false
+    },
+    {
+      "id": "gpt-6.1-terra",
+      "model": "gpt-6.1-terra",
+      "isDefault": false
+    },
+    {
+      "id": "gpt-6-sol",
+      "model": "gpt-6-sol",
+      "isDefault": false
+    },
+    {
+      "id": "gpt-reserve",
+      "model": "gpt-reserve",
+      "isDefault": false
+    },
+    {
+      "id": "gpt-6-luna",
+      "model": "gpt-6-luna",
+      "isDefault": false
+    },
+    {
+      "id": "gpt-5.6-sol",
+      "model": "gpt-5.6-sol",
+      "isDefault": false
+    },
+    {
+      "id": "gpt-5.6-terra",
+      "model": "gpt-5.6-terra",
+      "isDefault": false
+    },
+    {
+      "id": "gpt-5.6-luna",
+      "model": "gpt-5.6-luna",
+      "isDefault": false
+    },
+    {
+      "id": "codex-auto-review",
+      "model": "codex-auto-review",
+      "isDefault": false
+    }
+  ],
+  "effective_nonsecret_config": {
+    "model": "gpt-6.1-sol",
+    "model_provider": null,
+    "model_reasoning_effort": "high",
+    "service_tier": null
+  },
+  "account_metadata": {
+    "type": "chatgpt",
+    "planType": "pro"
+  },
+  "requires_openai_auth": true,
+  "subscription_status_error": {},
+  "subscription_status_returned": true,
+  "process_exit": 0,
+  "pipe_threads_stopped": true,
+  "official_cache_created": true,
+  "stderr_http_categories": [],
+  "stderr_error_categories": {
+    "failed to refresh": false,
+    "unauthorized": false,
+    "forbidden": false,
+    "sqlite": false,
+    "read-only": false,
+    "error": false
+  }
+}

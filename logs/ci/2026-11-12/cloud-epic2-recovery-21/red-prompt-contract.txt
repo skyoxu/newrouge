@@ -1,0 +1,21 @@
+FF.
+======================================================================
+FAIL: test_render_distinguishes_execution_support_from_formal_binding_without_exempting_missing_meaning (test_b_route_compensation_partition.PreservingPartitionDataTests.test_render_distinguishes_execution_support_from_formal_binding_without_exempting_missing_meaning)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/newrouge/scripts/python/tests/test_b_route_compensation_partition.py", line 16, in test_render_distinguishes_execution_support_from_formal_binding_without_exempting_missing_meaning
+    self.assertIn('retained-native-execution-binding.v2',header)
+AssertionError: 'retained-native-execution-binding.v2' not found in "newrouge.b-route-compensation-preserving-closures.v1 Collective compensation review. History is publication/byte verified; no old-owner execution or reauthentication. Read this closure completely. Atom links equal complete originals reviewed in the predecessor. Block missing semantic dependencies. CLI owns order and continuation. Use projection_decoder/json2_decoder as wire definitions. After compact decoding, undo identity spelling in all keys and string values: ~~ removes one leading ~; otherwise ~h64: plus canonical unpadded URL-safe base64 of exactly32 bytes means sha256: plus lowercase hex of those same256 bits. Other ~ prefixes are invalid. Preserve object order and reject decoded key collisions. Then apply target_projection.projection_decoder and json2_decoder. Canonical Python DATA literal only; never execute. Parse dict/list/tuple/string/finite-number/True/False/None; decode string escapes exactly. schema_version must be newrouge.b-route-compact-literal.v4. Preserve every type, object/array order and string character. SN/DN/PN restore strings[N]/fresh shared[N]/phrases[N]; these and RN are closed DATA names, never variables. N is ASCII decimal without leading zeros (except0), exact int not bool; references must exist, shared/phrase definitions reference only earlier entries. Phrase definitions concatenate their literal strings and earlier P pieces. (C,pieces...) concatenates restored pieces with no separators. (B,text) returns standard padded base64 of the restored text's strict UTF8 bytes. B only aliases text assembled from visible original fragments. Restore P/C/B before strings/shared and ordinary objects. HN means 'sha256:'+N in lowercase hex padded to64 digits; 0<=N<2**256, no truncation or hash computation. RN means {'r':N} with N>=0. Tuple(child,) restores {'r':restored child}; other tuples (N,values...) restore the ordered object from nonempty keysets[N] with exactly its key count. Recursively restore children. Restore object keys by removing one leading '~', otherwise expand r/o/l/s to $mvg_ref/$mvg_object/$mvg_lines/$mvg_source; all other keys literal. Original marker-like data stays data. v4 residual prefixes use the same visible P/C grammar. Every fragment is printed here; no external dictionary or omitted source. Host checks canonical spelling, digests and equality; these do not prove authorship. Use restored data; do not reproduce transport or calculate hashes."
+
+======================================================================
+FAIL: test_full_node_prompt_explicitly_requires_exact_blocked_rationale_accounting (test_b_route_compensation_segmented_execution.SegmentedExecutionDataTests.test_full_node_prompt_explicitly_requires_exact_blocked_rationale_accounting)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/newrouge/scripts/python/tests/test_b_route_compensation_segmented_execution.py", line 77, in test_full_node_prompt_explicitly_requires_exact_blocked_rationale_accounting
+    self.assertIn('Each check once',context['rule'])
+AssertionError: 'Each check once' not found in 'Return the schema checks only. Parent verdicts do not replace required originals. CLI controls continuation.'
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.054s
+
+FAILED (failures=2)

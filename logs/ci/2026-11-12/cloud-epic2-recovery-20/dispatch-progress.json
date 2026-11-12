@@ -1,0 +1,9 @@
+{
+  "model": "gpt-6.1-sol",
+  "reasoning_effort": "high",
+  "service_tier": null,
+  "first_node_output_bytes": 1073,
+  "second_full_rpc_bytes": 69512,
+  "logical_intents": 2,
+  "automatic_retry": false
+}

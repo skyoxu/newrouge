@@ -61,8 +61,8 @@ def selected(original):
         original_host.family(original)
         return True
     if version=='newrouge.b-route-compensation-operation.v2':
-        from _b_route_compensation_segmented_execution import PROOF as SEGMENTED_PROOF
-        return proof in (PROOF,profiles.PUBLISHED.name('proof'),SEGMENTED_PROOF)
+        from _b_route_compensation_segmented_execution import PROOFS as SEGMENTED_PROOFS
+        return proof in (PROOF,profiles.PUBLISHED.name('proof'),*SEGMENTED_PROOFS)
     return False
 
 
@@ -118,13 +118,26 @@ class SavedHistory:
     def files(self):
         home=review.location(self._operation['operation_id'])
         values={home+'/'+k:v for k,v in self._inputs.buffers.items()}
+        from _b_route_compensation_segmented_execution import REPAIR_PROOF
+        if self._inputs.proof['schema_version']==REPAIR_PROOF:
+            for ref in self._inputs.refs:
+                if ref['path'] not in values:
+                    data=review.path(self._root,ref['path']).read_bytes()
+                    need(codec.raw_digest(data)==ref['raw_digest'],'exact streamed repair historical support')
+                    values[ref['path']]=data
         values[home+'/review.json']=raw(self._inputs.proof)
         return values
     def roles(self):
         home=review.location(self._operation['operation_id'])
         if 'requests_digest' in self._inputs.proof:
             from _b_route_compensation_segmented_execution import labels as segmented_labels
-            return {home+'/'+k:v for k,v in segmented_labels(self._inputs.buffers).items()}|{home+'/review.json':'host:proof'}
+            names={k:b'' for k in self._inputs.buffers}
+            from _b_route_compensation_segmented_execution import REPAIR_PROOF
+            if self._inputs.proof['schema_version']==REPAIR_PROOF:
+                for ref in self._inputs.refs:
+                    need(ref['path'].startswith(home+'/'),'owned repair historical support path')
+                    names[ref['path'][len(home)+1:]]=b''
+            return {home+'/'+k:v for k,v in segmented_labels(names).items()}|{home+'/review.json':'host:proof'}
         return {home+'/'+k:v for k,v in labels().items()}
     def operation_view(self):
         s=self._inputs.subject
@@ -227,7 +240,9 @@ def original_review(snapshot,original, *, profile=profiles.ORIGINAL):
 
 
 def read_subject(root,operation_id):
-    value=codec.strict_json_loads(review.path(root,review.location(operation_id)+'/subject.json').read_bytes())
+    import _b_route_compensation_review_repair as repair
+    value=(repair.read_subject(root,operation_id) if repair.selected(root,operation_id) else
+        codec.strict_json_loads(review.path(root,review.location(operation_id)+'/subject.json').read_bytes()))
     review.shape(value,('schema_version','producer','operation_id','request','preview','policy_identity',
         'original_operation','original_effects','current_files','private_files','task_definitions','native_threads','native_turns'),
         'complete explicit factored qualified private subject')
@@ -344,9 +359,9 @@ def _protocol(root,subject,buffers,schema):
 
 
 def _inputs(root,subject, *, proof=None):
-    from _b_route_compensation_segmented_execution import selected as is_segmented,inputs as segmented_inputs,PROOF as SEGMENTED_PROOF
+    from _b_route_compensation_segmented_execution import selected as is_segmented,inputs as segmented_inputs,PROOFS as SEGMENTED_PROOFS
     if is_segmented(root,subject['operation_id']):
-        need(proof is None or proof.get('schema_version')==SEGMENTED_PROOF,'explicit segmented saved proof route')
+        need(proof is None or proof.get('schema_version') in SEGMENTED_PROOFS,'explicit segmented saved proof route')
         return segmented_inputs(root,subject,proof=proof)
     root=Path(root).absolute();home=review.location(subject['operation_id'])
     buffers={name:review.path(root,home+'/'+name).read_bytes() for name in support_names()}
@@ -391,8 +406,8 @@ def produce_proof(root,operation_id):
 
 
 def _verify_saved(root,request):
-    from _b_route_compensation_segmented_execution import PROOF as SEGMENTED_PROOF,verify_saved_private
-    if request.get('host_review_ref',{}).get('schema_version')==SEGMENTED_PROOF:return verify_saved_private(root,request)
+    from _b_route_compensation_segmented_execution import PROOFS as SEGMENTED_PROOFS,verify_saved_private
+    if request.get('host_review_ref',{}).get('schema_version') in SEGMENTED_PROOFS:return verify_saved_private(root,request)
     ref=request.get('host_review_ref');home=review.location(request['operation_id'])
     review.shape(ref,('path','schema_version','raw_digest'),'qualified proof reference')
     need(ref['path']==home+'/review.json' and ref['schema_version'] in (PROOF,profiles.PUBLISHED.name('proof')),'exact owned new proof family/path')
@@ -421,12 +436,12 @@ def verify_saved(root,request):
 
 
 def seal(root,operation_id,value):
-    from _b_route_compensation_segmented_execution import PROOF as SEGMENTED_PROOF
-    if value.get('schema_version')==SEGMENTED_PROOF:
+    from _b_route_compensation_segmented_execution import PROOFS as SEGMENTED_PROOFS
+    if value.get('schema_version') in SEGMENTED_PROOFS:
         need(value['operation_id']==operation_id and value['policy_identity']==review.policy_identity(),
              'same actual segmented proof/current policy')
         home=review.location(operation_id);review.write_once(root,home+'/review.json',raw(value))
-        return {'path':home+'/review.json','schema_version':SEGMENTED_PROOF,'raw_digest':codec.raw_digest(raw(value))}
+        return {'path':home+'/review.json','schema_version':value['schema_version'],'raw_digest':codec.raw_digest(raw(value))}
     need(value['schema_version'] in (PROOF,profiles.PUBLISHED.name('proof')) and value['operation_id']==operation_id
          and value['policy_identity']==review.policy_identity(),'same actual qualified proof/current policy')
     _proof_shape(value)

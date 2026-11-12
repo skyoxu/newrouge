@@ -1,0 +1,48 @@
+{
+  "schema_version": "newrouge.b-route-compensation-segmented-delivery.v1",
+  "node_id": "business",
+  "identity": {
+    "plan_digest": "sha256:d3638701c7d61a3c9216ba733f12e7cad27efca606c6864e667aacdd34b0d13b",
+    "node_id": "business",
+    "ordinal": 0,
+    "prefix_digest": "sha256:4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "request_digest": "sha256:b76e6c96076b22616e1f2792409aa15e4fd0eab114ab67cffa228c0e151b2dd8",
+    "schema_digest": "sha256:371b657f118fa4440b075493c7bde613a154d34ad3487d0176ab79360fe65204",
+    "measurement": {
+      "request_sha256": "sha256:b76e6c96076b22616e1f2792409aa15e4fd0eab114ab67cffa228c0e151b2dd8",
+      "request_chars": 66079,
+      "request_bytes": 66079,
+      "input_token_estimate": 66079,
+      "token_counts": {},
+      "token_counter": "utf8_byte_upper_bound",
+      "max_bytes": 1048576,
+      "max_input_tokens": 96000,
+      "reserved_continuation_tokens": 2000,
+      "truncation_allowed": false
+    },
+    "source_policy": "sha256:65e75d61df84da606dd80eca6bbcb2d7fc9a1c3f3ddf08f3c96795ecc8c6d4c5",
+    "timeout_sec": 1800,
+    "output_reserve": 2000
+  },
+  "admission": {
+    "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/call-limit.json",
+    "schema_version": "raw.bytes.v1",
+    "raw_digest": "sha256:9b778854c7cd1823a68659311fdd0c20821711344b15b0ec4672de18f50d68b0"
+  },
+  "outcome": {
+    "output_digest": "sha256:1fbad7776e4a3d62f0e8070263e155dfe4a95f5a325cd2b8033b3c3fae9ec667",
+    "execution_digest": "sha256:d053e67070126869e8f0acaf71f4e80f3d4202f729569ca8175870660cd61d82"
+  },
+  "evidence": {
+    "thread_id": "01a1cf25-8acf-7582-b7fb-a60cae9d6206",
+    "turn_id": "01a1cf25-8af9-7d93-aa11-5d3d1db3bcbf",
+    "protocol_digest": "sha256:3a721edcd967149556a7336b0346e7f3cf11aba393c45611603f4e4a0ba9e3c5",
+    "runtime_configuration": {
+      "model": "gpt-6.1-sol",
+      "provider": "openai",
+      "reasoning_effort": "high"
+    },
+    "provider_actual_model": "unknown",
+    "physical_requests": "unknown"
+  }
+}

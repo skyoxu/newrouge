@@ -1,0 +1,14 @@
+{
+  "target": "/workspace/newrouge-recovery-data/batch03-05f5fbf9/work/target-compensation-prepare",
+  "operation_id": "NativeV15Origin03Compensation01",
+  "source_policy": "sha256:65e75d61df84da606dd80eca6bbcb2d7fc9a1c3f3ddf08f3c96795ecc8c6d4c5",
+  "source_pin_count": 83,
+  "pins_match_continuation18": true,
+  "existing_operation_ids": [
+    "NativeV15Origin03"
+  ],
+  "review_home_preexists": false,
+  "original_critical_files_match": true,
+  "credentials_copied": false,
+  "business_model_calls": 0
+}

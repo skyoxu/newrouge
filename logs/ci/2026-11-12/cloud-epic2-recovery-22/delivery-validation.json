@@ -1,0 +1,17 @@
+{
+  "source_policy": "sha256:580ab96f584efecb61e870c1539402d041fcbe3369a293204c6f97f5710da05e",
+  "source_pins": 84,
+  "json_files_valid": 50,
+  "copied_artifacts_byte_verified": 28,
+  "credential_pattern_scan_files": 95,
+  "credential_patterns_found": 0,
+  "credential_files_read": false,
+  "initial4_raw_files_equal_HEAD": true,
+  "branch": "build/cloud-epic2-recovery-20261111",
+  "HEAD": "f94847e2b7b4d5092984294b46a2905212528f30",
+  "new_commits_or_pushes": false,
+  "actual_staged_changes": false,
+  "diff_check_exit_code": 0,
+  "targeted_tests": 56,
+  "full_suite": false
+}

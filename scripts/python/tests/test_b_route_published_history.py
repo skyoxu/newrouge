@@ -106,7 +106,11 @@ class PublishedHistoryBoundaryTests(TestCase):
 
 
 class PublishedRecoveryBeforeTests(TestCase):
-    def test_real_formal_before_view_survives_owned_origins_after_and_rejects_unknown_bytes(self):
+    def test_repair_proof_before_view_retains_real_task_history_and_rejects_unknown_bytes(self):
+        from _b_route_compensation_review_repair import PROOF
+        self.test_real_formal_before_view_survives_owned_origins_after_and_rejects_unknown_bytes(proof_version=PROOF)
+
+    def test_real_formal_before_view_survives_owned_origins_after_and_rejects_unknown_bytes(self,proof_version=None):
         """Actual formal/Task bytes; synthetic upstream bookkeeping, no model proof.
 
         This isolates the before-view helper from provider/tokenizer admission.
@@ -158,7 +162,7 @@ class PublishedRecoveryBeforeTests(TestCase):
         subject={'schema_version':profiles.PUBLISHED.name('subject'),'operation_id':'COMP-context',
             'preview':frozen,'current_files':{name:base64.b64encode(snapshot.read(name)).decode('ascii')
                 for name,pin in list(snapshot.files.items()) if pin is not None},'private_files':{}}
-        proof={'schema_version':profiles.PUBLISHED.name('proof'),
+        proof={'schema_version':proof_version or profiles.PUBLISHED.name('proof'),
             'subject_digest':codec.canonical_digest(subject),'files':[]}
         proof_raw=owner.raw(proof)
         ref={'path':owner.location('COMP-context')+'/review.json','schema_version':proof['schema_version'],

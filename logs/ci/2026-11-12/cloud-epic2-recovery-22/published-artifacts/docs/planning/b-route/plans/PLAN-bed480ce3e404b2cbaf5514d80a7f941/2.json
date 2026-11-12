@@ -1,0 +1,1941 @@
+{
+  "schema_version": "newrouge.b-route-plan.v1",
+  "plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+  "revision": 2,
+  "source_identity": {
+    "manifest_ref": {
+      "owner": "source_manifest",
+      "ref": "logs/ci/2026-11-06/b-route-sources/s25-v15-exclusive-offline/prepare-02/prepare/source-manifest.json",
+      "files": [
+        {
+          "path": "logs/ci/2026-11-06/b-route-sources/s25-v15-exclusive-offline/prepare-02/prepare/source-manifest.json",
+          "raw_digest": "sha256:67f96a837974e89bdfdb97fdf4386b3d89d308375c4d161136677daeaefcc020"
+        }
+      ]
+    },
+    "ledger_ref": {
+      "owner": "source_ledger",
+      "ref": "logs/ci/2026-11-06/b-route-sources/s25-v15-exclusive-offline/prepare-02/prepare/source-blocks.json",
+      "files": [
+        {
+          "path": "logs/ci/2026-11-06/b-route-sources/s25-v15-exclusive-offline/prepare-02/prepare/source-blocks.json",
+          "raw_digest": "sha256:b0c661a2838a07a0b88fe32cd8a6cebc480cec06325f07fe89264f858799db97"
+        }
+      ]
+    },
+    "source_revision": "source-set:45704214c4b741ba6aebe705",
+    "source_manifest_digest": "sha256:45704214c4b741ba6aebe7052b59de3c26114cc16e8d467b3fab60d33f3f7628"
+  },
+  "requirements": [
+    {
+      "requirement_id": "RQ-9f1d67605e48444881eb0329c233d880",
+      "source_block_ids": [
+        "SB-8C80E96FC81CA641",
+        "SB-3930A390340951B7"
+      ],
+      "acceptance_intent": "Each separate synthetic scenario receives a newly provisioned empty durable journal J and a fixed reward R. Scenarios never share J. Within a scenario, one process handles serial calls; processes never overlap, and J is never reset. The reward controller owns J and the volatile map UI. J has exactly three permitted states: empty, [Commit(R)], or [Cancel(R)]. From empty it can make one atomic durable append of Commit(R) or Cancel(R). Once nonempty it is immutable. Commit grants R exactly once and logically returns to the map. Cancel permanently declines R, grants nothing, and logically returns to the map. Rendering or restoring UI does not grant, cancel or logically return again. Storage succeeds except for the injected crash barriers below.",
+      "non_task_sinks": [],
+      "prior_requirement_ids": []
+    },
+    {
+      "requirement_id": "RQ-3c078fbc9c484aea935ef1c955c6b3ab",
+      "source_block_ids": [
+        "SB-8C80E96FC81CA641",
+        "SB-3930A390340951B7",
+        "SB-9E135AFD8D79ED3C"
+      ],
+      "acceptance_intent": "The business entry points are accept(R,id), cancel(R,id), and resume(R,id). Every call has a fresh id. The guard reads J. With empty J, accept appends Commit(R), cancel appends Cancel(R), and resume writes nothing. With nonempty J, no entry point writes: accept cannot override cancellation, cancel cannot reverse a grant, and resume only restores the decision. Finalization renders MapReady for [Commit(R)], MapCancelled for [Cancel(R)], and Idle for empty, then emits exactly one completion C:Complete(i,id,ui). Thus repeat accept after Commit stays MapReady, repeat cancel after Cancel stays MapCancelled, accept after Cancel stays MapCancelled without a grant, and cancel after Commit stays MapReady without a cancellation. No extra user action is required. Shutdown and force-termination are lifecycle controls and are not the business cancel command.",
+      "non_task_sinks": [],
+      "prior_requirement_ids": []
+    },
+    {
+      "requirement_id": "RQ-4be0664a370442e6aefcd3b3d1556131",
+      "source_block_ids": [
+        "SB-8C80E96FC81CA641",
+        "SB-3930A390340951B7",
+        "SB-B84109DE92C147BA"
+      ],
+      "acceptance_intent": "The harness owns OS instance handles, an ordered retained external event stream C for each instance, and a fresh control channel Q. start(J) launches the controlled executable with J and these endpoints and returns an owned OS handle i. Each process initially shows Idle and emits C:Ready(i,J) exactly once only after opening J and binding all three business entry points. Startup confirmation independently requires matching live i/J, actual readUI(i)=Idle and readJ(J)=the retained journal. It has a separate 10000ms deadline from start on the harness monotonic clock. Read-only readUI probes rendered UI rather than a reported value; readJ reads every durable record. The harness issues no business call before startup confirmation. shutdown(i) sends Shutdown on Q for normal exit. terminate(i) force-terminates exactly the owned i through the OS. Exit confirmation requires the OS handle signaled and C EOF/drain within a separate 10000ms deadline from shutdown or termination. A timeout fails the scenario.",
+      "non_task_sinks": [],
+      "prior_requirement_ids": []
+    },
+    {
+      "requirement_id": "RQ-19d7f5e27dcd4a1d9236315f6bf288e3",
+      "source_block_ids": [
+        "SB-8C80E96FC81CA641",
+        "SB-3930A390340951B7",
+        "SB-A9833CF255BDF6C0"
+      ],
+      "acceptance_intent": "For an ordinary unhooked business call, record CallStart immediately before issue. For a hook call, record it once before armHook as specified below; the same clock includes arming, acknowledgement and issue and is never restarted. A non-crashing call must emit one matching completion and permit independent readUI/readJ observations within 10000ms of CallStart on the same harness clock. Observation reads occur after completion and before another call or lifecycle control, with UI/J unchanged throughout those reads. Verify the matching instance/id, reported versus actual UI, expected complete journal, completion count observed so far and deadline. Missing, duplicate, late or mismatched results fail and cannot be erased by a later crash. ObservationComplete follows all these call-local checks within that original deadline; it permits the next call/control but is provisional. Retain every issued call id and count completions through each instance's C EOF/drain. A non-crashing invocation must have exactly one completion in that final audit; a crash-injected invocation must have zero. A late duplicate after ObservationComplete still fails. The same EOF audit requires exactly one Ready with the correct instance/J, already observed by the startup deadline; missing, wrong or duplicate Ready fails even if detected after startup confirmation. A late Ready cannot repair a startup failure. Final scenario success requires exit confirmation and the final count audit, including the final normal shutdown/exit, with no added reward call or restart during teardown.",
+      "non_task_sinks": [],
+      "prior_requirement_ids": []
+    },
+    {
+      "requirement_id": "RQ-b5ce45a545254d1a8aa205a5944535e3",
+      "source_block_ids": [
+        "SB-8C80E96FC81CA641",
+        "SB-3930A390340951B7",
+        "SB-F7DB8CD5A9668EF4"
+      ],
+      "acceptance_intent": "The only injected within-call crashes are immediately before or after the missing durable append of accept or cancel. Each hook scenario begins with its own empty J. Before issuing the target call, record CallStart, send armHook(i,id,op,before|after) on Q and receive its exact matching acknowledgement, where op is accept or cancel. The one-shot hook applies only to that id/op while J is empty. Before emits C:HookHit(i,id,op,before) after the empty guard and blocks before the atomic append. After emits C:HookHit(i,id,op,after) after the command's append is durable and blocks before UI finalization or Complete. No work can pass either barrier until OS termination; the harness never releases it. Observe exactly one matching acknowledgement and HookHit within the original 10000ms from CallStart, then immediately terminate i and begin its existing exit deadline. These controls are never Complete. Missing, wrong, duplicate or late hook events fail. Before leaves J empty; after leaves exactly the command's Commit or Cancel record. Confirm exit/EOF, start and confirm a new process with the unchanged J, then invoke resume under the ordinary call rule. Hooks are disabled for every other call. Failed-test cleanup cannot erase failure or count as scenario coverage.",
+      "non_task_sinks": [],
+      "prior_requirement_ids": []
+    },
+    {
+      "requirement_id": "RQ-b0dfd40c17bb4789ab08cf31f920ecb9",
+      "source_block_ids": [
+        "SB-8C80E96FC81CA641",
+        "SB-3930A390340951B7",
+        "SB-5B889D232D13901F"
+      ],
+      "acceptance_intent": "Required separate scenarios, each with fresh J: two accepts; two cancels; accept then cancel; cancel then accept; empty resume; successful accept followed by ordinary restart and resume; successful cancel followed by ordinary restart and resume; and each of accept-before, accept-after, cancel-before, cancel-after crash/recovery. Ordinary restart occurs only after successful observations: normal shutdown, confirmed exit/EOF, start and confirmed startup, then resume. It is not an injected crash. All earlier non-crashing calls retain their final completion-count obligations across restart. The observed journal and UI must follow the rules above for every step, including no grant after Cancel and no cancellation after Commit. Planning the flow does not claim these scenarios ran.",
+      "non_task_sinks": [],
+      "prior_requirement_ids": []
+    },
+    {
+      "requirement_id": "RQ-b2b58a9a58ac4834840be0bc238e275f",
+      "source_block_ids": [
+        "SB-8C80E96FC81CA641",
+        "SB-3930A390340951B7",
+        "SB-83C0467B0FFB419F"
+      ],
+      "acceptance_intent": "These are required synthetic adapter interfaces to implement, not claims of existing executable endpoints. Protocol-design responsibility belongs to the reward-controller implementer. The downstream implementation plan must choose and document one internally consistent versioned launch/message profile, including the hook acknowledgement representation and return path, used by both controller and harness. No particular Q/C wire encoding or executable argument spelling is prescribed. Every permitted profile must preserve the event identities, command distinctions, ordering, barrier blocking, independent observations, retained completion counts, deadlines and all scenarios above. A plan leaving its selected profile unresolved is incomplete.",
+      "non_task_sinks": [],
+      "prior_requirement_ids": []
+    }
+  ],
+  "definitions": {
+    "flows": [
+      {
+        "id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+        "requirement_ids": [
+          "RQ-9f1d67605e48444881eb0329c233d880",
+          "RQ-3c078fbc9c484aea935ef1c955c6b3ab",
+          "RQ-4be0664a370442e6aefcd3b3d1556131",
+          "RQ-19d7f5e27dcd4a1d9236315f6bf288e3",
+          "RQ-b5ce45a545254d1a8aa205a5944535e3",
+          "RQ-b0dfd40c17bb4789ab08cf31f920ecb9",
+          "RQ-b2b58a9a58ac4834840be0bc238e275f"
+        ],
+        "source_block_ids": [
+          "SB-8C80E96FC81CA641",
+          "SB-3930A390340951B7",
+          "SB-9E135AFD8D79ED3C",
+          "SB-B84109DE92C147BA",
+          "SB-A9833CF255BDF6C0",
+          "SB-F7DB8CD5A9668EF4",
+          "SB-5B889D232D13901F",
+          "SB-83C0467B0FFB419F"
+        ],
+        "entry_condition": "Provision a separate synthetic scenario with its own newly empty durable J and fixed R. Retain J throughout that scenario, serialize calls and prevent process overlap. Confirm each process startup independently before dispatching a fresh-id business call.",
+        "branches": [
+          {
+            "kind": "failure",
+            "applicability": "applicable",
+            "rationale": "Event, observation, barrier and lifecycle failures remain latched across provisional progression, crashes, replacement processes and cleanup.",
+            "boundary_ids": [
+              "scenario-failure"
+            ]
+          },
+          {
+            "kind": "cancel",
+            "applicability": "applicable",
+            "rationale": "An empty-journal cancel establishes an immutable permanent decline, zero grants and one logical map return.",
+            "boundary_ids": [
+              "durable-cancellation"
+            ]
+          },
+          {
+            "kind": "return",
+            "applicability": "applicable",
+            "rationale": "The first durable decision supplies its single logical map return. Finalization automatically presents the journal-selected result.",
+            "boundary_ids": [
+              "map-presentation"
+            ]
+          }
+        ],
+        "handoffs": [
+          {
+            "id": "profile-to-harness",
+            "from": {
+              "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+              "node_id": "startup"
+            },
+            "to": {
+              "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+              "node_id": "guard"
+            },
+            "owner": {
+              "kind": "command",
+              "definition_id": "profile-and-hooks",
+              "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+              "owner_revision": 2
+            },
+            "state_uses": [
+              {
+                "kind": "state",
+                "definition_id": "decision-journal",
+                "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                "owner_revision": 2
+              },
+              {
+                "kind": "state",
+                "definition_id": "retained-scenario-audit",
+                "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                "owner_revision": 2
+              }
+            ],
+            "responsibility": "Deliver the documented exclusive-reward-jsonl version 1 profile, runtime bindings, HookArmed return path, hook boundaries and journal reader contract for shared controller/harness use before business dispatch.",
+            "result": "Independent startup confirmation gates dispatch using the selected shared profile."
+          },
+          {
+            "id": "rendered-result-to-observer",
+            "from": {
+              "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+              "node_id": "finalize"
+            },
+            "to": {
+              "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+              "node_id": "observe"
+            },
+            "owner": {
+              "kind": "command",
+              "definition_id": "render-and-probe-adapter",
+              "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+              "owner_revision": 2
+            },
+            "state_uses": [
+              {
+                "kind": "state",
+                "definition_id": "rendered-map-ui",
+                "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                "owner_revision": 2
+              }
+            ],
+            "responsibility": "Supply deterministic visible state indicators, OS capture recognition regions and full-journal observation integration.",
+            "result": "The harness independently compares actual rendered UI and every durable record with the reported completion and expected outcome."
+          },
+          {
+            "id": "retained-state-to-replacement",
+            "from": {
+              "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+              "node_id": "exit-audit"
+            },
+            "to": {
+              "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+              "node_id": "startup"
+            },
+            "owner": {
+              "kind": "command",
+              "definition_id": "harness-lifecycle-and-observation",
+              "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+              "owner_revision": 2
+            },
+            "state_uses": [
+              {
+                "kind": "state",
+                "definition_id": "decision-journal",
+                "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                "owner_revision": 2
+              },
+              {
+                "kind": "state",
+                "definition_id": "retained-scenario-audit",
+                "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                "owner_revision": 2
+              }
+            ],
+            "responsibility": "After confirmed exit, EOF/drain and instance audit, preserve J, issued ids, counts and failures while creating fresh channels and a new owned instance association.",
+            "result": "A nonoverlapping replacement confirms initial Idle and unchanged complete J before ordinary fresh-id resume."
+          }
+        ],
+        "state_owners": [
+          {
+            "kind": "state",
+            "definition_id": "decision-journal",
+            "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+            "owner_revision": 2
+          },
+          {
+            "kind": "state",
+            "definition_id": "rendered-map-ui",
+            "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+            "owner_revision": 2
+          },
+          {
+            "kind": "state",
+            "definition_id": "retained-scenario-audit",
+            "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+            "owner_revision": 2
+          }
+        ],
+        "parts": [
+          {
+            "kind": "domain_rules",
+            "applicability": "applicable",
+            "rationale": "The controller owns irreversible reward decisions and their presentation.",
+            "responsibilities": [
+              "Implement the three legal complete journal states, single atomic durable append from empty and immutability after decision.",
+              "Attach grant, permanent decline and single logical map return to the durable decision transition. Preserve their counts during rendering and restoration.",
+              "Maintain isolated journals, serial calls, nonoverlapping processes and the specified storage-success assumption."
+            ]
+          },
+          {
+            "kind": "csharp_adapter",
+            "applicability": "not_applicable",
+            "rationale": "Implementation language remains delegated by the language-neutral synthetic interface specification.",
+            "responsibilities": []
+          },
+          {
+            "kind": "binding",
+            "applicability": "applicable",
+            "rationale": "Controller and harness require consistent executable, channel and runtime identity bindings.",
+            "responsibilities": [
+              "Implement and document the selected exclusive-reward-jsonl version 1 launch/message profile and exact acknowledgement return path.",
+              "Bind instance tokens to owned OS handles and J, retain ordered C through EOF and implement exact one-shot append barriers.",
+              "Provide synthetic lifecycle and business interfaces with distinct command dispatch and monotonic deadline handling."
+            ]
+          },
+          {
+            "kind": "scene",
+            "applicability": "applicable",
+            "rationale": "Startup and completed calls require independent observations of rendered UI.",
+            "responsibilities": [
+              "Render initial Idle for every process and journal-selected Idle, MapReady or MapCancelled before ordinary Complete.",
+              "Provide deterministic visible indicators and recognition regions for read-only OS surface capture.",
+              "Keep presentation and restoration free of repeated decision effects and logical returns."
+            ]
+          }
+        ],
+        "observable_result": "The planned controller and harness resolve each scenario reward through an immutable journal decision and automatic presentation. Downstream verification must establish the eleven scenario outcomes, independent observations, final normal exits and complete retained audits.",
+        "verification_targets": [
+          "For every separate scenario provision a distinct newly empty J and fixed R. Preserve J across replacements, serialize calls and prevent process overlap. Verify J is always empty, [Commit(R)] or [Cancel(R)], permits one atomic durable append from empty and becomes immutable when decided. Apply successful storage except at the prescribed injected append barriers.",
+          "At the domain decision boundary verify one grant and one logical map return for Commit, permanent decline with zero grants and one logical map return for Cancel, and unchanged effect counts during every render or restore. Every issued business call uses a fresh retained id and a guard that reads complete J. All empty, repeated and opposing-command branches progress automatically.",
+          "For every start(J), begin a separate 10000ms deadline on the harness monotonic clock. Require matching live owned i/J, actual readUI(i)=Idle, complete readJ(J) equal to retained J and one timely matching Ready emitted after opening J and binding all three entry points. Complete these checks before any business call. Continue Ready auditing through EOF and require exactly one correct Ready already observed by the original startup deadline.",
+          "For an ordinary call record CallStart immediately before issue. Within the same original 10000ms receive its matching Complete, then independently read actual rendered UI and every durable record while UI/J remain unchanged and before another call or lifecycle control. Check instance/id, reported versus actual UI, expected complete J, count observed so far and elapsed time. Record ObservationComplete only after all checks within that deadline. Treat progression as provisional through final EOF audits.",
+          "For a hook call record CallStart once before armHook. Receive exactly one matching HookArmed on C before issuing the selected accept/cancel target. Require exactly one matching HookHit within the same original 10000ms including arming, acknowledgement and issue. Before blocks after the empty guard and before append. After blocks after durable append and before finalization or Complete. Keep all work blocked until immediate owned-process OS termination. The harness never releases a barrier. Audit exact identities, uniqueness, ordering and timing through EOF. Count only Complete as a completion and require zero for the crash target.",
+          "For every shutdown or termination start a separate 10000ms exit deadline and require both the signaled owned OS handle and C EOF/drain. Shutdown sends Shutdown on Q and termination targets exactly owned i through the OS. Retain every issued id and event through drain. Require exactly one Complete per non-crashing invocation and zero per injected target. Preserve earlier invocation obligations across replacement processes.",
+          "Latch missing, wrong, mismatched, duplicate or late results and all deadline failures. Reject duplicates arriving after ObservationComplete and Ready defects discovered after startup confirmation. Preserve startup failure after a late Ready and preserve any failure after a later crash, restart or cleanup. Failed-test cleanup contributes zero scenario coverage.",
+          "Two accepts uses a separate fresh J. Both calls must observe [Commit(R)] and MapReady. Final invocation counts are [1,1], grants 1, permanent declines 0 and logical returns 1.",
+          "Two cancels uses a separate fresh J. Both calls must observe [Cancel(R)] and MapCancelled. Final invocation counts are [1,1], grants 0, permanent declines 1 and logical returns 1.",
+          "Accept then cancel uses a separate fresh J. Both calls must observe [Commit(R)] and MapReady. Final invocation counts are [1,1], grants 1, permanent declines 0 and logical returns 1.",
+          "Cancel then accept uses a separate fresh J. Both calls must observe [Cancel(R)] and MapCancelled. Final invocation counts are [1,1], grants 0, permanent declines 1 and logical returns 1.",
+          "Empty resume uses a separate fresh J. Resume must observe empty J and Idle. Its final invocation count is [1], with zero grants, permanent declines and logical returns.",
+          "Successful accept followed by ordinary restart and resume uses a separate fresh J. Accept must observe [Commit(R)] and MapReady. After successful observations perform normal shutdown, confirmed exit/EOF and audit, start with unchanged J and confirm initial Idle, then resume to [Commit(R)] and MapReady. Final invocation counts are [1,1], grants 1, permanent declines 0 and logical returns 1.",
+          "Successful cancel followed by ordinary restart and resume uses a separate fresh J. Cancel must observe [Cancel(R)] and MapCancelled. After successful observations perform normal shutdown, confirmed exit/EOF and audit, start with unchanged J and confirm initial Idle, then resume to [Cancel(R)] and MapCancelled. Final invocation counts are [1,1], grants 0, permanent declines 1 and logical returns 1.",
+          "Accept-before crash/recovery uses a separate fresh J. Arm and acknowledge accept-before, issue the target, observe its blocked HookHit and immediately terminate. After confirmed exit/EOF and audit, J must be empty and the target completion count zero. Confirm replacement startup with unchanged empty J and actual Idle, then ordinary resume must observe empty J and Idle. Final invocation counts are [0,1], with zero grants, permanent declines and logical returns.",
+          "Accept-after crash/recovery uses a separate fresh J. Arm and acknowledge accept-after, issue the target, observe its blocked HookHit and immediately terminate. After confirmed exit/EOF and audit, J must be exactly [Commit(R)] and the target completion count zero. Confirm replacement startup with retained J and actual Idle, then ordinary resume must observe [Commit(R)] and MapReady. Final invocation counts are [0,1], grants 1, permanent declines 0 and logical returns 1.",
+          "Cancel-before crash/recovery uses a separate fresh J. Arm and acknowledge cancel-before, issue the target, observe its blocked HookHit and immediately terminate. After confirmed exit/EOF and audit, J must be empty and the target completion count zero. Confirm replacement startup with unchanged empty J and actual Idle, then ordinary resume must observe empty J and Idle. Final invocation counts are [0,1], with zero grants, permanent declines and logical returns.",
+          "Cancel-after crash/recovery uses a separate fresh J. Arm and acknowledge cancel-after, issue the target, observe its blocked HookHit and immediately terminate. After confirmed exit/EOF and audit, J must be exactly [Cancel(R)] and the target completion count zero. Confirm replacement startup with retained J and actual Idle, then ordinary resume must observe [Cancel(R)] and MapCancelled. Final invocation counts are [0,1], grants 0, permanent declines 1 and logical returns 1.",
+          "Every scenario inherits all startup, ordinary observation, hook and retained audit rules at every step. Keep hooks disabled for every call except its designated crash target. Ordinary restart follows successful observations and normal lifecycle exit. Preserve complete J and earlier completion-count obligations through every restart.",
+          "After each scenario's final observed call perform final normal shutdown, confirm exit/EOF and complete all retained audits. Teardown adds zero reward calls and zero restarts. Scenario acceptance remains dependent on this final exit and audit.",
+          "The reward-controller implementer must deliver the selected shared versioned profile and document HookArmed representation and return path. Verify preservation of event identities, command distinctions, ordering, barrier blocking, independent observations, retained counts, deadlines and all eleven scenarios. Resolve and document any profile revision before downstream plan completion.",
+          "During downstream implementation check adapter types, compilation, launch/channel bindings and engine integration. The scenario verification implementer must execute the eleven scenarios and retain per-instance events, receipt times, independent observations, decision-effect accounting, OS exit confirmations and final audits as execution evidence."
+        ],
+        "ui": {
+          "applicability": "applicable",
+          "rationale": "Rendered states supply independently observed startup and business outcomes.",
+          "responsibilities": [
+            "Render initial Idle before Ready after J is opened and all three business entry points are bound.",
+            "Automatically render Idle for empty J, MapReady for Commit and MapCancelled for Cancel before the matching Complete.",
+            "Provide deterministic visible state indicators and OS capture recognition regions while preserving controller ownership of volatile UI.",
+            "Keep UI/J stable throughout each independent post-completion observation window and preserve established business effects during presentation."
+          ],
+          "owner": {
+            "kind": "state",
+            "definition_id": "rendered-map-ui",
+            "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+            "owner_revision": 2
+          },
+          "inputs": [
+            "accept(R,id)",
+            "cancel(R,id)",
+            "resume(R,id)",
+            "Complete durable journal J"
+          ],
+          "feedback": [
+            "Actually rendered Idle, MapReady or MapCancelled",
+            "C:Complete(i,id,ui) after rendering",
+            "C:Ready(i,J) after initial setup"
+          ],
+          "scene_entry": [
+            "Every process initially presents Idle, including replacements opening a decided journal."
+          ],
+          "scene_return": [
+            "The first durable decision supplies one logical map return. Subsequent calls and resume automatically present the established outcome."
+          ]
+        },
+        "human_verification": {
+          "applicability": "not_applicable",
+          "rationale": "Required acceptance uses automated independent rendered-UI probes, complete journal reads, retained event audits and owned OS lifecycle observations.",
+          "responsibilities": [],
+          "owner": {
+            "kind": "command",
+            "definition_id": "harness-lifecycle-and-observation",
+            "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+            "owner_revision": 2
+          }
+        },
+        "graph": {
+          "nodes": [
+            {
+              "id": "startup",
+              "responsibility": "Provision a new scenario's empty J and fixed R or retain unchanged J for replacement. Launch one owned process with fresh Q/C. Within 10000ms from start confirm live matching i/J, timely Ready, actual Idle and complete retained J before business dispatch.",
+              "owner": {
+                "kind": "command",
+                "definition_id": "harness-lifecycle-and-observation",
+                "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                "owner_revision": 2
+              },
+              "command_uses": [
+                {
+                  "kind": "command",
+                  "definition_id": "harness-lifecycle-and-observation",
+                  "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                  "owner_revision": 2
+                },
+                {
+                  "kind": "command",
+                  "definition_id": "profile-and-hooks",
+                  "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                  "owner_revision": 2
+                }
+              ],
+              "state_uses": [
+                {
+                  "kind": "state",
+                  "definition_id": "decision-journal",
+                  "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                  "owner_revision": 2
+                },
+                {
+                  "kind": "state",
+                  "definition_id": "rendered-map-ui",
+                  "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                  "owner_revision": 2
+                },
+                {
+                  "kind": "state",
+                  "definition_id": "retained-scenario-audit",
+                  "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                  "owner_revision": 2
+                }
+              ]
+            },
+            {
+              "id": "guard",
+              "responsibility": "Retain a fresh call id and record ordinary CallStart immediately before issue. For the designated hook record it once before arming, receive exact HookArmed and issue the matching target within the unchanged deadline. Read complete J and select the command branch.",
+              "owner": {
+                "kind": "flow",
+                "definition_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                "owner_revision": 2
+              },
+              "command_uses": [
+                {
+                  "kind": "command",
+                  "definition_id": "accept",
+                  "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                  "owner_revision": 2
+                },
+                {
+                  "kind": "command",
+                  "definition_id": "cancel",
+                  "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                  "owner_revision": 2
+                },
+                {
+                  "kind": "command",
+                  "definition_id": "resume",
+                  "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                  "owner_revision": 2
+                },
+                {
+                  "kind": "command",
+                  "definition_id": "profile-and-hooks",
+                  "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                  "owner_revision": 2
+                }
+              ],
+              "state_uses": [
+                {
+                  "kind": "state",
+                  "definition_id": "decision-journal",
+                  "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                  "owner_revision": 2
+                },
+                {
+                  "kind": "state",
+                  "definition_id": "retained-scenario-audit",
+                  "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                  "owner_revision": 2
+                }
+              ]
+            },
+            {
+              "id": "append-commit",
+              "responsibility": "From empty J make the single atomic durable Commit(R) transition with one grant and one logical map return. Honor a selected after barrier before finalization.",
+              "owner": {
+                "kind": "command",
+                "definition_id": "accept",
+                "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                "owner_revision": 2
+              },
+              "command_uses": [
+                {
+                  "kind": "command",
+                  "definition_id": "accept",
+                  "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                  "owner_revision": 2
+                },
+                {
+                  "kind": "command",
+                  "definition_id": "profile-and-hooks",
+                  "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                  "owner_revision": 2
+                }
+              ],
+              "state_uses": [
+                {
+                  "kind": "state",
+                  "definition_id": "decision-journal",
+                  "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                  "owner_revision": 2
+                }
+              ]
+            },
+            {
+              "id": "append-cancel",
+              "responsibility": "From empty J make the single atomic durable Cancel(R) transition with permanent decline, zero grants and one logical map return. Honor a selected after barrier before finalization.",
+              "owner": {
+                "kind": "command",
+                "definition_id": "cancel",
+                "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                "owner_revision": 2
+              },
+              "command_uses": [
+                {
+                  "kind": "command",
+                  "definition_id": "cancel",
+                  "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                  "owner_revision": 2
+                },
+                {
+                  "kind": "command",
+                  "definition_id": "profile-and-hooks",
+                  "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                  "owner_revision": 2
+                }
+              ],
+              "state_uses": [
+                {
+                  "kind": "state",
+                  "definition_id": "decision-journal",
+                  "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                  "owner_revision": 2
+                }
+              ]
+            },
+            {
+              "id": "hook-barrier",
+              "responsibility": "Emit and flush exact HookHit at the selected before or after append boundary and block all work until OS termination. Before preserves empty J and after preserves exactly the durable target record. Require unique matching acknowledgement and HookHit within original CallStart timing, immediately terminate owned i and retain zero target completions.",
+              "owner": {
+                "kind": "command",
+                "definition_id": "profile-and-hooks",
+                "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                "owner_revision": 2
+              },
+              "command_uses": [
+                {
+                  "kind": "command",
+                  "definition_id": "profile-and-hooks",
+                  "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                  "owner_revision": 2
+                },
+                {
+                  "kind": "command",
+                  "definition_id": "harness-lifecycle-and-observation",
+                  "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                  "owner_revision": 2
+                }
+              ],
+              "state_uses": [
+                {
+                  "kind": "state",
+                  "definition_id": "decision-journal",
+                  "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                  "owner_revision": 2
+                },
+                {
+                  "kind": "state",
+                  "definition_id": "retained-scenario-audit",
+                  "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                  "owner_revision": 2
+                }
+              ]
+            },
+            {
+              "id": "finalize",
+              "responsibility": "Read complete J to render MapReady, MapCancelled or Idle, then emit exactly one matching Complete. Progress automatically and preserve all established decision-effect counts.",
+              "owner": {
+                "kind": "state",
+                "definition_id": "rendered-map-ui",
+                "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                "owner_revision": 2
+              },
+              "command_uses": [
+                {
+                  "kind": "command",
+                  "definition_id": "render-and-probe-adapter",
+                  "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                  "owner_revision": 2
+                }
+              ],
+              "state_uses": [
+                {
+                  "kind": "state",
+                  "definition_id": "decision-journal",
+                  "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                  "owner_revision": 2
+                },
+                {
+                  "kind": "state",
+                  "definition_id": "rendered-map-ui",
+                  "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                  "owner_revision": 2
+                }
+              ]
+            },
+            {
+              "id": "observe",
+              "responsibility": "After matching Complete independently read actual UI and every durable record during a stable window before another call/control. Verify identity, reported/actual UI, expected complete J, count so far and original deadline. Record provisional ObservationComplete after all checks within 10000ms and continue retained counting.",
+              "owner": {
+                "kind": "command",
+                "definition_id": "harness-lifecycle-and-observation",
+                "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                "owner_revision": 2
+              },
+              "command_uses": [
+                {
+                  "kind": "command",
+                  "definition_id": "harness-lifecycle-and-observation",
+                  "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                  "owner_revision": 2
+                },
+                {
+                  "kind": "command",
+                  "definition_id": "render-and-probe-adapter",
+                  "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                  "owner_revision": 2
+                }
+              ],
+              "state_uses": [
+                {
+                  "kind": "state",
+                  "definition_id": "decision-journal",
+                  "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                  "owner_revision": 2
+                },
+                {
+                  "kind": "state",
+                  "definition_id": "rendered-map-ui",
+                  "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                  "owner_revision": 2
+                },
+                {
+                  "kind": "state",
+                  "definition_id": "retained-scenario-audit",
+                  "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                  "owner_revision": 2
+                }
+              ]
+            },
+            {
+              "id": "exit-audit",
+              "responsibility": "Use normal Shutdown after successful ordinary observations or immediate OS termination at a hook barrier. Within the separate 10000ms exit deadline require signaled handle and C EOF/drain. Audit every retained Ready, hook and invocation count, preserve failures and inspect complete crash J before recovery.",
+              "owner": {
+                "kind": "command",
+                "definition_id": "harness-lifecycle-and-observation",
+                "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                "owner_revision": 2
+              },
+              "command_uses": [
+                {
+                  "kind": "command",
+                  "definition_id": "harness-lifecycle-and-observation",
+                  "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                  "owner_revision": 2
+                }
+              ],
+              "state_uses": [
+                {
+                  "kind": "state",
+                  "definition_id": "decision-journal",
+                  "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                  "owner_revision": 2
+                },
+                {
+                  "kind": "state",
+                  "definition_id": "retained-scenario-audit",
+                  "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                  "owner_revision": 2
+                }
+              ]
+            },
+            {
+              "id": "suite-complete",
+              "responsibility": "Require all eleven isolated scenarios to satisfy every observation and retained audit through their final normal exits. The scenario verification implementer must retain downstream execution evidence.",
+              "owner": {
+                "kind": "command",
+                "definition_id": "harness-lifecycle-and-observation",
+                "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                "owner_revision": 2
+              },
+              "command_uses": [],
+              "state_uses": [
+                {
+                  "kind": "state",
+                  "definition_id": "retained-scenario-audit",
+                  "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                  "owner_revision": 2
+                }
+              ]
+            },
+            {
+              "id": "failed",
+              "responsibility": "Latch event, identity, deadline, observation, barrier and count failures. Preserve them through later lifecycle activity and cleanup. Credit failed-test cleanup with zero scenario coverage.",
+              "owner": {
+                "kind": "command",
+                "definition_id": "harness-lifecycle-and-observation",
+                "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                "owner_revision": 2
+              },
+              "command_uses": [],
+              "state_uses": [
+                {
+                  "kind": "state",
+                  "definition_id": "retained-scenario-audit",
+                  "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                  "owner_revision": 2
+                }
+              ]
+            }
+          ],
+          "edges": [
+            {
+              "id": "startup-to-call",
+              "from": {
+                "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                "node_id": "startup"
+              },
+              "to": {
+                "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                "node_id": "guard"
+              },
+              "condition": "Independent startup confirmation completes within its separate deadline.",
+              "responsibility": "Permit the first business call or fresh-id recovery resume using the delivered profile.",
+              "owner": {
+                "kind": "command",
+                "definition_id": "harness-lifecycle-and-observation",
+                "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                "owner_revision": 2
+              }
+            },
+            {
+              "id": "empty-accept",
+              "from": {
+                "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                "node_id": "guard"
+              },
+              "to": {
+                "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                "node_id": "append-commit"
+              },
+              "condition": "J is empty, op is accept and a before hook is inactive.",
+              "responsibility": "Select the single durable Commit transition.",
+              "owner": {
+                "kind": "command",
+                "definition_id": "accept",
+                "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                "owner_revision": 2
+              }
+            },
+            {
+              "id": "empty-cancel",
+              "from": {
+                "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                "node_id": "guard"
+              },
+              "to": {
+                "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                "node_id": "append-cancel"
+              },
+              "condition": "J is empty, op is cancel and a before hook is inactive.",
+              "responsibility": "Select the single durable Cancel transition.",
+              "owner": {
+                "kind": "command",
+                "definition_id": "cancel",
+                "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                "owner_revision": 2
+              }
+            },
+            {
+              "id": "presentation-only",
+              "from": {
+                "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                "node_id": "guard"
+              },
+              "to": {
+                "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                "node_id": "finalize"
+              },
+              "condition": "J is nonempty for any business command, or J is empty and op is resume.",
+              "responsibility": "Preserve J and established effects while selecting its presentation.",
+              "owner": {
+                "kind": "flow",
+                "definition_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                "owner_revision": 2
+              }
+            },
+            {
+              "id": "before-append-hook",
+              "from": {
+                "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                "node_id": "guard"
+              },
+              "to": {
+                "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                "node_id": "hook-barrier"
+              },
+              "condition": "An acknowledged one-shot before hook matches the selected accept/cancel id/op while J is empty.",
+              "responsibility": "Emit exact before HookHit after the empty guard and block before append.",
+              "owner": {
+                "kind": "command",
+                "definition_id": "profile-and-hooks",
+                "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                "owner_revision": 2
+              }
+            },
+            {
+              "id": "commit-to-presentation",
+              "from": {
+                "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                "node_id": "append-commit"
+              },
+              "to": {
+                "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                "node_id": "finalize"
+              },
+              "condition": "Commit is durable and an after hook is inactive.",
+              "responsibility": "Automatically present MapReady and complete.",
+              "owner": {
+                "kind": "command",
+                "definition_id": "accept",
+                "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                "owner_revision": 2
+              }
+            },
+            {
+              "id": "cancel-to-presentation",
+              "from": {
+                "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                "node_id": "append-cancel"
+              },
+              "to": {
+                "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                "node_id": "finalize"
+              },
+              "condition": "Cancel is durable and an after hook is inactive.",
+              "responsibility": "Automatically present MapCancelled and complete.",
+              "owner": {
+                "kind": "command",
+                "definition_id": "cancel",
+                "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                "owner_revision": 2
+              }
+            },
+            {
+              "id": "after-commit-hook",
+              "from": {
+                "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                "node_id": "append-commit"
+              },
+              "to": {
+                "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                "node_id": "hook-barrier"
+              },
+              "condition": "Commit is durable and the acknowledged one-shot after hook matches the target accept id/op.",
+              "responsibility": "Emit exact after HookHit and block before finalization or Complete.",
+              "owner": {
+                "kind": "command",
+                "definition_id": "profile-and-hooks",
+                "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                "owner_revision": 2
+              }
+            },
+            {
+              "id": "after-cancel-hook",
+              "from": {
+                "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                "node_id": "append-cancel"
+              },
+              "to": {
+                "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                "node_id": "hook-barrier"
+              },
+              "condition": "Cancel is durable and the acknowledged one-shot after hook matches the target cancel id/op.",
+              "responsibility": "Emit exact after HookHit and block before finalization or Complete.",
+              "owner": {
+                "kind": "command",
+                "definition_id": "profile-and-hooks",
+                "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                "owner_revision": 2
+              }
+            },
+            {
+              "id": "hook-to-forced-exit",
+              "from": {
+                "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                "node_id": "hook-barrier"
+              },
+              "to": {
+                "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                "node_id": "exit-audit"
+              },
+              "condition": "Exactly one matching HookArmed and HookHit were observed within the original call deadline.",
+              "responsibility": "Immediately OS-terminate the owned process and begin its separate exit deadline while the barrier stays blocked.",
+              "owner": {
+                "kind": "command",
+                "definition_id": "harness-lifecycle-and-observation",
+                "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                "owner_revision": 2
+              }
+            },
+            {
+              "id": "completion-to-observation",
+              "from": {
+                "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                "node_id": "finalize"
+              },
+              "to": {
+                "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                "node_id": "observe"
+              },
+              "condition": "The non-crashing call rendered its selected UI and emitted matching Complete.",
+              "responsibility": "Perform independent stable observations within the original call deadline.",
+              "owner": {
+                "kind": "command",
+                "definition_id": "harness-lifecycle-and-observation",
+                "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                "owner_revision": 2
+              }
+            },
+            {
+              "id": "next-serial-call",
+              "from": {
+                "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                "node_id": "observe"
+              },
+              "to": {
+                "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                "node_id": "guard"
+              },
+              "condition": "Timely ObservationComplete succeeds and another ordinary call is prescribed in this process.",
+              "responsibility": "Issue the next fresh-id call and retain all prior audit obligations.",
+              "owner": {
+                "kind": "command",
+                "definition_id": "harness-lifecycle-and-observation",
+                "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                "owner_revision": 2
+              }
+            },
+            {
+              "id": "observed-call-to-shutdown",
+              "from": {
+                "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                "node_id": "observe"
+              },
+              "to": {
+                "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                "node_id": "exit-audit"
+              },
+              "condition": "Timely ObservationComplete succeeds and ordinary restart or final teardown is prescribed.",
+              "responsibility": "Send Shutdown on Q and begin its separate exit deadline.",
+              "owner": {
+                "kind": "command",
+                "definition_id": "harness-lifecycle-and-observation",
+                "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                "owner_revision": 2
+              }
+            },
+            {
+              "id": "replacement-with-retained-journal",
+              "from": {
+                "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                "node_id": "exit-audit"
+              },
+              "to": {
+                "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                "node_id": "startup"
+              },
+              "condition": "Exit/EOF and instance audit succeed and recovery or ordinary restart requires resume.",
+              "responsibility": "Preserve J and the scenario ledger, launch a nonoverlapping replacement with fresh endpoints, confirm startup and issue fresh-id resume.",
+              "owner": {
+                "kind": "command",
+                "definition_id": "harness-lifecycle-and-observation",
+                "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                "owner_revision": 2
+              }
+            },
+            {
+              "id": "next-isolated-scenario",
+              "from": {
+                "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                "node_id": "exit-audit"
+              },
+              "to": {
+                "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                "node_id": "startup"
+              },
+              "condition": "The current scenario's final normal exit and audits succeed and another required scenario remains.",
+              "responsibility": "End the completed scenario and provision a distinct newly empty J and fixed R for the next scenario.",
+              "owner": {
+                "kind": "command",
+                "definition_id": "harness-lifecycle-and-observation",
+                "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                "owner_revision": 2
+              }
+            },
+            {
+              "id": "final-audit-to-suite-result",
+              "from": {
+                "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                "node_id": "exit-audit"
+              },
+              "to": {
+                "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                "node_id": "suite-complete"
+              },
+              "condition": "All eleven scenarios have completed their final normal exit and every retained audit successfully.",
+              "responsibility": "Derive the downstream suite outcome from complete execution evidence.",
+              "owner": {
+                "kind": "command",
+                "definition_id": "harness-lifecycle-and-observation",
+                "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                "owner_revision": 2
+              }
+            },
+            {
+              "id": "startup-failure",
+              "from": {
+                "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                "node_id": "startup"
+              },
+              "to": {
+                "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                "node_id": "failed"
+              },
+              "condition": "Startup identity, Ready, independent observation or deadline checks fail.",
+              "responsibility": "Latch failure and retain later events for audit.",
+              "owner": {
+                "kind": "command",
+                "definition_id": "harness-lifecycle-and-observation",
+                "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                "owner_revision": 2
+              }
+            },
+            {
+              "id": "dispatch-failure",
+              "from": {
+                "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                "node_id": "guard"
+              },
+              "to": {
+                "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                "node_id": "failed"
+              },
+              "condition": "Command identity, framing, profile version, acknowledgement or dispatch ordering fails.",
+              "responsibility": "Preserve the issued-id and event ledger with its failure.",
+              "owner": {
+                "kind": "command",
+                "definition_id": "harness-lifecycle-and-observation",
+                "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                "owner_revision": 2
+              }
+            },
+            {
+              "id": "hook-failure",
+              "from": {
+                "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                "node_id": "hook-barrier"
+              },
+              "to": {
+                "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                "node_id": "failed"
+              },
+              "condition": "Hook events are missing, wrong, duplicate or late, a barrier permits work to pass, or the crash target emits Complete.",
+              "responsibility": "Latch failure and perform failure-preserving lifecycle cleanup.",
+              "owner": {
+                "kind": "command",
+                "definition_id": "harness-lifecycle-and-observation",
+                "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                "owner_revision": 2
+              }
+            },
+            {
+              "id": "observation-failure",
+              "from": {
+                "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                "node_id": "observe"
+              },
+              "to": {
+                "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                "node_id": "failed"
+              },
+              "condition": "Completion, UI/J, identity, stability, count or original call deadline checks fail.",
+              "responsibility": "Retain failure through subsequent crashes and restarts.",
+              "owner": {
+                "kind": "command",
+                "definition_id": "harness-lifecycle-and-observation",
+                "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                "owner_revision": 2
+              }
+            },
+            {
+              "id": "exit-or-retained-audit-failure",
+              "from": {
+                "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                "node_id": "exit-audit"
+              },
+              "to": {
+                "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                "node_id": "failed"
+              },
+              "condition": "Exit confirmation times out or retained Ready, hook, invocation-count or durable-outcome audits fail.",
+              "responsibility": "Fail the scenario even when the defect appears after provisional observations.",
+              "owner": {
+                "kind": "command",
+                "definition_id": "harness-lifecycle-and-observation",
+                "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                "owner_revision": 2
+              }
+            }
+          ],
+          "boundaries": [
+            {
+              "id": "scenario-entry",
+              "kind": "entry",
+              "node": {
+                "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                "node_id": "startup"
+              },
+              "condition": "A separate scenario begins with its own newly empty J and fixed R.",
+              "required": true,
+              "rationale": "Each required scenario has isolated durable state."
+            },
+            {
+              "id": "suite-success",
+              "kind": "success",
+              "node": {
+                "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                "node_id": "suite-complete"
+              },
+              "condition": "All eleven scenarios satisfy every observation and retained audit through their final normal exits.",
+              "required": true,
+              "rationale": "Execution acceptance includes final lifecycle and count obligations."
+            },
+            {
+              "id": "scenario-failure",
+              "kind": "failure",
+              "node": {
+                "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                "node_id": "failed"
+              },
+              "condition": "Any required event, identity, observation, barrier, count or deadline check fails.",
+              "required": true,
+              "rationale": "Failure persists through lifecycle changes and cleanup."
+            },
+            {
+              "id": "durable-cancellation",
+              "kind": "cancel",
+              "node": {
+                "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                "node_id": "append-cancel"
+              },
+              "condition": "Empty-journal cancel durably appends Cancel(R).",
+              "required": true,
+              "rationale": "Cancel permanently declines R, grants nothing and logically returns once."
+            },
+            {
+              "id": "map-presentation",
+              "kind": "return",
+              "node": {
+                "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                "node_id": "finalize"
+              },
+              "condition": "An ordinary invocation automatically renders its journal-selected UI before Complete.",
+              "required": true,
+              "rationale": "Presentation uses the recorded decision and preserves its single logical return."
+            }
+          ],
+          "loops": [
+            {
+              "id": "serial-call-and-recovery-loop",
+              "anchors": [
+                {
+                  "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                  "node_id": "guard"
+                },
+                {
+                  "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                  "node_id": "observe"
+                },
+                {
+                  "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                  "node_id": "exit-audit"
+                },
+                {
+                  "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                  "node_id": "startup"
+                }
+              ],
+              "exit_boundary_ids": [
+                "suite-success",
+                "scenario-failure"
+              ],
+              "description": "Perform each scenario's serial calls, prescribed ordinary restart or injected-crash recovery and final normal teardown. Provision a distinct empty J for each subsequent scenario.",
+              "exit_condition": "All eleven scenarios complete their final normal exit and audits, or a required check latches failure."
+            }
+          ]
+        },
+        "capability_ids": [
+          "exclusive-reward-resolution"
+        ]
+      }
+    ],
+    "commands": [
+      {
+        "id": "accept",
+        "requirement_ids": [
+          "RQ-9f1d67605e48444881eb0329c233d880",
+          "RQ-3c078fbc9c484aea935ef1c955c6b3ab",
+          "RQ-b5ce45a545254d1a8aa205a5944535e3"
+        ],
+        "responsibility": "Implement synthetic accept(R,id) with fresh ids and a complete-J guard. Empty J permits the single atomic Commit(R) transition, grant and logical map return. Decided J remains immutable. Commit selects MapReady and Cancel selects MapCancelled with permanent decline preserved. Automatically render before one matching Complete for each non-crashing call and honor designated blocked append hooks.",
+        "uses": [
+          {
+            "kind": "state",
+            "definition_id": "decision-journal",
+            "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+            "owner_revision": 2
+          },
+          {
+            "kind": "state",
+            "definition_id": "rendered-map-ui",
+            "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+            "owner_revision": 2
+          },
+          {
+            "kind": "command",
+            "definition_id": "profile-and-hooks",
+            "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+            "owner_revision": 2
+          }
+        ]
+      },
+      {
+        "id": "cancel",
+        "requirement_ids": [
+          "RQ-9f1d67605e48444881eb0329c233d880",
+          "RQ-3c078fbc9c484aea935ef1c955c6b3ab",
+          "RQ-b5ce45a545254d1a8aa205a5944535e3"
+        ],
+        "responsibility": "Implement synthetic cancel(R,id) with fresh ids and a complete-J guard. Empty J permits the single atomic Cancel(R) transition, permanent decline, zero grant and one logical map return. Decided J remains immutable. Cancel selects MapCancelled and Commit preserves its grant and MapReady. Render automatically before one matching Complete for a non-crashing call. Dispatch business cancel separately from Shutdown and OS termination and honor designated blocked append hooks.",
+        "uses": [
+          {
+            "kind": "state",
+            "definition_id": "decision-journal",
+            "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+            "owner_revision": 2
+          },
+          {
+            "kind": "state",
+            "definition_id": "rendered-map-ui",
+            "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+            "owner_revision": 2
+          },
+          {
+            "kind": "command",
+            "definition_id": "profile-and-hooks",
+            "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+            "owner_revision": 2
+          }
+        ]
+      },
+      {
+        "id": "resume",
+        "requirement_ids": [
+          "RQ-9f1d67605e48444881eb0329c233d880",
+          "RQ-3c078fbc9c484aea935ef1c955c6b3ab",
+          "RQ-b5ce45a545254d1a8aa205a5944535e3",
+          "RQ-b0dfd40c17bb4789ab08cf31f920ecb9"
+        ],
+        "responsibility": "Implement synthetic resume(R,id) with fresh ids and a complete-J guard. Preserve J in all states. Render Idle for empty, MapReady for Commit or MapCancelled for Cancel, then emit one matching Complete under ordinary observation rules. Restore presentation while preserving decision-effect and logical-return counts. Keep hooks disabled for every resume, including recovery.",
+        "uses": [
+          {
+            "kind": "state",
+            "definition_id": "decision-journal",
+            "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+            "owner_revision": 2
+          },
+          {
+            "kind": "state",
+            "definition_id": "rendered-map-ui",
+            "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+            "owner_revision": 2
+          }
+        ]
+      },
+      {
+        "id": "profile-and-hooks",
+        "requirement_ids": [
+          "RQ-3c078fbc9c484aea935ef1c955c6b3ab",
+          "RQ-4be0664a370442e6aefcd3b3d1556131",
+          "RQ-19d7f5e27dcd4a1d9236315f6bf288e3",
+          "RQ-b5ce45a545254d1a8aa205a5944535e3",
+          "RQ-b2b58a9a58ac4834840be0bc238e275f"
+        ],
+        "responsibility": "Implement and document the inherited draft-selected exclusive-reward-jsonl version 1 profile for shared controller/harness use. Launch spelling is controlled-executable --profile exclusive-reward-jsonl --profile-version 1 --journal <journal-path> --instance <instance-token> --control <Q-name> --events <C-name>. The harness creates fresh named-pipe Q/C endpoints for each process and binds a fresh runtime instance token to owned OS handle i and canonical J. Wire i carries that token. Supply a lossless reward handle bound identically to fixed scenario R. Each frame is a UTF-8 JSON object followed by LF with JSON escaping preserving strings. Every frame carries version=1, type and i. Q is harness-to-controller and C is controller-to-harness. Q accept, cancel and resume carry version,type,i,R,id. Q armHook carries version,type,i,id,op,phase with op accept or cancel and phase before or after. Q Shutdown carries version,type,i. C Ready carries version,type,i,J. C Complete carries version,type,i,id,ui with ui Idle, MapReady or MapCancelled. C HookArmed and HookHit carry version,type,i,id,op,phase. HookArmed on C is the exact armHook acknowledgement and precedes target issue. Install its one-shot hook only for the selected id/op while J is empty. Before emits and flushes HookHit after the empty guard and blocks before atomic append. After emits and flushes HookHit after durable append and blocks before UI finalization or Complete. Block all work until OS termination with the harness never releasing the barrier. CallStart begins once before armHook, includes acknowledgement and issue and stays unchanged. Require exactly one matching HookArmed and HookHit within the original 10000ms, then immediately terminate the owned process. Keep hooks disabled for every other call. Audit HookArmed and HookHit separately and count only Complete as completion. Open J, bind all three business entry points and render initial Idle before exactly one Ready. Render ordinary outcomes before Complete. Retain ordered C frames and monotonic receipt times through EOF/drain. Malformed frames, wrong versions and unexpected, missing, duplicate, late or mismatched events latch failure. Preserve source event identities, command distinctions, ordering, blocked barriers, independent observations, retained counts, deadlines and scenarios. Resolve and document any selected profile revision before downstream plan completion.",
+        "uses": [
+          {
+            "kind": "command",
+            "definition_id": "accept",
+            "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+            "owner_revision": 2
+          },
+          {
+            "kind": "command",
+            "definition_id": "cancel",
+            "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+            "owner_revision": 2
+          },
+          {
+            "kind": "command",
+            "definition_id": "resume",
+            "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+            "owner_revision": 2
+          },
+          {
+            "kind": "state",
+            "definition_id": "decision-journal",
+            "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+            "owner_revision": 2
+          },
+          {
+            "kind": "state",
+            "definition_id": "retained-scenario-audit",
+            "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+            "owner_revision": 2
+          }
+        ]
+      },
+      {
+        "id": "harness-lifecycle-and-observation",
+        "requirement_ids": [
+          "RQ-9f1d67605e48444881eb0329c233d880",
+          "RQ-4be0664a370442e6aefcd3b3d1556131",
+          "RQ-19d7f5e27dcd4a1d9236315f6bf288e3",
+          "RQ-b5ce45a545254d1a8aa205a5944535e3",
+          "RQ-b0dfd40c17bb4789ab08cf31f920ecb9",
+          "RQ-b2b58a9a58ac4834840be0bc238e275f"
+        ],
+        "responsibility": "Implement synthetic start(J), readUI(i), readJ(J), shutdown(i), terminate(i), monotonic deadlines and retained auditing. Own OS handles, fresh Q/C and ordered per-instance event retention. start launches the controlled executable with J and endpoints and returns owned i. Independently confirm live i/J, timely Ready, actual Idle and every durable record equal to retained J within 10000ms from start, gating all business calls. readUI probes actual rendered output through read-only OS surface capture and readJ independently enumerates every durable record. Ordinary CallStart occurs immediately before issue. Hook CallStart occurs once before armHook. Complete all non-crashing completion, stable independent UI/J, identity, count-so-far and deadline checks and ObservationComplete within the original 10000ms. Retain every issued id and failure through all instance EOF/drains and replacements. Require final Complete counts of one per non-crashing invocation and zero per crash target. Continue exact Ready and hook audits through EOF and reject late duplicates after provisional progression. shutdown sends Shutdown on Q. terminate targets exactly owned i through the OS. Each begins a separate 10000ms exit deadline requiring signaled handle and C EOF/drain. Inspect complete crash J before replacement. Ordinary restart follows successful observations, normal shutdown, confirmed exit/EOF, replacement start, confirmed startup and fresh-id resume. Crash recovery follows immediate hook termination, confirmed exit/EOF, unchanged-J replacement and ordinary resume. End every scenario with final normal exit and full audits. Preserve all failures and earlier invocation obligations across crashes, replacements and cleanup. The scenario verification implementer must use these operations for all eleven scenarios and retain their execution evidence.",
+        "uses": [
+          {
+            "kind": "command",
+            "definition_id": "profile-and-hooks",
+            "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+            "owner_revision": 2
+          },
+          {
+            "kind": "command",
+            "definition_id": "render-and-probe-adapter",
+            "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+            "owner_revision": 2
+          },
+          {
+            "kind": "state",
+            "definition_id": "decision-journal",
+            "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+            "owner_revision": 2
+          },
+          {
+            "kind": "state",
+            "definition_id": "rendered-map-ui",
+            "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+            "owner_revision": 2
+          },
+          {
+            "kind": "state",
+            "definition_id": "retained-scenario-audit",
+            "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+            "owner_revision": 2
+          }
+        ]
+      },
+      {
+        "id": "render-and-probe-adapter",
+        "requirement_ids": [
+          "RQ-9f1d67605e48444881eb0329c233d880",
+          "RQ-3c078fbc9c484aea935ef1c955c6b3ab",
+          "RQ-4be0664a370442e6aefcd3b3d1556131",
+          "RQ-b2b58a9a58ac4834840be0bc238e275f"
+        ],
+        "responsibility": "Implement the planned controlled-executable bindings, deterministic visible Idle/MapReady/MapCancelled indicators, recognition regions and full durable-journal reader integration. Carry forward the draft-selected harness-side read-only OS rendered-surface capture so observations remain independent of Complete.ui. Preserve reward-controller ownership of volatile UI. Render initial Idle for every process, including replacements with decided J, then render ordinary journal-selected outcomes before Complete. Preserve grant, decline and logical-return counts during presentation. Deliver downstream type, compilation, binding and engine-integration checks.",
+        "uses": [
+          {
+            "kind": "state",
+            "definition_id": "rendered-map-ui",
+            "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+            "owner_revision": 2
+          },
+          {
+            "kind": "state",
+            "definition_id": "decision-journal",
+            "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+            "owner_revision": 2
+          },
+          {
+            "kind": "command",
+            "definition_id": "profile-and-hooks",
+            "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+            "owner_revision": 2
+          }
+        ]
+      }
+    ],
+    "states": [
+      {
+        "id": "decision-journal",
+        "requirement_ids": [
+          "RQ-9f1d67605e48444881eb0329c233d880",
+          "RQ-3c078fbc9c484aea935ef1c955c6b3ab",
+          "RQ-b5ce45a545254d1a8aa205a5944535e3",
+          "RQ-b0dfd40c17bb4789ab08cf31f920ecb9"
+        ],
+        "responsibility": "Own durable scenario J with exactly empty, [Commit(R)] or [Cancel(R)] as its complete value. Provision a different empty J and fixed R per scenario and retain J throughout that scenario. Permit one atomic durable append from empty and make decided J immutable. Commit supplies one grant and one logical map return. Cancel supplies permanent decline, zero grants and one logical map return. Couple effects to the durable transition so after-append crashes retain the decision and its effects while recovery rendering preserves their counts. Apply the specified storage-success assumption. Before crashes leave empty J and after crashes leave exactly the target record.",
+        "uses": []
+      },
+      {
+        "id": "rendered-map-ui",
+        "requirement_ids": [
+          "RQ-9f1d67605e48444881eb0329c233d880",
+          "RQ-3c078fbc9c484aea935ef1c955c6b3ab",
+          "RQ-4be0664a370442e6aefcd3b3d1556131"
+        ],
+        "responsibility": "Own volatile rendered UI. Every process initially shows Idle. Ordinary finalization automatically renders Idle for empty J, MapReady for Commit or MapCancelled for Cancel before Complete. Repeated accept after Commit and cancel after Commit preserve MapReady and the grant. Repeated cancel after Cancel and accept after Cancel preserve MapCancelled and permanent decline. Keep UI/J unchanged during independent post-completion reads. Preserve established business-effect and logical-return counts during presentation and restoration.",
+        "uses": [
+          {
+            "kind": "state",
+            "definition_id": "decision-journal",
+            "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+            "owner_revision": 2
+          }
+        ]
+      },
+      {
+        "id": "retained-scenario-audit",
+        "requirement_ids": [
+          "RQ-4be0664a370442e6aefcd3b3d1556131",
+          "RQ-19d7f5e27dcd4a1d9236315f6bf288e3",
+          "RQ-b5ce45a545254d1a8aa205a5944535e3",
+          "RQ-b0dfd40c17bb4789ab08cf31f920ecb9"
+        ],
+        "responsibility": "Retain scenario reward/journal bindings, owned handles and instance tokens, every fresh issued call id, ordered per-instance C events and receipt times, startup/call/exit clock origins, independent observations, ObservationComplete markers, final event counts and latched failures. Preserve the ledger across ordinary restart and crash recovery. Continue Ready, hook and completion audits through each EOF/drain. Require one Complete per ordinary invocation, zero per crash target and exactly one correct Ready already observed by its startup deadline. Preserve failures detected after provisional progression, late Ready, later crashes and cleanup. Scenario acceptance includes final normal exit and complete audits, and failed-test cleanup receives zero coverage credit.",
+        "uses": []
+      }
+    ]
+  },
+  "logical_references": [
+    {
+      "kind": "flow",
+      "definition_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+      "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+      "owner_revision": 2
+    },
+    {
+      "kind": "command",
+      "definition_id": "accept",
+      "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+      "owner_revision": 2
+    },
+    {
+      "kind": "command",
+      "definition_id": "cancel",
+      "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+      "owner_revision": 2
+    },
+    {
+      "kind": "command",
+      "definition_id": "resume",
+      "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+      "owner_revision": 2
+    },
+    {
+      "kind": "command",
+      "definition_id": "profile-and-hooks",
+      "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+      "owner_revision": 2
+    },
+    {
+      "kind": "command",
+      "definition_id": "harness-lifecycle-and-observation",
+      "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+      "owner_revision": 2
+    },
+    {
+      "kind": "command",
+      "definition_id": "render-and-probe-adapter",
+      "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+      "owner_revision": 2
+    },
+    {
+      "kind": "state",
+      "definition_id": "decision-journal",
+      "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+      "owner_revision": 2
+    },
+    {
+      "kind": "state",
+      "definition_id": "rendered-map-ui",
+      "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+      "owner_revision": 2
+    },
+    {
+      "kind": "state",
+      "definition_id": "retained-scenario-audit",
+      "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+      "owner_revision": 2
+    }
+  ],
+  "requirement_verification": [
+    {
+      "requirement_id": "RQ-9f1d67605e48444881eb0329c233d880",
+      "disposition": "flow",
+      "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+      "rationale": "The flow preserves isolated journals and irreversible decision effects.",
+      "sink_id": null,
+      "verification_ref": null,
+      "authority_ref": null,
+      "evidence_ids": [
+        "SB-3930A390340951B7"
+      ]
+    },
+    {
+      "requirement_id": "RQ-3c078fbc9c484aea935ef1c955c6b3ab",
+      "disposition": "flow",
+      "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+      "rationale": "The flow covers every business branch and render-before-completion outcome.",
+      "sink_id": null,
+      "verification_ref": null,
+      "authority_ref": null,
+      "evidence_ids": [
+        "SB-9E135AFD8D79ED3C"
+      ]
+    },
+    {
+      "requirement_id": "RQ-4be0664a370442e6aefcd3b3d1556131",
+      "disposition": "flow",
+      "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+      "rationale": "The flow covers owned process lifecycle and independent startup and exit confirmation.",
+      "sink_id": null,
+      "verification_ref": null,
+      "authority_ref": null,
+      "evidence_ids": [
+        "SB-B84109DE92C147BA"
+      ]
+    },
+    {
+      "requirement_id": "RQ-19d7f5e27dcd4a1d9236315f6bf288e3",
+      "disposition": "flow",
+      "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+      "rationale": "The flow retains call deadlines, independent observations and final EOF audits.",
+      "sink_id": null,
+      "verification_ref": null,
+      "authority_ref": null,
+      "evidence_ids": [
+        "SB-A9833CF255BDF6C0"
+      ]
+    },
+    {
+      "requirement_id": "RQ-b5ce45a545254d1a8aa205a5944535e3",
+      "disposition": "flow",
+      "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+      "rationale": "The flow covers exact hook control, blocked crash barriers and retained-journal recovery.",
+      "sink_id": null,
+      "verification_ref": null,
+      "authority_ref": null,
+      "evidence_ids": [
+        "SB-F7DB8CD5A9668EF4"
+      ]
+    },
+    {
+      "requirement_id": "RQ-b0dfd40c17bb4789ab08cf31f920ecb9",
+      "disposition": "flow",
+      "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+      "rationale": "The flow specifies all eleven scenarios and cross-restart audit obligations.",
+      "sink_id": null,
+      "verification_ref": null,
+      "authority_ref": null,
+      "evidence_ids": [
+        "SB-5B889D232D13901F"
+      ]
+    },
+    {
+      "requirement_id": "RQ-b2b58a9a58ac4834840be0bc238e275f",
+      "disposition": "flow",
+      "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+      "rationale": "The flow assigns synthetic interface implementation and documents the selected shared profile.",
+      "sink_id": null,
+      "verification_ref": null,
+      "authority_ref": null,
+      "evidence_ids": [
+        "SB-83C0467B0FFB419F"
+      ]
+    }
+  ],
+  "requirement_route_memberships": [
+    {
+      "requirement_id": "RQ-9f1d67605e48444881eb0329c233d880",
+      "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+      "observable_role": "Isolated scenarios, complete journal invariants and exactly-once decision effects."
+    },
+    {
+      "requirement_id": "RQ-3c078fbc9c484aea935ef1c955c6b3ab",
+      "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+      "observable_role": "Fresh-id guarded business branches, automatic presentation and exact completion."
+    },
+    {
+      "requirement_id": "RQ-4be0664a370442e6aefcd3b3d1556131",
+      "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+      "observable_role": "Owned launch, independent startup, lifecycle controls and timely exit confirmation."
+    },
+    {
+      "requirement_id": "RQ-19d7f5e27dcd4a1d9236315f6bf288e3",
+      "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+      "observable_role": "Original call deadlines, stable observations and retained Ready/completion audits through final EOF."
+    },
+    {
+      "requirement_id": "RQ-b5ce45a545254d1a8aa205a5944535e3",
+      "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+      "observable_role": "Exact hooks, blocked append barriers, zero crash-target completions and retained-journal recovery."
+    },
+    {
+      "requirement_id": "RQ-b0dfd40c17bb4789ab08cf31f920ecb9",
+      "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+      "observable_role": "Eleven separate scenario outcomes and retained obligations across restart and final teardown."
+    },
+    {
+      "requirement_id": "RQ-b2b58a9a58ac4834840be0bc238e275f",
+      "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+      "observable_role": "Controller-owned selected versioned profile, shared synthetic bindings and downstream implementation checks."
+    }
+  ],
+  "requirement_evidence": [
+    {
+      "requirement_id": "RQ-9f1d67605e48444881eb0329c233d880",
+      "evidence_id": "SB-3930A390340951B7",
+      "kind": "implementation_reference",
+      "source_ref": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+      "covered_behavior": "Original line 3 specifies scenario isolation, serial nonoverlapping execution, controller ownership, legal J states, atomic immutable decisions, grant and decline effects, single logical returns, presentation-only restoration and the storage assumption.",
+      "flow_ids": [
+        "FLOW-f78c671da6d04b7dbed7a6111d652007"
+      ],
+      "test_ids": []
+    },
+    {
+      "requirement_id": "RQ-3c078fbc9c484aea935ef1c955c6b3ab",
+      "evidence_id": "SB-9E135AFD8D79ED3C",
+      "kind": "implementation_reference",
+      "source_ref": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+      "covered_behavior": "Original line 5 specifies fresh-id business signatures, complete-J guards, empty and decided branches, every repeated/opposing outcome, render-before-Complete ordering, automatic progression and lifecycle-command distinctions.",
+      "flow_ids": [
+        "FLOW-f78c671da6d04b7dbed7a6111d652007"
+      ],
+      "test_ids": []
+    },
+    {
+      "requirement_id": "RQ-4be0664a370442e6aefcd3b3d1556131",
+      "evidence_id": "SB-B84109DE92C147BA",
+      "kind": "implementation_reference",
+      "source_ref": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+      "covered_behavior": "Original line 7 specifies harness ownership, controlled launch, initial Idle and exact Ready, independent live identity/UI/J startup confirmation, read-only complete probes, startup gating, normal shutdown, owned OS termination and separate startup/exit deadlines.",
+      "flow_ids": [
+        "FLOW-f78c671da6d04b7dbed7a6111d652007"
+      ],
+      "test_ids": []
+    },
+    {
+      "requirement_id": "RQ-19d7f5e27dcd4a1d9236315f6bf288e3",
+      "evidence_id": "SB-A9833CF255BDF6C0",
+      "kind": "implementation_reference",
+      "source_ref": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+      "covered_behavior": "Original line 9 specifies unchanged original call timing, independent stable observations, identity/UI/J/count checks, provisional ObservationComplete, persistent failures and Ready/completion audits through EOF and final normal teardown.",
+      "flow_ids": [
+        "FLOW-f78c671da6d04b7dbed7a6111d652007"
+      ],
+      "test_ids": []
+    },
+    {
+      "requirement_id": "RQ-b5ce45a545254d1a8aa205a5944535e3",
+      "evidence_id": "SB-F7DB8CD5A9668EF4",
+      "kind": "implementation_reference",
+      "source_ref": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+      "covered_behavior": "The complete original line 11 specifies exact hook acknowledgement, scoped one-shot hooks, blocked before/after append barriers, original deadline, immediate OS termination, durable crash outcomes, unchanged-J recovery, ordinary resume, hook isolation and failure-preserving cleanup.",
+      "flow_ids": [
+        "FLOW-f78c671da6d04b7dbed7a6111d652007"
+      ],
+      "test_ids": []
+    },
+    {
+      "requirement_id": "RQ-b0dfd40c17bb4789ab08cf31f920ecb9",
+      "evidence_id": "SB-5B889D232D13901F",
+      "kind": "implementation_reference",
+      "source_ref": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+      "covered_behavior": "Original line 13 specifies all eleven fresh-J scenarios, successful-observation gating and order for ordinary restart, retained earlier call obligations and correct journal/UI at every step. It establishes required verification work and the boundary on execution claims.",
+      "flow_ids": [
+        "FLOW-f78c671da6d04b7dbed7a6111d652007"
+      ],
+      "test_ids": []
+    },
+    {
+      "requirement_id": "RQ-b2b58a9a58ac4834840be0bc238e275f",
+      "evidence_id": "SB-83C0467B0FFB419F",
+      "kind": "implementation_reference",
+      "source_ref": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+      "covered_behavior": "Original line 15 specifies synthetic adapter implementation, controller protocol-design ownership, mandatory shared versioned profile selection and documentation including acknowledgement representation and return path, bounded encoding/argument choices and preservation of every source semantic constraint.",
+      "flow_ids": [
+        "FLOW-f78c671da6d04b7dbed7a6111d652007"
+      ],
+      "test_ids": []
+    }
+  ],
+  "evidence_source_refs": [
+    {
+      "owner": "implementation_reference",
+      "ref": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+      "files": [
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "raw_digest": "sha256:7e5e1fe8aeb5937c70caa16aea2a9e1784a429c70c30a4f7f4d66601f1880061"
+        }
+      ]
+    }
+  ],
+  "coverage_table": [
+    {
+      "requirement_id": "RQ-9f1d67605e48444881eb0329c233d880",
+      "disposition": "flow",
+      "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+      "rationale": "The flow preserves isolated journals and irreversible decision effects.",
+      "sink_id": null,
+      "verification_ref": null,
+      "authority_ref": null
+    },
+    {
+      "requirement_id": "RQ-3c078fbc9c484aea935ef1c955c6b3ab",
+      "disposition": "flow",
+      "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+      "rationale": "The flow covers every business branch and render-before-completion outcome.",
+      "sink_id": null,
+      "verification_ref": null,
+      "authority_ref": null
+    },
+    {
+      "requirement_id": "RQ-4be0664a370442e6aefcd3b3d1556131",
+      "disposition": "flow",
+      "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+      "rationale": "The flow covers owned process lifecycle and independent startup and exit confirmation.",
+      "sink_id": null,
+      "verification_ref": null,
+      "authority_ref": null
+    },
+    {
+      "requirement_id": "RQ-19d7f5e27dcd4a1d9236315f6bf288e3",
+      "disposition": "flow",
+      "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+      "rationale": "The flow retains call deadlines, independent observations and final EOF audits.",
+      "sink_id": null,
+      "verification_ref": null,
+      "authority_ref": null
+    },
+    {
+      "requirement_id": "RQ-b5ce45a545254d1a8aa205a5944535e3",
+      "disposition": "flow",
+      "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+      "rationale": "The flow covers exact hook control, blocked crash barriers and retained-journal recovery.",
+      "sink_id": null,
+      "verification_ref": null,
+      "authority_ref": null
+    },
+    {
+      "requirement_id": "RQ-b0dfd40c17bb4789ab08cf31f920ecb9",
+      "disposition": "flow",
+      "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+      "rationale": "The flow specifies all eleven scenarios and cross-restart audit obligations.",
+      "sink_id": null,
+      "verification_ref": null,
+      "authority_ref": null
+    },
+    {
+      "requirement_id": "RQ-b2b58a9a58ac4834840be0bc238e275f",
+      "disposition": "flow",
+      "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+      "rationale": "The flow assigns synthetic interface implementation and documents the selected shared profile.",
+      "sink_id": null,
+      "verification_ref": null,
+      "authority_ref": null
+    }
+  ],
+  "applicability": [
+    {
+      "requirement_id": "RQ-9f1d67605e48444881eb0329c233d880",
+      "disposition": "flow",
+      "rationale": "The flow preserves isolated journals and irreversible decision effects.",
+      "other_verification_refs": []
+    },
+    {
+      "requirement_id": "RQ-3c078fbc9c484aea935ef1c955c6b3ab",
+      "disposition": "flow",
+      "rationale": "The flow covers every business branch and render-before-completion outcome.",
+      "other_verification_refs": []
+    },
+    {
+      "requirement_id": "RQ-4be0664a370442e6aefcd3b3d1556131",
+      "disposition": "flow",
+      "rationale": "The flow covers owned process lifecycle and independent startup and exit confirmation.",
+      "other_verification_refs": []
+    },
+    {
+      "requirement_id": "RQ-19d7f5e27dcd4a1d9236315f6bf288e3",
+      "disposition": "flow",
+      "rationale": "The flow retains call deadlines, independent observations and final EOF audits.",
+      "other_verification_refs": []
+    },
+    {
+      "requirement_id": "RQ-b5ce45a545254d1a8aa205a5944535e3",
+      "disposition": "flow",
+      "rationale": "The flow covers exact hook control, blocked crash barriers and retained-journal recovery.",
+      "other_verification_refs": []
+    },
+    {
+      "requirement_id": "RQ-b0dfd40c17bb4789ab08cf31f920ecb9",
+      "disposition": "flow",
+      "rationale": "The flow specifies all eleven scenarios and cross-restart audit obligations.",
+      "other_verification_refs": []
+    },
+    {
+      "requirement_id": "RQ-b2b58a9a58ac4834840be0bc238e275f",
+      "disposition": "flow",
+      "rationale": "The flow assigns synthetic interface implementation and documents the selected shared profile.",
+      "other_verification_refs": []
+    }
+  ],
+  "adoption_proof_refs": [
+    {
+      "owner": "planning_proof",
+      "ref": "logs/ci/b-route-origin-captures/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/capsule.json",
+      "files": [
+        {
+          "path": "logs/ci/b-route-origin-captures/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/capsule.json",
+          "raw_digest": "sha256:df8b3c9bc2e0f5e40d1a45c865ae7b959941250c87ff0733eff5bf845311f7d7"
+        }
+      ]
+    }
+  ],
+  "native_candidate_ref": {
+    "owner": "planning_proof",
+    "ref": "logs/ci/b-route-origin-captures/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/capsule.json#/proposal/content",
+    "files": [
+      {
+        "path": "logs/ci/b-route-origin-captures/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/capsule.json",
+        "raw_digest": "sha256:df8b3c9bc2e0f5e40d1a45c865ae7b959941250c87ff0733eff5bf845311f7d7"
+      }
+    ]
+  },
+  "lineage": {
+    "previous_plan_ref": {
+      "path": "docs/planning/b-route/plans/PLAN-bed480ce3e404b2cbaf5514d80a7f941/1.json",
+      "schema_version": "newrouge.b-route-plan.v1",
+      "entity_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+      "revision": 1,
+      "digest": "sha256:965faffefde5731b92e581d30be7ae8854db73844ec5411dd337e0b563e54f20",
+      "verification_mode": "raw",
+      "codec_version": null
+    },
+    "change_summary": "Reviewed compensation NativeV15Origin03Compensation01: Preserve the original independently reviewed plan meaning in a new revision and resolve only NativeV15Origin03; retain all existing Task history, obligations and later legitimate changes.",
+    "identity_alignment": [
+      {
+        "kind": "flow",
+        "previous_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+        "current_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+        "rationale": "Retained existing formal identity during reviewed compensation"
+      },
+      {
+        "kind": "command",
+        "previous_id": "accept",
+        "current_id": "accept",
+        "rationale": "Retained existing formal identity during reviewed compensation"
+      },
+      {
+        "kind": "command",
+        "previous_id": "cancel",
+        "current_id": "cancel",
+        "rationale": "Retained existing formal identity during reviewed compensation"
+      },
+      {
+        "kind": "command",
+        "previous_id": "resume",
+        "current_id": "resume",
+        "rationale": "Retained existing formal identity during reviewed compensation"
+      },
+      {
+        "kind": "command",
+        "previous_id": "profile-and-hooks",
+        "current_id": "profile-and-hooks",
+        "rationale": "Retained existing formal identity during reviewed compensation"
+      },
+      {
+        "kind": "command",
+        "previous_id": "harness-lifecycle-and-observation",
+        "current_id": "harness-lifecycle-and-observation",
+        "rationale": "Retained existing formal identity during reviewed compensation"
+      },
+      {
+        "kind": "command",
+        "previous_id": "render-and-probe-adapter",
+        "current_id": "render-and-probe-adapter",
+        "rationale": "Retained existing formal identity during reviewed compensation"
+      },
+      {
+        "kind": "state",
+        "previous_id": "decision-journal",
+        "current_id": "decision-journal",
+        "rationale": "Retained existing formal identity during reviewed compensation"
+      },
+      {
+        "kind": "state",
+        "previous_id": "rendered-map-ui",
+        "current_id": "rendered-map-ui",
+        "rationale": "Retained existing formal identity during reviewed compensation"
+      },
+      {
+        "kind": "state",
+        "previous_id": "retained-scenario-audit",
+        "current_id": "retained-scenario-audit",
+        "rationale": "Retained existing formal identity during reviewed compensation"
+      }
+    ]
+  }
+}

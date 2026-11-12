@@ -1,0 +1,486 @@
+{
+  "schema_version": "newrouge.b-route-qualified-compensation-review-roles.v3",
+  "full_subject_digest": "sha256:f816e7a535e32e4e36f4af2dc4baa77a223155d73f660cdf0435daa87ea32e84",
+  "files": [
+    {
+      "subject_digest": "sha256:f816e7a535e32e4e36f4af2dc4baa77a223155d73f660cdf0435daa87ea32e84",
+      "path": "docs/planning/b-route/catalog.v1.json",
+      "raw_digest": "sha256:86317dea22202aff8261fb01da2a6b078f2c3e3f860e57d411216a06131fc7f2",
+      "raw_bytes": 33023,
+      "roles": [
+        "semantic:catalog_graph",
+        "semantic:formal_record"
+      ],
+      "owner_uses": [
+        {
+          "role": "semantic:formal_record",
+          "owner": "newrouge.b-route-catalog.v1",
+          "ref": "docs/planning/b-route/catalog.v1.json",
+          "source": "docs/planning/b-route/catalog.v1.json",
+          "subject_digest": "sha256:f816e7a535e32e4e36f4af2dc4baa77a223155d73f660cdf0435daa87ea32e84"
+        },
+        {
+          "role": "semantic:catalog_graph",
+          "owner": "records.TypedReference",
+          "ref": "docs/planning/b-route/catalog.v1.json",
+          "source": "docs/planning/b-route/catalog.v1.json",
+          "subject_digest": "sha256:f816e7a535e32e4e36f4af2dc4baa77a223155d73f660cdf0435daa87ea32e84"
+        }
+      ],
+      "document_ref": "sha256:86317dea22202aff8261fb01da2a6b078f2c3e3f860e57d411216a06131fc7f2",
+      "public_mapping": null
+    },
+    {
+      "subject_digest": "sha256:f816e7a535e32e4e36f4af2dc4baa77a223155d73f660cdf0435daa87ea32e84",
+      "path": "docs/planning/b-route/commits/NativeV15Origin03.json",
+      "raw_digest": "sha256:8ec08628ff77980b92ead4de5e076fe4f4b1bc1ed4b2922fa7f2d84b5744535f",
+      "raw_bytes": 33622,
+      "roles": [
+        "semantic:catalog_graph",
+        "semantic:formal_record"
+      ],
+      "owner_uses": [
+        {
+          "role": "semantic:catalog_graph",
+          "owner": "records.TypedReference",
+          "ref": "docs/planning/b-route/catalog.v1.json",
+          "source": "docs/planning/b-route/commits/NativeV15Origin03.json",
+          "subject_digest": "sha256:f816e7a535e32e4e36f4af2dc4baa77a223155d73f660cdf0435daa87ea32e84"
+        },
+        {
+          "role": "semantic:formal_record",
+          "owner": "newrouge.b-route-commit.v1",
+          "ref": "docs/planning/b-route/commits/NativeV15Origin03.json",
+          "source": "docs/planning/b-route/commits/NativeV15Origin03.json",
+          "subject_digest": "sha256:f816e7a535e32e4e36f4af2dc4baa77a223155d73f660cdf0435daa87ea32e84"
+        }
+      ],
+      "document_ref": "sha256:8ec08628ff77980b92ead4de5e076fe4f4b1bc1ed4b2922fa7f2d84b5744535f",
+      "public_mapping": null
+    },
+    {
+      "subject_digest": "sha256:f816e7a535e32e4e36f4af2dc4baa77a223155d73f660cdf0435daa87ea32e84",
+      "path": "docs/planning/b-route/plans/PLAN-bed480ce3e404b2cbaf5514d80a7f941/1.json",
+      "raw_digest": "sha256:965faffefde5731b92e581d30be7ae8854db73844ec5411dd337e0b563e54f20",
+      "raw_bytes": 99279,
+      "roles": [
+        "semantic:catalog_graph",
+        "semantic:formal_record",
+        "semantic:original_target"
+      ],
+      "owner_uses": [
+        {
+          "role": "semantic:catalog_graph",
+          "owner": "records.TypedReference",
+          "ref": "docs/planning/b-route/catalog.v1.json",
+          "source": "docs/planning/b-route/plans/PLAN-bed480ce3e404b2cbaf5514d80a7f941/1.json",
+          "subject_digest": "sha256:f816e7a535e32e4e36f4af2dc4baa77a223155d73f660cdf0435daa87ea32e84"
+        },
+        {
+          "role": "semantic:original_target",
+          "owner": "newrouge.b-route-adoption-operation.v2",
+          "ref": "logs/ci/b-route-operations/operations/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/operation.json",
+          "source": "docs/planning/b-route/plans/PLAN-bed480ce3e404b2cbaf5514d80a7f941/1.json",
+          "subject_digest": "sha256:f816e7a535e32e4e36f4af2dc4baa77a223155d73f660cdf0435daa87ea32e84"
+        },
+        {
+          "role": "semantic:formal_record",
+          "owner": "newrouge.b-route-plan.v1",
+          "ref": "docs/planning/b-route/plans/PLAN-bed480ce3e404b2cbaf5514d80a7f941/1.json",
+          "source": "docs/planning/b-route/plans/PLAN-bed480ce3e404b2cbaf5514d80a7f941/1.json",
+          "subject_digest": "sha256:f816e7a535e32e4e36f4af2dc4baa77a223155d73f660cdf0435daa87ea32e84"
+        }
+      ],
+      "document_ref": "sha256:965faffefde5731b92e581d30be7ae8854db73844ec5411dd337e0b563e54f20",
+      "public_mapping": null
+    },
+    {
+      "subject_digest": "sha256:f816e7a535e32e4e36f4af2dc4baa77a223155d73f660cdf0435daa87ea32e84",
+      "path": "docs/planning/b-route/policy.v1.json",
+      "raw_digest": "sha256:cc07d8eef84b3285e0ccda33b1f5ae915d9f74dba3c1823f47b988315ae6f7f0",
+      "raw_bytes": 265,
+      "roles": [
+        "semantic:catalog_graph",
+        "semantic:formal_record",
+        "semantic:original_target"
+      ],
+      "owner_uses": [
+        {
+          "role": "semantic:catalog_graph",
+          "owner": "records.TypedReference",
+          "ref": "docs/planning/b-route/catalog.v1.json",
+          "source": "docs/planning/b-route/policy.v1.json",
+          "subject_digest": "sha256:f816e7a535e32e4e36f4af2dc4baa77a223155d73f660cdf0435daa87ea32e84"
+        },
+        {
+          "role": "semantic:formal_record",
+          "owner": "newrouge.b-route-policy.v1",
+          "ref": "docs/planning/b-route/policy.v1.json",
+          "source": "docs/planning/b-route/policy.v1.json",
+          "subject_digest": "sha256:f816e7a535e32e4e36f4af2dc4baa77a223155d73f660cdf0435daa87ea32e84"
+        },
+        {
+          "role": "semantic:original_target",
+          "owner": "newrouge.b-route-adoption-operation.v2",
+          "ref": "logs/ci/b-route-operations/operations/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/operation.json",
+          "source": "docs/planning/b-route/policy.v1.json",
+          "subject_digest": "sha256:f816e7a535e32e4e36f4af2dc4baa77a223155d73f660cdf0435daa87ea32e84"
+        }
+      ],
+      "document_ref": "sha256:cc07d8eef84b3285e0ccda33b1f5ae915d9f74dba3c1823f47b988315ae6f7f0",
+      "public_mapping": null
+    },
+    {
+      "subject_digest": "sha256:f816e7a535e32e4e36f4af2dc4baa77a223155d73f660cdf0435daa87ea32e84",
+      "path": "docs/planning/b-route/task-origins.v1.json",
+      "raw_digest": "sha256:050a156a25f0fa55585057f06dafbef7419789bfb60ade5215028677e119925e",
+      "raw_bytes": 146,
+      "roles": [
+        "semantic:catalog_graph",
+        "semantic:formal_record",
+        "semantic:original_target"
+      ],
+      "owner_uses": [
+        {
+          "role": "semantic:catalog_graph",
+          "owner": "records.TypedReference",
+          "ref": "docs/planning/b-route/catalog.v1.json",
+          "source": "docs/planning/b-route/task-origins.v1.json",
+          "subject_digest": "sha256:f816e7a535e32e4e36f4af2dc4baa77a223155d73f660cdf0435daa87ea32e84"
+        },
+        {
+          "role": "semantic:formal_record",
+          "owner": "newrouge.b-route-origins.v1",
+          "ref": "docs/planning/b-route/task-origins.v1.json",
+          "source": "docs/planning/b-route/task-origins.v1.json",
+          "subject_digest": "sha256:f816e7a535e32e4e36f4af2dc4baa77a223155d73f660cdf0435daa87ea32e84"
+        },
+        {
+          "role": "semantic:original_target",
+          "owner": "newrouge.b-route-adoption-operation.v2",
+          "ref": "logs/ci/b-route-operations/operations/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/operation.json",
+          "source": "docs/planning/b-route/task-origins.v1.json",
+          "subject_digest": "sha256:f816e7a535e32e4e36f4af2dc4baa77a223155d73f660cdf0435daa87ea32e84"
+        }
+      ],
+      "document_ref": "sha256:050a156a25f0fa55585057f06dafbef7419789bfb60ade5215028677e119925e",
+      "public_mapping": null
+    },
+    {
+      "subject_digest": "sha256:f816e7a535e32e4e36f4af2dc4baa77a223155d73f660cdf0435daa87ea32e84",
+      "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+      "raw_digest": "sha256:7e5e1fe8aeb5937c70caa16aea2a9e1784a429c70c30a4f7f4d66601f1880061",
+      "raw_bytes": 7044,
+      "roles": [
+        "semantic:declared_source",
+        "semantic:manifest_source"
+      ],
+      "owner_uses": [
+        {
+          "role": "semantic:manifest_source",
+          "owner": "source_manifest",
+          "ref": "logs/ci/2026-11-06/b-route-sources/s25-v15-exclusive-offline/prepare-02/prepare/source-manifest.json",
+          "source": "docs/planning/b-route/plans/PLAN-bed480ce3e404b2cbaf5514d80a7f941/1.json",
+          "subject_digest": "sha256:f816e7a535e32e4e36f4af2dc4baa77a223155d73f660cdf0435daa87ea32e84"
+        },
+        {
+          "role": "semantic:declared_source",
+          "owner": "implementation_reference",
+          "ref": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "source": "docs/planning/b-route/plans/PLAN-bed480ce3e404b2cbaf5514d80a7f941/1.json",
+          "subject_digest": "sha256:f816e7a535e32e4e36f4af2dc4baa77a223155d73f660cdf0435daa87ea32e84"
+        }
+      ],
+      "document_ref": "sha256:7e5e1fe8aeb5937c70caa16aea2a9e1784a429c70c30a4f7f4d66601f1880061",
+      "public_mapping": null
+    },
+    {
+      "subject_digest": "sha256:f816e7a535e32e4e36f4af2dc4baa77a223155d73f660cdf0435daa87ea32e84",
+      "path": "docs/workflows/chapter3-source-set.json",
+      "raw_digest": "sha256:499d49af5e6273631d38bd6c51f1a4329fe1f4a8b28b2c4005056a8082dd37c7",
+      "raw_bytes": 283,
+      "roles": [
+        "semantic:declared_source"
+      ],
+      "owner_uses": [
+        {
+          "role": "semantic:declared_source",
+          "owner": "newrouge.b-route-adoption-review-subject.v3",
+          "ref": "logs/ci/b-route-adoption-reviews/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/subject.json#/registered_source_set",
+          "source": "docs/planning/b-route/commits/NativeV15Origin03.json",
+          "subject_digest": "sha256:f816e7a535e32e4e36f4af2dc4baa77a223155d73f660cdf0435daa87ea32e84"
+        }
+      ],
+      "document_ref": "sha256:499d49af5e6273631d38bd6c51f1a4329fe1f4a8b28b2c4005056a8082dd37c7",
+      "public_mapping": null
+    },
+    {
+      "subject_digest": "sha256:f816e7a535e32e4e36f4af2dc4baa77a223155d73f660cdf0435daa87ea32e84",
+      "path": "logs/ci/2026-11-06/b-route-sources/s25-v15-exclusive-offline/prepare-02/prepare/source-blocks.json",
+      "raw_digest": "sha256:b0c661a2838a07a0b88fe32cd8a6cebc480cec06325f07fe89264f858799db97",
+      "raw_bytes": 12321,
+      "roles": [
+        "semantic:declared_source"
+      ],
+      "owner_uses": [
+        {
+          "role": "semantic:declared_source",
+          "owner": "source_ledger",
+          "ref": "logs/ci/2026-11-06/b-route-sources/s25-v15-exclusive-offline/prepare-02/prepare/source-blocks.json",
+          "source": "docs/planning/b-route/plans/PLAN-bed480ce3e404b2cbaf5514d80a7f941/1.json",
+          "subject_digest": "sha256:f816e7a535e32e4e36f4af2dc4baa77a223155d73f660cdf0435daa87ea32e84"
+        }
+      ],
+      "document_ref": "sha256:b0c661a2838a07a0b88fe32cd8a6cebc480cec06325f07fe89264f858799db97",
+      "public_mapping": null
+    },
+    {
+      "subject_digest": "sha256:f816e7a535e32e4e36f4af2dc4baa77a223155d73f660cdf0435daa87ea32e84",
+      "path": "logs/ci/2026-11-06/b-route-sources/s25-v15-exclusive-offline/prepare-02/prepare/source-manifest.json",
+      "raw_digest": "sha256:67f96a837974e89bdfdb97fdf4386b3d89d308375c4d161136677daeaefcc020",
+      "raw_bytes": 681,
+      "roles": [
+        "semantic:declared_source"
+      ],
+      "owner_uses": [
+        {
+          "role": "semantic:declared_source",
+          "owner": "source_manifest",
+          "ref": "logs/ci/2026-11-06/b-route-sources/s25-v15-exclusive-offline/prepare-02/prepare/source-manifest.json",
+          "source": "docs/planning/b-route/plans/PLAN-bed480ce3e404b2cbaf5514d80a7f941/1.json",
+          "subject_digest": "sha256:f816e7a535e32e4e36f4af2dc4baa77a223155d73f660cdf0435daa87ea32e84"
+        }
+      ],
+      "document_ref": "sha256:67f96a837974e89bdfdb97fdf4386b3d89d308375c4d161136677daeaefcc020",
+      "public_mapping": null
+    },
+    {
+      "subject_digest": "sha256:f816e7a535e32e4e36f4af2dc4baa77a223155d73f660cdf0435daa87ea32e84",
+      "path": "logs/ci/b-route-adoption-reviews/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/execution.json",
+      "raw_digest": "sha256:b64ef282c88954f7a853e090ae60f5f7c5e1d86458c2eebee963cc0e0b540e53",
+      "raw_bytes": 5993420,
+      "roles": [
+        "host:execution"
+      ],
+      "owner_uses": [
+        {
+          "role": "host:execution",
+          "owner": "newrouge.b-route-adoption-operation.v2",
+          "ref": "logs/ci/b-route-adoption-reviews/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/review.json",
+          "source": "logs/ci/b-route-adoption-reviews/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/execution.json",
+          "subject_digest": "sha256:f816e7a535e32e4e36f4af2dc4baa77a223155d73f660cdf0435daa87ea32e84"
+        }
+      ],
+      "document_ref": null,
+      "public_mapping": null
+    },
+    {
+      "subject_digest": "sha256:f816e7a535e32e4e36f4af2dc4baa77a223155d73f660cdf0435daa87ea32e84",
+      "path": "logs/ci/b-route-adoption-reviews/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/request.txt",
+      "raw_digest": "sha256:3982ab8d2317396502a29e9252d37863e6ccf845b90cd8b6f1c5689e158c9a38",
+      "raw_bytes": 255730,
+      "roles": [
+        "host:request"
+      ],
+      "owner_uses": [
+        {
+          "role": "host:request",
+          "owner": "newrouge.b-route-adoption-operation.v2",
+          "ref": "logs/ci/b-route-adoption-reviews/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/review.json",
+          "source": "logs/ci/b-route-adoption-reviews/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/request.txt",
+          "subject_digest": "sha256:f816e7a535e32e4e36f4af2dc4baa77a223155d73f660cdf0435daa87ea32e84"
+        }
+      ],
+      "document_ref": null,
+      "public_mapping": null
+    },
+    {
+      "subject_digest": "sha256:f816e7a535e32e4e36f4af2dc4baa77a223155d73f660cdf0435daa87ea32e84",
+      "path": "logs/ci/b-route-adoption-reviews/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/review.json",
+      "raw_digest": "sha256:38c33708bdeabe20a6466ebef85712df09e99218424565ec99513f7fef291f2c",
+      "raw_bytes": 2425,
+      "roles": [
+        "host:proof"
+      ],
+      "owner_uses": [
+        {
+          "role": "host:proof",
+          "owner": "newrouge.b-route-adoption-operation.v2",
+          "ref": "logs/ci/b-route-adoption-reviews/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/review.json",
+          "source": "logs/ci/b-route-adoption-reviews/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/review.json",
+          "subject_digest": "sha256:f816e7a535e32e4e36f4af2dc4baa77a223155d73f660cdf0435daa87ea32e84"
+        }
+      ],
+      "document_ref": null,
+      "public_mapping": null
+    },
+    {
+      "subject_digest": "sha256:f816e7a535e32e4e36f4af2dc4baa77a223155d73f660cdf0435daa87ea32e84",
+      "path": "logs/ci/b-route-adoption-reviews/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/subject.json",
+      "raw_digest": "sha256:4d5815078dc7ba20fe8df942dcbb8841d56d161616ce6d54f4ab5e21bc048c45",
+      "raw_bytes": 4284819,
+      "roles": [
+        "host:subject"
+      ],
+      "owner_uses": [
+        {
+          "role": "host:subject",
+          "owner": "newrouge.b-route-adoption-operation.v2",
+          "ref": "logs/ci/b-route-adoption-reviews/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/review.json",
+          "source": "logs/ci/b-route-adoption-reviews/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/subject.json",
+          "subject_digest": "sha256:f816e7a535e32e4e36f4af2dc4baa77a223155d73f660cdf0435daa87ea32e84"
+        }
+      ],
+      "document_ref": null,
+      "public_mapping": null
+    },
+    {
+      "subject_digest": "sha256:f816e7a535e32e4e36f4af2dc4baa77a223155d73f660cdf0435daa87ea32e84",
+      "path": "logs/ci/b-route-adoption-reviews/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/w/output.json",
+      "raw_digest": "sha256:882399951222d6777dbaeddb4e6570ed23808cb29d414035b84c303764564075",
+      "raw_bytes": 7320,
+      "roles": [
+        "host:output"
+      ],
+      "owner_uses": [
+        {
+          "role": "host:output",
+          "owner": "newrouge.b-route-adoption-operation.v2",
+          "ref": "logs/ci/b-route-adoption-reviews/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/review.json",
+          "source": "logs/ci/b-route-adoption-reviews/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/w/output.json",
+          "subject_digest": "sha256:f816e7a535e32e4e36f4af2dc4baa77a223155d73f660cdf0435daa87ea32e84"
+        }
+      ],
+      "document_ref": null,
+      "public_mapping": null
+    },
+    {
+      "subject_digest": "sha256:f816e7a535e32e4e36f4af2dc4baa77a223155d73f660cdf0435daa87ea32e84",
+      "path": "logs/ci/b-route-adoption-reviews/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/w/prompt.txt",
+      "raw_digest": "sha256:858f938c27ccec3a3bbf97fffa51f14d19e5c7de77e3922cda3159593e4a7923",
+      "raw_bytes": 253017,
+      "roles": [
+        "host:prompt"
+      ],
+      "owner_uses": [
+        {
+          "role": "host:prompt",
+          "owner": "newrouge.b-route-adoption-operation.v2",
+          "ref": "logs/ci/b-route-adoption-reviews/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/review.json",
+          "source": "logs/ci/b-route-adoption-reviews/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/w/prompt.txt",
+          "subject_digest": "sha256:f816e7a535e32e4e36f4af2dc4baa77a223155d73f660cdf0435daa87ea32e84"
+        }
+      ],
+      "document_ref": null,
+      "public_mapping": null
+    },
+    {
+      "subject_digest": "sha256:f816e7a535e32e4e36f4af2dc4baa77a223155d73f660cdf0435daa87ea32e84",
+      "path": "logs/ci/b-route-adoption-reviews/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/w/schema.json",
+      "raw_digest": "sha256:2154a8b0541b6c1f2d32db505f7c14dadf8dd4d8c4757e1f60adf750c9499fa1",
+      "raw_bytes": 2399,
+      "roles": [
+        "host:schema"
+      ],
+      "owner_uses": [
+        {
+          "role": "host:schema",
+          "owner": "newrouge.b-route-adoption-operation.v2",
+          "ref": "logs/ci/b-route-adoption-reviews/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/review.json",
+          "source": "logs/ci/b-route-adoption-reviews/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/w/schema.json",
+          "subject_digest": "sha256:f816e7a535e32e4e36f4af2dc4baa77a223155d73f660cdf0435daa87ea32e84"
+        }
+      ],
+      "document_ref": null,
+      "public_mapping": null
+    },
+    {
+      "subject_digest": "sha256:f816e7a535e32e4e36f4af2dc4baa77a223155d73f660cdf0435daa87ea32e84",
+      "path": "logs/ci/b-route-operations/operations/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/operation.json",
+      "raw_digest": "sha256:ad20fe68bae12bf5805e809c73dad6355db3d876d13000524810b90ccfdafc05",
+      "raw_bytes": 482459,
+      "roles": [
+        "host:operation_metadata",
+        "semantic:original_operation"
+      ],
+      "owner_uses": [
+        {
+          "role": "semantic:original_operation",
+          "owner": "newrouge.b-route-adoption-operation.v2",
+          "ref": "logs/ci/b-route-operations/operations/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/operation.json",
+          "source": "logs/ci/b-route-operations/operations/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/operation.json",
+          "subject_digest": "sha256:f816e7a535e32e4e36f4af2dc4baa77a223155d73f660cdf0435daa87ea32e84"
+        },
+        {
+          "role": "host:operation_metadata",
+          "owner": "newrouge.b-route-adoption-operation.v2",
+          "ref": "logs/ci/b-route-adoption-reviews/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/review.json",
+          "source": "logs/ci/b-route-operations/operations/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/operation.json",
+          "subject_digest": "sha256:f816e7a535e32e4e36f4af2dc4baa77a223155d73f660cdf0435daa87ea32e84"
+        }
+      ],
+      "document_ref": "sha256:3529ae13140eb456326c0a69c1e393c63924e9fe52b8e3d7acd8f747f2e4e157",
+      "public_mapping": {
+        "kind": "qualified_operation",
+        "historical_subject_digest": "sha256:832ef057e0b4d316ef98f1270871979b86abb9d5435e05edacae6beae55fffce",
+        "historical_auth_digest": "sha256:4c751e67e6c59c9102b9e82bdafc0ca80538ba6b7eaeb9d76ea71d01686f70c5",
+        "carrier_raw_digest": "sha256:ad20fe68bae12bf5805e809c73dad6355db3d876d13000524810b90ccfdafc05",
+        "public_document_digest": "sha256:3529ae13140eb456326c0a69c1e393c63924e9fe52b8e3d7acd8f747f2e4e157"
+      }
+    },
+    {
+      "subject_digest": "sha256:f816e7a535e32e4e36f4af2dc4baa77a223155d73f660cdf0435daa87ea32e84",
+      "path": "logs/ci/b-route-origin-captures/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/capsule.json",
+      "raw_digest": "sha256:df8b3c9bc2e0f5e40d1a45c865ae7b959941250c87ff0733eff5bf845311f7d7",
+      "raw_bytes": 2379892,
+      "roles": [
+        "host:qualified_origin_proof",
+        "semantic:qualified_native_content"
+      ],
+      "owner_uses": [
+        {
+          "role": "host:qualified_origin_proof",
+          "owner": "newrouge.b-route-adoption-operation.v2",
+          "ref": "logs/ci/b-route-adoption-reviews/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/review.json",
+          "source": "logs/ci/b-route-origin-captures/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/capsule.json",
+          "subject_digest": "sha256:f816e7a535e32e4e36f4af2dc4baa77a223155d73f660cdf0435daa87ea32e84"
+        },
+        {
+          "role": "semantic:qualified_native_content",
+          "owner": "planning_proof",
+          "ref": "logs/ci/b-route-origin-captures/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/capsule.json#/proposal/content",
+          "source": "docs/planning/b-route/plans/PLAN-bed480ce3e404b2cbaf5514d80a7f941/1.json",
+          "subject_digest": "sha256:f816e7a535e32e4e36f4af2dc4baa77a223155d73f660cdf0435daa87ea32e84"
+        },
+        {
+          "role": "host:qualified_origin_proof",
+          "owner": "planning_proof",
+          "ref": "logs/ci/b-route-origin-captures/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/capsule.json",
+          "source": "docs/planning/b-route/plans/PLAN-bed480ce3e404b2cbaf5514d80a7f941/1.json",
+          "subject_digest": "sha256:f816e7a535e32e4e36f4af2dc4baa77a223155d73f660cdf0435daa87ea32e84"
+        }
+      ],
+      "document_ref": "sha256:ffe97880a0050a9df42f4eafd6dd9c0d6995a9de37812f1c32e8c865e9942923",
+      "public_mapping": {
+        "schema_version": "newrouge.b-route-qualified-public-carrier-mapping.v3",
+        "claim": "complete_recorded_public_semantics_with_published_history_byte_verification",
+        "frame_digest": "sha256:f816e7a535e32e4e36f4af2dc4baa77a223155d73f660cdf0435daa87ea32e84",
+        "historical_subject_digest": "sha256:832ef057e0b4d316ef98f1270871979b86abb9d5435e05edacae6beae55fffce",
+        "historical_public_digest": "sha256:dab186938480a60479dd8e8bb4a15bdd27c5e833e6e08788a01b6bfe351d9256",
+        "historical_auth_digest": "sha256:4c751e67e6c59c9102b9e82bdafc0ca80538ba6b7eaeb9d76ea71d01686f70c5",
+        "candidate_digest": "sha256:4e51f0fcf591534427f31d843d303286d7a5005b8836d9d6a9ca7982a7835e3a",
+        "carrier_path": "logs/ci/b-route-origin-captures/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/capsule.json",
+        "carrier_raw_digest": "sha256:df8b3c9bc2e0f5e40d1a45c865ae7b959941250c87ff0733eff5bf845311f7d7",
+        "carrier_raw_bytes": 2379892,
+        "owner": "planning_proof",
+        "ref": "logs/ci/b-route-origin-captures/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/capsule.json#/proposal/content",
+        "source_record": "docs/planning/b-route/plans/PLAN-bed480ce3e404b2cbaf5514d80a7f941/1.json",
+        "source_record_raw_digest": "sha256:965faffefde5731b92e581d30be7ae8854db73844ec5411dd337e0b563e54f20",
+        "public_pointer": "/native_content",
+        "role": "semantic:qualified_native_content",
+        "kind": "qualified_native",
+        "public_document_digest": "sha256:ffe97880a0050a9df42f4eafd6dd9c0d6995a9de37812f1c32e8c865e9942923"
+      }
+    }
+  ]
+}

@@ -14,12 +14,12 @@ from _b_route_qualified_historical_v3_protocol import family,need
 
 
 def for_operation(operation):
-    from _b_route_compensation_segmented_execution import PROOF as SEGMENTED_PROOF
+    from _b_route_compensation_segmented_execution import PROOFS as SEGMENTED_PROOFS
     request=operation['frozen']['request']
     if operation['schema_version']=='newrouge.b-route-adoption-operation.v2':
         return new if family(operation)=='v3' else old
     proof=request.get('host_review_ref',{}).get('schema_version','')
-    if proof in (published.PROOF,SEGMENTED_PROOF):return published
+    if proof in (published.PROOF,*SEGMENTED_PROOFS):return published
     if proof==new.PROOF:return new
     if proof==old.PROOF:return old
     need(not proof.startswith('newrouge.b-route-qualified-compensation-review-proof.'),

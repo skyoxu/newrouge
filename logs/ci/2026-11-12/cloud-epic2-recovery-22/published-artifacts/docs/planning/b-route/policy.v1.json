@@ -1,0 +1,12 @@
+{
+  "schema_version": "newrouge.b-route-policy.v1",
+  "policy_id": "policy",
+  "policy_revision": 1,
+  "switch_boundary": {
+    "default_route": "A",
+    "a_write_allowed": true,
+    "allowed_a_operations": [],
+    "authority_refs": []
+  },
+  "frozen_a_refs": []
+}

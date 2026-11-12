@@ -951,6 +951,15 @@ def complete_review(root, *, operation_id):
 
 
 @public
+def repair_segmented_compensation_review(root, *, operation_id, stage,original_source_root=None,
+                                        model_request_budget=None,authorization_source=None):
+    import _b_route_compensation as compensation
+    return compensation.repair_segmented_review(Path(root).resolve(),operation_id=operation_id,stage=stage,
+        original_source_root=original_source_root,model_request_budget=model_request_budget,
+        authorization_source=authorization_source)
+
+
+@public
 def prepare(root, *, operation_id, request_ref):
     root = Path(root).resolve()
     return _run(root, operation_id, safe_path(root, request_ref).read_bytes())

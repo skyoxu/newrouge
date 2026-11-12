@@ -1,0 +1,20 @@
+{
+  "original34_review_files_unchanged": true,
+  "original_critical_files_unchanged": true,
+  "original83_preimages_preserved": true,
+  "production_changed_files": [
+    "/workspace/newrouge/scripts/python/_b_route_compensation_segmented_execution.py",
+    "/workspace/newrouge/scripts/python/_b_route_compensation_partition.py"
+  ],
+  "new_tests": 3,
+  "targeted_tests_passed": 28,
+  "meaningful_RED_failures": 2,
+  "harness_import_error_retained": true,
+  "original_input_restoration_passed": true,
+  "no_new_business_model_call": true,
+  "no_review_seal_or_business_operation_or_budget_reset": true,
+  "new_diagnostic_output_absent": true,
+  "json_files_parsed": 8,
+  "credential_pattern_hits": 0,
+  "implementation_and_acceptance_limits": "offline repair only; semantic approval and Windows/formal Acceptance pending"
+}

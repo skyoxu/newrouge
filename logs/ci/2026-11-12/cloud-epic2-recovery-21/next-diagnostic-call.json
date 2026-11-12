@@ -1,0 +1,75 @@
+{
+  "purpose": "one separately authorized diagnostic recheck of the preserved original second-node refusal; not production plan replay or completion",
+  "required_additional_logical_calls": 1,
+  "authorized_additional_calls_now": 0,
+  "original_plan_logical_calls_occupied": 2,
+  "original_plan_logical_limit": 2,
+  "command": [
+    "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+    "-B",
+    "/workspace/newrouge/scripts/python/codex_isolated_model_runner.py",
+    "--workspace",
+    "/workspace/newrouge/logs/ci/2026-11-12/cloud-epic2-recovery-21/diagnostic-recheck-w",
+    "--prompt-file",
+    "/workspace/newrouge/logs/ci/2026-11-12/cloud-epic2-recovery-21/diagnostic-recheck-w/prompt.txt",
+    "--output",
+    "/workspace/newrouge/logs/ci/2026-11-12/cloud-epic2-recovery-21/diagnostic-recheck-w/output.json",
+    "--output-schema",
+    "/workspace/newrouge/logs/ci/2026-11-12/cloud-epic2-recovery-21/diagnostic-recheck-w/schema.json",
+    "--timeout-sec",
+    "1800",
+    "--model-request-budget",
+    "1"
+  ],
+  "environment": {
+    "CODEX_HOME": "/workspace/newrouge-tools/codex-login-20261112-JtqMz6",
+    "NEWROGUE_CODEX_REASONING_EFFORT": "high"
+  },
+  "model": "gpt-6.1-sol",
+  "service_tier": null,
+  "model_dispatch_performed": false,
+  "measurement": {
+    "request_sha256": "sha256:23431c8f477415014e0e24213bf4dfac009215b0794a8e6f7015962b35db1b5a",
+    "request_chars": 69788,
+    "request_bytes": 69788,
+    "input_token_estimate": 69788,
+    "token_counts": {},
+    "token_counter": "utf8_byte_upper_bound",
+    "max_bytes": 1048576,
+    "max_input_tokens": 96000,
+    "reserved_continuation_tokens": 2000,
+    "truncation_allowed": false
+  },
+  "original_governance_body_unchanged": true,
+  "original_parent_evidence_unchanged": true,
+  "schema_bytes_unchanged": true,
+  "no_output_or_execution_artifact": true,
+  "sealing_original_plan_with_this_result": "unsupported; exact original request/current source policy/unknown gates remain",
+  "financial_or_subscription_quota_block_observed": false,
+  "real_limit": "immutable operation-lifetime 2 already occupied; no fresh logical authorization granted by this offline preparation",
+  "capture_adapter": {
+    "module": "_planning_skill_common",
+    "callable": "run_isolated_model",
+    "executable": "/workspace/newrouge/scripts/python/codex_isolated_model_runner.py",
+    "workspace": "/workspace/newrouge/logs/ci/2026-11-12/cloud-epic2-recovery-21/diagnostic-recheck-w",
+    "prompt_path": "/workspace/newrouge/logs/ci/2026-11-12/cloud-epic2-recovery-21/diagnostic-recheck-w/prompt.txt",
+    "output_path": "/workspace/newrouge/logs/ci/2026-11-12/cloud-epic2-recovery-21/diagnostic-recheck-w/output.json",
+    "output_schema": "/workspace/newrouge/logs/ci/2026-11-12/cloud-epic2-recovery-21/diagnostic-recheck-w/schema.json",
+    "timeout_sec": 1800,
+    "wall_timeout_sec": 1830,
+    "model_request_budget": 1,
+    "execution_log": "/workspace/newrouge/logs/ci/2026-11-12/cloud-epic2-recovery-21/diagnostic-execution.json",
+    "suppress_bytecode": true,
+    "reasoning_effort": "high"
+  },
+  "input_files": {
+    "prompt.txt": {
+      "bytes": 66844,
+      "sha256": "9210492ddaf4030933762c5073df617b09d7d69cace604a8e3ee9376fd7dff98"
+    },
+    "schema.json": {
+      "bytes": 1169,
+      "sha256": "4e51988fe1ecc781bc3569a3019c758be7a882da1720f09fd9f8bd791ca72223"
+    }
+  }
+}

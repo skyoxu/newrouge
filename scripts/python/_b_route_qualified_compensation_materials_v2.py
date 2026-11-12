@@ -118,6 +118,7 @@ class Derived:
             buffers.extend(h.retained_buffers())
         if self.context is not None:
             graphs.append(self.context.proof if self.context.proof is not None else {})
+            graphs.extend([self.context.refs,self.context.evidence])
             buffers.extend(self.context.buffers.values())
         metrics = [compact._json_preflight(v, self.work) for v in graphs]
         return metrics, [len(v) for v in buffers]

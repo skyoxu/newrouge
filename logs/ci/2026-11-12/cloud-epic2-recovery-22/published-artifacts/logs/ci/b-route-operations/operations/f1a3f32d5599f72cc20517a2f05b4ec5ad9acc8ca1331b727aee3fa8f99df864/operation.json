@@ -1,0 +1,2912 @@
+{
+  "schema_version": "newrouge.b-route-compensation-operation.v2",
+  "codec_version": "newrouge.b-route-json.v1",
+  "operation_id": "NativeV15Origin03Compensation01",
+  "state": "reserved",
+  "request_raw_base64": "ewogICJzY2hlbWFfdmVyc2lvbiI6ICJuZXdyb3VnZS5iLXJvdXRlLWNvbXBlbnNhdGlvbi1yZXF1ZXN0LnYyIiwKICAicHJvZHVjZXIiOiAiY29tcGVuc2F0aW9uIiwKICAib3BlcmF0aW9uX2lkIjogIk5hdGl2ZVYxNU9yaWdpbjAzQ29tcGVuc2F0aW9uMDEiLAogICJjb21wZW5zYXRlcyI6IHsKICAgICJvcGVyYXRpb25faWQiOiAiTmF0aXZlVjE1T3JpZ2luMDMiLAogICAgImZyb3plbl9kaWdlc3QiOiAic2hhMjU2OjU1MWNlOTlkOThhNTQ2ZjEzY2I4ZTE1MGNmMmVmMDUxNTZlNDVlNGQwZjUwMjk5M2NjMjUzMzQyM2Q4NmI4OTQiLAogICAgInJlcXVlc3RfcmF3X2RpZ2VzdCI6ICJzaGEyNTY6OWU5OGFkOWQ2Nzg5NjExMTFkNTA1ZDgzNzk4MjQ1MzZlZWE4YmRjZjRjZTkxZGEwZGY0YTU3NGY1YzcyNWFhMCIsCiAgICAiZWZmZWN0c19kaWdlc3QiOiAic2hhMjU2OjYxNzdmZDBiMDk2MmQyMzc1ZmNiYjBiYzU0YmJjNTM5YjdmMmJhYmNjMTY1YjllNTYzNWMxMTE5ZWUwNzU3MGMiCiAgfSwKICAic2VsZWN0aW9uIjogewogICAgInBsYW5fcmVmIjogewogICAgICAicGF0aCI6ICJkb2NzL3BsYW5uaW5nL2Itcm91dGUvcGxhbnMvUExBTi1iZWQ0ODBjZTNlNDA0YjJjYmFmNTUxNGQ4MGE3Zjk0MS8xLmpzb24iLAogICAgICAic2NoZW1hX3ZlcnNpb24iOiAibmV3cm91Z2UuYi1yb3V0ZS1wbGFuLnYxIiwKICAgICAgImVudGl0eV9pZCI6ICJQTEFOLWJlZDQ4MGNlM2U0MDRiMmNiYWY1NTE0ZDgwYTdmOTQxIiwKICAgICAgInJldmlzaW9uIjogMSwKICAgICAgImRpZ2VzdCI6ICJzaGEyNTY6OTY1ZmFmZmVmZGU1NzMxYjkyZTU4MWQzMGJlN2FlODg1NGRiNzM4NDRlYzU0MTFkZDMzN2UwYjU2M2U1NGYyMCIsCiAgICAgICJ2ZXJpZmljYXRpb25fbW9kZSI6ICJyYXciLAogICAgICAiY29kZWNfdmVyc2lvbiI6IG51bGwKICAgIH0sCiAgICAiYmluZGluZ19yZWYiOiBudWxsCiAgfSwKICAicmVhc29uIjogIlByZXNlcnZlIHRoZSBvcmlnaW5hbCBpbmRlcGVuZGVudGx5IHJldmlld2VkIHBsYW4gbWVhbmluZyBpbiBhIG5ldyByZXZpc2lvbiBhbmQgcmVzb2x2ZSBvbmx5IE5hdGl2ZVYxNU9yaWdpbjAzOyByZXRhaW4gYWxsIGV4aXN0aW5nIFRhc2sgaGlzdG9yeSwgb2JsaWdhdGlvbnMgYW5kIGxhdGVyIGxlZ2l0aW1hdGUgY2hhbmdlcy4iLAogICJob3N0X3Jldmlld19yZWYiOiB7CiAgICAicGF0aCI6ICJsb2dzL2NpL2Itcm91dGUtYWRvcHRpb24tcmV2aWV3cy9mMWEzZjMyZDU1OTlmNzJjYzIwNTE3YTJmMDViNGVjNWFkOWFjYzhjYTEzMzFiNzI3YWVlM2ZhOGY5OWRmODY0L3Jldmlldy5qc29uIiwKICAgICJzY2hlbWFfdmVyc2lvbiI6ICJuZXdyb3VnZS5iLXJvdXRlLWNvbXBlbnNhdGlvbi1zZWdtZW50ZWQtcHJvb2YudjIiLAogICAgInJhd19kaWdlc3QiOiAic2hhMjU2Ojc2MjNkMmI0NmZkOWU4ZjA5ZjE5MzViOTJmM2VjYzRhZDFlMmE3NTViN2QyYmI1Y2FjNzEwOTlmZWYwZTk3ZmYiCiAgfQp9Cg==",
+  "request_raw_digest": "sha256:672b4c44f5e5686e5b57ada3f959f90c151587dfc98c70ef9b70a1dbe9315ed0",
+  "request_digest": "sha256:b0606463e3a341dcec5a3bea5fb165c49106e7b453dae1ef73d52aaeb517ed72",
+  "frozen": {
+    "producer": "compensation",
+    "request": {
+      "schema_version": "newrouge.b-route-compensation-request.v2",
+      "producer": "compensation",
+      "operation_id": "NativeV15Origin03Compensation01",
+      "compensates": {
+        "operation_id": "NativeV15Origin03",
+        "frozen_digest": "sha256:551ce99d98a546f13cb8e150cf2ef05156e45e4d0f502993cc2533423d86b894",
+        "request_raw_digest": "sha256:9e98ad9d678961111d505d8379824536eea8bdcf4ce91da0df4a574f5c725aa0",
+        "effects_digest": "sha256:6177fd0b0962d2375fcbb0bc54bbc539b7f2babcc165b9e5635c1119ee07570c"
+      },
+      "selection": {
+        "plan_ref": {
+          "path": "docs/planning/b-route/plans/PLAN-bed480ce3e404b2cbaf5514d80a7f941/1.json",
+          "schema_version": "newrouge.b-route-plan.v1",
+          "entity_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+          "revision": 1,
+          "digest": "sha256:965faffefde5731b92e581d30be7ae8854db73844ec5411dd337e0b563e54f20",
+          "verification_mode": "raw",
+          "codec_version": null
+        },
+        "binding_ref": null
+      },
+      "reason": "Preserve the original independently reviewed plan meaning in a new revision and resolve only NativeV15Origin03; retain all existing Task history, obligations and later legitimate changes.",
+      "host_review_ref": {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/review.json",
+        "schema_version": "newrouge.b-route-compensation-segmented-proof.v2",
+        "raw_digest": "sha256:7623d2b46fd9e8f09f1935b92f3ecc4ad1e2a755b7d2bb5cac71099fef0e97ff"
+      }
+    },
+    "allocations": {
+      "plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+      "plan_revision": 2,
+      "binding_revision": null,
+      "requirements": {
+        "RQ-9f1d67605e48444881eb0329c233d880": "RQ-9f1d67605e48444881eb0329c233d880",
+        "RQ-3c078fbc9c484aea935ef1c955c6b3ab": "RQ-3c078fbc9c484aea935ef1c955c6b3ab",
+        "RQ-4be0664a370442e6aefcd3b3d1556131": "RQ-4be0664a370442e6aefcd3b3d1556131",
+        "RQ-19d7f5e27dcd4a1d9236315f6bf288e3": "RQ-19d7f5e27dcd4a1d9236315f6bf288e3",
+        "RQ-b5ce45a545254d1a8aa205a5944535e3": "RQ-b5ce45a545254d1a8aa205a5944535e3",
+        "RQ-b0dfd40c17bb4789ab08cf31f920ecb9": "RQ-b0dfd40c17bb4789ab08cf31f920ecb9",
+        "RQ-b2b58a9a58ac4834840be0bc238e275f": "RQ-b2b58a9a58ac4834840be0bc238e275f"
+      },
+      "flows": {
+        "FLOW-f78c671da6d04b7dbed7a6111d652007": "FLOW-f78c671da6d04b7dbed7a6111d652007"
+      },
+      "task_definitions": {}
+    },
+    "scope_ids": [
+      "command:141f3839991b437b5679f0d5cbe1aed8d532fb5265432c63f644bab4b5dc54df",
+      "command:2374d91794b79f4fb4ec9587d2cf00aecc4f9953fab3ed1dd12ab147a0b721f9",
+      "command:2beeddda1095565e2324f9383307d6ee9a029ca5ca3ab955be4fdf7f3fd5d761",
+      "command:a83a31320d921b888a48fa5edd0b4b5a29984de6e96bf7b8ac7d29ba06caf616",
+      "command:c125d0397b605657bc89340953f5f2897a7e00a9b7d3474fa53720c8ccbbb3e3",
+      "command:ed98d7ad0f763addbb9d7851664f312dc52d501b07b47b9c3e27a90aea3e2353",
+      "file:1d90a99f81bf109e2e84e659c5364d440a8152728153e578dd38e4884614d32a",
+      "file:25e2729c68b54bec6db9786b047cff3c99055537b52ec1c7db5337e263e56f83",
+      "file:9ac7f5703f06c6b202fdf4d6ec316e1d00629d948428e0e35b57ec7e2be7cad9",
+      "file:b9225658bc9a51c192718df3d4bd9e27a8b7f80581a74cd83fd73e3f15d66249",
+      "flow:0fe05734aec3d51c9c6fe180955ee0fd5e6538cf8246a66a40053a3d1793314b",
+      "plan:211bad3bf57b9c0e50eb4f1036e07594be0edaa11170079e5debc9fecf137f7a",
+      "requirement:0693bf3e4246960d211d696c064e0e8ffe22821de1e98cf33a46c5a9f99eee5a",
+      "requirement:09c260541245f8b30dc2c3a5ce90b3af02db8b41393eb8a1495c3af8513ef2f1",
+      "requirement:1c3182ed2183807f616df9d9955ede4884bd8856184814ec2b28037366dbac55",
+      "requirement:366846984398a728b7ddb335150dd190b71263635708486381ab7ee49fc559c6",
+      "requirement:42d8a10fc0b87e500d28c8d4dc36a2856b12cb677b3f2961c1c4981a584086fa",
+      "requirement:6461da1c884ae7c45733635fc60944027ef3c6059cd7016e133139511020bebb",
+      "requirement:69756236a7af8ee85f3e2251434abca2249a193972b037960224d9421fafd38e",
+      "requirement:7b86ad55a942eadb221fadd4c76bfdfa19372d980ba48ce05ee0e0c54aa99925",
+      "requirement:7d6abbbe60e11edbeb859c6d4b161eae2a6797c2868be88ca058d89a9dc593f1",
+      "requirement:8740a9fb10613e783ef0c6aa3cadad216402215ed8cc29846b0f2618c9573cd3",
+      "requirement:d73f9679825ef62ef23e5a92c86923eb978ca5bebbafc2f573057139fc9a3e14",
+      "requirement:db05e83b1f364b9cf7d6128eb29ae7b0080a25371358df51e6944b7e0287cdec",
+      "requirement:f440de596fa1f027cb3f9fcac50d34f601dd61942b3d7fab8bde04c96a0fd565",
+      "requirement:f9cc6a793f1e79b1fdd4c91cba7c0068259104bf02a8d6c24b7be9f68b06371f",
+      "state:4a73ac20502e63d5f97101b2cf4ccc270fb270e0a62a012acd40475bcc77094b",
+      "state:bb01347a332a266d0a47ba5c82bbafe84600c7f23dd84d6562cfc3e7885dcf3c",
+      "state:d3aa12e8e139472b3682eb0bed8aa0778459777cfc828314a57ad7758332d2c1"
+    ],
+    "authority_refs": [
+      {
+        "path": "docs/planning/b-route/catalog.v1.json",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:86317dea22202aff8261fb01da2a6b078f2c3e3f860e57d411216a06131fc7f2"
+      },
+      {
+        "path": "docs/planning/b-route/commits/NativeV15Origin03.json",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:8ec08628ff77980b92ead4de5e076fe4f4b1bc1ed4b2922fa7f2d84b5744535f"
+      },
+      {
+        "path": "docs/planning/b-route/plans/PLAN-bed480ce3e404b2cbaf5514d80a7f941/1.json",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:965faffefde5731b92e581d30be7ae8854db73844ec5411dd337e0b563e54f20"
+      },
+      {
+        "path": "docs/planning/b-route/policy.v1.json",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:cc07d8eef84b3285e0ccda33b1f5ae915d9f74dba3c1823f47b988315ae6f7f0"
+      },
+      {
+        "path": "docs/planning/b-route/task-origins.v1.json",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:050a156a25f0fa55585057f06dafbef7419789bfb60ade5215028677e119925e"
+      },
+      {
+        "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:7e5e1fe8aeb5937c70caa16aea2a9e1784a429c70c30a4f7f4d66601f1880061"
+      },
+      {
+        "path": "docs/workflows/chapter3-source-set.json",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:499d49af5e6273631d38bd6c51f1a4329fe1f4a8b28b2c4005056a8082dd37c7"
+      },
+      {
+        "path": "logs/ci/2026-11-06/b-route-sources/s25-v15-exclusive-offline/prepare-02/prepare/source-blocks.json",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:b0c661a2838a07a0b88fe32cd8a6cebc480cec06325f07fe89264f858799db97"
+      },
+      {
+        "path": "logs/ci/2026-11-06/b-route-sources/s25-v15-exclusive-offline/prepare-02/prepare/source-manifest.json",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:67f96a837974e89bdfdb97fdf4386b3d89d308375c4d161136677daeaefcc020"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/execution.json",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:b64ef282c88954f7a853e090ae60f5f7c5e1d86458c2eebee963cc0e0b540e53"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/request.txt",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:3982ab8d2317396502a29e9252d37863e6ccf845b90cd8b6f1c5689e158c9a38"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/review.json",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:38c33708bdeabe20a6466ebef85712df09e99218424565ec99513f7fef291f2c"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/subject.json",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:4d5815078dc7ba20fe8df942dcbb8841d56d161616ce6d54f4ab5e21bc048c45"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/w/output.json",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:882399951222d6777dbaeddb4e6570ed23808cb29d414035b84c303764564075"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/w/prompt.txt",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:858f938c27ccec3a3bbf97fffa51f14d19e5c7de77e3922cda3159593e4a7923"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/w/schema.json",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:2154a8b0541b6c1f2d32db505f7c14dadf8dd4d8c4757e1f60adf750c9499fa1"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/capability-coordinator.lock",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/historical-auth.json",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:2307e68770f93444ff75c39f56c50c4c34f2a19107d404f01210850160abc29f"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/materials.json",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:70fb6efccd3a77588f93084ba52edad9e0d0820585e96cc89a3ce569b9f6f6ff"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/presentation.json",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:6045e2bd41a8323f9ceb31e3a7ddf66e3cf76dc1ea1268566c7c5ccc6b799792"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/review.json",
+        "schema_version": "newrouge.b-route-compensation-segmented-proof.v2",
+        "raw_digest": "sha256:7623d2b46fd9e8f09f1935b92f3ecc4ad1e2a755b7d2bb5cac71099fef0e97ff"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/roles.json",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:e1a1748df8c99e7175bbccaaed93d5b941031cd1f16c2eabbeb8401606427796"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/call-limit.json",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:9b778854c7cd1823a68659311fdd0c20821711344b15b0ec4672de18f50d68b0"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/nodes/000/base-prompt.txt",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:d1dce96a1d126a21a05987ae596c0b8ed26e1eceafa199453ad1422f5ee86586"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/nodes/000/completed.json",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:88db8f82b3c4dee3649c39466b57698ded48f13c859f0596f5458b8ee3636de6"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/nodes/000/execution.json",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:d053e67070126869e8f0acaf71f4e80f3d4202f729569ca8175870660cd61d82"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/nodes/000/intent.json",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:1bef27dc0e15782b6ab1658a4ad17f728bbe22a90a45e2c213db9c6122f49cd4"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/nodes/000/measurement.json",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:9581d60914ff8b4dda50c1521acfea9cada86a9aee318972ce512b98156e8cc1"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/nodes/000/request.txt",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:b76e6c96076b22616e1f2792409aa15e4fd0eab114ab67cffa228c0e151b2dd8"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/nodes/000/result.json",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:db9195382561469e4d44f7d5efa2de16a005bfc9c7705a013dd2723887be54d7"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/nodes/000/w/output.json",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:1fbad7776e4a3d62f0e8070263e155dfe4a95f5a325cd2b8033b3c3fae9ec667"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/nodes/000/w/output.json.2b098deaa952488e9a33aa4aee2b0f6d.app-server.jsonl",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:3a721edcd967149556a7336b0346e7f3cf11aba393c45611603f4e4a0ba9e3c5"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/nodes/000/w/output.json.2b098deaa952488e9a33aa4aee2b0f6d.app-server.stderr.txt",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:c5d3ddae634444a7f0d0bdab414e04123c8dcb1dab92dc5967b38483d1cbbfd8"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/nodes/000/w/prompt.txt",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:66264ce22b7e5c41e58b721480458fc222f775a3f090d1d6b9099b7e22162898"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/nodes/000/w/runner-input-integrity.json",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:17f102be47bf3a9c3fde176f30a4aed1b7839ec82e9b5e763c7354359976248b"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/nodes/000/w/schema.json",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:371b657f118fa4440b075493c7bde613a154d34ad3487d0176ab79360fe65204"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/nodes/001/base-prompt.txt",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:1df3a192b3789024dd8068de3d070a867d2fc0fc1186ebeee8e04f1af21fd837"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/nodes/001/execution.json",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:4bb3c1850971c904a5a1b17d380e07fb2385cc6f1ba93bac9fecdce8a7cb7536"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/nodes/001/intent.json",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:ed2f322899baede9b23735d3e55e46d89f46198936f510d046e2693b8babd7c2"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/nodes/001/measurement.json",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:dec95ffb9cb50b872058d35b7ba46014c9968e889ef599bba5471f8848a97168"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/nodes/001/request.txt",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:1db9232a64adc1cc9564577929dab003374a40d189732d33fea2496cfb2d6337"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/nodes/001/unknown.json",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:4da502e12b461a07d9b42a2867c3a5e1fc64989be4fffd91afd1d5be322bd6f8"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/nodes/001/w/output.json",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:15556da514225c340f7ae5f2e188372ba9fec4198ffc1bac0ac92692c3f81434"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/nodes/001/w/output.json.087ec7f905f24d68a970a85a17b561fd.app-server.jsonl",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:f6447c1e65f10ea137dd61b33ea68261756b3fa43a06b79cc104aa24ebdeb28f"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/nodes/001/w/output.json.087ec7f905f24d68a970a85a17b561fd.app-server.stderr.txt",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:a893ff07c2e1e85d5c410f67e8acc9f038a4ca1c127a55a7ca4b769a6a07c1b6"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/nodes/001/w/prompt.txt",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:c4eb31e9c59ba6f73b42cb97b113e48b23a40384087c583cd205eae92fc64b5c"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/nodes/001/w/runner-input-integrity.json",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:17f102be47bf3a9c3fde176f30a4aed1b7839ec82e9b5e763c7354359976248b"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/nodes/001/w/schema.json",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:4e51988fe1ecc781bc3569a3019c758be7a882da1720f09fd9f8bd791ca72223"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/plan.json",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:21038eaf31f8a98e6159ab4be002e089ff889b203f892775c42e79a182f64d9a"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/allowance.json",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:5e06d9c5705d3538691cdf3764fc96ced9468b4104427eee0fa4d45538dfda5d"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/business-base.txt",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:8570a11b8e3f76416328bf6bfc398121fda336224c29cc202d98576ec24c4fd6"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/claim.json",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:f95223ab33ecc32a3410a97489d682eb1cafb8256d5faf61b2f3217882ccd253"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/completed.json",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:fe8e3516fc5294f0827bb0e259e3f987aed7207740e57042f2baa2427f0d43f4"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/execution.json",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:f81c2d7c2d18f27e107330c308905e1207a51a468a00007465bd1c506d09f140"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/governance-base.txt",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:039ae3545a92d79f97746d5fda884ce85362d4e736359b586790866d7ee40eb9"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/historical-auth.json",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:b63a8e405ed5fbbd10dc86aab09a97cb66fabc6e44100977616cef31fd2f74ff"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/intent.json",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:e26cff6421806e2c1c8c8e3a9e1a36ac61f8f9a187118e27e309ddfee4005d2f"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/manifest.json",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:ba673d8a82c8391ecac7ce84b6feb1c3eb7af445e9cac2c23d37e461f67674cc"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/materials.json",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:0a052fb16a188414dddd9142c2f8858a6c512a1e6fd4b287c9e062f905d61904"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/measurement.json",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:449ba851562a2cdfb16ea6315a353783c19567c33ea88e664f2471b7be5d8a34"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/original-source/docs/planning/b-route/schemas/adoption-operation-v2.schema.json",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:f9ccae848fa08c0cc198ea7655a6974481ee075d8e8c7bc2110b750168b2328a"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/original-source/docs/planning/b-route/schemas/adoption-operation.schema.json",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:8079a4f334d40ee27188e538e56830e54237ebf3ac56109742e81588d083827e"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/original-source/docs/planning/b-route/schemas/binding.schema.json",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:df78956b54debc808fcfdb0d6b33ccd652c1aa6eea74f6d1c9a694075c10d30a"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/original-source/docs/planning/b-route/schemas/catalog.schema.json",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:5fd03ab0d98034214a37d843e2cc370c1e52fac9aba7ebcc97dfc7e91b86b601"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/original-source/docs/planning/b-route/schemas/commit-intent.schema.json",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:fddd9fde4417fa1c8b26c95650e86d9825f490728dd262e3c8723c8dc6d8863d"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/original-source/docs/planning/b-route/schemas/commit.schema.json",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:230a05230b72aef39196ae3748bc5507e5698b5ae84d70f338ffcfbc6de8341a"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/original-source/docs/planning/b-route/schemas/common.schema.json",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:712b305ddfc68ff1bd3e7a3f52e1bb9c89393e5b49aa22945ecd726ace9d1790"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/original-source/docs/planning/b-route/schemas/compensation-operation.schema.json",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:62cc697377953a3d496ade131815a4ef0f3a911c3d91b8a04d7cbc1d2c616def"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/original-source/docs/planning/b-route/schemas/flow-graph.schema.json",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:db16a69e1d8971e38ed41ff51c7b3cc8b28c56885790894b827c060667c77c17"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/original-source/docs/planning/b-route/schemas/origins.schema.json",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:dab25379c6141b4b1c25189ac140ce991214acdf3226ee8d37e2759ebed43d78"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/original-source/docs/planning/b-route/schemas/plan.schema.json",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:a67203c9edcc16709a054a9b3e29503083c15e2a38b6995dce48870616f05184"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/original-source/docs/planning/b-route/schemas/planning-candidate.schema.json",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:c9f31798b7d159db578ad828b15ae346638b79be4979468aa8d63c0eaaae5ff4"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/original-source/docs/planning/b-route/schemas/policy.schema.json",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:daccdd9592da065ae53d43f347f87ef9690eafe186cc386e1e636c1943b4b855"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/original-source/scripts/python/_b_route_adoption.py",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:256051f4c972e7e94936468bde74c305554e0e6e743ec80e08b9f07ba9898c8b"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/original-source/scripts/python/_b_route_adoption_projection.py",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:527be88bdb25219ad633734b790ed68118bdd055a8635d16135b276a9894c26a"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/original-source/scripts/python/_b_route_adoption_review.py",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:b6c5d173fb0e30023fd58a53d497a7fea4b6f2997041fa97bdcb30990bce4560"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/original-source/scripts/python/_b_route_candidate.py",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:563fd5f0edd1a6353ae25bb8b687fe761a99eca31c5e1626da86514612481f06"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/original-source/scripts/python/_b_route_codec.py",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:57b83b6ed9c69676bd721b5a515581df882b12e961e00bf7a4aec33ae6bc0697"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/original-source/scripts/python/_b_route_commit.py",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:549b6ad461831d0a43549150740509d3f161b0e275e30200b1c33c6e62afafc0"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/original-source/scripts/python/_b_route_commit_projection.py",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:314be24cb52df152e1efe39a8ffbd85a920961012068d9db12d5a2d23fe13b45"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/original-source/scripts/python/_b_route_compact_literal.py",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:7fb6e3e0c7c16b21ae7286360d7c65c1b5cb393c388bda9584ba82bb8c34d87c"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/original-source/scripts/python/_b_route_compensation.py",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:bdb60d2e299fb34f049a9b8c468f6d164ec112a3e1034551be56b778a5199d99"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/original-source/scripts/python/_b_route_compensation_partition.py",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:56f245bae9af76a967e4a76b117988a13e1171111cfc1e49408b464a29f9474e"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/original-source/scripts/python/_b_route_compensation_review_materials.py",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:8ac919ed20b77aa814e4cb300e8231178e2152a40bc71138a027a3dcf6bae618"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/original-source/scripts/python/_b_route_compensation_review_profiles.py",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:32de7a41c46c351a72d052c6ea4367462ea79986eb9b30f82043fb65d93e0d67"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/original-source/scripts/python/_b_route_compensation_segmented_execution.py",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:eec6fa671ba8d2a7b98f13ca92e0ffc851dccf1147a38fb8bc041e07d8c88c98"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/original-source/scripts/python/_b_route_compensation_segments.py",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:ad7dc46743c64071f395993b04188a85c6fd420e7f6a318cee85ed9afddbd0f6"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/original-source/scripts/python/_b_route_flow_graph.py",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:0fe543a157ed4963c5cf1cba2500dab9d93b58621c0a292fda298a2994007e2c"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/original-source/scripts/python/_b_route_frozen_native_reader.py",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:3c2b2c614082c3dcd04f5ac4866e0152fa93e4dc19ac5487853cef6731f41548"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/original-source/scripts/python/_b_route_initial_legacy.py",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:27f5d990a3f3223db8bb354f1765b91d58cfcab51cb85908b57af486ec566e8c"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/original-source/scripts/python/_b_route_inventory.py",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:64036e466358a10e27117df466526937e3f41252ea3520b98ba1d7cdcfca29d9"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/original-source/scripts/python/_b_route_operation_leases.py",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:04589648e03ec0e9ea6c1b8adc9e931e340d72681320e98bc58fe36e5c5727b8"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/original-source/scripts/python/_b_route_operation_scope.py",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:c9855493ef412ff3bfa1ef86aaa90d0a6c75d6cafcda4dc757064ea71b3dcbc6"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/original-source/scripts/python/_b_route_planning_input.py",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:58171b924e957a9893e7436e26ac823b0a13e3c8a41514efd3def9846d66c76c"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/original-source/scripts/python/_b_route_planning_runtime.py",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:b9562da3e400dbbdd183e9208e8ac60ccb7f4038762a05f999518a9fe80304ff"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/original-source/scripts/python/_b_route_planning_wire.py",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:86bcb500e3a75d606009ea5f3d7c9574616be8bc90a031c15d38e90f98a9f39f"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/original-source/scripts/python/_b_route_preflight.py",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:f2069f4de96684dc2257eb262c9f3b6e42fe7f0a8ded3c3ebd0f52c21e60744b"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/original-source/scripts/python/_b_route_protection.py",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:489f4798b30cd93caa10b3c0d759125c9ef1d36ece5351dadd8b7c23e7f38f4d"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/original-source/scripts/python/_b_route_published_compensation_review.py",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:faa9fc12fb347c45c76a94082dc54b33e772c1b7abae2536f6fdffa9b85d1eec"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/original-source/scripts/python/_b_route_published_history.py",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:de742fb3bf77150fff505052b71f68f4b08ece181590ea07cf8cf139af513269"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/original-source/scripts/python/_b_route_qualified_compensation_dispatch.py",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:d6a2d6cfaf01d9029293557783956c2f80f61ab72bc5a69c9f256e7155901f9a"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/original-source/scripts/python/_b_route_qualified_compensation_materials.py",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:5a89d32f26d413ca6e8d483226ee9bb04a3f354bd12f24a9b489a03999657eb5"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/original-source/scripts/python/_b_route_qualified_compensation_materials_v2.py",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:13f6b724ca8afce8842d852bb187f9120da64974bc113cba381d29232f482b6e"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/original-source/scripts/python/_b_route_qualified_compensation_review.py",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:f38c1f292e75177c1782af7c566e595ff7cdc992c1d62d344a0a7c6e82fdb897"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/original-source/scripts/python/_b_route_qualified_compensation_review_v2.py",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:cf458cf3721185c270a963d6c32a4ca8a0fdf40956b18ef1a84ada2caab1a473"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/original-source/scripts/python/_b_route_qualified_historical_archive.py",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:c0f63b9ecf7d0b8c324523b96b571981277a701f4401d48ad9e7d8b12d0a51b5"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/original-source/scripts/python/_b_route_qualified_historical_auth.py",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:a0d7768124fc208ba8c7acc997ea2c6506b6462ee7ec50eb5ebcb826a1d7d331"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/original-source/scripts/python/_b_route_qualified_historical_auth_v3.py",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:8dbbfbf6a67c8bba6b8fc9999e3b79ed79ca8b908639390eeb6f43dc06060a72"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/original-source/scripts/python/_b_route_qualified_historical_v3_protocol.py",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:66946ab963651ce85fff1d4f83450c1baf074105f4dd335f82bbfa8ead5e0bf7"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/original-source/scripts/python/_b_route_qualified_history_host.py",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:5bc012afc561428cb254a850e4c0eaea1682da3867c0daf435e0eb699fcffb33"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/original-source/scripts/python/_b_route_qualified_history_host_v3.py",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:2f6afcc07f2e8ba0beb250854f0c018f310a6eb5ac04ae7841b36d94e2b820e7"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/original-source/scripts/python/_b_route_qualified_history_router.py",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:e247ce03c0394aae845355313212e2ae14ff7bdf537c84ca725d40787f716514"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/original-source/scripts/python/_b_route_qualified_origin.py",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:421c75fb86a175f3b09ef663811775c067f2ffe4c1b36dc39bab2ffa30b5d743"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/original-source/scripts/python/_b_route_qualified_public_history.py",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:c720c51a44775dbc8f1250c2bbf04db8f75a0aecc8b5884c1f13407e9f49eddb"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/original-source/scripts/python/_b_route_qualified_public_history_v2.py",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:9ba892a1b8aebcf62783154d8f6fe66d3ab0a69ca4d4982e336ced0971c84372"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/original-source/scripts/python/_b_route_reader_lifetime.py",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:9aaec97a56d5e96cbcc77ff3b36fd2ee7bcf035a6e4c831e5786092cd48db74b"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/original-source/scripts/python/_b_route_record_owners.py",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:781a1e5c93fd010a67a2ba24827a9736c21872dcf15c44f5316b2041bd71a9e0"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/original-source/scripts/python/_b_route_records.py",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:9727e52339edabf12db23e519bb44061d8763bb53a42183036e60241cbd90b32"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/original-source/scripts/python/_b_route_retained_execution.py",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:2b36e58edc9d0c606f03446549cd299b3978e351c13c8d80abd0d80c24fa5304"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/original-source/scripts/python/_b_route_schema_resources.py",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:00dba650cc6082aee143946b2a13daca8bf04e209143b83944b6bbc8f35cbdb2"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/original-source/scripts/python/_b_route_segmented_requests.py",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:80ac955afce792febe1a7783510e41594533717bb46fc5b81c8215d042386071"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/original-source/scripts/python/_b_route_sources.py",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:9028b544dc89d34bd39d057bb1523d18a3a17eb30e6aabc7fec15f4f2f4c5959"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/original-source/scripts/python/_capability_input_integrity.py",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:467a8b3cc69f6fedf9135493457285b0e76658962a96c532b783f24600149ded"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/original-source/scripts/python/_chapter5_contract_bindings.py",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:f7bf87f7a84b52f02ed0705cb7f222ae30a32c9834c0b9bae5ab9632d13ccf11"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/original-source/scripts/python/_codex_app_server.py",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:598eb7d9e4e2dccec5a1a0ba31cf3b8e9fa0cd1df1d9d5b9263564cef1bdc022"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/original-source/scripts/python/_mvg_capability_checkpoint.py",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:546fe588a6e9d71cc0d9b2536d5815f75b2c2aade642c6c9dc99f513700ac408"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/original-source/scripts/python/_mvg_capability_recovery.py",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:c84490855099e5b891a9b467cb7c5d212c1aac292c8245cfa8e11c29403e64c4"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/original-source/scripts/python/_mvg_evidence_transport.py",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:e2d0724d50865633858f851a1b2153400540f261191e43bd0c451b89189ade50"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/original-source/scripts/python/_mvg_lossless_context.py",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:f40e73f526f24b6665e5325debfca897ceea479b3aa68f49b1c14f3fe9f3d8c9"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/original-source/scripts/python/_mvg_manifest.py",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:36c8d74add9dac6cfe4edef4b4f86bc73ac53c6a1963adb975971f9df5f63572"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/original-source/scripts/python/_mvg_requirement_routes.py",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:9d6cfee6bcbe5182d44ab23a069552b733b182e7f8f80613d58749a9006e1f9a"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/original-source/scripts/python/_mvg_structured_context.py",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:a91cb188b5bb595f781e11569b20631277f865ae864ccd3513ca1eee5d69f2b4"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/original-source/scripts/python/_mvg_worker_lifetime.py",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:e5a744567af9b5acee75198bdb1a056d0fcf9e43187cdf0e66d178f26e7a01c3"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/original-source/scripts/python/_planning_apply_journal.py",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:01d277fd7304a6a3e4a7e8e8d22e5ed830a26bf906d3e5fb9fdf2590d98db801"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/original-source/scripts/python/_planning_execution_binding.py",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:347f39c8956118ed578d9f7e2817078ef2a667de44dce00870ad2d992293f979"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/original-source/scripts/python/_planning_skill_common.py",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:4c95be65c4948bafbde70fee9a941c28fc42a7765210486303d49257676ae808"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/original-source/scripts/python/build_source_ledger.py",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:6268a6dcb700b672394dfe047f6ba9bb028a54918514cc90cbd8af9c686c0d1d"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/original-source/scripts/python/codex_isolated_model_runner.py",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:ab5c5886b748b95e7c28e44d9fadfe73fefdf2ee1ed9651a321816006ac99d78"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/original-source/scripts/python/inventory_b_route_baseline.py",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:fc5549ecdc968cbced61b399ed04f8ea48e689ce788ea42584b13a0092aaf95d"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/original-source/scripts/python/openai_isolated_model_runner.py",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:fbec85b64d0ad355fb3c497e13f619cf9648ab68dca34271e18370eb3bc85827"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/original-source/scripts/python/qualified-historical-owner-authority.v1.json",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:c6e4ec011c73414bb8a8ce315bce9971c5f8f3d26e93415e94d833b407b46e02"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/original-source/scripts/python/qualified-historical-owner-authority.v2.json",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:f5472d04982c1f3da19953d6ccf6a63a6bbde343e83cb5130e18d206e806a3eb"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/original-source/scripts/python/update_mvg_baseline.py",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:a43f21089fd40f0ef5d9ebca72e3bb2d6005d3b4d83894e6573c22106e78e67d"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/plan.json",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:1a689999a531e7530d9e06d9ff82f47d33dfafca5757a47c8e4adcdade734f6f"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/presentation.json",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:8ed2e9b57a91cbf3c01ed568fee256882864aeeae501910ae66f8d67c478db38"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/request.txt",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:c08a877e4d190a444ede7c5d94d5cc61170e4a2ecd7a1b89783f8024152787a0"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/result.json",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:1434820f87774891ab01690150403c1f07e4e15edfad6816c9beb018d33f3e5d"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/roles.json",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:9d145277612e64a55b01614e02e4dc567007082909bc05ac2fe777977f2c9de8"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/source-pins.json",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:3654b67b1fb660e5fd16ff648006940db449881185316e19c76fe5decc4647ff"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/subject.json",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:0f94c34c0504d4b3c16a78f997540e790f5f3af6986d00a0739e6cf5992c38cc"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/w/output.json",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:4ee6e8bbaefc31f3601740223bb650a4e36c7a004d7787f5a5795b558fc16217"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/w/prompt.txt",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:6e5bd759511765394b9e286161279c0c186a606cab53e248c24a0387633c0504"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/review-repair/w/schema.json",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:00bed2afff15adb1d476cc096fca232e3f7dfcad62395d903c8885e5eae7d5b1"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/segmented/source-pins.json",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:5b0cfd34e630c3458f75c2bb78f8fbb15db912e1b582bb1f8fd6d777b9855f16"
+      },
+      {
+        "path": "logs/ci/b-route-adoption-reviews/f1a3f32d5599f72cc20517a2f05b4ec5ad9acc8ca1331b727aee3fa8f99df864/subject.json",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:aa85669cc11915c494d0b1451492bb77463148a3ca8267621e394f37b92aa5ed"
+      },
+      {
+        "path": "logs/ci/b-route-operations/operations/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/operation.json",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:ad20fe68bae12bf5805e809c73dad6355db3d876d13000524810b90ccfdafc05"
+      },
+      {
+        "path": "logs/ci/b-route-origin-captures/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/capsule.json",
+        "schema_version": "raw.bytes.v1",
+        "raw_digest": "sha256:df8b3c9bc2e0f5e40d1a45c865ae7b959941250c87ff0733eff5bf845311f7d7"
+      }
+    ],
+    "targets": [
+      {
+        "path": "docs/planning/b-route/plans/PLAN-bed480ce3e404b2cbaf5514d80a7f941/2.json",
+        "schema_version": "newrouge.b-route-plan.v1",
+        "before_raw_digest": null,
+        "after_payload": {
+          "schema_version": "newrouge.b-route-plan.v1",
+          "plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+          "revision": 2,
+          "source_identity": {
+            "manifest_ref": {
+              "owner": "source_manifest",
+              "ref": "logs/ci/2026-11-06/b-route-sources/s25-v15-exclusive-offline/prepare-02/prepare/source-manifest.json",
+              "files": [
+                {
+                  "path": "logs/ci/2026-11-06/b-route-sources/s25-v15-exclusive-offline/prepare-02/prepare/source-manifest.json",
+                  "raw_digest": "sha256:67f96a837974e89bdfdb97fdf4386b3d89d308375c4d161136677daeaefcc020"
+                }
+              ]
+            },
+            "ledger_ref": {
+              "owner": "source_ledger",
+              "ref": "logs/ci/2026-11-06/b-route-sources/s25-v15-exclusive-offline/prepare-02/prepare/source-blocks.json",
+              "files": [
+                {
+                  "path": "logs/ci/2026-11-06/b-route-sources/s25-v15-exclusive-offline/prepare-02/prepare/source-blocks.json",
+                  "raw_digest": "sha256:b0c661a2838a07a0b88fe32cd8a6cebc480cec06325f07fe89264f858799db97"
+                }
+              ]
+            },
+            "source_revision": "source-set:45704214c4b741ba6aebe705",
+            "source_manifest_digest": "sha256:45704214c4b741ba6aebe7052b59de3c26114cc16e8d467b3fab60d33f3f7628"
+          },
+          "requirements": [
+            {
+              "requirement_id": "RQ-9f1d67605e48444881eb0329c233d880",
+              "source_block_ids": [
+                "SB-8C80E96FC81CA641",
+                "SB-3930A390340951B7"
+              ],
+              "acceptance_intent": "Each separate synthetic scenario receives a newly provisioned empty durable journal J and a fixed reward R. Scenarios never share J. Within a scenario, one process handles serial calls; processes never overlap, and J is never reset. The reward controller owns J and the volatile map UI. J has exactly three permitted states: empty, [Commit(R)], or [Cancel(R)]. From empty it can make one atomic durable append of Commit(R) or Cancel(R). Once nonempty it is immutable. Commit grants R exactly once and logically returns to the map. Cancel permanently declines R, grants nothing, and logically returns to the map. Rendering or restoring UI does not grant, cancel or logically return again. Storage succeeds except for the injected crash barriers below.",
+              "non_task_sinks": [],
+              "prior_requirement_ids": []
+            },
+            {
+              "requirement_id": "RQ-3c078fbc9c484aea935ef1c955c6b3ab",
+              "source_block_ids": [
+                "SB-8C80E96FC81CA641",
+                "SB-3930A390340951B7",
+                "SB-9E135AFD8D79ED3C"
+              ],
+              "acceptance_intent": "The business entry points are accept(R,id), cancel(R,id), and resume(R,id). Every call has a fresh id. The guard reads J. With empty J, accept appends Commit(R), cancel appends Cancel(R), and resume writes nothing. With nonempty J, no entry point writes: accept cannot override cancellation, cancel cannot reverse a grant, and resume only restores the decision. Finalization renders MapReady for [Commit(R)], MapCancelled for [Cancel(R)], and Idle for empty, then emits exactly one completion C:Complete(i,id,ui). Thus repeat accept after Commit stays MapReady, repeat cancel after Cancel stays MapCancelled, accept after Cancel stays MapCancelled without a grant, and cancel after Commit stays MapReady without a cancellation. No extra user action is required. Shutdown and force-termination are lifecycle controls and are not the business cancel command.",
+              "non_task_sinks": [],
+              "prior_requirement_ids": []
+            },
+            {
+              "requirement_id": "RQ-4be0664a370442e6aefcd3b3d1556131",
+              "source_block_ids": [
+                "SB-8C80E96FC81CA641",
+                "SB-3930A390340951B7",
+                "SB-B84109DE92C147BA"
+              ],
+              "acceptance_intent": "The harness owns OS instance handles, an ordered retained external event stream C for each instance, and a fresh control channel Q. start(J) launches the controlled executable with J and these endpoints and returns an owned OS handle i. Each process initially shows Idle and emits C:Ready(i,J) exactly once only after opening J and binding all three business entry points. Startup confirmation independently requires matching live i/J, actual readUI(i)=Idle and readJ(J)=the retained journal. It has a separate 10000ms deadline from start on the harness monotonic clock. Read-only readUI probes rendered UI rather than a reported value; readJ reads every durable record. The harness issues no business call before startup confirmation. shutdown(i) sends Shutdown on Q for normal exit. terminate(i) force-terminates exactly the owned i through the OS. Exit confirmation requires the OS handle signaled and C EOF/drain within a separate 10000ms deadline from shutdown or termination. A timeout fails the scenario.",
+              "non_task_sinks": [],
+              "prior_requirement_ids": []
+            },
+            {
+              "requirement_id": "RQ-19d7f5e27dcd4a1d9236315f6bf288e3",
+              "source_block_ids": [
+                "SB-8C80E96FC81CA641",
+                "SB-3930A390340951B7",
+                "SB-A9833CF255BDF6C0"
+              ],
+              "acceptance_intent": "For an ordinary unhooked business call, record CallStart immediately before issue. For a hook call, record it once before armHook as specified below; the same clock includes arming, acknowledgement and issue and is never restarted. A non-crashing call must emit one matching completion and permit independent readUI/readJ observations within 10000ms of CallStart on the same harness clock. Observation reads occur after completion and before another call or lifecycle control, with UI/J unchanged throughout those reads. Verify the matching instance/id, reported versus actual UI, expected complete journal, completion count observed so far and deadline. Missing, duplicate, late or mismatched results fail and cannot be erased by a later crash. ObservationComplete follows all these call-local checks within that original deadline; it permits the next call/control but is provisional. Retain every issued call id and count completions through each instance's C EOF/drain. A non-crashing invocation must have exactly one completion in that final audit; a crash-injected invocation must have zero. A late duplicate after ObservationComplete still fails. The same EOF audit requires exactly one Ready with the correct instance/J, already observed by the startup deadline; missing, wrong or duplicate Ready fails even if detected after startup confirmation. A late Ready cannot repair a startup failure. Final scenario success requires exit confirmation and the final count audit, including the final normal shutdown/exit, with no added reward call or restart during teardown.",
+              "non_task_sinks": [],
+              "prior_requirement_ids": []
+            },
+            {
+              "requirement_id": "RQ-b5ce45a545254d1a8aa205a5944535e3",
+              "source_block_ids": [
+                "SB-8C80E96FC81CA641",
+                "SB-3930A390340951B7",
+                "SB-F7DB8CD5A9668EF4"
+              ],
+              "acceptance_intent": "The only injected within-call crashes are immediately before or after the missing durable append of accept or cancel. Each hook scenario begins with its own empty J. Before issuing the target call, record CallStart, send armHook(i,id,op,before|after) on Q and receive its exact matching acknowledgement, where op is accept or cancel. The one-shot hook applies only to that id/op while J is empty. Before emits C:HookHit(i,id,op,before) after the empty guard and blocks before the atomic append. After emits C:HookHit(i,id,op,after) after the command's append is durable and blocks before UI finalization or Complete. No work can pass either barrier until OS termination; the harness never releases it. Observe exactly one matching acknowledgement and HookHit within the original 10000ms from CallStart, then immediately terminate i and begin its existing exit deadline. These controls are never Complete. Missing, wrong, duplicate or late hook events fail. Before leaves J empty; after leaves exactly the command's Commit or Cancel record. Confirm exit/EOF, start and confirm a new process with the unchanged J, then invoke resume under the ordinary call rule. Hooks are disabled for every other call. Failed-test cleanup cannot erase failure or count as scenario coverage.",
+              "non_task_sinks": [],
+              "prior_requirement_ids": []
+            },
+            {
+              "requirement_id": "RQ-b0dfd40c17bb4789ab08cf31f920ecb9",
+              "source_block_ids": [
+                "SB-8C80E96FC81CA641",
+                "SB-3930A390340951B7",
+                "SB-5B889D232D13901F"
+              ],
+              "acceptance_intent": "Required separate scenarios, each with fresh J: two accepts; two cancels; accept then cancel; cancel then accept; empty resume; successful accept followed by ordinary restart and resume; successful cancel followed by ordinary restart and resume; and each of accept-before, accept-after, cancel-before, cancel-after crash/recovery. Ordinary restart occurs only after successful observations: normal shutdown, confirmed exit/EOF, start and confirmed startup, then resume. It is not an injected crash. All earlier non-crashing calls retain their final completion-count obligations across restart. The observed journal and UI must follow the rules above for every step, including no grant after Cancel and no cancellation after Commit. Planning the flow does not claim these scenarios ran.",
+              "non_task_sinks": [],
+              "prior_requirement_ids": []
+            },
+            {
+              "requirement_id": "RQ-b2b58a9a58ac4834840be0bc238e275f",
+              "source_block_ids": [
+                "SB-8C80E96FC81CA641",
+                "SB-3930A390340951B7",
+                "SB-83C0467B0FFB419F"
+              ],
+              "acceptance_intent": "These are required synthetic adapter interfaces to implement, not claims of existing executable endpoints. Protocol-design responsibility belongs to the reward-controller implementer. The downstream implementation plan must choose and document one internally consistent versioned launch/message profile, including the hook acknowledgement representation and return path, used by both controller and harness. No particular Q/C wire encoding or executable argument spelling is prescribed. Every permitted profile must preserve the event identities, command distinctions, ordering, barrier blocking, independent observations, retained completion counts, deadlines and all scenarios above. A plan leaving its selected profile unresolved is incomplete.",
+              "non_task_sinks": [],
+              "prior_requirement_ids": []
+            }
+          ],
+          "definitions": {
+            "flows": [
+              {
+                "id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                "requirement_ids": [
+                  "RQ-9f1d67605e48444881eb0329c233d880",
+                  "RQ-3c078fbc9c484aea935ef1c955c6b3ab",
+                  "RQ-4be0664a370442e6aefcd3b3d1556131",
+                  "RQ-19d7f5e27dcd4a1d9236315f6bf288e3",
+                  "RQ-b5ce45a545254d1a8aa205a5944535e3",
+                  "RQ-b0dfd40c17bb4789ab08cf31f920ecb9",
+                  "RQ-b2b58a9a58ac4834840be0bc238e275f"
+                ],
+                "source_block_ids": [
+                  "SB-8C80E96FC81CA641",
+                  "SB-3930A390340951B7",
+                  "SB-9E135AFD8D79ED3C",
+                  "SB-B84109DE92C147BA",
+                  "SB-A9833CF255BDF6C0",
+                  "SB-F7DB8CD5A9668EF4",
+                  "SB-5B889D232D13901F",
+                  "SB-83C0467B0FFB419F"
+                ],
+                "entry_condition": "Provision a separate synthetic scenario with its own newly empty durable J and fixed R. Retain J throughout that scenario, serialize calls and prevent process overlap. Confirm each process startup independently before dispatching a fresh-id business call.",
+                "branches": [
+                  {
+                    "kind": "failure",
+                    "applicability": "applicable",
+                    "rationale": "Event, observation, barrier and lifecycle failures remain latched across provisional progression, crashes, replacement processes and cleanup.",
+                    "boundary_ids": [
+                      "scenario-failure"
+                    ]
+                  },
+                  {
+                    "kind": "cancel",
+                    "applicability": "applicable",
+                    "rationale": "An empty-journal cancel establishes an immutable permanent decline, zero grants and one logical map return.",
+                    "boundary_ids": [
+                      "durable-cancellation"
+                    ]
+                  },
+                  {
+                    "kind": "return",
+                    "applicability": "applicable",
+                    "rationale": "The first durable decision supplies its single logical map return. Finalization automatically presents the journal-selected result.",
+                    "boundary_ids": [
+                      "map-presentation"
+                    ]
+                  }
+                ],
+                "handoffs": [
+                  {
+                    "id": "profile-to-harness",
+                    "from": {
+                      "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                      "node_id": "startup"
+                    },
+                    "to": {
+                      "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                      "node_id": "guard"
+                    },
+                    "owner": {
+                      "kind": "command",
+                      "definition_id": "profile-and-hooks",
+                      "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                      "owner_revision": 2
+                    },
+                    "state_uses": [
+                      {
+                        "kind": "state",
+                        "definition_id": "decision-journal",
+                        "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                        "owner_revision": 2
+                      },
+                      {
+                        "kind": "state",
+                        "definition_id": "retained-scenario-audit",
+                        "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                        "owner_revision": 2
+                      }
+                    ],
+                    "responsibility": "Deliver the documented exclusive-reward-jsonl version 1 profile, runtime bindings, HookArmed return path, hook boundaries and journal reader contract for shared controller/harness use before business dispatch.",
+                    "result": "Independent startup confirmation gates dispatch using the selected shared profile."
+                  },
+                  {
+                    "id": "rendered-result-to-observer",
+                    "from": {
+                      "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                      "node_id": "finalize"
+                    },
+                    "to": {
+                      "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                      "node_id": "observe"
+                    },
+                    "owner": {
+                      "kind": "command",
+                      "definition_id": "render-and-probe-adapter",
+                      "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                      "owner_revision": 2
+                    },
+                    "state_uses": [
+                      {
+                        "kind": "state",
+                        "definition_id": "rendered-map-ui",
+                        "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                        "owner_revision": 2
+                      }
+                    ],
+                    "responsibility": "Supply deterministic visible state indicators, OS capture recognition regions and full-journal observation integration.",
+                    "result": "The harness independently compares actual rendered UI and every durable record with the reported completion and expected outcome."
+                  },
+                  {
+                    "id": "retained-state-to-replacement",
+                    "from": {
+                      "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                      "node_id": "exit-audit"
+                    },
+                    "to": {
+                      "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                      "node_id": "startup"
+                    },
+                    "owner": {
+                      "kind": "command",
+                      "definition_id": "harness-lifecycle-and-observation",
+                      "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                      "owner_revision": 2
+                    },
+                    "state_uses": [
+                      {
+                        "kind": "state",
+                        "definition_id": "decision-journal",
+                        "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                        "owner_revision": 2
+                      },
+                      {
+                        "kind": "state",
+                        "definition_id": "retained-scenario-audit",
+                        "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                        "owner_revision": 2
+                      }
+                    ],
+                    "responsibility": "After confirmed exit, EOF/drain and instance audit, preserve J, issued ids, counts and failures while creating fresh channels and a new owned instance association.",
+                    "result": "A nonoverlapping replacement confirms initial Idle and unchanged complete J before ordinary fresh-id resume."
+                  }
+                ],
+                "state_owners": [
+                  {
+                    "kind": "state",
+                    "definition_id": "decision-journal",
+                    "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                    "owner_revision": 2
+                  },
+                  {
+                    "kind": "state",
+                    "definition_id": "rendered-map-ui",
+                    "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                    "owner_revision": 2
+                  },
+                  {
+                    "kind": "state",
+                    "definition_id": "retained-scenario-audit",
+                    "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                    "owner_revision": 2
+                  }
+                ],
+                "parts": [
+                  {
+                    "kind": "domain_rules",
+                    "applicability": "applicable",
+                    "rationale": "The controller owns irreversible reward decisions and their presentation.",
+                    "responsibilities": [
+                      "Implement the three legal complete journal states, single atomic durable append from empty and immutability after decision.",
+                      "Attach grant, permanent decline and single logical map return to the durable decision transition. Preserve their counts during rendering and restoration.",
+                      "Maintain isolated journals, serial calls, nonoverlapping processes and the specified storage-success assumption."
+                    ]
+                  },
+                  {
+                    "kind": "csharp_adapter",
+                    "applicability": "not_applicable",
+                    "rationale": "Implementation language remains delegated by the language-neutral synthetic interface specification.",
+                    "responsibilities": []
+                  },
+                  {
+                    "kind": "binding",
+                    "applicability": "applicable",
+                    "rationale": "Controller and harness require consistent executable, channel and runtime identity bindings.",
+                    "responsibilities": [
+                      "Implement and document the selected exclusive-reward-jsonl version 1 launch/message profile and exact acknowledgement return path.",
+                      "Bind instance tokens to owned OS handles and J, retain ordered C through EOF and implement exact one-shot append barriers.",
+                      "Provide synthetic lifecycle and business interfaces with distinct command dispatch and monotonic deadline handling."
+                    ]
+                  },
+                  {
+                    "kind": "scene",
+                    "applicability": "applicable",
+                    "rationale": "Startup and completed calls require independent observations of rendered UI.",
+                    "responsibilities": [
+                      "Render initial Idle for every process and journal-selected Idle, MapReady or MapCancelled before ordinary Complete.",
+                      "Provide deterministic visible indicators and recognition regions for read-only OS surface capture.",
+                      "Keep presentation and restoration free of repeated decision effects and logical returns."
+                    ]
+                  }
+                ],
+                "observable_result": "The planned controller and harness resolve each scenario reward through an immutable journal decision and automatic presentation. Downstream verification must establish the eleven scenario outcomes, independent observations, final normal exits and complete retained audits.",
+                "verification_targets": [
+                  "For every separate scenario provision a distinct newly empty J and fixed R. Preserve J across replacements, serialize calls and prevent process overlap. Verify J is always empty, [Commit(R)] or [Cancel(R)], permits one atomic durable append from empty and becomes immutable when decided. Apply successful storage except at the prescribed injected append barriers.",
+                  "At the domain decision boundary verify one grant and one logical map return for Commit, permanent decline with zero grants and one logical map return for Cancel, and unchanged effect counts during every render or restore. Every issued business call uses a fresh retained id and a guard that reads complete J. All empty, repeated and opposing-command branches progress automatically.",
+                  "For every start(J), begin a separate 10000ms deadline on the harness monotonic clock. Require matching live owned i/J, actual readUI(i)=Idle, complete readJ(J) equal to retained J and one timely matching Ready emitted after opening J and binding all three entry points. Complete these checks before any business call. Continue Ready auditing through EOF and require exactly one correct Ready already observed by the original startup deadline.",
+                  "For an ordinary call record CallStart immediately before issue. Within the same original 10000ms receive its matching Complete, then independently read actual rendered UI and every durable record while UI/J remain unchanged and before another call or lifecycle control. Check instance/id, reported versus actual UI, expected complete J, count observed so far and elapsed time. Record ObservationComplete only after all checks within that deadline. Treat progression as provisional through final EOF audits.",
+                  "For a hook call record CallStart once before armHook. Receive exactly one matching HookArmed on C before issuing the selected accept/cancel target. Require exactly one matching HookHit within the same original 10000ms including arming, acknowledgement and issue. Before blocks after the empty guard and before append. After blocks after durable append and before finalization or Complete. Keep all work blocked until immediate owned-process OS termination. The harness never releases a barrier. Audit exact identities, uniqueness, ordering and timing through EOF. Count only Complete as a completion and require zero for the crash target.",
+                  "For every shutdown or termination start a separate 10000ms exit deadline and require both the signaled owned OS handle and C EOF/drain. Shutdown sends Shutdown on Q and termination targets exactly owned i through the OS. Retain every issued id and event through drain. Require exactly one Complete per non-crashing invocation and zero per injected target. Preserve earlier invocation obligations across replacement processes.",
+                  "Latch missing, wrong, mismatched, duplicate or late results and all deadline failures. Reject duplicates arriving after ObservationComplete and Ready defects discovered after startup confirmation. Preserve startup failure after a late Ready and preserve any failure after a later crash, restart or cleanup. Failed-test cleanup contributes zero scenario coverage.",
+                  "Two accepts uses a separate fresh J. Both calls must observe [Commit(R)] and MapReady. Final invocation counts are [1,1], grants 1, permanent declines 0 and logical returns 1.",
+                  "Two cancels uses a separate fresh J. Both calls must observe [Cancel(R)] and MapCancelled. Final invocation counts are [1,1], grants 0, permanent declines 1 and logical returns 1.",
+                  "Accept then cancel uses a separate fresh J. Both calls must observe [Commit(R)] and MapReady. Final invocation counts are [1,1], grants 1, permanent declines 0 and logical returns 1.",
+                  "Cancel then accept uses a separate fresh J. Both calls must observe [Cancel(R)] and MapCancelled. Final invocation counts are [1,1], grants 0, permanent declines 1 and logical returns 1.",
+                  "Empty resume uses a separate fresh J. Resume must observe empty J and Idle. Its final invocation count is [1], with zero grants, permanent declines and logical returns.",
+                  "Successful accept followed by ordinary restart and resume uses a separate fresh J. Accept must observe [Commit(R)] and MapReady. After successful observations perform normal shutdown, confirmed exit/EOF and audit, start with unchanged J and confirm initial Idle, then resume to [Commit(R)] and MapReady. Final invocation counts are [1,1], grants 1, permanent declines 0 and logical returns 1.",
+                  "Successful cancel followed by ordinary restart and resume uses a separate fresh J. Cancel must observe [Cancel(R)] and MapCancelled. After successful observations perform normal shutdown, confirmed exit/EOF and audit, start with unchanged J and confirm initial Idle, then resume to [Cancel(R)] and MapCancelled. Final invocation counts are [1,1], grants 0, permanent declines 1 and logical returns 1.",
+                  "Accept-before crash/recovery uses a separate fresh J. Arm and acknowledge accept-before, issue the target, observe its blocked HookHit and immediately terminate. After confirmed exit/EOF and audit, J must be empty and the target completion count zero. Confirm replacement startup with unchanged empty J and actual Idle, then ordinary resume must observe empty J and Idle. Final invocation counts are [0,1], with zero grants, permanent declines and logical returns.",
+                  "Accept-after crash/recovery uses a separate fresh J. Arm and acknowledge accept-after, issue the target, observe its blocked HookHit and immediately terminate. After confirmed exit/EOF and audit, J must be exactly [Commit(R)] and the target completion count zero. Confirm replacement startup with retained J and actual Idle, then ordinary resume must observe [Commit(R)] and MapReady. Final invocation counts are [0,1], grants 1, permanent declines 0 and logical returns 1.",
+                  "Cancel-before crash/recovery uses a separate fresh J. Arm and acknowledge cancel-before, issue the target, observe its blocked HookHit and immediately terminate. After confirmed exit/EOF and audit, J must be empty and the target completion count zero. Confirm replacement startup with unchanged empty J and actual Idle, then ordinary resume must observe empty J and Idle. Final invocation counts are [0,1], with zero grants, permanent declines and logical returns.",
+                  "Cancel-after crash/recovery uses a separate fresh J. Arm and acknowledge cancel-after, issue the target, observe its blocked HookHit and immediately terminate. After confirmed exit/EOF and audit, J must be exactly [Cancel(R)] and the target completion count zero. Confirm replacement startup with retained J and actual Idle, then ordinary resume must observe [Cancel(R)] and MapCancelled. Final invocation counts are [0,1], grants 0, permanent declines 1 and logical returns 1.",
+                  "Every scenario inherits all startup, ordinary observation, hook and retained audit rules at every step. Keep hooks disabled for every call except its designated crash target. Ordinary restart follows successful observations and normal lifecycle exit. Preserve complete J and earlier completion-count obligations through every restart.",
+                  "After each scenario's final observed call perform final normal shutdown, confirm exit/EOF and complete all retained audits. Teardown adds zero reward calls and zero restarts. Scenario acceptance remains dependent on this final exit and audit.",
+                  "The reward-controller implementer must deliver the selected shared versioned profile and document HookArmed representation and return path. Verify preservation of event identities, command distinctions, ordering, barrier blocking, independent observations, retained counts, deadlines and all eleven scenarios. Resolve and document any profile revision before downstream plan completion.",
+                  "During downstream implementation check adapter types, compilation, launch/channel bindings and engine integration. The scenario verification implementer must execute the eleven scenarios and retain per-instance events, receipt times, independent observations, decision-effect accounting, OS exit confirmations and final audits as execution evidence."
+                ],
+                "ui": {
+                  "applicability": "applicable",
+                  "rationale": "Rendered states supply independently observed startup and business outcomes.",
+                  "responsibilities": [
+                    "Render initial Idle before Ready after J is opened and all three business entry points are bound.",
+                    "Automatically render Idle for empty J, MapReady for Commit and MapCancelled for Cancel before the matching Complete.",
+                    "Provide deterministic visible state indicators and OS capture recognition regions while preserving controller ownership of volatile UI.",
+                    "Keep UI/J stable throughout each independent post-completion observation window and preserve established business effects during presentation."
+                  ],
+                  "owner": {
+                    "kind": "state",
+                    "definition_id": "rendered-map-ui",
+                    "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                    "owner_revision": 2
+                  },
+                  "inputs": [
+                    "accept(R,id)",
+                    "cancel(R,id)",
+                    "resume(R,id)",
+                    "Complete durable journal J"
+                  ],
+                  "feedback": [
+                    "Actually rendered Idle, MapReady or MapCancelled",
+                    "C:Complete(i,id,ui) after rendering",
+                    "C:Ready(i,J) after initial setup"
+                  ],
+                  "scene_entry": [
+                    "Every process initially presents Idle, including replacements opening a decided journal."
+                  ],
+                  "scene_return": [
+                    "The first durable decision supplies one logical map return. Subsequent calls and resume automatically present the established outcome."
+                  ]
+                },
+                "human_verification": {
+                  "applicability": "not_applicable",
+                  "rationale": "Required acceptance uses automated independent rendered-UI probes, complete journal reads, retained event audits and owned OS lifecycle observations.",
+                  "responsibilities": [],
+                  "owner": {
+                    "kind": "command",
+                    "definition_id": "harness-lifecycle-and-observation",
+                    "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                    "owner_revision": 2
+                  }
+                },
+                "graph": {
+                  "nodes": [
+                    {
+                      "id": "startup",
+                      "responsibility": "Provision a new scenario's empty J and fixed R or retain unchanged J for replacement. Launch one owned process with fresh Q/C. Within 10000ms from start confirm live matching i/J, timely Ready, actual Idle and complete retained J before business dispatch.",
+                      "owner": {
+                        "kind": "command",
+                        "definition_id": "harness-lifecycle-and-observation",
+                        "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                        "owner_revision": 2
+                      },
+                      "command_uses": [
+                        {
+                          "kind": "command",
+                          "definition_id": "harness-lifecycle-and-observation",
+                          "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                          "owner_revision": 2
+                        },
+                        {
+                          "kind": "command",
+                          "definition_id": "profile-and-hooks",
+                          "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                          "owner_revision": 2
+                        }
+                      ],
+                      "state_uses": [
+                        {
+                          "kind": "state",
+                          "definition_id": "decision-journal",
+                          "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                          "owner_revision": 2
+                        },
+                        {
+                          "kind": "state",
+                          "definition_id": "rendered-map-ui",
+                          "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                          "owner_revision": 2
+                        },
+                        {
+                          "kind": "state",
+                          "definition_id": "retained-scenario-audit",
+                          "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                          "owner_revision": 2
+                        }
+                      ]
+                    },
+                    {
+                      "id": "guard",
+                      "responsibility": "Retain a fresh call id and record ordinary CallStart immediately before issue. For the designated hook record it once before arming, receive exact HookArmed and issue the matching target within the unchanged deadline. Read complete J and select the command branch.",
+                      "owner": {
+                        "kind": "flow",
+                        "definition_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                        "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                        "owner_revision": 2
+                      },
+                      "command_uses": [
+                        {
+                          "kind": "command",
+                          "definition_id": "accept",
+                          "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                          "owner_revision": 2
+                        },
+                        {
+                          "kind": "command",
+                          "definition_id": "cancel",
+                          "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                          "owner_revision": 2
+                        },
+                        {
+                          "kind": "command",
+                          "definition_id": "resume",
+                          "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                          "owner_revision": 2
+                        },
+                        {
+                          "kind": "command",
+                          "definition_id": "profile-and-hooks",
+                          "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                          "owner_revision": 2
+                        }
+                      ],
+                      "state_uses": [
+                        {
+                          "kind": "state",
+                          "definition_id": "decision-journal",
+                          "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                          "owner_revision": 2
+                        },
+                        {
+                          "kind": "state",
+                          "definition_id": "retained-scenario-audit",
+                          "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                          "owner_revision": 2
+                        }
+                      ]
+                    },
+                    {
+                      "id": "append-commit",
+                      "responsibility": "From empty J make the single atomic durable Commit(R) transition with one grant and one logical map return. Honor a selected after barrier before finalization.",
+                      "owner": {
+                        "kind": "command",
+                        "definition_id": "accept",
+                        "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                        "owner_revision": 2
+                      },
+                      "command_uses": [
+                        {
+                          "kind": "command",
+                          "definition_id": "accept",
+                          "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                          "owner_revision": 2
+                        },
+                        {
+                          "kind": "command",
+                          "definition_id": "profile-and-hooks",
+                          "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                          "owner_revision": 2
+                        }
+                      ],
+                      "state_uses": [
+                        {
+                          "kind": "state",
+                          "definition_id": "decision-journal",
+                          "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                          "owner_revision": 2
+                        }
+                      ]
+                    },
+                    {
+                      "id": "append-cancel",
+                      "responsibility": "From empty J make the single atomic durable Cancel(R) transition with permanent decline, zero grants and one logical map return. Honor a selected after barrier before finalization.",
+                      "owner": {
+                        "kind": "command",
+                        "definition_id": "cancel",
+                        "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                        "owner_revision": 2
+                      },
+                      "command_uses": [
+                        {
+                          "kind": "command",
+                          "definition_id": "cancel",
+                          "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                          "owner_revision": 2
+                        },
+                        {
+                          "kind": "command",
+                          "definition_id": "profile-and-hooks",
+                          "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                          "owner_revision": 2
+                        }
+                      ],
+                      "state_uses": [
+                        {
+                          "kind": "state",
+                          "definition_id": "decision-journal",
+                          "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                          "owner_revision": 2
+                        }
+                      ]
+                    },
+                    {
+                      "id": "hook-barrier",
+                      "responsibility": "Emit and flush exact HookHit at the selected before or after append boundary and block all work until OS termination. Before preserves empty J and after preserves exactly the durable target record. Require unique matching acknowledgement and HookHit within original CallStart timing, immediately terminate owned i and retain zero target completions.",
+                      "owner": {
+                        "kind": "command",
+                        "definition_id": "profile-and-hooks",
+                        "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                        "owner_revision": 2
+                      },
+                      "command_uses": [
+                        {
+                          "kind": "command",
+                          "definition_id": "profile-and-hooks",
+                          "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                          "owner_revision": 2
+                        },
+                        {
+                          "kind": "command",
+                          "definition_id": "harness-lifecycle-and-observation",
+                          "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                          "owner_revision": 2
+                        }
+                      ],
+                      "state_uses": [
+                        {
+                          "kind": "state",
+                          "definition_id": "decision-journal",
+                          "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                          "owner_revision": 2
+                        },
+                        {
+                          "kind": "state",
+                          "definition_id": "retained-scenario-audit",
+                          "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                          "owner_revision": 2
+                        }
+                      ]
+                    },
+                    {
+                      "id": "finalize",
+                      "responsibility": "Read complete J to render MapReady, MapCancelled or Idle, then emit exactly one matching Complete. Progress automatically and preserve all established decision-effect counts.",
+                      "owner": {
+                        "kind": "state",
+                        "definition_id": "rendered-map-ui",
+                        "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                        "owner_revision": 2
+                      },
+                      "command_uses": [
+                        {
+                          "kind": "command",
+                          "definition_id": "render-and-probe-adapter",
+                          "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                          "owner_revision": 2
+                        }
+                      ],
+                      "state_uses": [
+                        {
+                          "kind": "state",
+                          "definition_id": "decision-journal",
+                          "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                          "owner_revision": 2
+                        },
+                        {
+                          "kind": "state",
+                          "definition_id": "rendered-map-ui",
+                          "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                          "owner_revision": 2
+                        }
+                      ]
+                    },
+                    {
+                      "id": "observe",
+                      "responsibility": "After matching Complete independently read actual UI and every durable record during a stable window before another call/control. Verify identity, reported/actual UI, expected complete J, count so far and original deadline. Record provisional ObservationComplete after all checks within 10000ms and continue retained counting.",
+                      "owner": {
+                        "kind": "command",
+                        "definition_id": "harness-lifecycle-and-observation",
+                        "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                        "owner_revision": 2
+                      },
+                      "command_uses": [
+                        {
+                          "kind": "command",
+                          "definition_id": "harness-lifecycle-and-observation",
+                          "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                          "owner_revision": 2
+                        },
+                        {
+                          "kind": "command",
+                          "definition_id": "render-and-probe-adapter",
+                          "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                          "owner_revision": 2
+                        }
+                      ],
+                      "state_uses": [
+                        {
+                          "kind": "state",
+                          "definition_id": "decision-journal",
+                          "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                          "owner_revision": 2
+                        },
+                        {
+                          "kind": "state",
+                          "definition_id": "rendered-map-ui",
+                          "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                          "owner_revision": 2
+                        },
+                        {
+                          "kind": "state",
+                          "definition_id": "retained-scenario-audit",
+                          "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                          "owner_revision": 2
+                        }
+                      ]
+                    },
+                    {
+                      "id": "exit-audit",
+                      "responsibility": "Use normal Shutdown after successful ordinary observations or immediate OS termination at a hook barrier. Within the separate 10000ms exit deadline require signaled handle and C EOF/drain. Audit every retained Ready, hook and invocation count, preserve failures and inspect complete crash J before recovery.",
+                      "owner": {
+                        "kind": "command",
+                        "definition_id": "harness-lifecycle-and-observation",
+                        "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                        "owner_revision": 2
+                      },
+                      "command_uses": [
+                        {
+                          "kind": "command",
+                          "definition_id": "harness-lifecycle-and-observation",
+                          "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                          "owner_revision": 2
+                        }
+                      ],
+                      "state_uses": [
+                        {
+                          "kind": "state",
+                          "definition_id": "decision-journal",
+                          "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                          "owner_revision": 2
+                        },
+                        {
+                          "kind": "state",
+                          "definition_id": "retained-scenario-audit",
+                          "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                          "owner_revision": 2
+                        }
+                      ]
+                    },
+                    {
+                      "id": "suite-complete",
+                      "responsibility": "Require all eleven isolated scenarios to satisfy every observation and retained audit through their final normal exits. The scenario verification implementer must retain downstream execution evidence.",
+                      "owner": {
+                        "kind": "command",
+                        "definition_id": "harness-lifecycle-and-observation",
+                        "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                        "owner_revision": 2
+                      },
+                      "command_uses": [],
+                      "state_uses": [
+                        {
+                          "kind": "state",
+                          "definition_id": "retained-scenario-audit",
+                          "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                          "owner_revision": 2
+                        }
+                      ]
+                    },
+                    {
+                      "id": "failed",
+                      "responsibility": "Latch event, identity, deadline, observation, barrier and count failures. Preserve them through later lifecycle activity and cleanup. Credit failed-test cleanup with zero scenario coverage.",
+                      "owner": {
+                        "kind": "command",
+                        "definition_id": "harness-lifecycle-and-observation",
+                        "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                        "owner_revision": 2
+                      },
+                      "command_uses": [],
+                      "state_uses": [
+                        {
+                          "kind": "state",
+                          "definition_id": "retained-scenario-audit",
+                          "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                          "owner_revision": 2
+                        }
+                      ]
+                    }
+                  ],
+                  "edges": [
+                    {
+                      "id": "startup-to-call",
+                      "from": {
+                        "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                        "node_id": "startup"
+                      },
+                      "to": {
+                        "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                        "node_id": "guard"
+                      },
+                      "condition": "Independent startup confirmation completes within its separate deadline.",
+                      "responsibility": "Permit the first business call or fresh-id recovery resume using the delivered profile.",
+                      "owner": {
+                        "kind": "command",
+                        "definition_id": "harness-lifecycle-and-observation",
+                        "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                        "owner_revision": 2
+                      }
+                    },
+                    {
+                      "id": "empty-accept",
+                      "from": {
+                        "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                        "node_id": "guard"
+                      },
+                      "to": {
+                        "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                        "node_id": "append-commit"
+                      },
+                      "condition": "J is empty, op is accept and a before hook is inactive.",
+                      "responsibility": "Select the single durable Commit transition.",
+                      "owner": {
+                        "kind": "command",
+                        "definition_id": "accept",
+                        "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                        "owner_revision": 2
+                      }
+                    },
+                    {
+                      "id": "empty-cancel",
+                      "from": {
+                        "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                        "node_id": "guard"
+                      },
+                      "to": {
+                        "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                        "node_id": "append-cancel"
+                      },
+                      "condition": "J is empty, op is cancel and a before hook is inactive.",
+                      "responsibility": "Select the single durable Cancel transition.",
+                      "owner": {
+                        "kind": "command",
+                        "definition_id": "cancel",
+                        "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                        "owner_revision": 2
+                      }
+                    },
+                    {
+                      "id": "presentation-only",
+                      "from": {
+                        "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                        "node_id": "guard"
+                      },
+                      "to": {
+                        "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                        "node_id": "finalize"
+                      },
+                      "condition": "J is nonempty for any business command, or J is empty and op is resume.",
+                      "responsibility": "Preserve J and established effects while selecting its presentation.",
+                      "owner": {
+                        "kind": "flow",
+                        "definition_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                        "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                        "owner_revision": 2
+                      }
+                    },
+                    {
+                      "id": "before-append-hook",
+                      "from": {
+                        "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                        "node_id": "guard"
+                      },
+                      "to": {
+                        "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                        "node_id": "hook-barrier"
+                      },
+                      "condition": "An acknowledged one-shot before hook matches the selected accept/cancel id/op while J is empty.",
+                      "responsibility": "Emit exact before HookHit after the empty guard and block before append.",
+                      "owner": {
+                        "kind": "command",
+                        "definition_id": "profile-and-hooks",
+                        "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                        "owner_revision": 2
+                      }
+                    },
+                    {
+                      "id": "commit-to-presentation",
+                      "from": {
+                        "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                        "node_id": "append-commit"
+                      },
+                      "to": {
+                        "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                        "node_id": "finalize"
+                      },
+                      "condition": "Commit is durable and an after hook is inactive.",
+                      "responsibility": "Automatically present MapReady and complete.",
+                      "owner": {
+                        "kind": "command",
+                        "definition_id": "accept",
+                        "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                        "owner_revision": 2
+                      }
+                    },
+                    {
+                      "id": "cancel-to-presentation",
+                      "from": {
+                        "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                        "node_id": "append-cancel"
+                      },
+                      "to": {
+                        "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                        "node_id": "finalize"
+                      },
+                      "condition": "Cancel is durable and an after hook is inactive.",
+                      "responsibility": "Automatically present MapCancelled and complete.",
+                      "owner": {
+                        "kind": "command",
+                        "definition_id": "cancel",
+                        "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                        "owner_revision": 2
+                      }
+                    },
+                    {
+                      "id": "after-commit-hook",
+                      "from": {
+                        "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                        "node_id": "append-commit"
+                      },
+                      "to": {
+                        "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                        "node_id": "hook-barrier"
+                      },
+                      "condition": "Commit is durable and the acknowledged one-shot after hook matches the target accept id/op.",
+                      "responsibility": "Emit exact after HookHit and block before finalization or Complete.",
+                      "owner": {
+                        "kind": "command",
+                        "definition_id": "profile-and-hooks",
+                        "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                        "owner_revision": 2
+                      }
+                    },
+                    {
+                      "id": "after-cancel-hook",
+                      "from": {
+                        "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                        "node_id": "append-cancel"
+                      },
+                      "to": {
+                        "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                        "node_id": "hook-barrier"
+                      },
+                      "condition": "Cancel is durable and the acknowledged one-shot after hook matches the target cancel id/op.",
+                      "responsibility": "Emit exact after HookHit and block before finalization or Complete.",
+                      "owner": {
+                        "kind": "command",
+                        "definition_id": "profile-and-hooks",
+                        "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                        "owner_revision": 2
+                      }
+                    },
+                    {
+                      "id": "hook-to-forced-exit",
+                      "from": {
+                        "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                        "node_id": "hook-barrier"
+                      },
+                      "to": {
+                        "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                        "node_id": "exit-audit"
+                      },
+                      "condition": "Exactly one matching HookArmed and HookHit were observed within the original call deadline.",
+                      "responsibility": "Immediately OS-terminate the owned process and begin its separate exit deadline while the barrier stays blocked.",
+                      "owner": {
+                        "kind": "command",
+                        "definition_id": "harness-lifecycle-and-observation",
+                        "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                        "owner_revision": 2
+                      }
+                    },
+                    {
+                      "id": "completion-to-observation",
+                      "from": {
+                        "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                        "node_id": "finalize"
+                      },
+                      "to": {
+                        "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                        "node_id": "observe"
+                      },
+                      "condition": "The non-crashing call rendered its selected UI and emitted matching Complete.",
+                      "responsibility": "Perform independent stable observations within the original call deadline.",
+                      "owner": {
+                        "kind": "command",
+                        "definition_id": "harness-lifecycle-and-observation",
+                        "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                        "owner_revision": 2
+                      }
+                    },
+                    {
+                      "id": "next-serial-call",
+                      "from": {
+                        "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                        "node_id": "observe"
+                      },
+                      "to": {
+                        "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                        "node_id": "guard"
+                      },
+                      "condition": "Timely ObservationComplete succeeds and another ordinary call is prescribed in this process.",
+                      "responsibility": "Issue the next fresh-id call and retain all prior audit obligations.",
+                      "owner": {
+                        "kind": "command",
+                        "definition_id": "harness-lifecycle-and-observation",
+                        "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                        "owner_revision": 2
+                      }
+                    },
+                    {
+                      "id": "observed-call-to-shutdown",
+                      "from": {
+                        "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                        "node_id": "observe"
+                      },
+                      "to": {
+                        "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                        "node_id": "exit-audit"
+                      },
+                      "condition": "Timely ObservationComplete succeeds and ordinary restart or final teardown is prescribed.",
+                      "responsibility": "Send Shutdown on Q and begin its separate exit deadline.",
+                      "owner": {
+                        "kind": "command",
+                        "definition_id": "harness-lifecycle-and-observation",
+                        "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                        "owner_revision": 2
+                      }
+                    },
+                    {
+                      "id": "replacement-with-retained-journal",
+                      "from": {
+                        "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                        "node_id": "exit-audit"
+                      },
+                      "to": {
+                        "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                        "node_id": "startup"
+                      },
+                      "condition": "Exit/EOF and instance audit succeed and recovery or ordinary restart requires resume.",
+                      "responsibility": "Preserve J and the scenario ledger, launch a nonoverlapping replacement with fresh endpoints, confirm startup and issue fresh-id resume.",
+                      "owner": {
+                        "kind": "command",
+                        "definition_id": "harness-lifecycle-and-observation",
+                        "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                        "owner_revision": 2
+                      }
+                    },
+                    {
+                      "id": "next-isolated-scenario",
+                      "from": {
+                        "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                        "node_id": "exit-audit"
+                      },
+                      "to": {
+                        "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                        "node_id": "startup"
+                      },
+                      "condition": "The current scenario's final normal exit and audits succeed and another required scenario remains.",
+                      "responsibility": "End the completed scenario and provision a distinct newly empty J and fixed R for the next scenario.",
+                      "owner": {
+                        "kind": "command",
+                        "definition_id": "harness-lifecycle-and-observation",
+                        "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                        "owner_revision": 2
+                      }
+                    },
+                    {
+                      "id": "final-audit-to-suite-result",
+                      "from": {
+                        "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                        "node_id": "exit-audit"
+                      },
+                      "to": {
+                        "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                        "node_id": "suite-complete"
+                      },
+                      "condition": "All eleven scenarios have completed their final normal exit and every retained audit successfully.",
+                      "responsibility": "Derive the downstream suite outcome from complete execution evidence.",
+                      "owner": {
+                        "kind": "command",
+                        "definition_id": "harness-lifecycle-and-observation",
+                        "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                        "owner_revision": 2
+                      }
+                    },
+                    {
+                      "id": "startup-failure",
+                      "from": {
+                        "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                        "node_id": "startup"
+                      },
+                      "to": {
+                        "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                        "node_id": "failed"
+                      },
+                      "condition": "Startup identity, Ready, independent observation or deadline checks fail.",
+                      "responsibility": "Latch failure and retain later events for audit.",
+                      "owner": {
+                        "kind": "command",
+                        "definition_id": "harness-lifecycle-and-observation",
+                        "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                        "owner_revision": 2
+                      }
+                    },
+                    {
+                      "id": "dispatch-failure",
+                      "from": {
+                        "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                        "node_id": "guard"
+                      },
+                      "to": {
+                        "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                        "node_id": "failed"
+                      },
+                      "condition": "Command identity, framing, profile version, acknowledgement or dispatch ordering fails.",
+                      "responsibility": "Preserve the issued-id and event ledger with its failure.",
+                      "owner": {
+                        "kind": "command",
+                        "definition_id": "harness-lifecycle-and-observation",
+                        "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                        "owner_revision": 2
+                      }
+                    },
+                    {
+                      "id": "hook-failure",
+                      "from": {
+                        "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                        "node_id": "hook-barrier"
+                      },
+                      "to": {
+                        "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                        "node_id": "failed"
+                      },
+                      "condition": "Hook events are missing, wrong, duplicate or late, a barrier permits work to pass, or the crash target emits Complete.",
+                      "responsibility": "Latch failure and perform failure-preserving lifecycle cleanup.",
+                      "owner": {
+                        "kind": "command",
+                        "definition_id": "harness-lifecycle-and-observation",
+                        "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                        "owner_revision": 2
+                      }
+                    },
+                    {
+                      "id": "observation-failure",
+                      "from": {
+                        "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                        "node_id": "observe"
+                      },
+                      "to": {
+                        "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                        "node_id": "failed"
+                      },
+                      "condition": "Completion, UI/J, identity, stability, count or original call deadline checks fail.",
+                      "responsibility": "Retain failure through subsequent crashes and restarts.",
+                      "owner": {
+                        "kind": "command",
+                        "definition_id": "harness-lifecycle-and-observation",
+                        "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                        "owner_revision": 2
+                      }
+                    },
+                    {
+                      "id": "exit-or-retained-audit-failure",
+                      "from": {
+                        "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                        "node_id": "exit-audit"
+                      },
+                      "to": {
+                        "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                        "node_id": "failed"
+                      },
+                      "condition": "Exit confirmation times out or retained Ready, hook, invocation-count or durable-outcome audits fail.",
+                      "responsibility": "Fail the scenario even when the defect appears after provisional observations.",
+                      "owner": {
+                        "kind": "command",
+                        "definition_id": "harness-lifecycle-and-observation",
+                        "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                        "owner_revision": 2
+                      }
+                    }
+                  ],
+                  "boundaries": [
+                    {
+                      "id": "scenario-entry",
+                      "kind": "entry",
+                      "node": {
+                        "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                        "node_id": "startup"
+                      },
+                      "condition": "A separate scenario begins with its own newly empty J and fixed R.",
+                      "required": true,
+                      "rationale": "Each required scenario has isolated durable state."
+                    },
+                    {
+                      "id": "suite-success",
+                      "kind": "success",
+                      "node": {
+                        "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                        "node_id": "suite-complete"
+                      },
+                      "condition": "All eleven scenarios satisfy every observation and retained audit through their final normal exits.",
+                      "required": true,
+                      "rationale": "Execution acceptance includes final lifecycle and count obligations."
+                    },
+                    {
+                      "id": "scenario-failure",
+                      "kind": "failure",
+                      "node": {
+                        "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                        "node_id": "failed"
+                      },
+                      "condition": "Any required event, identity, observation, barrier, count or deadline check fails.",
+                      "required": true,
+                      "rationale": "Failure persists through lifecycle changes and cleanup."
+                    },
+                    {
+                      "id": "durable-cancellation",
+                      "kind": "cancel",
+                      "node": {
+                        "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                        "node_id": "append-cancel"
+                      },
+                      "condition": "Empty-journal cancel durably appends Cancel(R).",
+                      "required": true,
+                      "rationale": "Cancel permanently declines R, grants nothing and logically returns once."
+                    },
+                    {
+                      "id": "map-presentation",
+                      "kind": "return",
+                      "node": {
+                        "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                        "node_id": "finalize"
+                      },
+                      "condition": "An ordinary invocation automatically renders its journal-selected UI before Complete.",
+                      "required": true,
+                      "rationale": "Presentation uses the recorded decision and preserves its single logical return."
+                    }
+                  ],
+                  "loops": [
+                    {
+                      "id": "serial-call-and-recovery-loop",
+                      "anchors": [
+                        {
+                          "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                          "node_id": "guard"
+                        },
+                        {
+                          "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                          "node_id": "observe"
+                        },
+                        {
+                          "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                          "node_id": "exit-audit"
+                        },
+                        {
+                          "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                          "node_id": "startup"
+                        }
+                      ],
+                      "exit_boundary_ids": [
+                        "suite-success",
+                        "scenario-failure"
+                      ],
+                      "description": "Perform each scenario's serial calls, prescribed ordinary restart or injected-crash recovery and final normal teardown. Provision a distinct empty J for each subsequent scenario.",
+                      "exit_condition": "All eleven scenarios complete their final normal exit and audits, or a required check latches failure."
+                    }
+                  ]
+                },
+                "capability_ids": [
+                  "exclusive-reward-resolution"
+                ]
+              }
+            ],
+            "commands": [
+              {
+                "id": "accept",
+                "requirement_ids": [
+                  "RQ-9f1d67605e48444881eb0329c233d880",
+                  "RQ-3c078fbc9c484aea935ef1c955c6b3ab",
+                  "RQ-b5ce45a545254d1a8aa205a5944535e3"
+                ],
+                "responsibility": "Implement synthetic accept(R,id) with fresh ids and a complete-J guard. Empty J permits the single atomic Commit(R) transition, grant and logical map return. Decided J remains immutable. Commit selects MapReady and Cancel selects MapCancelled with permanent decline preserved. Automatically render before one matching Complete for each non-crashing call and honor designated blocked append hooks.",
+                "uses": [
+                  {
+                    "kind": "state",
+                    "definition_id": "decision-journal",
+                    "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                    "owner_revision": 2
+                  },
+                  {
+                    "kind": "state",
+                    "definition_id": "rendered-map-ui",
+                    "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                    "owner_revision": 2
+                  },
+                  {
+                    "kind": "command",
+                    "definition_id": "profile-and-hooks",
+                    "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                    "owner_revision": 2
+                  }
+                ]
+              },
+              {
+                "id": "cancel",
+                "requirement_ids": [
+                  "RQ-9f1d67605e48444881eb0329c233d880",
+                  "RQ-3c078fbc9c484aea935ef1c955c6b3ab",
+                  "RQ-b5ce45a545254d1a8aa205a5944535e3"
+                ],
+                "responsibility": "Implement synthetic cancel(R,id) with fresh ids and a complete-J guard. Empty J permits the single atomic Cancel(R) transition, permanent decline, zero grant and one logical map return. Decided J remains immutable. Cancel selects MapCancelled and Commit preserves its grant and MapReady. Render automatically before one matching Complete for a non-crashing call. Dispatch business cancel separately from Shutdown and OS termination and honor designated blocked append hooks.",
+                "uses": [
+                  {
+                    "kind": "state",
+                    "definition_id": "decision-journal",
+                    "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                    "owner_revision": 2
+                  },
+                  {
+                    "kind": "state",
+                    "definition_id": "rendered-map-ui",
+                    "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                    "owner_revision": 2
+                  },
+                  {
+                    "kind": "command",
+                    "definition_id": "profile-and-hooks",
+                    "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                    "owner_revision": 2
+                  }
+                ]
+              },
+              {
+                "id": "resume",
+                "requirement_ids": [
+                  "RQ-9f1d67605e48444881eb0329c233d880",
+                  "RQ-3c078fbc9c484aea935ef1c955c6b3ab",
+                  "RQ-b5ce45a545254d1a8aa205a5944535e3",
+                  "RQ-b0dfd40c17bb4789ab08cf31f920ecb9"
+                ],
+                "responsibility": "Implement synthetic resume(R,id) with fresh ids and a complete-J guard. Preserve J in all states. Render Idle for empty, MapReady for Commit or MapCancelled for Cancel, then emit one matching Complete under ordinary observation rules. Restore presentation while preserving decision-effect and logical-return counts. Keep hooks disabled for every resume, including recovery.",
+                "uses": [
+                  {
+                    "kind": "state",
+                    "definition_id": "decision-journal",
+                    "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                    "owner_revision": 2
+                  },
+                  {
+                    "kind": "state",
+                    "definition_id": "rendered-map-ui",
+                    "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                    "owner_revision": 2
+                  }
+                ]
+              },
+              {
+                "id": "profile-and-hooks",
+                "requirement_ids": [
+                  "RQ-3c078fbc9c484aea935ef1c955c6b3ab",
+                  "RQ-4be0664a370442e6aefcd3b3d1556131",
+                  "RQ-19d7f5e27dcd4a1d9236315f6bf288e3",
+                  "RQ-b5ce45a545254d1a8aa205a5944535e3",
+                  "RQ-b2b58a9a58ac4834840be0bc238e275f"
+                ],
+                "responsibility": "Implement and document the inherited draft-selected exclusive-reward-jsonl version 1 profile for shared controller/harness use. Launch spelling is controlled-executable --profile exclusive-reward-jsonl --profile-version 1 --journal <journal-path> --instance <instance-token> --control <Q-name> --events <C-name>. The harness creates fresh named-pipe Q/C endpoints for each process and binds a fresh runtime instance token to owned OS handle i and canonical J. Wire i carries that token. Supply a lossless reward handle bound identically to fixed scenario R. Each frame is a UTF-8 JSON object followed by LF with JSON escaping preserving strings. Every frame carries version=1, type and i. Q is harness-to-controller and C is controller-to-harness. Q accept, cancel and resume carry version,type,i,R,id. Q armHook carries version,type,i,id,op,phase with op accept or cancel and phase before or after. Q Shutdown carries version,type,i. C Ready carries version,type,i,J. C Complete carries version,type,i,id,ui with ui Idle, MapReady or MapCancelled. C HookArmed and HookHit carry version,type,i,id,op,phase. HookArmed on C is the exact armHook acknowledgement and precedes target issue. Install its one-shot hook only for the selected id/op while J is empty. Before emits and flushes HookHit after the empty guard and blocks before atomic append. After emits and flushes HookHit after durable append and blocks before UI finalization or Complete. Block all work until OS termination with the harness never releasing the barrier. CallStart begins once before armHook, includes acknowledgement and issue and stays unchanged. Require exactly one matching HookArmed and HookHit within the original 10000ms, then immediately terminate the owned process. Keep hooks disabled for every other call. Audit HookArmed and HookHit separately and count only Complete as completion. Open J, bind all three business entry points and render initial Idle before exactly one Ready. Render ordinary outcomes before Complete. Retain ordered C frames and monotonic receipt times through EOF/drain. Malformed frames, wrong versions and unexpected, missing, duplicate, late or mismatched events latch failure. Preserve source event identities, command distinctions, ordering, blocked barriers, independent observations, retained counts, deadlines and scenarios. Resolve and document any selected profile revision before downstream plan completion.",
+                "uses": [
+                  {
+                    "kind": "command",
+                    "definition_id": "accept",
+                    "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                    "owner_revision": 2
+                  },
+                  {
+                    "kind": "command",
+                    "definition_id": "cancel",
+                    "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                    "owner_revision": 2
+                  },
+                  {
+                    "kind": "command",
+                    "definition_id": "resume",
+                    "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                    "owner_revision": 2
+                  },
+                  {
+                    "kind": "state",
+                    "definition_id": "decision-journal",
+                    "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                    "owner_revision": 2
+                  },
+                  {
+                    "kind": "state",
+                    "definition_id": "retained-scenario-audit",
+                    "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                    "owner_revision": 2
+                  }
+                ]
+              },
+              {
+                "id": "harness-lifecycle-and-observation",
+                "requirement_ids": [
+                  "RQ-9f1d67605e48444881eb0329c233d880",
+                  "RQ-4be0664a370442e6aefcd3b3d1556131",
+                  "RQ-19d7f5e27dcd4a1d9236315f6bf288e3",
+                  "RQ-b5ce45a545254d1a8aa205a5944535e3",
+                  "RQ-b0dfd40c17bb4789ab08cf31f920ecb9",
+                  "RQ-b2b58a9a58ac4834840be0bc238e275f"
+                ],
+                "responsibility": "Implement synthetic start(J), readUI(i), readJ(J), shutdown(i), terminate(i), monotonic deadlines and retained auditing. Own OS handles, fresh Q/C and ordered per-instance event retention. start launches the controlled executable with J and endpoints and returns owned i. Independently confirm live i/J, timely Ready, actual Idle and every durable record equal to retained J within 10000ms from start, gating all business calls. readUI probes actual rendered output through read-only OS surface capture and readJ independently enumerates every durable record. Ordinary CallStart occurs immediately before issue. Hook CallStart occurs once before armHook. Complete all non-crashing completion, stable independent UI/J, identity, count-so-far and deadline checks and ObservationComplete within the original 10000ms. Retain every issued id and failure through all instance EOF/drains and replacements. Require final Complete counts of one per non-crashing invocation and zero per crash target. Continue exact Ready and hook audits through EOF and reject late duplicates after provisional progression. shutdown sends Shutdown on Q. terminate targets exactly owned i through the OS. Each begins a separate 10000ms exit deadline requiring signaled handle and C EOF/drain. Inspect complete crash J before replacement. Ordinary restart follows successful observations, normal shutdown, confirmed exit/EOF, replacement start, confirmed startup and fresh-id resume. Crash recovery follows immediate hook termination, confirmed exit/EOF, unchanged-J replacement and ordinary resume. End every scenario with final normal exit and full audits. Preserve all failures and earlier invocation obligations across crashes, replacements and cleanup. The scenario verification implementer must use these operations for all eleven scenarios and retain their execution evidence.",
+                "uses": [
+                  {
+                    "kind": "command",
+                    "definition_id": "profile-and-hooks",
+                    "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                    "owner_revision": 2
+                  },
+                  {
+                    "kind": "command",
+                    "definition_id": "render-and-probe-adapter",
+                    "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                    "owner_revision": 2
+                  },
+                  {
+                    "kind": "state",
+                    "definition_id": "decision-journal",
+                    "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                    "owner_revision": 2
+                  },
+                  {
+                    "kind": "state",
+                    "definition_id": "rendered-map-ui",
+                    "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                    "owner_revision": 2
+                  },
+                  {
+                    "kind": "state",
+                    "definition_id": "retained-scenario-audit",
+                    "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                    "owner_revision": 2
+                  }
+                ]
+              },
+              {
+                "id": "render-and-probe-adapter",
+                "requirement_ids": [
+                  "RQ-9f1d67605e48444881eb0329c233d880",
+                  "RQ-3c078fbc9c484aea935ef1c955c6b3ab",
+                  "RQ-4be0664a370442e6aefcd3b3d1556131",
+                  "RQ-b2b58a9a58ac4834840be0bc238e275f"
+                ],
+                "responsibility": "Implement the planned controlled-executable bindings, deterministic visible Idle/MapReady/MapCancelled indicators, recognition regions and full durable-journal reader integration. Carry forward the draft-selected harness-side read-only OS rendered-surface capture so observations remain independent of Complete.ui. Preserve reward-controller ownership of volatile UI. Render initial Idle for every process, including replacements with decided J, then render ordinary journal-selected outcomes before Complete. Preserve grant, decline and logical-return counts during presentation. Deliver downstream type, compilation, binding and engine-integration checks.",
+                "uses": [
+                  {
+                    "kind": "state",
+                    "definition_id": "rendered-map-ui",
+                    "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                    "owner_revision": 2
+                  },
+                  {
+                    "kind": "state",
+                    "definition_id": "decision-journal",
+                    "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                    "owner_revision": 2
+                  },
+                  {
+                    "kind": "command",
+                    "definition_id": "profile-and-hooks",
+                    "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                    "owner_revision": 2
+                  }
+                ]
+              }
+            ],
+            "states": [
+              {
+                "id": "decision-journal",
+                "requirement_ids": [
+                  "RQ-9f1d67605e48444881eb0329c233d880",
+                  "RQ-3c078fbc9c484aea935ef1c955c6b3ab",
+                  "RQ-b5ce45a545254d1a8aa205a5944535e3",
+                  "RQ-b0dfd40c17bb4789ab08cf31f920ecb9"
+                ],
+                "responsibility": "Own durable scenario J with exactly empty, [Commit(R)] or [Cancel(R)] as its complete value. Provision a different empty J and fixed R per scenario and retain J throughout that scenario. Permit one atomic durable append from empty and make decided J immutable. Commit supplies one grant and one logical map return. Cancel supplies permanent decline, zero grants and one logical map return. Couple effects to the durable transition so after-append crashes retain the decision and its effects while recovery rendering preserves their counts. Apply the specified storage-success assumption. Before crashes leave empty J and after crashes leave exactly the target record.",
+                "uses": []
+              },
+              {
+                "id": "rendered-map-ui",
+                "requirement_ids": [
+                  "RQ-9f1d67605e48444881eb0329c233d880",
+                  "RQ-3c078fbc9c484aea935ef1c955c6b3ab",
+                  "RQ-4be0664a370442e6aefcd3b3d1556131"
+                ],
+                "responsibility": "Own volatile rendered UI. Every process initially shows Idle. Ordinary finalization automatically renders Idle for empty J, MapReady for Commit or MapCancelled for Cancel before Complete. Repeated accept after Commit and cancel after Commit preserve MapReady and the grant. Repeated cancel after Cancel and accept after Cancel preserve MapCancelled and permanent decline. Keep UI/J unchanged during independent post-completion reads. Preserve established business-effect and logical-return counts during presentation and restoration.",
+                "uses": [
+                  {
+                    "kind": "state",
+                    "definition_id": "decision-journal",
+                    "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+                    "owner_revision": 2
+                  }
+                ]
+              },
+              {
+                "id": "retained-scenario-audit",
+                "requirement_ids": [
+                  "RQ-4be0664a370442e6aefcd3b3d1556131",
+                  "RQ-19d7f5e27dcd4a1d9236315f6bf288e3",
+                  "RQ-b5ce45a545254d1a8aa205a5944535e3",
+                  "RQ-b0dfd40c17bb4789ab08cf31f920ecb9"
+                ],
+                "responsibility": "Retain scenario reward/journal bindings, owned handles and instance tokens, every fresh issued call id, ordered per-instance C events and receipt times, startup/call/exit clock origins, independent observations, ObservationComplete markers, final event counts and latched failures. Preserve the ledger across ordinary restart and crash recovery. Continue Ready, hook and completion audits through each EOF/drain. Require one Complete per ordinary invocation, zero per crash target and exactly one correct Ready already observed by its startup deadline. Preserve failures detected after provisional progression, late Ready, later crashes and cleanup. Scenario acceptance includes final normal exit and complete audits, and failed-test cleanup receives zero coverage credit.",
+                "uses": []
+              }
+            ]
+          },
+          "logical_references": [
+            {
+              "kind": "flow",
+              "definition_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+              "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+              "owner_revision": 2
+            },
+            {
+              "kind": "command",
+              "definition_id": "accept",
+              "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+              "owner_revision": 2
+            },
+            {
+              "kind": "command",
+              "definition_id": "cancel",
+              "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+              "owner_revision": 2
+            },
+            {
+              "kind": "command",
+              "definition_id": "resume",
+              "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+              "owner_revision": 2
+            },
+            {
+              "kind": "command",
+              "definition_id": "profile-and-hooks",
+              "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+              "owner_revision": 2
+            },
+            {
+              "kind": "command",
+              "definition_id": "harness-lifecycle-and-observation",
+              "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+              "owner_revision": 2
+            },
+            {
+              "kind": "command",
+              "definition_id": "render-and-probe-adapter",
+              "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+              "owner_revision": 2
+            },
+            {
+              "kind": "state",
+              "definition_id": "decision-journal",
+              "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+              "owner_revision": 2
+            },
+            {
+              "kind": "state",
+              "definition_id": "rendered-map-ui",
+              "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+              "owner_revision": 2
+            },
+            {
+              "kind": "state",
+              "definition_id": "retained-scenario-audit",
+              "owner_plan_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+              "owner_revision": 2
+            }
+          ],
+          "requirement_verification": [
+            {
+              "requirement_id": "RQ-9f1d67605e48444881eb0329c233d880",
+              "disposition": "flow",
+              "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+              "rationale": "The flow preserves isolated journals and irreversible decision effects.",
+              "sink_id": null,
+              "verification_ref": null,
+              "authority_ref": null,
+              "evidence_ids": [
+                "SB-3930A390340951B7"
+              ]
+            },
+            {
+              "requirement_id": "RQ-3c078fbc9c484aea935ef1c955c6b3ab",
+              "disposition": "flow",
+              "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+              "rationale": "The flow covers every business branch and render-before-completion outcome.",
+              "sink_id": null,
+              "verification_ref": null,
+              "authority_ref": null,
+              "evidence_ids": [
+                "SB-9E135AFD8D79ED3C"
+              ]
+            },
+            {
+              "requirement_id": "RQ-4be0664a370442e6aefcd3b3d1556131",
+              "disposition": "flow",
+              "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+              "rationale": "The flow covers owned process lifecycle and independent startup and exit confirmation.",
+              "sink_id": null,
+              "verification_ref": null,
+              "authority_ref": null,
+              "evidence_ids": [
+                "SB-B84109DE92C147BA"
+              ]
+            },
+            {
+              "requirement_id": "RQ-19d7f5e27dcd4a1d9236315f6bf288e3",
+              "disposition": "flow",
+              "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+              "rationale": "The flow retains call deadlines, independent observations and final EOF audits.",
+              "sink_id": null,
+              "verification_ref": null,
+              "authority_ref": null,
+              "evidence_ids": [
+                "SB-A9833CF255BDF6C0"
+              ]
+            },
+            {
+              "requirement_id": "RQ-b5ce45a545254d1a8aa205a5944535e3",
+              "disposition": "flow",
+              "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+              "rationale": "The flow covers exact hook control, blocked crash barriers and retained-journal recovery.",
+              "sink_id": null,
+              "verification_ref": null,
+              "authority_ref": null,
+              "evidence_ids": [
+                "SB-F7DB8CD5A9668EF4"
+              ]
+            },
+            {
+              "requirement_id": "RQ-b0dfd40c17bb4789ab08cf31f920ecb9",
+              "disposition": "flow",
+              "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+              "rationale": "The flow specifies all eleven scenarios and cross-restart audit obligations.",
+              "sink_id": null,
+              "verification_ref": null,
+              "authority_ref": null,
+              "evidence_ids": [
+                "SB-5B889D232D13901F"
+              ]
+            },
+            {
+              "requirement_id": "RQ-b2b58a9a58ac4834840be0bc238e275f",
+              "disposition": "flow",
+              "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+              "rationale": "The flow assigns synthetic interface implementation and documents the selected shared profile.",
+              "sink_id": null,
+              "verification_ref": null,
+              "authority_ref": null,
+              "evidence_ids": [
+                "SB-83C0467B0FFB419F"
+              ]
+            }
+          ],
+          "requirement_route_memberships": [
+            {
+              "requirement_id": "RQ-9f1d67605e48444881eb0329c233d880",
+              "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+              "observable_role": "Isolated scenarios, complete journal invariants and exactly-once decision effects."
+            },
+            {
+              "requirement_id": "RQ-3c078fbc9c484aea935ef1c955c6b3ab",
+              "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+              "observable_role": "Fresh-id guarded business branches, automatic presentation and exact completion."
+            },
+            {
+              "requirement_id": "RQ-4be0664a370442e6aefcd3b3d1556131",
+              "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+              "observable_role": "Owned launch, independent startup, lifecycle controls and timely exit confirmation."
+            },
+            {
+              "requirement_id": "RQ-19d7f5e27dcd4a1d9236315f6bf288e3",
+              "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+              "observable_role": "Original call deadlines, stable observations and retained Ready/completion audits through final EOF."
+            },
+            {
+              "requirement_id": "RQ-b5ce45a545254d1a8aa205a5944535e3",
+              "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+              "observable_role": "Exact hooks, blocked append barriers, zero crash-target completions and retained-journal recovery."
+            },
+            {
+              "requirement_id": "RQ-b0dfd40c17bb4789ab08cf31f920ecb9",
+              "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+              "observable_role": "Eleven separate scenario outcomes and retained obligations across restart and final teardown."
+            },
+            {
+              "requirement_id": "RQ-b2b58a9a58ac4834840be0bc238e275f",
+              "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+              "observable_role": "Controller-owned selected versioned profile, shared synthetic bindings and downstream implementation checks."
+            }
+          ],
+          "requirement_evidence": [
+            {
+              "requirement_id": "RQ-9f1d67605e48444881eb0329c233d880",
+              "evidence_id": "SB-3930A390340951B7",
+              "kind": "implementation_reference",
+              "source_ref": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+              "covered_behavior": "Original line 3 specifies scenario isolation, serial nonoverlapping execution, controller ownership, legal J states, atomic immutable decisions, grant and decline effects, single logical returns, presentation-only restoration and the storage assumption.",
+              "flow_ids": [
+                "FLOW-f78c671da6d04b7dbed7a6111d652007"
+              ],
+              "test_ids": []
+            },
+            {
+              "requirement_id": "RQ-3c078fbc9c484aea935ef1c955c6b3ab",
+              "evidence_id": "SB-9E135AFD8D79ED3C",
+              "kind": "implementation_reference",
+              "source_ref": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+              "covered_behavior": "Original line 5 specifies fresh-id business signatures, complete-J guards, empty and decided branches, every repeated/opposing outcome, render-before-Complete ordering, automatic progression and lifecycle-command distinctions.",
+              "flow_ids": [
+                "FLOW-f78c671da6d04b7dbed7a6111d652007"
+              ],
+              "test_ids": []
+            },
+            {
+              "requirement_id": "RQ-4be0664a370442e6aefcd3b3d1556131",
+              "evidence_id": "SB-B84109DE92C147BA",
+              "kind": "implementation_reference",
+              "source_ref": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+              "covered_behavior": "Original line 7 specifies harness ownership, controlled launch, initial Idle and exact Ready, independent live identity/UI/J startup confirmation, read-only complete probes, startup gating, normal shutdown, owned OS termination and separate startup/exit deadlines.",
+              "flow_ids": [
+                "FLOW-f78c671da6d04b7dbed7a6111d652007"
+              ],
+              "test_ids": []
+            },
+            {
+              "requirement_id": "RQ-19d7f5e27dcd4a1d9236315f6bf288e3",
+              "evidence_id": "SB-A9833CF255BDF6C0",
+              "kind": "implementation_reference",
+              "source_ref": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+              "covered_behavior": "Original line 9 specifies unchanged original call timing, independent stable observations, identity/UI/J/count checks, provisional ObservationComplete, persistent failures and Ready/completion audits through EOF and final normal teardown.",
+              "flow_ids": [
+                "FLOW-f78c671da6d04b7dbed7a6111d652007"
+              ],
+              "test_ids": []
+            },
+            {
+              "requirement_id": "RQ-b5ce45a545254d1a8aa205a5944535e3",
+              "evidence_id": "SB-F7DB8CD5A9668EF4",
+              "kind": "implementation_reference",
+              "source_ref": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+              "covered_behavior": "The complete original line 11 specifies exact hook acknowledgement, scoped one-shot hooks, blocked before/after append barriers, original deadline, immediate OS termination, durable crash outcomes, unchanged-J recovery, ordinary resume, hook isolation and failure-preserving cleanup.",
+              "flow_ids": [
+                "FLOW-f78c671da6d04b7dbed7a6111d652007"
+              ],
+              "test_ids": []
+            },
+            {
+              "requirement_id": "RQ-b0dfd40c17bb4789ab08cf31f920ecb9",
+              "evidence_id": "SB-5B889D232D13901F",
+              "kind": "implementation_reference",
+              "source_ref": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+              "covered_behavior": "Original line 13 specifies all eleven fresh-J scenarios, successful-observation gating and order for ordinary restart, retained earlier call obligations and correct journal/UI at every step. It establishes required verification work and the boundary on execution claims.",
+              "flow_ids": [
+                "FLOW-f78c671da6d04b7dbed7a6111d652007"
+              ],
+              "test_ids": []
+            },
+            {
+              "requirement_id": "RQ-b2b58a9a58ac4834840be0bc238e275f",
+              "evidence_id": "SB-83C0467B0FFB419F",
+              "kind": "implementation_reference",
+              "source_ref": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+              "covered_behavior": "Original line 15 specifies synthetic adapter implementation, controller protocol-design ownership, mandatory shared versioned profile selection and documentation including acknowledgement representation and return path, bounded encoding/argument choices and preservation of every source semantic constraint.",
+              "flow_ids": [
+                "FLOW-f78c671da6d04b7dbed7a6111d652007"
+              ],
+              "test_ids": []
+            }
+          ],
+          "evidence_source_refs": [
+            {
+              "owner": "implementation_reference",
+              "ref": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+              "files": [
+                {
+                  "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+                  "raw_digest": "sha256:7e5e1fe8aeb5937c70caa16aea2a9e1784a429c70c30a4f7f4d66601f1880061"
+                }
+              ]
+            }
+          ],
+          "coverage_table": [
+            {
+              "requirement_id": "RQ-9f1d67605e48444881eb0329c233d880",
+              "disposition": "flow",
+              "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+              "rationale": "The flow preserves isolated journals and irreversible decision effects.",
+              "sink_id": null,
+              "verification_ref": null,
+              "authority_ref": null
+            },
+            {
+              "requirement_id": "RQ-3c078fbc9c484aea935ef1c955c6b3ab",
+              "disposition": "flow",
+              "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+              "rationale": "The flow covers every business branch and render-before-completion outcome.",
+              "sink_id": null,
+              "verification_ref": null,
+              "authority_ref": null
+            },
+            {
+              "requirement_id": "RQ-4be0664a370442e6aefcd3b3d1556131",
+              "disposition": "flow",
+              "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+              "rationale": "The flow covers owned process lifecycle and independent startup and exit confirmation.",
+              "sink_id": null,
+              "verification_ref": null,
+              "authority_ref": null
+            },
+            {
+              "requirement_id": "RQ-19d7f5e27dcd4a1d9236315f6bf288e3",
+              "disposition": "flow",
+              "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+              "rationale": "The flow retains call deadlines, independent observations and final EOF audits.",
+              "sink_id": null,
+              "verification_ref": null,
+              "authority_ref": null
+            },
+            {
+              "requirement_id": "RQ-b5ce45a545254d1a8aa205a5944535e3",
+              "disposition": "flow",
+              "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+              "rationale": "The flow covers exact hook control, blocked crash barriers and retained-journal recovery.",
+              "sink_id": null,
+              "verification_ref": null,
+              "authority_ref": null
+            },
+            {
+              "requirement_id": "RQ-b0dfd40c17bb4789ab08cf31f920ecb9",
+              "disposition": "flow",
+              "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+              "rationale": "The flow specifies all eleven scenarios and cross-restart audit obligations.",
+              "sink_id": null,
+              "verification_ref": null,
+              "authority_ref": null
+            },
+            {
+              "requirement_id": "RQ-b2b58a9a58ac4834840be0bc238e275f",
+              "disposition": "flow",
+              "flow_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+              "rationale": "The flow assigns synthetic interface implementation and documents the selected shared profile.",
+              "sink_id": null,
+              "verification_ref": null,
+              "authority_ref": null
+            }
+          ],
+          "applicability": [
+            {
+              "requirement_id": "RQ-9f1d67605e48444881eb0329c233d880",
+              "disposition": "flow",
+              "rationale": "The flow preserves isolated journals and irreversible decision effects.",
+              "other_verification_refs": []
+            },
+            {
+              "requirement_id": "RQ-3c078fbc9c484aea935ef1c955c6b3ab",
+              "disposition": "flow",
+              "rationale": "The flow covers every business branch and render-before-completion outcome.",
+              "other_verification_refs": []
+            },
+            {
+              "requirement_id": "RQ-4be0664a370442e6aefcd3b3d1556131",
+              "disposition": "flow",
+              "rationale": "The flow covers owned process lifecycle and independent startup and exit confirmation.",
+              "other_verification_refs": []
+            },
+            {
+              "requirement_id": "RQ-19d7f5e27dcd4a1d9236315f6bf288e3",
+              "disposition": "flow",
+              "rationale": "The flow retains call deadlines, independent observations and final EOF audits.",
+              "other_verification_refs": []
+            },
+            {
+              "requirement_id": "RQ-b5ce45a545254d1a8aa205a5944535e3",
+              "disposition": "flow",
+              "rationale": "The flow covers exact hook control, blocked crash barriers and retained-journal recovery.",
+              "other_verification_refs": []
+            },
+            {
+              "requirement_id": "RQ-b0dfd40c17bb4789ab08cf31f920ecb9",
+              "disposition": "flow",
+              "rationale": "The flow specifies all eleven scenarios and cross-restart audit obligations.",
+              "other_verification_refs": []
+            },
+            {
+              "requirement_id": "RQ-b2b58a9a58ac4834840be0bc238e275f",
+              "disposition": "flow",
+              "rationale": "The flow assigns synthetic interface implementation and documents the selected shared profile.",
+              "other_verification_refs": []
+            }
+          ],
+          "adoption_proof_refs": [
+            {
+              "owner": "planning_proof",
+              "ref": "logs/ci/b-route-origin-captures/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/capsule.json",
+              "files": [
+                {
+                  "path": "logs/ci/b-route-origin-captures/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/capsule.json",
+                  "raw_digest": "sha256:df8b3c9bc2e0f5e40d1a45c865ae7b959941250c87ff0733eff5bf845311f7d7"
+                }
+              ]
+            }
+          ],
+          "native_candidate_ref": {
+            "owner": "planning_proof",
+            "ref": "logs/ci/b-route-origin-captures/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/capsule.json#/proposal/content",
+            "files": [
+              {
+                "path": "logs/ci/b-route-origin-captures/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/capsule.json",
+                "raw_digest": "sha256:df8b3c9bc2e0f5e40d1a45c865ae7b959941250c87ff0733eff5bf845311f7d7"
+              }
+            ]
+          },
+          "lineage": {
+            "previous_plan_ref": {
+              "path": "docs/planning/b-route/plans/PLAN-bed480ce3e404b2cbaf5514d80a7f941/1.json",
+              "schema_version": "newrouge.b-route-plan.v1",
+              "entity_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+              "revision": 1,
+              "digest": "sha256:965faffefde5731b92e581d30be7ae8854db73844ec5411dd337e0b563e54f20",
+              "verification_mode": "raw",
+              "codec_version": null
+            },
+            "change_summary": "Reviewed compensation NativeV15Origin03Compensation01: Preserve the original independently reviewed plan meaning in a new revision and resolve only NativeV15Origin03; retain all existing Task history, obligations and later legitimate changes.",
+            "identity_alignment": [
+              {
+                "kind": "flow",
+                "previous_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                "current_id": "FLOW-f78c671da6d04b7dbed7a6111d652007",
+                "rationale": "Retained existing formal identity during reviewed compensation"
+              },
+              {
+                "kind": "command",
+                "previous_id": "accept",
+                "current_id": "accept",
+                "rationale": "Retained existing formal identity during reviewed compensation"
+              },
+              {
+                "kind": "command",
+                "previous_id": "cancel",
+                "current_id": "cancel",
+                "rationale": "Retained existing formal identity during reviewed compensation"
+              },
+              {
+                "kind": "command",
+                "previous_id": "resume",
+                "current_id": "resume",
+                "rationale": "Retained existing formal identity during reviewed compensation"
+              },
+              {
+                "kind": "command",
+                "previous_id": "profile-and-hooks",
+                "current_id": "profile-and-hooks",
+                "rationale": "Retained existing formal identity during reviewed compensation"
+              },
+              {
+                "kind": "command",
+                "previous_id": "harness-lifecycle-and-observation",
+                "current_id": "harness-lifecycle-and-observation",
+                "rationale": "Retained existing formal identity during reviewed compensation"
+              },
+              {
+                "kind": "command",
+                "previous_id": "render-and-probe-adapter",
+                "current_id": "render-and-probe-adapter",
+                "rationale": "Retained existing formal identity during reviewed compensation"
+              },
+              {
+                "kind": "state",
+                "previous_id": "decision-journal",
+                "current_id": "decision-journal",
+                "rationale": "Retained existing formal identity during reviewed compensation"
+              },
+              {
+                "kind": "state",
+                "previous_id": "rendered-map-ui",
+                "current_id": "rendered-map-ui",
+                "rationale": "Retained existing formal identity during reviewed compensation"
+              },
+              {
+                "kind": "state",
+                "previous_id": "retained-scenario-audit",
+                "current_id": "retained-scenario-audit",
+                "rationale": "Retained existing formal identity during reviewed compensation"
+              }
+            ]
+          }
+        },
+        "after_raw_digest": "sha256:18c638723cd9742601e2c34b0c73174b0069f4a152099be02c8fe2adca06cb91",
+        "verification_mode": "immutable_bytes"
+      }
+    ],
+    "compensation": {
+      "relation": {
+        "operation_id": "NativeV15Origin03",
+        "frozen_digest": "sha256:551ce99d98a546f13cb8e150cf2ef05156e45e4d0f502993cc2533423d86b894",
+        "request_raw_digest": "sha256:9e98ad9d678961111d505d8379824536eea8bdcf4ce91da0df4a574f5c725aa0",
+        "effects_digest": "sha256:6177fd0b0962d2375fcbb0bc54bbc539b7f2babcc165b9e5635c1119ee07570c"
+      },
+      "current_catalog_digest": "sha256:86317dea22202aff8261fb01da2a6b078f2c3e3f860e57d411216a06131fc7f2",
+      "current_frame_digest": "sha256:536b97cf37ab589edb26f6d80ea53ce8aaf48b8bee37104eab4cfa9df0d9f459",
+      "old_scope_ids": [
+        "command:141f3839991b437b5679f0d5cbe1aed8d532fb5265432c63f644bab4b5dc54df",
+        "command:2374d91794b79f4fb4ec9587d2cf00aecc4f9953fab3ed1dd12ab147a0b721f9",
+        "command:2beeddda1095565e2324f9383307d6ee9a029ca5ca3ab955be4fdf7f3fd5d761",
+        "command:a83a31320d921b888a48fa5edd0b4b5a29984de6e96bf7b8ac7d29ba06caf616",
+        "command:c125d0397b605657bc89340953f5f2897a7e00a9b7d3474fa53720c8ccbbb3e3",
+        "command:ed98d7ad0f763addbb9d7851664f312dc52d501b07b47b9c3e27a90aea3e2353",
+        "file:1d90a99f81bf109e2e84e659c5364d440a8152728153e578dd38e4884614d32a",
+        "file:25e2729c68b54bec6db9786b047cff3c99055537b52ec1c7db5337e263e56f83",
+        "file:9ac7f5703f06c6b202fdf4d6ec316e1d00629d948428e0e35b57ec7e2be7cad9",
+        "flow:0fe05734aec3d51c9c6fe180955ee0fd5e6538cf8246a66a40053a3d1793314b",
+        "plan:211bad3bf57b9c0e50eb4f1036e07594be0edaa11170079e5debc9fecf137f7a",
+        "requirement:0693bf3e4246960d211d696c064e0e8ffe22821de1e98cf33a46c5a9f99eee5a",
+        "requirement:09c260541245f8b30dc2c3a5ce90b3af02db8b41393eb8a1495c3af8513ef2f1",
+        "requirement:1c3182ed2183807f616df9d9955ede4884bd8856184814ec2b28037366dbac55",
+        "requirement:366846984398a728b7ddb335150dd190b71263635708486381ab7ee49fc559c6",
+        "requirement:42d8a10fc0b87e500d28c8d4dc36a2856b12cb677b3f2961c1c4981a584086fa",
+        "requirement:6461da1c884ae7c45733635fc60944027ef3c6059cd7016e133139511020bebb",
+        "requirement:69756236a7af8ee85f3e2251434abca2249a193972b037960224d9421fafd38e",
+        "requirement:7b86ad55a942eadb221fadd4c76bfdfa19372d980ba48ce05ee0e0c54aa99925",
+        "requirement:7d6abbbe60e11edbeb859c6d4b161eae2a6797c2868be88ca058d89a9dc593f1",
+        "requirement:8740a9fb10613e783ef0c6aa3cadad216402215ed8cc29846b0f2618c9573cd3",
+        "requirement:d73f9679825ef62ef23e5a92c86923eb978ca5bebbafc2f573057139fc9a3e14",
+        "requirement:db05e83b1f364b9cf7d6128eb29ae7b0080a25371358df51e6944b7e0287cdec",
+        "requirement:f440de596fa1f027cb3f9fcac50d34f601dd61942b3d7fab8bde04c96a0fd565",
+        "requirement:f9cc6a793f1e79b1fdd4c91cba7c0068259104bf02a8d6c24b7be9f68b06371f",
+        "state:4a73ac20502e63d5f97101b2cf4ccc270fb270e0a62a012acd40475bcc77094b",
+        "state:bb01347a332a266d0a47ba5c82bbafe84600c7f23dd84d6562cfc3e7885dcf3c",
+        "state:d3aa12e8e139472b3682eb0bed8aa0778459777cfc828314a57ad7758332d2c1"
+      ],
+      "current_scope_ids": [
+        "command:141f3839991b437b5679f0d5cbe1aed8d532fb5265432c63f644bab4b5dc54df",
+        "command:2374d91794b79f4fb4ec9587d2cf00aecc4f9953fab3ed1dd12ab147a0b721f9",
+        "command:2beeddda1095565e2324f9383307d6ee9a029ca5ca3ab955be4fdf7f3fd5d761",
+        "command:a83a31320d921b888a48fa5edd0b4b5a29984de6e96bf7b8ac7d29ba06caf616",
+        "command:c125d0397b605657bc89340953f5f2897a7e00a9b7d3474fa53720c8ccbbb3e3",
+        "command:ed98d7ad0f763addbb9d7851664f312dc52d501b07b47b9c3e27a90aea3e2353",
+        "file:1d90a99f81bf109e2e84e659c5364d440a8152728153e578dd38e4884614d32a",
+        "file:25e2729c68b54bec6db9786b047cff3c99055537b52ec1c7db5337e263e56f83",
+        "file:9ac7f5703f06c6b202fdf4d6ec316e1d00629d948428e0e35b57ec7e2be7cad9",
+        "flow:0fe05734aec3d51c9c6fe180955ee0fd5e6538cf8246a66a40053a3d1793314b",
+        "plan:211bad3bf57b9c0e50eb4f1036e07594be0edaa11170079e5debc9fecf137f7a",
+        "requirement:0693bf3e4246960d211d696c064e0e8ffe22821de1e98cf33a46c5a9f99eee5a",
+        "requirement:09c260541245f8b30dc2c3a5ce90b3af02db8b41393eb8a1495c3af8513ef2f1",
+        "requirement:1c3182ed2183807f616df9d9955ede4884bd8856184814ec2b28037366dbac55",
+        "requirement:366846984398a728b7ddb335150dd190b71263635708486381ab7ee49fc559c6",
+        "requirement:42d8a10fc0b87e500d28c8d4dc36a2856b12cb677b3f2961c1c4981a584086fa",
+        "requirement:6461da1c884ae7c45733635fc60944027ef3c6059cd7016e133139511020bebb",
+        "requirement:69756236a7af8ee85f3e2251434abca2249a193972b037960224d9421fafd38e",
+        "requirement:7b86ad55a942eadb221fadd4c76bfdfa19372d980ba48ce05ee0e0c54aa99925",
+        "requirement:7d6abbbe60e11edbeb859c6d4b161eae2a6797c2868be88ca058d89a9dc593f1",
+        "requirement:8740a9fb10613e783ef0c6aa3cadad216402215ed8cc29846b0f2618c9573cd3",
+        "requirement:d73f9679825ef62ef23e5a92c86923eb978ca5bebbafc2f573057139fc9a3e14",
+        "requirement:db05e83b1f364b9cf7d6128eb29ae7b0080a25371358df51e6944b7e0287cdec",
+        "requirement:f440de596fa1f027cb3f9fcac50d34f601dd61942b3d7fab8bde04c96a0fd565",
+        "requirement:f9cc6a793f1e79b1fdd4c91cba7c0068259104bf02a8d6c24b7be9f68b06371f",
+        "state:4a73ac20502e63d5f97101b2cf4ccc270fb270e0a62a012acd40475bcc77094b",
+        "state:bb01347a332a266d0a47ba5c82bbafe84600c7f23dd84d6562cfc3e7885dcf3c",
+        "state:d3aa12e8e139472b3682eb0bed8aa0778459777cfc828314a57ad7758332d2c1"
+      ],
+      "source_plan_ref": {
+        "path": "docs/planning/b-route/plans/PLAN-bed480ce3e404b2cbaf5514d80a7f941/1.json",
+        "schema_version": "newrouge.b-route-plan.v1",
+        "entity_id": "PLAN-bed480ce3e404b2cbaf5514d80a7f941",
+        "revision": 1,
+        "digest": "sha256:965faffefde5731b92e581d30be7ae8854db73844ec5411dd337e0b563e54f20",
+        "verification_mode": "raw",
+        "codec_version": null
+      },
+      "source_binding_ref": null,
+      "retained_plan_refs": [],
+      "retained_binding_refs": [],
+      "task_document_digests": {},
+      "task_raw_digests": {}
+    }
+  },
+  "frozen_digest": "sha256:1cff2bfb385238c4ba5cf77fff76acaf0157a06a6fb8c92f1674e1ce83b9af65"
+}

@@ -1,0 +1,45 @@
+{
+  "schema_version": "newrouge.b-route-compensation-segmented-verdict.v1",
+  "verdict": "approved",
+  "findings": [],
+  "checks": [
+    {
+      "id": "b_source_and_binding_retention",
+      "verdict": "approved",
+      "rationale": "The complete native source, planning-proof reference and four non-inline fields remain available with their typed owner interpretation. The original selection has no B binding; checked request/material/capsule links are not treated as a formal binding, execution acceptance or new approval."
+    },
+    {
+      "id": "complete_old_current_new_scope",
+      "verdict": "approved",
+      "rationale": "The proposal includes every old and current scope plus the new revision's file scope. Existing requirement, flow and definition identities remain aligned, and no binding or Task scope is silently removed."
+    },
+    {
+      "id": "current_before_and_later_edits",
+      "verdict": "approved",
+      "rationale": "The current catalog and source-plan references identify revision 1 consistently. The target is a new immutable revision 2, preserving revision 1; the supplied complete current scope identifies no intervening changes that the copy would discard."
+    },
+    {
+      "id": "exact_pending_claim_relation",
+      "verdict": "approved",
+      "rationale": "The request identifies NativeV15Origin03 with its recorded frozen, request and effects identities. Its selected revision-1 plan, absent binding, catalog scope heads and original receipt connect the compensation to precisely that recorded claim."
+    },
+    {
+      "id": "original_raw_frozen_effects",
+      "verdict": "approved",
+      "rationale": "Original operation, source and target records retain their raw identities; the proposal writes only the new plan revision. Policy, origins and the empty frozen-A set are preserved, without converting the historical policy proposal into runtime or A authority."
+    },
+    {
+      "id": "target:0",
+      "verdict": "approved",
+      "rationale": "The defined projection copies the complete original plan, changes revision and lineage, and rebinds only exact same-plan typed owner uses. Formal identities, other values and retained native semantics survive through the preserved verified reference."
+    },
+    {
+      "id": "task_status_acceptance_history",
+      "verdict": "approved",
+      "rationale": "The original triplets, current Task index, origin Task list and Task definitions are empty, so no existing status or acceptance history is lost. Scenario obligations remain prospective; publication history and retained evidence do not establish execution or acceptance."
+    }
+  ],
+  "plan_digest": "sha256:3877dc95f7b1e2b08ab783cbe839f8151209d78c601d7a957291f7fb5bc5d98f",
+  "node_id": "governance-joint",
+  "prefix_digest": "sha256:bbad9d781084004f65342cf882af05f8c00e9d9c2f3524a83c6dc547c808d33b"
+}
