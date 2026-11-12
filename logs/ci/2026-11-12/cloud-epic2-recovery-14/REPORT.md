@@ -1,0 +1,39 @@
+# Batch04 received; historical data verified; private authority remains separate
+
+Source baseline61bc8f8e4beb44a0a817a6b7a074b5c69ba73010 on the original `build/cloud-epic2-recovery-20261111` branch. The parent reports the user's specific authorization for the12 screened files and verified publication. The earlier public-upload rejection was not retried by this task or bypassed through another channel. One normal fetch retrieved the authorized fixed94761e6caca45061d36a260f6c3116cb83a56530; no checkout, merge, remote write or network-policy change.
+
+## Actual receipt and checks
+
+Read fixed Git README/MANIFEST/ZIP blobs. ZIP171350 bytes, SHA256664e6f1ba102877d9fbcf5a3cf0536504a537d7740e4e0fcd7c2aa784d4b78ac matches both the delegated pin and manifest. All12 originals, total801947 bytes, match the independent pins already recorded before transfer; the embedded FILE_INDEX matches. Extracted plain files into `/workspace/newrouge-recovery-data/batch04-94761e6c/data` with original bytes preserved, separate from code and previous results. `batch04-verification.json` records every transport object/original path, size and hash. The receiver refuses an existing destination; it was not rerun.
+
+Together with the three previously recovered exact preimages, all15 fixed producer/control inputs now exist and their raw pins recheck. The current DATA analysis in `check_recorded_producer_relations.py` verifies recorded PID/birth/image/audit/start-terminal relations, OS0 and Job assignment/quiescence/closure. It connects the original config/source/request epoch to retained evidence and reconstructs request digest3368718ba02f366dcd09911c89b01cfc04110928f0e4b472f0e69d99da1fad23 and argv digest15ceb1f7c70d7d6098c0d683ba47cfc7e971a14fbf5672f4d8c2e0cc71840948; both exactly match the original retained binding. Original reader source literals are parsed as AST DATA; the constructed historical command string is never executed. Only the current codec is imported. `recorded-producer-relations.json` retains all results and limits.
+
+The producer was NativeV15Origin02; NativeV15Origin03 later consumes its retained execution. The actual history remains: readerOS0 with Job empty/closed; parent ownerOS2; supervised workerOS1; model calls0. Outer failure does not erase reader completion, and reader completion does not make the outer operation pass. Original parent80 paid-or-unknown/178 guard/cap290/released0 values remain that historical record, not a new budget reconciliation. The old thin-control draft manifest's unexecuted label is not a later runtime verdict.
+
+The previously handed-off full original Python string already closed the original policy DATA input:51 exact preimages, base14ac4050... and v31012db22... match. The2399-byte schema and23-check saved verdict accounting remain verified. Three Native03 request identities remain distinct (embedded9e98ad..., bindingb9ebaf..., compensation7dea03...). Those earlier checks were retained, not rerun or inflated into original-owner authentication.
+
+## Authentication boundary and minimal substantive choice
+
+The specifically authorized clean Astra max review is preserved in `astra-max-boundary-review.md`. It read the actual publication, original Story, ADRs and producer/control route. Published receipt authority really anchors historical data, while its reader deliberately tolerates absent sealed logs. Compensation separately demands the genuine original-owner worker's current full interpretation before granting private carrier/host-only capabilities. A new name or class does not make DATA consistency an equivalent grant. No authentication dispatcher or authority resource was changed, and no fake original Auth instance/worker/identity was created.
+
+Original config exposes27 unique cold-check refs, one available by raw pin in the existing index, plus two old-owner source preimages used by that route. These are conditional original-verifier reads, not new universal Story gates. The records show original pre-reader input admission crossed the pins, but not a successful final whole-owner closure. Merely collecting26+2 further files would still leave the original interpreter/path/entity/Job requirements. Accordingly this continuation issues no additional collection request and does not execute the old verifier.
+
+The remaining decision is whether to preserve the current fresh original-owner guarantee (requiring a genuine qualified read-only authentication environment), or explicitly accept for this published operation a different Cloud route grounded in sealed past adoption plus migration DATA instead of that fresh original-owner authentication/full cold closure. Current Cloud-only/no-weakened-identity instructions do not authorize either original-host execution or the trust substitution. This is the concrete non-equivalence requiring a decision; ordinary code/document edits do not need routine approval.
+
+## Story status and real remaining work
+
+| Scope | Retained result | Actual remaining boundary |
+| --- | --- | --- |
+|2.1|Historical delivered coverage retained; not rerun here.|No new source defect evidenced in this continuation.|
+|2.2|Historical audit implementation retained.|Original handoff explicitly does not establish actual model semantic qualification; synthetic logs are not that evidence.|
+|2.3-2.5|Historical planning/admission coverage retained.|No new independent implementation gap evidenced; original evidence limits still apply.|
+|2.6|Original R47 Step5 AC1-5 closure retained.|No duplicate freeze/reserve or new claim.|
+|2.7|Original native/apply/verify/publish/read closure retained; Cloud actual public-read/no-op subset already verified.|No replay of reserved/commit-complete Native03.|
+|2.8|Recovery/source fixes and DATA checks retained; batch04 closes the12 missing byte inputs.|Real AC4 compensation still lacks acceptable current private historical authentication. Capacity remains separately unresolved; Windows AC5 and formal closure pending.|
+|2.9|Integrated source/mode fixes and original targeted retained-tail evidence; Cloud focused results retained.|Actual m4 completed registry has no committed entries. Generated/selected is not completed reuse. Original Step4/5 and2.8 prerequisite remain pending; no auto-registration or unknown Root-02 replay.|
+|2.10|Integrated runner/help/context/receipt diagnostics; actual original published read and fresh-process clone subset already passed.|Full original3A-to3B and Windows AC1-6/formal predecessor acceptance remain pending; no need to rerun proven subset.|
+|Paid segmentation|Actual Host1/2 STOP and Host3 outcome retained, without releases.|Canonical Unit Root-02 config/ledger absent, not zero. No legitimate current issuer/lease/budget grant established; historical liabilities/unknowns remain protected.|
+
+The genuine prepare11 failure remains101371 input+2000 reserve>70000; default96000 cannot fit103371.170M local work policy is unchanged. A compensation-only capacity profile still needs applicable actual model/window and runner evidence; prior272k/500k metadata does not establish current Cloud applicability. Prior supported metadata launch401 and tokenizer-domain403 are retained; no retry, alternative network route, quota inflation, compression/splitting rewrite or paid dispatch occurred.
+
+The Story targets disclose no further independent implementation defect justifying new low-value tests/refactors while these specific conditions remain. No production code/test change or project regression was made in this continuation. Prior successes and failures remain separate. No old source/driver, new project model call, financial write, unknown release/replay, full suite, main merge, Fast, Aliyun development, S2 or monitoring action. `workflow.md` remains its preexisting EOL-only status noise and is excluded from this checkpoint.

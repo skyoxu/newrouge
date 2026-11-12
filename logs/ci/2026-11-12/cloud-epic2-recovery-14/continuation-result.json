@@ -1,0 +1,75 @@
+{
+  "schema": "newrouge.cloud-epic2-continuation-result.v1",
+  "source_baseline": "61bc8f8e4beb44a0a817a6b7a074b5c69ba73010",
+  "branch": "build/cloud-epic2-recovery-20261111",
+  "transport_commit": "94761e6caca45061d36a260f6c3116cb83a56530",
+  "status": "data_verified_private_authentication_blocked",
+  "batch04_original_files": 12,
+  "batch04_original_bytes": 801947,
+  "producer_fixed_input_pins_verified": 15,
+  "original_policy_input_resolved_previously": true,
+  "original_request_and_argv_match_retained": true,
+  "recorded_reader_OS_exit": 0,
+  "recorded_parent_OS_exit": 2,
+  "recorded_supervised_worker_OS_exit": 1,
+  "new_owner_execution_authenticated": false,
+  "new_authority_granted": false,
+  "eligible_for_compensation": false,
+  "clean_astra_max_review_completed": true,
+  "minimal_decision": {
+    "preserve_existing_guarantee": "A genuine qualified original-owner read-only authentication environment; raw files alone cannot supply original interpreter/path/entity/Job provenance. No old-host execution is currently authorized.",
+    "different_cloud_guarantee": "Explicit operation-specific acceptance of sealed historical publication plus migration DATA instead of current original-owner reauthentication and full historical cold closure. This changes trust and is not authorized by the current no-weakened-identity boundary."
+  },
+  "further_material_request_issued": false,
+  "independent_implementation_gap_evidenced": false,
+  "separate_remaining_boundaries": [
+    "2.8 applicable capacity/model/runner evidence and real independent compensation review/commit/recovery",
+    "2.8 applicable Windows failure and concurrency qualification",
+    "2.9 committed-completed reuse and formal predecessor acceptance",
+    "2.10 real full-chain and Windows acceptance",
+    "Paid segmentation legitimate current authority, applicable budget and unresolved canonical Root-02 history"
+  ],
+  "production_source_changed": false,
+  "project_tests_rerun": false,
+  "old_code_executed": false,
+  "new_project_model_calls": 0,
+  "financial_writes": 0,
+  "unknown_replays_or_releases": 0,
+  "main_merged": false,
+  "remote_writes": false,
+  "fast_enabled": false,
+  "aliyun_actions": false,
+  "workflow_raw_bytes_equal_baseline": true,
+  "supporting_files": [
+    {
+      "path": "/workspace/newrouge/logs/ci/2026-11-12/cloud-epic2-recovery-14/batch04-verification.json",
+      "bytes": 6198,
+      "sha256": "588f978d5fc99bdaa8554c124bb2a0e6c623e8226ff209b765042fda0b64f4c3"
+    },
+    {
+      "path": "/workspace/newrouge/logs/ci/2026-11-12/cloud-epic2-recovery-14/recorded-producer-relations.json",
+      "bytes": 15327,
+      "sha256": "0862f1fd696ccc55cc8776acbf1657b21b361af5e33b52c92026a2fda752ed77"
+    },
+    {
+      "path": "/workspace/newrouge/logs/ci/2026-11-12/cloud-epic2-recovery-14/astra-max-boundary-review.md",
+      "bytes": 4593,
+      "sha256": "dbf1b8aebb5f80a9e25d3f317f658ba3e3544880e53ad38a100e61c4c7db05da"
+    },
+    {
+      "path": "/workspace/newrouge/logs/ci/2026-11-12/cloud-epic2-recovery-14/REPORT.md",
+      "bytes": 7831,
+      "sha256": "c758eda5c397ab2b9cff233ed1fb1c23894e1fb310a624c77af727c0f377e247"
+    },
+    {
+      "path": "/workspace/newrouge/logs/ci/2026-11-12/cloud-epic2-recovery-14/receive_batch04.py",
+      "bytes": 3382,
+      "sha256": "b65481293da37fc218cb1604040a8758d17dd09278d3d75376f17f8e88a85c87"
+    },
+    {
+      "path": "/workspace/newrouge/logs/ci/2026-11-12/cloud-epic2-recovery-14/check_recorded_producer_relations.py",
+      "bytes": 9240,
+      "sha256": "c34b3893078eee42b8cf7726f321e6be634bd0931d4f8274e6d820dcdb020a3b"
+    }
+  ]
+}

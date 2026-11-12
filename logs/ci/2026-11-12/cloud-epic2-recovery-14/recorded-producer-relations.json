@@ -1,0 +1,279 @@
+{
+  "schema": "newrouge.recorded-producer-relations-data.v1",
+  "fixed_input_pins_verified": [
+    {
+      "task_relative_path": "logs/ci/2026-11-09/story27-r52-atomic-review-prepare-seal-01/config.json",
+      "path": "/workspace/newrouge-recovery-data/batch04-94761e6c/data/logs/ci/2026-11-09/story27-r52-atomic-review-prepare-seal-01/config.json",
+      "bytes": 710409,
+      "sha256": "d6f1eec3a9e9bf7dc5b94608db02d069c4f84404625587bfe9ebd7e64658067d"
+    },
+    {
+      "task_relative_path": "logs/ci/2026-11-09/story27-r52-atomic-review-prepare-01/reader-stdout.bin",
+      "path": "/workspace/newrouge-recovery-data/batch03-05f5fbf9/work/reconstructed-producer-output/reader-stdout.bin",
+      "bytes": 178321214,
+      "sha256": "57b2c0d883ae6884b090a32d4652e367f22743d467c5d4b0fd6c4982eac2e295"
+    },
+    {
+      "task_relative_path": "logs/ci/2026-11-09/story27-r52-atomic-review-prepare-01/reader-stderr.bin",
+      "path": "/workspace/newrouge-recovery-data/batch04-94761e6c/data/logs/ci/2026-11-09/story27-r52-atomic-review-prepare-01/reader-stderr.bin",
+      "bytes": 13913,
+      "sha256": "ab643f2520346c6a2443c201fd3fe10779da2546ba9e263f563778827c40740e"
+    },
+    {
+      "task_relative_path": "logs/ci/2026-11-09/story27-r52-atomic-review-prepare-01/actual-native-capture.json",
+      "path": "/workspace/newrouge-recovery-data/batch03-05f5fbf9/work/reconstructed-producer-output/actual-native-capture.json",
+      "bytes": 180700910,
+      "sha256": "15771c58f9f7f8065b4b03a608d294625c88604a170d0a0d3235f1fd33b0785f"
+    },
+    {
+      "task_relative_path": "logs/ci/2026-11-09/story27-r52-atomic-review-prepare-01/reader-held-started.json",
+      "path": "/workspace/newrouge-recovery-data/batch04-94761e6c/data/logs/ci/2026-11-09/story27-r52-atomic-review-prepare-01/reader-held-started.json",
+      "bytes": 239,
+      "sha256": "012731090b820c06579e91ab3a3daf851051fa328da954ebdf29d59155330354"
+    },
+    {
+      "task_relative_path": "logs/ci/2026-11-09/story27-r52-atomic-review-prepare-01/reader-held-terminal.json",
+      "path": "/workspace/newrouge-recovery-data/batch04-94761e6c/data/logs/ci/2026-11-09/story27-r52-atomic-review-prepare-01/reader-held-terminal.json",
+      "bytes": 691,
+      "sha256": "f8ccd45bf89c799692636bf77aa7c5aa8d08c2b0f669a3ed994984a754b66e42"
+    },
+    {
+      "task_relative_path": "logs/ci/2026-11-09/story27-r52-atomic-review-prepare-01/stop.json",
+      "path": "/workspace/newrouge-recovery-data/batch04-94761e6c/data/logs/ci/2026-11-09/story27-r52-atomic-review-prepare-01/stop.json",
+      "bytes": 55125,
+      "sha256": "8eeb2cb2399a4706316831564ec1d49042757fe6c02bccd8e485a4fbf2ed7f60"
+    },
+    {
+      "task_relative_path": "logs/ci/2026-11-09/story27-r52-atomic-review-prepare-supervision-01/result.json",
+      "path": "/workspace/newrouge-recovery-data/batch04-94761e6c/data/logs/ci/2026-11-09/story27-r52-atomic-review-prepare-supervision-01/result.json",
+      "bytes": 1680,
+      "sha256": "0e43c191bd9da4ec0110f82bece80bf72e547bbc4a8dd894ff533489d64f01ab"
+    },
+    {
+      "task_relative_path": "night-handoff/story27-r52-public-review-prepare-host-followup02/review_prepare_host.draft.py",
+      "path": "/workspace/newrouge-recovery-data/batch03-05f5fbf9/work/recovered-producer-control-source/review_prepare_host.draft.py",
+      "bytes": 82000,
+      "sha256": "3875a5c8865fef7b4297fd8c62393429dea07a63f73b2a8ae051316e11138449"
+    },
+    {
+      "task_relative_path": "night-handoff/story27-r52-atomic-review-prepare-thin-controls-01/manifest.json",
+      "path": "/workspace/newrouge-recovery-data/batch04-94761e6c/data/night-handoff/story27-r52-atomic-review-prepare-thin-controls-01/manifest.json",
+      "bytes": 1700,
+      "sha256": "88a551e4a57a09a621990758ae6355d0de70651824a36faabc01ec991810fa25"
+    },
+    {
+      "task_relative_path": "night-handoff/story27-r52-atomic-review-prepare-thin-controls-01/run_review_prepare.Root-only.py",
+      "path": "/workspace/newrouge-recovery-data/batch04-94761e6c/data/night-handoff/story27-r52-atomic-review-prepare-thin-controls-01/run_review_prepare.Root-only.py",
+      "bytes": 9158,
+      "sha256": "71e7f9241ae4485a525868060bff75db537fff15e1a6c2d4ce82f5c3fd4916c8"
+    },
+    {
+      "task_relative_path": "night-handoff/story27-r52-atomic-review-prepare-thin-controls-01/control_common.py",
+      "path": "/workspace/newrouge-recovery-data/batch04-94761e6c/data/night-handoff/story27-r52-atomic-review-prepare-thin-controls-01/control_common.py",
+      "bytes": 5544,
+      "sha256": "0ea4c7774dec93207fd1b5470ac29232fbcdf0d01b20b06f8db570d85c32ccbe"
+    },
+    {
+      "task_relative_path": "logs/ci/2026-11-09/story27-r52-atomic-review-prepare-supervision-01/supervisor-started.json",
+      "path": "/workspace/newrouge-recovery-data/batch04-94761e6c/data/logs/ci/2026-11-09/story27-r52-atomic-review-prepare-supervision-01/supervisor-started.json",
+      "bytes": 1909,
+      "sha256": "8487cfa42819c94fd8481cc2af5436eecb3d166e42731a432bfe001272f33ab7"
+    },
+    {
+      "task_relative_path": "logs/ci/2026-11-09/story27-r52-atomic-review-prepare-supervision-01/child-started.json",
+      "path": "/workspace/newrouge-recovery-data/batch04-94761e6c/data/logs/ci/2026-11-09/story27-r52-atomic-review-prepare-supervision-01/child-started.json",
+      "bytes": 867,
+      "sha256": "afc066d65dd521c1ea22375a9f359ed5c76af93b06f74273685c571d53998a8a"
+    },
+    {
+      "task_relative_path": "logs/ci/2026-11-09/story27-r52-atomic-review-prepare-supervision-01/child-terminal.json",
+      "path": "/workspace/newrouge-recovery-data/batch04-94761e6c/data/logs/ci/2026-11-09/story27-r52-atomic-review-prepare-supervision-01/child-terminal.json",
+      "bytes": 712,
+      "sha256": "8b44bd98f93be1f9380ed81da84a3f71febfe4e397516ac0a814532b9ffea9a6"
+    }
+  ],
+  "historical_producer_operation_id": "NativeV15Origin02",
+  "history_consumer_operation_id": "NativeV15Origin03",
+  "recorded_reader_OS_exit": 0,
+  "recorded_parent_owner_OS_exit": 2,
+  "recorded_supervised_worker_OS_exit": 1,
+  "recorded_reader_start_terminal_Job_relations_checked": true,
+  "recorded_config_source_request_relations_checked": true,
+  "original_request_digest_reconstructed": "sha256:3368718ba02f366dcd09911c89b01cfc04110928f0e4b472f0e69d99da1fad23",
+  "original_argv_digest_reconstructed": "sha256:15ceb1f7c70d7d6098c0d683ba47cfc7e971a14fbf5672f4d8c2e0cc71840948",
+  "matches_retained_request_and_argv_digests": true,
+  "historical_parent_failure_preserved": true,
+  "conditional_old_cold_replay_references": [
+    {
+      "task_relative_path": "logs/ci/2026-11-09/story27-r52-v15-origin-replay-native02/result.json",
+      "sha256": "1b44566c92f58b520b5d4e704bc8529f9c5d6179b56bd257fdd06c544fc9bb83",
+      "available_data_path": null,
+      "read_site": "original R56 _original_controls:203-205"
+    },
+    {
+      "task_relative_path": "logs/ci/2026-11-09/story27-r52-v15-target-bootstrap-Root-01/epics.json",
+      "sha256": "231fc81a664a3330b1b85338128d07e488f351e51681879c983fabb5c34217fb",
+      "available_data_path": null,
+      "read_site": "original R56 _original_controls:203-205"
+    },
+    {
+      "task_relative_path": "logs/ci/2026-11-09/story29-r52-request4-Root-close-01/result.json",
+      "sha256": "638dd2ea892b90b5c59d6ebf3f980c210e7c60812133500cd337a74e5477fa95",
+      "available_data_path": null,
+      "read_site": "original R56 _original_controls:203-205"
+    },
+    {
+      "task_relative_path": "logs/ci/2026-11-09/story29-r52-request4-source-barrier/r52-request4-01.json",
+      "sha256": "0b2b675be3f7340e86630859eab9c12ff4cf5181e6a87f271f3b64243c076254",
+      "available_data_path": null,
+      "read_site": "original R56 _original_controls:203-205"
+    },
+    {
+      "task_relative_path": "logs/ci/2026-11-09/story27-r52-atomic-protection-root-close-01/result.json",
+      "sha256": "25fd8c507fc0e0e1c6937162243327da3a5559a25fb8acd5656947079e6ef861",
+      "available_data_path": null,
+      "read_site": "original R56 _original_controls:203-205"
+    },
+    {
+      "task_relative_path": "logs/ci/2026-11-09/story29-atomic-source-observation-Root-01/source-overlay.json",
+      "sha256": "b6d4a56b25117fa42915f510615e60e21a653fbb37572aa1346428d0aef83b33",
+      "available_data_path": null,
+      "read_site": "original R56 _original_controls:203-205"
+    },
+    {
+      "task_relative_path": "logs/ci/2026-11-09/story29-atomic-source-observation-Root-01/Root-bridge.json",
+      "sha256": "af830b946f3e26ffd6bc8c8832c16f72802f46ebaec35afc93238261d896e639",
+      "available_data_path": null,
+      "read_site": "original R56 _original_controls:203-205"
+    },
+    {
+      "task_relative_path": "logs/ci/2026-11-09/story27-r52-atomic-paths-protection-capture-02/result.json",
+      "sha256": "f4c7c4b52290d05f30fac6bf480fd17f31e25cf6ce66065cf624131d468463dd",
+      "available_data_path": null,
+      "read_site": "original R56 _original_controls:203-205"
+    },
+    {
+      "task_relative_path": "logs/ci/2026-11-09/story27-r52-atomic-paths-protection-verify-02/result.json",
+      "sha256": "6dab7804c3dbc436143147ec3613fc7975c46ec0a99462778e895fd4de1bd3cc",
+      "available_data_path": null,
+      "read_site": "original R56 _original_controls:203-205"
+    },
+    {
+      "task_relative_path": "logs/ci/2026-11-09/story29-atomic-source-observation-Root-01/source-snapshot.json",
+      "sha256": "36fe0174f302c3a27e690671d13a990982ac104e57a0a10d53774512a3addad6",
+      "available_data_path": null,
+      "read_site": "original R56 _original_controls:203-205"
+    },
+    {
+      "task_relative_path": "logs/ci/2026-11-09/story29-atomic-current19-coverage-Root-01/result.json",
+      "sha256": "97b028ee1dbd3388bf0f16debf9bc984b787c07ea6381ece5fc881a1a44a5403",
+      "available_data_path": null,
+      "read_site": "original R56 _original_controls:203-205"
+    },
+    {
+      "task_relative_path": "logs/ci/2026-11-09/story29-atomic-concurrency-WIP-checkpoint-02/result.json",
+      "sha256": "18dc151924dbfa179983d8a769ffb02245d5e58725207d2493d6b61bb228e877",
+      "available_data_path": null,
+      "read_site": "original R56 _original_controls:203-205"
+    },
+    {
+      "task_relative_path": "logs/ci/2026-11-09/story27-r52-public-review-prepare-seal-01/config.json",
+      "sha256": "d44d9b9157428399e9a35c6970be41a2098d937fc2b90e5d87181f3e77896e03",
+      "available_data_path": "task/logs/ci/2026-11-09/story27-r52-public-review-prepare-seal-01/config.json",
+      "read_site": "original R56 _original_controls:203-205"
+    },
+    {
+      "task_relative_path": "logs/ci/2026-11-09/story27-r52-review-prepare01-preowner-failure-Root-close-01/result.json",
+      "sha256": "58f13a43fdf5c4c410b829b861d926b9f603e183caf93715bbe2911804b49693",
+      "available_data_path": null,
+      "read_site": "original R56 _original_controls:203-205"
+    },
+    {
+      "task_relative_path": "night-handoff/story27-r52-target-protection-host-followup03/manifest.json",
+      "sha256": "2278cbe0fb84ef5e4689124852e04908aab9f942e88b0ed768bc4e718e0c67ce",
+      "available_data_path": null,
+      "read_site": "original R56 _original_controls:203-205"
+    },
+    {
+      "task_relative_path": "night-handoff/story27-r52-target-protection-host-followup03/protection_host.draft.py",
+      "sha256": "3bff6a2003a8de2f9c90a479b87c1855f3536b727051b7a2249e196e05e0475f",
+      "available_data_path": null,
+      "read_site": "original R56 _original_controls:203-205"
+    },
+    {
+      "task_relative_path": "logs/ci/2026-11-09/story27-r52-target-protection-seal-verify-03/config.json",
+      "sha256": "0f40eec6d9100289bbb128f81a3131e13f0b81a0203dfda3e2ef5d01f03a07e2",
+      "available_data_path": null,
+      "read_site": "original R56 _original_controls:203-205"
+    },
+    {
+      "task_relative_path": "logs/ci/2026-11-09/story27-r52-v15-native-profile-seal-native02/config.json",
+      "sha256": "c6b38b37aeb69f5b6e5947ce35c0f0f8a33cfcb23369ccd09f67ba8436de2f6e",
+      "available_data_path": null,
+      "read_site": "original R56 _original_controls:203-205"
+    },
+    {
+      "task_relative_path": "night-handoff/story27-r52-atomic-protection-thin-controls-01/manifest.json",
+      "sha256": "8a267b929de55fd2e37c8122e1ae7751595bf9b14a7ce44e89bcdb24f6d48cfc",
+      "available_data_path": null,
+      "read_site": "original R56 _original_controls:203-205"
+    },
+    {
+      "task_relative_path": "night-handoff/story27-r52-atomic-protection-thin-controls-01/STOP.json",
+      "sha256": "65e04b7d753df7f58fb047ba1e371ed3c4e624e5fb447cfd9f84583ba734fe59",
+      "available_data_path": null,
+      "read_site": "original R56 _original_controls:203-205"
+    },
+    {
+      "task_relative_path": "logs/ci/2026-11-09/story27-r52-atomic-paths-protection-seal-verify-02/config.json",
+      "sha256": "002d7b29b5ffdb17a0890f42c840ab64c155cfbe1930d1cc4cf3a1d986a20019",
+      "available_data_path": null,
+      "read_site": "original R56 _original_controls:203-205"
+    },
+    {
+      "task_relative_path": "logs/ci/2026-11-09/story27-r52-atomic-request02-build-01/result.json",
+      "sha256": "83b14b25889ca12800e20be0fbc0eb4f1abab7329ad536466ce405c97fe4e1dd",
+      "available_data_path": null,
+      "read_site": "original R56 _original_controls:203-205"
+    },
+    {
+      "task_relative_path": "logs/ci/2026-11-09/story27-r52-atomic-request02-stage-01/result.json",
+      "sha256": "ab13385995e2d70a021435c53f51a7a9c80bb158c7367e28dc6b6bc123699b10",
+      "available_data_path": null,
+      "read_site": "original R56 _original_controls:203-205"
+    },
+    {
+      "task_relative_path": "logs/ci/2026-11-09/story27-r52-atomic-request02-seal-01/config.json",
+      "sha256": "087907d78eada2f75d064cd8c54845ab84756ca53456dd3b53f4250ba49453d7",
+      "available_data_path": null,
+      "read_site": "original R56 _original_controls:203-205"
+    },
+    {
+      "task_relative_path": "logs/ci/2026-11-09/story27-r52-atomic-review-prepare-admission-01/record.json",
+      "sha256": "5c53d0d3313f759a342601c00e5e53d40134fb043fbccf2e5c3cdeed32accb29",
+      "available_data_path": null,
+      "read_site": "original R56 _original_controls:203-205"
+    },
+    {
+      "task_relative_path": "night-handoff/story27-r52-public-review-prepare-host-followup02/manifest.json",
+      "sha256": "628a3dd21d954dcfb4c272b9cac381c4653f38e71b899cccca6395e857adb13c",
+      "available_data_path": null,
+      "read_site": "original R56 _original_controls:203-205"
+    },
+    {
+      "task_relative_path": "night-handoff/story27-r52-atomic-request02-thin-controls-01/manifest.json",
+      "sha256": "a95a79461985dd085ce7aea41ddfb486eae5c03d0a49110143eab6945d9c3324",
+      "available_data_path": null,
+      "read_site": "original R56 _original_controls:203-205"
+    }
+  ],
+  "conditional_reference_count": 27,
+  "conditional_references_currently_resolved_by_raw_pin": 1,
+  "original_owner_execution_authenticated_in_cloud": false,
+  "all_original_authentication_conditions_replayed": false,
+  "new_authority_granted": false,
+  "old_source_executed": false,
+  "new_model_calls": 0,
+  "financial_writes": 0,
+  "qualification": "Recorded historical observation/data relationships and exact original request/argv identities only. No current Job, live old-owner identity or complete historical authentication handle is claimed. No conditional prerequisite is silently omitted or made Epic-wide."
+}
