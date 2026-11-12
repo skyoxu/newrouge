@@ -1,0 +1,792 @@
+{
+  "observed_at": "2026-11-12T12:57:19.671099+00:00",
+  "branch": "build/cloud-epic2-recovery-20261111",
+  "HEAD": "a4cced184e50c6e1d61a74ea44bb74c18f3a82af",
+  "scope": "Uncommitted preservation inputs only; no private authentication files or environment values read",
+  "excluded_preexisting_raw_unchanged": [
+    "docs/handoff/2026-11-11/archive/uncommitted-r22/_bmad-output/implementation-artifacts/b-route/spec-2-5-independent-admission-bounded-selection.md",
+    "docs/handoff/2026-11-11/archive/uncommitted-r60/_bmad-output/implementation-artifacts/b-route/sprint-status.yaml",
+    "docs/handoff/2026-11-11/archive/uncommitted-r60/docs/workflows/mvg-integration-acceptance.md",
+    "workflow.md"
+  ],
+  "files": 189,
+  "total_bytes": 69532006,
+  "decoded_protocol_buffers_scanned": 36,
+  "sensitive_pattern_matches": [],
+  "privacy_candidates": [
+    {
+      "path": "logs/ci/2026-11-12/cloud-epic2-recovery-25/dependency-install-report.json",
+      "category": "email_candidates",
+      "count": 9,
+      "fingerprints": [
+        "2a791ea8be1462f098d28880015dad0f896e7396c500b131678b10fbdef45426",
+        "3b761f2b79f007d81b7fd452dadadbf792cf9ec7687468bccc6cae8426f94907",
+        "45bf9040b2127b823263267c8180df5a9e5aaa80014d3b3148ccb06317615649",
+        "58c71dff186b24ffa931b05950fa979f2201f8a96ddf569862b96a47e78e68bf",
+        "6242a5730de8896fbfb0733256e3ab9f5b6ca761bdbbb68495c0c6c375269cd3",
+        "c923213e04f0aea59eca8d68f9a935c95f75f968eed0a63ea7a711ebd0245ba5",
+        "cb347bd6493290f548992cd548c8c2aee63543ac51dff598dd9b8367c16d4aa6",
+        "f766722ecf9ac0cfbf02dea2ab3051e1100b386ed875859f5a9fe91083f7eeb0",
+        "f8e5d48c7c9dc68728130b55296a68f079ba7115f9bfc535536f00f6df7327c4"
+      ]
+    }
+  ],
+  "identities": {
+    "_bmad-output/implementation-artifacts/b-route/spec-2-10-formal-entrypoint.md": {
+      "bytes": 17084,
+      "sha256": "04382f402820da14315a228a6eee445d9896ccd91a09a2af6819c2cdc446318f"
+    },
+    "_bmad-output/implementation-artifacts/b-route/spec-2-8-public-recovery.md": {
+      "bytes": 33542,
+      "sha256": "af99b36d0f4ac2e13fcf5e24c572c196543edaf101bd36b6368852e39e6dcb9c"
+    },
+    "_bmad-output/implementation-artifacts/b-route/spec-2-9-completed-planning-reuse.md": {
+      "bytes": 27465,
+      "sha256": "7ef2b5751f61bb7c4e15b807e6de77c30960cbbf90c1e07144551891643a23d5"
+    },
+    "docs/handoff/2026-11-12/cloud-continuation/HANDOFF-OTHER-AI-2026-11-12.md": {
+      "bytes": 15203,
+      "sha256": "10278eb616f75add5b9aa9d33fe5d6ec3942b44756b5680ebc7d62f12d7db858"
+    },
+    "docs/handoff/2026-11-12/cloud-continuation/README.md": {
+      "bytes": 16537,
+      "sha256": "f10b23a1614926b76a31c0a6cf6fd69f51bba0b7a2f7c63fc5ae00099869fbd2"
+    },
+    "execution-plans/2026-11-11-cloud-epic2-recovery.md": {
+      "bytes": 53025,
+      "sha256": "759f4333e68798164deaa195d116f498d9dbb054917aacfc2af78cf13b51e4ee"
+    },
+    "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/event.json": {
+      "bytes": 10392,
+      "sha256": "1c96ea43349a1b03ade461b8419af1419a89d515850cddb8ceb09cff0de331b1"
+    },
+    "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/inputs.json": {
+      "bytes": 498886,
+      "sha256": "ee49894c31da7830e9293819bf039d2a1057176ad5bff4f72aed3f65ca3c116f"
+    },
+    "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/raw-index.json": {
+      "bytes": 23430,
+      "sha256": "11ee67e1c6556d8809a9467ebcb80e7ac434d5f89f0241dd59609a05e6d5fca0"
+    },
+    "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/raw/000001.bin": {
+      "bytes": 843,
+      "sha256": "ae936175dee7ed94c3ab3811e7688c8f4378a5962e9a6185a00872ef8414cb7e"
+    },
+    "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/raw/000002.bin": {
+      "bytes": 1446,
+      "sha256": "10f8af02cf35ee4bdc78083866cdaa6058a9a94cca79ca234befde4871a1d078"
+    },
+    "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/raw/000003.bin": {
+      "bytes": 17163,
+      "sha256": "db3b4542c6b15fcb04d464966b290550307ac695b83b8bc25ead547ff4533ab0"
+    },
+    "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/raw/000004.bin": {
+      "bytes": 221,
+      "sha256": "dc8e20823e6766df8b8c2d30162bb683d3de7d5e59218645dfb77aba8998f04c"
+    },
+    "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/raw/000005.bin": {
+      "bytes": 227,
+      "sha256": "9ebc064f80985fb493620375a10d1e562c0a06f9702bff7d5c8dd5a8beaa3281"
+    },
+    "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/raw/000006.bin": {
+      "bytes": 220,
+      "sha256": "5137c680ecd744fec861d1308e07772707fea83376acd2fd54fd2cdba0de8e3f"
+    },
+    "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/raw/000007.bin": {
+      "bytes": 164286,
+      "sha256": "4b8cb7db7dabab5734b395d30b1865721e26f976f2474dac4048ab0ba3d41717"
+    },
+    "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/raw/000008.bin": {
+      "bytes": 17367,
+      "sha256": "0d72e7789a90d43fb74fa91ae121828ac66f89cfdce64b7557e4ed06df74f55d"
+    },
+    "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/raw/000009.bin": {
+      "bytes": 99776,
+      "sha256": "272a85f823dfe67b6a19146b12d97aff4b3b25fc7f93496280965cbed89b0927"
+    },
+    "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/raw/000010.bin": {
+      "bytes": 6700,
+      "sha256": "7bcce00da9014b8051f8de0596462c8cdfe89dc9e7b46c564ca16873b2358646"
+    },
+    "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/raw/000011.bin": {
+      "bytes": 903,
+      "sha256": "a1fa9a34b5478b02f7310042e96d5dc60b5d6a241229bde2a1860153f7667cbf"
+    },
+    "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/raw/000012.bin": {
+      "bytes": 4493,
+      "sha256": "c209abde52ad60a57a67fb0f1f6ca115e98fc5386649020b03a09e185a84d2e7"
+    },
+    "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/raw/000013.bin": {
+      "bytes": 22410,
+      "sha256": "75945967cfc9829f91203b68bd821c80f02fb197997f13c8578c2b6af47c0c72"
+    },
+    "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/raw/000014.bin": {
+      "bytes": 611,
+      "sha256": "28c8d30def0ebf551dd200e84caef86a311b384ef47edc633b047e017de0e19a"
+    },
+    "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/raw/000015.bin": {
+      "bytes": 16799,
+      "sha256": "c719cd93cb225b42d4ea6893e8e2b861d9ff98000210d25cab2fcbd41dc429ac"
+    },
+    "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/raw/000016.bin": {
+      "bytes": 8952,
+      "sha256": "f7a510d581c0f55b994ecb1b21a54ca9922822e2686285bb14c8dd8ecb60eff6"
+    },
+    "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/raw/000017.bin": {
+      "bytes": 2224,
+      "sha256": "f82cccbb4b0d38e16e014b3975206d286bf942e6ecb1c7ef5084342df12c6110"
+    },
+    "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/raw/000018.bin": {
+      "bytes": 3095,
+      "sha256": "64d2629fc4ed78d84ec6c9e2381e28ecb5ee0b218871dc46c5293a982e48dce3"
+    },
+    "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/raw/000019.bin": {
+      "bytes": 1632,
+      "sha256": "db02134f7270bf1ad1e6f9651d6903f211df32cc67caf4a9d1e7ec40fa46ab98"
+    },
+    "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/raw/000020.bin": {
+      "bytes": 12825,
+      "sha256": "947042321bddcce1992e46692f5ca1e819a97ff6cd998679ddf3b40b9787fc99"
+    },
+    "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/raw/000021.bin": {
+      "bytes": 5298,
+      "sha256": "3a1b8516b3bb6377265d197c60e1e3673f5ac8ec2cf5615fae7202470ff72ad4"
+    },
+    "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/raw/000022.bin": {
+      "bytes": 283,
+      "sha256": "499d49af5e6273631d38bd6c51f1a4329fe1f4a8b28b2c4005056a8082dd37c7"
+    },
+    "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/raw/000023.bin": {
+      "bytes": 7059,
+      "sha256": "46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a"
+    },
+    "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/raw/000024.bin": {
+      "bytes": 1329,
+      "sha256": "ce1b23cb4db4944bf8e90bc32fa3190ada1d980fc66ecafcd369d71f2078d36f"
+    },
+    "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/raw/000025.bin": {
+      "bytes": 489,
+      "sha256": "194b4ea56701269948a5d8faa7a0354b6cfb29d71244907fa5c6ec028f7865f8"
+    },
+    "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/raw/000026.bin": {
+      "bytes": 12321,
+      "sha256": "325dd90b430727a37712ce52ebafd66ec0d0d7422a6a6f930b8d202e48005f64"
+    },
+    "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/raw/000027.bin": {
+      "bytes": 681,
+      "sha256": "befed0be57b3e738063e329ba7bda94dbbd1e2106a1dcedbca2e9a4adc03426e"
+    },
+    "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/raw/000028.bin": {
+      "bytes": 8635,
+      "sha256": "18f9d5e564e23590691979aaeaa1d1d743b62cd1ae1c304123e6ce819dbb1f0a"
+    },
+    "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/raw/000029.bin": {
+      "bytes": 283,
+      "sha256": "499d49af5e6273631d38bd6c51f1a4329fe1f4a8b28b2c4005056a8082dd37c7"
+    },
+    "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/raw/000030.bin": {
+      "bytes": 7059,
+      "sha256": "46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a"
+    },
+    "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/raw/000031.bin": {
+      "bytes": 22410,
+      "sha256": "75945967cfc9829f91203b68bd821c80f02fb197997f13c8578c2b6af47c0c72"
+    },
+    "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/raw/000032.bin": {
+      "bytes": 763,
+      "sha256": "bde55410654b34a4ddb33381d604ae0ab261e22142c6afb10e8df5a4534b5ffe"
+    },
+    "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/raw/000033.bin": {
+      "bytes": 862,
+      "sha256": "4d027d4ce8a13870f05211f98962345fef30ff4ba41547365623068a02e68bd6"
+    },
+    "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/raw/000034.bin": {
+      "bytes": 164286,
+      "sha256": "4b8cb7db7dabab5734b395d30b1865721e26f976f2474dac4048ab0ba3d41717"
+    },
+    "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/raw/000035.bin": {
+      "bytes": 10826978,
+      "sha256": "642a0e0928a220b1ebd1840aa6a98afb23ce1e8c8fb941afe92b538ec40c2485"
+    },
+    "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/raw/000036.bin": {
+      "bytes": 370,
+      "sha256": "2aaa3286052f10bd74eafbcab2d2dd71ac7e975ec2af303214125c678a9684b7"
+    },
+    "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/raw/000037.bin": {
+      "bytes": 4639877,
+      "sha256": "96dfc9f2f60feda569a52333e5abdd3111b40628a415f5c070219bc6ad3d55c3"
+    },
+    "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/raw/000038.bin": {
+      "bytes": 80133,
+      "sha256": "c4d35cd2c19b6d29fd65dd40ca008370c3da6dea2b33db8f84511d1ff509b3ad"
+    },
+    "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/raw/000039.bin": {
+      "bytes": 220,
+      "sha256": "5137c680ecd744fec861d1308e07772707fea83376acd2fd54fd2cdba0de8e3f"
+    },
+    "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/raw/000040.bin": {
+      "bytes": 70079,
+      "sha256": "91dcc173f2f5c71d7b3526107a8fd6122629be0fc6fe17807ff1ea57ba099569"
+    },
+    "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/raw/000041.bin": {
+      "bytes": 36539,
+      "sha256": "a441ab6729bb10e29c6c64e5c12be3b505d2a8661a1b3b0c84a4492712aceca3"
+    },
+    "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/raw/000042.bin": {
+      "bytes": 3477949,
+      "sha256": "94405d4eaae5032978ad59f30f0762064e1b420c83e27c6bd98cf86896f3ee00"
+    },
+    "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/raw/000043.bin": {
+      "bytes": 59913,
+      "sha256": "c7a888052241f7e4deaa567e698c62b1895f478dd88c68352443846110192375"
+    },
+    "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/raw/000044.bin": {
+      "bytes": 5443,
+      "sha256": "977c46e9d545aea073fe05e6e8475a8f4973ac7b0f30cffe0315f018083dd6ee"
+    },
+    "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/raw/000045.bin": {
+      "bytes": 115,
+      "sha256": "17f102be47bf3a9c3fde176f30a4aed1b7839ec82e9b5e763c7354359976248b"
+    },
+    "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/raw/000046.bin": {
+      "bytes": 4235,
+      "sha256": "f3432ca6e13c4ef0dc5aaf26a2cb345d86ce67b6d0253a6dd660980f92906347"
+    },
+    "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/raw/000047.bin": {
+      "bytes": 149272,
+      "sha256": "c3b027ea5a619ecf957ea9eacd9febaf087e48e9c6794805ab79a43b51cb9adc"
+    },
+    "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/raw/000048.bin": {
+      "bytes": 7974877,
+      "sha256": "be8fd98507f29dad8e212ef45b3772d2605a8240cf234e88dc1902fae5deb778"
+    },
+    "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/raw/000049.bin": {
+      "bytes": 370,
+      "sha256": "cfcc298109f6fe593097211ee270313d1e7564447b2504bbc4b9f574869047e9"
+    },
+    "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/raw/000050.bin": {
+      "bytes": 3417536,
+      "sha256": "3b0a92971a8f30ce0d3d715280297e10f2042af884a765f87af21f165e40ac92"
+    },
+    "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/raw/000051.bin": {
+      "bytes": 45113,
+      "sha256": "5f98cfe29c960d31dd2c47faae3c4f16f34e043935944cdfe2fc7c0929ab4132"
+    },
+    "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/raw/000052.bin": {
+      "bytes": 227,
+      "sha256": "9ebc064f80985fb493620375a10d1e562c0a06f9702bff7d5c8dd5a8beaa3281"
+    },
+    "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/raw/000053.bin": {
+      "bytes": 37367,
+      "sha256": "391e326f52f9e1271c801e53ddda51ff312a46936e4eb18834247454bef643cf"
+    },
+    "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/raw/000054.bin": {
+      "bytes": 25558,
+      "sha256": "2e30b47f888341ec4ef7579d06872a1211ad88c7ffe509c7213f3095702c99b4"
+    },
+    "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/raw/000055.bin": {
+      "bytes": 2561189,
+      "sha256": "72011bed7ae45ade2f7a841395ffaed1e8f3856f05fbcbd4ba80843ff0396fd4"
+    },
+    "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/raw/000056.bin": {
+      "bytes": 59924,
+      "sha256": "cd5eb2f6f25180488dbd04c1bdcf836e438cce740bda4be8e489f1f25f5d316c"
+    },
+    "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/raw/000057.bin": {
+      "bytes": 4935,
+      "sha256": "d8216531a60331c40b52604f9a59e428f3dc163ea552171d359e4525dd730c97"
+    },
+    "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/raw/000058.bin": {
+      "bytes": 115,
+      "sha256": "17f102be47bf3a9c3fde176f30a4aed1b7839ec82e9b5e763c7354359976248b"
+    },
+    "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/raw/000059.bin": {
+      "bytes": 2435,
+      "sha256": "c1f62b6910e19f22a93ab73869f59147e3fcadb5b67424e66fa418752e5c9528"
+    },
+    "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/raw/000060.bin": {
+      "bytes": 903,
+      "sha256": "a1fa9a34b5478b02f7310042e96d5dc60b5d6a241229bde2a1860153f7667cbf"
+    },
+    "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/raw/000061.bin": {
+      "bytes": 4493,
+      "sha256": "c209abde52ad60a57a67fb0f1f6ca115e98fc5386649020b03a09e185a84d2e7"
+    },
+    "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/raw/000062.bin": {
+      "bytes": 22410,
+      "sha256": "75945967cfc9829f91203b68bd821c80f02fb197997f13c8578c2b6af47c0c72"
+    },
+    "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/raw/000063.bin": {
+      "bytes": 611,
+      "sha256": "28c8d30def0ebf551dd200e84caef86a311b384ef47edc633b047e017de0e19a"
+    },
+    "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/raw/000064.bin": {
+      "bytes": 16799,
+      "sha256": "c719cd93cb225b42d4ea6893e8e2b861d9ff98000210d25cab2fcbd41dc429ac"
+    },
+    "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/raw/000065.bin": {
+      "bytes": 8952,
+      "sha256": "f7a510d581c0f55b994ecb1b21a54ca9922822e2686285bb14c8dd8ecb60eff6"
+    },
+    "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/raw/000066.bin": {
+      "bytes": 2224,
+      "sha256": "f82cccbb4b0d38e16e014b3975206d286bf942e6ecb1c7ef5084342df12c6110"
+    },
+    "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/raw/000067.bin": {
+      "bytes": 3095,
+      "sha256": "64d2629fc4ed78d84ec6c9e2381e28ecb5ee0b218871dc46c5293a982e48dce3"
+    },
+    "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/raw/000068.bin": {
+      "bytes": 1632,
+      "sha256": "db02134f7270bf1ad1e6f9651d6903f211df32cc67caf4a9d1e7ec40fa46ab98"
+    },
+    "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/raw/000069.bin": {
+      "bytes": 12825,
+      "sha256": "947042321bddcce1992e46692f5ca1e819a97ff6cd998679ddf3b40b9787fc99"
+    },
+    "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/raw/000070.bin": {
+      "bytes": 5298,
+      "sha256": "3a1b8516b3bb6377265d197c60e1e3673f5ac8ec2cf5615fae7202470ff72ad4"
+    },
+    "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/raw/000071.bin": {
+      "bytes": 283,
+      "sha256": "499d49af5e6273631d38bd6c51f1a4329fe1f4a8b28b2c4005056a8082dd37c7"
+    },
+    "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/raw/000072.bin": {
+      "bytes": 7059,
+      "sha256": "46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a"
+    },
+    "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/raw/000073.bin": {
+      "bytes": 1329,
+      "sha256": "ce1b23cb4db4944bf8e90bc32fa3190ada1d980fc66ecafcd369d71f2078d36f"
+    },
+    "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/raw/000074.bin": {
+      "bytes": 489,
+      "sha256": "194b4ea56701269948a5d8faa7a0354b6cfb29d71244907fa5c6ec028f7865f8"
+    },
+    "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/raw/000075.bin": {
+      "bytes": 12321,
+      "sha256": "325dd90b430727a37712ce52ebafd66ec0d0d7422a6a6f930b8d202e48005f64"
+    },
+    "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/raw/000076.bin": {
+      "bytes": 681,
+      "sha256": "befed0be57b3e738063e329ba7bda94dbbd1e2106a1dcedbca2e9a4adc03426e"
+    },
+    "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/raw/000077.bin": {
+      "bytes": 8635,
+      "sha256": "18f9d5e564e23590691979aaeaa1d1d743b62cd1ae1c304123e6ce819dbb1f0a"
+    },
+    "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/raw/000078.bin": {
+      "bytes": 283,
+      "sha256": "499d49af5e6273631d38bd6c51f1a4329fe1f4a8b28b2c4005056a8082dd37c7"
+    },
+    "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/raw/000079.bin": {
+      "bytes": 22410,
+      "sha256": "75945967cfc9829f91203b68bd821c80f02fb197997f13c8578c2b6af47c0c72"
+    },
+    "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/raw/000080.bin": {
+      "bytes": 221,
+      "sha256": "dc8e20823e6766df8b8c2d30162bb683d3de7d5e59218645dfb77aba8998f04c"
+    },
+    "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/raw/000081.bin": {
+      "bytes": 227,
+      "sha256": "9ebc064f80985fb493620375a10d1e562c0a06f9702bff7d5c8dd5a8beaa3281"
+    },
+    "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/raw/000082.bin": {
+      "bytes": 220,
+      "sha256": "5137c680ecd744fec861d1308e07772707fea83376acd2fd54fd2cdba0de8e3f"
+    },
+    "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/raw/000083.bin": {
+      "bytes": 7059,
+      "sha256": "46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a"
+    },
+    "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/raw/000084.bin": {
+      "bytes": 737,
+      "sha256": "3902c10221e666f68f45ff2c4833751afcba9b5f354544a53f542bca5a65231b"
+    },
+    "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/report.json": {
+      "bytes": 1843,
+      "sha256": "b2a8d7dfda3144b6c6ee77e5a566cefa472899e4cd04c07c4ff669ac6eef9b1e"
+    },
+    "logs/ci/2026-11-12/b-route-planning-input/sc25/347a984ba1e3e23266004e095be33f47a148bb7ce40d7fe132bd7bf700876dce/request.json": {
+      "bytes": 156,
+      "sha256": "b83f925fe4065c1ba349ce14ecb7e2e442e8c0e4b658cf599114982b9d01c280"
+    },
+    "logs/ci/2026-11-12/b-route-source-audit/cloud-singlecap-audit-20261112/audit-01/budget-binding.json": {
+      "bytes": 221,
+      "sha256": "dc8e20823e6766df8b8c2d30162bb683d3de7d5e59218645dfb77aba8998f04c"
+    },
+    "logs/ci/2026-11-12/b-route-source-audit/cloud-singlecap-audit-20261112/audit-01/budget-permits/000001.json": {
+      "bytes": 227,
+      "sha256": "9ebc064f80985fb493620375a10d1e562c0a06f9702bff7d5c8dd5a8beaa3281"
+    },
+    "logs/ci/2026-11-12/b-route-source-audit/cloud-singlecap-audit-20261112/audit-01/budget-permits/000002.json": {
+      "bytes": 220,
+      "sha256": "5137c680ecd744fec861d1308e07772707fea83376acd2fd54fd2cdba0de8e3f"
+    },
+    "logs/ci/2026-11-12/b-route-source-audit/cloud-singlecap-audit-20261112/audit-01/comparison.json": {
+      "bytes": 164286,
+      "sha256": "4b8cb7db7dabab5734b395d30b1865721e26f976f2474dac4048ab0ba3d41717"
+    },
+    "logs/ci/2026-11-12/b-route-source-audit/cloud-singlecap-audit-20261112/audit-01/event.json": {
+      "bytes": 17163,
+      "sha256": "db3b4542c6b15fcb04d464966b290550307ac695b83b8bc25ead547ff4533ab0"
+    },
+    "logs/ci/2026-11-12/b-route-source-audit/cloud-singlecap-audit-20261112/audit-01/identity.json": {
+      "bytes": 17367,
+      "sha256": "0d72e7789a90d43fb74fa91ae121828ac66f89cfdce64b7557e4ed06df74f55d"
+    },
+    "logs/ci/2026-11-12/b-route-source-audit/cloud-singlecap-audit-20261112/audit-01/input.json": {
+      "bytes": 99776,
+      "sha256": "272a85f823dfe67b6a19146b12d97aff4b3b25fc7f93496280965cbed89b0927"
+    },
+    "logs/ci/2026-11-12/b-route-source-audit/cloud-singlecap-audit-20261112/audit-01/proof.json": {
+      "bytes": 6700,
+      "sha256": "7bcce00da9014b8051f8de0596462c8cdfe89dc9e7b46c564ca16873b2358646"
+    },
+    "logs/ci/2026-11-12/b-route-source-audit/cloud-singlecap-audit-20261112/audit-01/raw/000001.bin": {
+      "bytes": 903,
+      "sha256": "a1fa9a34b5478b02f7310042e96d5dc60b5d6a241229bde2a1860153f7667cbf"
+    },
+    "logs/ci/2026-11-12/b-route-source-audit/cloud-singlecap-audit-20261112/audit-01/raw/000002.bin": {
+      "bytes": 4493,
+      "sha256": "c209abde52ad60a57a67fb0f1f6ca115e98fc5386649020b03a09e185a84d2e7"
+    },
+    "logs/ci/2026-11-12/b-route-source-audit/cloud-singlecap-audit-20261112/audit-01/raw/000003.bin": {
+      "bytes": 22410,
+      "sha256": "75945967cfc9829f91203b68bd821c80f02fb197997f13c8578c2b6af47c0c72"
+    },
+    "logs/ci/2026-11-12/b-route-source-audit/cloud-singlecap-audit-20261112/audit-01/raw/000004.bin": {
+      "bytes": 611,
+      "sha256": "28c8d30def0ebf551dd200e84caef86a311b384ef47edc633b047e017de0e19a"
+    },
+    "logs/ci/2026-11-12/b-route-source-audit/cloud-singlecap-audit-20261112/audit-01/raw/000005.bin": {
+      "bytes": 16799,
+      "sha256": "c719cd93cb225b42d4ea6893e8e2b861d9ff98000210d25cab2fcbd41dc429ac"
+    },
+    "logs/ci/2026-11-12/b-route-source-audit/cloud-singlecap-audit-20261112/audit-01/raw/000006.bin": {
+      "bytes": 8952,
+      "sha256": "f7a510d581c0f55b994ecb1b21a54ca9922822e2686285bb14c8dd8ecb60eff6"
+    },
+    "logs/ci/2026-11-12/b-route-source-audit/cloud-singlecap-audit-20261112/audit-01/raw/000007.bin": {
+      "bytes": 2224,
+      "sha256": "f82cccbb4b0d38e16e014b3975206d286bf942e6ecb1c7ef5084342df12c6110"
+    },
+    "logs/ci/2026-11-12/b-route-source-audit/cloud-singlecap-audit-20261112/audit-01/raw/000008.bin": {
+      "bytes": 3095,
+      "sha256": "64d2629fc4ed78d84ec6c9e2381e28ecb5ee0b218871dc46c5293a982e48dce3"
+    },
+    "logs/ci/2026-11-12/b-route-source-audit/cloud-singlecap-audit-20261112/audit-01/raw/000009.bin": {
+      "bytes": 1632,
+      "sha256": "db02134f7270bf1ad1e6f9651d6903f211df32cc67caf4a9d1e7ec40fa46ab98"
+    },
+    "logs/ci/2026-11-12/b-route-source-audit/cloud-singlecap-audit-20261112/audit-01/raw/000010.bin": {
+      "bytes": 12825,
+      "sha256": "947042321bddcce1992e46692f5ca1e819a97ff6cd998679ddf3b40b9787fc99"
+    },
+    "logs/ci/2026-11-12/b-route-source-audit/cloud-singlecap-audit-20261112/audit-01/raw/000011.bin": {
+      "bytes": 5298,
+      "sha256": "3a1b8516b3bb6377265d197c60e1e3673f5ac8ec2cf5615fae7202470ff72ad4"
+    },
+    "logs/ci/2026-11-12/b-route-source-audit/cloud-singlecap-audit-20261112/audit-01/raw/000012.bin": {
+      "bytes": 283,
+      "sha256": "499d49af5e6273631d38bd6c51f1a4329fe1f4a8b28b2c4005056a8082dd37c7"
+    },
+    "logs/ci/2026-11-12/b-route-source-audit/cloud-singlecap-audit-20261112/audit-01/raw/000013.bin": {
+      "bytes": 7059,
+      "sha256": "46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a"
+    },
+    "logs/ci/2026-11-12/b-route-source-audit/cloud-singlecap-audit-20261112/audit-01/raw/000014.bin": {
+      "bytes": 1329,
+      "sha256": "ce1b23cb4db4944bf8e90bc32fa3190ada1d980fc66ecafcd369d71f2078d36f"
+    },
+    "logs/ci/2026-11-12/b-route-source-audit/cloud-singlecap-audit-20261112/audit-01/raw/000015.bin": {
+      "bytes": 489,
+      "sha256": "194b4ea56701269948a5d8faa7a0354b6cfb29d71244907fa5c6ec028f7865f8"
+    },
+    "logs/ci/2026-11-12/b-route-source-audit/cloud-singlecap-audit-20261112/audit-01/raw/000016.bin": {
+      "bytes": 12321,
+      "sha256": "325dd90b430727a37712ce52ebafd66ec0d0d7422a6a6f930b8d202e48005f64"
+    },
+    "logs/ci/2026-11-12/b-route-source-audit/cloud-singlecap-audit-20261112/audit-01/raw/000017.bin": {
+      "bytes": 681,
+      "sha256": "befed0be57b3e738063e329ba7bda94dbbd1e2106a1dcedbca2e9a4adc03426e"
+    },
+    "logs/ci/2026-11-12/b-route-source-audit/cloud-singlecap-audit-20261112/audit-01/raw/000018.bin": {
+      "bytes": 8635,
+      "sha256": "18f9d5e564e23590691979aaeaa1d1d743b62cd1ae1c304123e6ce819dbb1f0a"
+    },
+    "logs/ci/2026-11-12/b-route-source-audit/cloud-singlecap-audit-20261112/audit-01/raw/000019.bin": {
+      "bytes": 283,
+      "sha256": "499d49af5e6273631d38bd6c51f1a4329fe1f4a8b28b2c4005056a8082dd37c7"
+    },
+    "logs/ci/2026-11-12/b-route-source-audit/cloud-singlecap-audit-20261112/audit-01/raw/000020.bin": {
+      "bytes": 7059,
+      "sha256": "46453447335769fbf4d8001ade9f2090a8799809380ea0df026a0637bc67338a"
+    },
+    "logs/ci/2026-11-12/b-route-source-audit/cloud-singlecap-audit-20261112/audit-01/raw/000021.bin": {
+      "bytes": 22410,
+      "sha256": "75945967cfc9829f91203b68bd821c80f02fb197997f13c8578c2b6af47c0c72"
+    },
+    "logs/ci/2026-11-12/b-route-source-audit/cloud-singlecap-audit-20261112/audit-01/report.json": {
+      "bytes": 1446,
+      "sha256": "10f8af02cf35ee4bdc78083866cdaa6058a9a94cca79ca234befde4871a1d078"
+    },
+    "logs/ci/2026-11-12/b-route-source-audit/cloud-singlecap-audit-20261112/audit-01/request.json": {
+      "bytes": 763,
+      "sha256": "bde55410654b34a4ddb33381d604ae0ab261e22142c6afb10e8df5a4534b5ffe"
+    },
+    "logs/ci/2026-11-12/b-route-source-audit/cloud-singlecap-audit-20261112/audit-01/runner.json": {
+      "bytes": 862,
+      "sha256": "4d027d4ce8a13870f05211f98962345fef30ff4ba41547365623068a02e68bd6"
+    },
+    "logs/ci/2026-11-12/b-route-source-audit/cloud-singlecap-audit-20261112/audit-01/steps/compare/canonical-output.json": {
+      "bytes": 164286,
+      "sha256": "4b8cb7db7dabab5734b395d30b1865721e26f976f2474dac4048ab0ba3d41717"
+    },
+    "logs/ci/2026-11-12/b-route-source-audit/cloud-singlecap-audit-20261112/audit-01/steps/compare/execution.json": {
+      "bytes": 10826978,
+      "sha256": "642a0e0928a220b1ebd1840aa6a98afb23ce1e8c8fb941afe92b538ec40c2485"
+    },
+    "logs/ci/2026-11-12/b-route-source-audit/cloud-singlecap-audit-20261112/audit-01/steps/compare/measurement.json": {
+      "bytes": 370,
+      "sha256": "2aaa3286052f10bd74eafbcab2d2dd71ac7e975ec2af303214125c678a9684b7"
+    },
+    "logs/ci/2026-11-12/b-route-source-audit/cloud-singlecap-audit-20261112/audit-01/steps/compare/receipt.json": {
+      "bytes": 4639877,
+      "sha256": "96dfc9f2f60feda569a52333e5abdd3111b40628a415f5c070219bc6ad3d55c3"
+    },
+    "logs/ci/2026-11-12/b-route-source-audit/cloud-singlecap-audit-20261112/audit-01/steps/compare/request.txt": {
+      "bytes": 80133,
+      "sha256": "c4d35cd2c19b6d29fd65dd40ca008370c3da6dea2b33db8f84511d1ff509b3ad"
+    },
+    "logs/ci/2026-11-12/b-route-source-audit/cloud-singlecap-audit-20261112/audit-01/steps/compare/reservation.json": {
+      "bytes": 220,
+      "sha256": "5137c680ecd744fec861d1308e07772707fea83376acd2fd54fd2cdba0de8e3f"
+    },
+    "logs/ci/2026-11-12/b-route-source-audit/cloud-singlecap-audit-20261112/audit-01/steps/compare/workspace/input.json": {
+      "bytes": 70079,
+      "sha256": "91dcc173f2f5c71d7b3526107a8fd6122629be0fc6fe17807ff1ea57ba099569"
+    },
+    "logs/ci/2026-11-12/b-route-source-audit/cloud-singlecap-audit-20261112/audit-01/steps/compare/workspace/output.json": {
+      "bytes": 36539,
+      "sha256": "a441ab6729bb10e29c6c64e5c12be3b505d2a8661a1b3b0c84a4492712aceca3"
+    },
+    "logs/ci/2026-11-12/b-route-source-audit/cloud-singlecap-audit-20261112/audit-01/steps/compare/workspace/output.json.32f22b97411d47dbbd27a78cb4fd6ad2.app-server.jsonl": {
+      "bytes": 3477949,
+      "sha256": "94405d4eaae5032978ad59f30f0762064e1b420c83e27c6bd98cf86896f3ee00"
+    },
+    "logs/ci/2026-11-12/b-route-source-audit/cloud-singlecap-audit-20261112/audit-01/steps/compare/workspace/output.json.32f22b97411d47dbbd27a78cb4fd6ad2.app-server.stderr.txt": {
+      "bytes": 59913,
+      "sha256": "c7a888052241f7e4deaa567e698c62b1895f478dd88c68352443846110192375"
+    },
+    "logs/ci/2026-11-12/b-route-source-audit/cloud-singlecap-audit-20261112/audit-01/steps/compare/workspace/prompt.txt": {
+      "bytes": 5443,
+      "sha256": "977c46e9d545aea073fe05e6e8475a8f4973ac7b0f30cffe0315f018083dd6ee"
+    },
+    "logs/ci/2026-11-12/b-route-source-audit/cloud-singlecap-audit-20261112/audit-01/steps/compare/workspace/runner-input-integrity.json": {
+      "bytes": 115,
+      "sha256": "17f102be47bf3a9c3fde176f30a4aed1b7839ec82e9b5e763c7354359976248b"
+    },
+    "logs/ci/2026-11-12/b-route-source-audit/cloud-singlecap-audit-20261112/audit-01/steps/compare/workspace/schema.json": {
+      "bytes": 4235,
+      "sha256": "f3432ca6e13c4ef0dc5aaf26a2cb345d86ce67b6d0253a6dd660980f92906347"
+    },
+    "logs/ci/2026-11-12/b-route-source-audit/cloud-singlecap-audit-20261112/audit-01/steps/extract-000001/canonical-output.json": {
+      "bytes": 149272,
+      "sha256": "c3b027ea5a619ecf957ea9eacd9febaf087e48e9c6794805ab79a43b51cb9adc"
+    },
+    "logs/ci/2026-11-12/b-route-source-audit/cloud-singlecap-audit-20261112/audit-01/steps/extract-000001/execution.json": {
+      "bytes": 7974877,
+      "sha256": "be8fd98507f29dad8e212ef45b3772d2605a8240cf234e88dc1902fae5deb778"
+    },
+    "logs/ci/2026-11-12/b-route-source-audit/cloud-singlecap-audit-20261112/audit-01/steps/extract-000001/measurement.json": {
+      "bytes": 370,
+      "sha256": "cfcc298109f6fe593097211ee270313d1e7564447b2504bbc4b9f574869047e9"
+    },
+    "logs/ci/2026-11-12/b-route-source-audit/cloud-singlecap-audit-20261112/audit-01/steps/extract-000001/receipt.json": {
+      "bytes": 3417536,
+      "sha256": "3b0a92971a8f30ce0d3d715280297e10f2042af884a765f87af21f165e40ac92"
+    },
+    "logs/ci/2026-11-12/b-route-source-audit/cloud-singlecap-audit-20261112/audit-01/steps/extract-000001/request.txt": {
+      "bytes": 45113,
+      "sha256": "5f98cfe29c960d31dd2c47faae3c4f16f34e043935944cdfe2fc7c0929ab4132"
+    },
+    "logs/ci/2026-11-12/b-route-source-audit/cloud-singlecap-audit-20261112/audit-01/steps/extract-000001/reservation.json": {
+      "bytes": 227,
+      "sha256": "9ebc064f80985fb493620375a10d1e562c0a06f9702bff7d5c8dd5a8beaa3281"
+    },
+    "logs/ci/2026-11-12/b-route-source-audit/cloud-singlecap-audit-20261112/audit-01/steps/extract-000001/workspace/input.json": {
+      "bytes": 37367,
+      "sha256": "391e326f52f9e1271c801e53ddda51ff312a46936e4eb18834247454bef643cf"
+    },
+    "logs/ci/2026-11-12/b-route-source-audit/cloud-singlecap-audit-20261112/audit-01/steps/extract-000001/workspace/output.json": {
+      "bytes": 25558,
+      "sha256": "2e30b47f888341ec4ef7579d06872a1211ad88c7ffe509c7213f3095702c99b4"
+    },
+    "logs/ci/2026-11-12/b-route-source-audit/cloud-singlecap-audit-20261112/audit-01/steps/extract-000001/workspace/output.json.890f4b2177204b42a7cbafb2067fba42.app-server.jsonl": {
+      "bytes": 2561189,
+      "sha256": "72011bed7ae45ade2f7a841395ffaed1e8f3856f05fbcbd4ba80843ff0396fd4"
+    },
+    "logs/ci/2026-11-12/b-route-source-audit/cloud-singlecap-audit-20261112/audit-01/steps/extract-000001/workspace/output.json.890f4b2177204b42a7cbafb2067fba42.app-server.stderr.txt": {
+      "bytes": 59924,
+      "sha256": "cd5eb2f6f25180488dbd04c1bdcf836e438cce740bda4be8e489f1f25f5d316c"
+    },
+    "logs/ci/2026-11-12/b-route-source-audit/cloud-singlecap-audit-20261112/audit-01/steps/extract-000001/workspace/prompt.txt": {
+      "bytes": 4935,
+      "sha256": "d8216531a60331c40b52604f9a59e428f3dc163ea552171d359e4525dd730c97"
+    },
+    "logs/ci/2026-11-12/b-route-source-audit/cloud-singlecap-audit-20261112/audit-01/steps/extract-000001/workspace/runner-input-integrity.json": {
+      "bytes": 115,
+      "sha256": "17f102be47bf3a9c3fde176f30a4aed1b7839ec82e9b5e763c7354359976248b"
+    },
+    "logs/ci/2026-11-12/b-route-source-audit/cloud-singlecap-audit-20261112/audit-01/steps/extract-000001/workspace/schema.json": {
+      "bytes": 2435,
+      "sha256": "c1f62b6910e19f22a93ab73869f59147e3fcadb5b67424e66fa418752e5c9528"
+    },
+    "logs/ci/2026-11-12/b-route-source-audit/cloud-singlecap-audit-20261112/budget.json": {
+      "bytes": 221,
+      "sha256": "dc8e20823e6766df8b8c2d30162bb683d3de7d5e59218645dfb77aba8998f04c"
+    },
+    "logs/ci/2026-11-12/b-route-source-audit/cloud-singlecap-audit-20261112/reservations/000001.json": {
+      "bytes": 227,
+      "sha256": "9ebc064f80985fb493620375a10d1e562c0a06f9702bff7d5c8dd5a8beaa3281"
+    },
+    "logs/ci/2026-11-12/b-route-source-audit/cloud-singlecap-audit-20261112/reservations/000002.json": {
+      "bytes": 220,
+      "sha256": "5137c680ecd744fec861d1308e07772707fea83376acd2fd54fd2cdba0de8e3f"
+    },
+    "logs/ci/2026-11-12/cloud-epic2-recovery-25/PLAN.md": {
+      "bytes": 1811,
+      "sha256": "af03f794320987f077ffdb6559ec664a10a0acdce7e9c74cea62bb775a7c89eb"
+    },
+    "logs/ci/2026-11-12/cloud-epic2-recovery-25/PRESERVATION.md": {
+      "bytes": 2304,
+      "sha256": "5df796da662225bd870388b1abdf8ba5ab3c7fdab8dd514726b9f94fca1e38e0"
+    },
+    "logs/ci/2026-11-12/cloud-epic2-recovery-25/REPORT.md": {
+      "bytes": 7941,
+      "sha256": "58dc39ea439b78323a0047cddc1e0f7b2738c64139059277a7a789499d801260"
+    },
+    "logs/ci/2026-11-12/cloud-epic2-recovery-25/actual-source-audit-summary.json": {
+      "bytes": 1972,
+      "sha256": "bfb023d23de68ff9ae2df103a128dd6f1a78759bf254540250f7471c80154cce"
+    },
+    "logs/ci/2026-11-12/cloud-epic2-recovery-25/audit-once-result.json": {
+      "bytes": 142,
+      "sha256": "49dd3ad6cfa76e208c23287bbf68ac1e182a5367b277b0ea920ebbd6013959ec"
+    },
+    "logs/ci/2026-11-12/cloud-epic2-recovery-25/audit-once-started.json": {
+      "bytes": 1423,
+      "sha256": "501d3532a9e552915a60125686beaa181afb3b4cb36a06e74cc3b2cbeddbec4a"
+    },
+    "logs/ci/2026-11-12/cloud-epic2-recovery-25/audit-wrapper.stderr": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "logs/ci/2026-11-12/cloud-epic2-recovery-25/audit-wrapper.stdout": {
+      "bytes": 214,
+      "sha256": "dc19bfc16e96fbdc777630d501d207f4358f3dff0bda29b1660921aec92a460c"
+    },
+    "logs/ci/2026-11-12/cloud-epic2-recovery-25/audit_preservation_inputs.py": {
+      "bytes": 5656,
+      "sha256": "21477f1cac298c32f830514a37f3f61929f035ab4f4eb91854ba934b119d28e4"
+    },
+    "logs/ci/2026-11-12/cloud-epic2-recovery-25/blocked-3b-common-core-request.txt": {
+      "bytes": 278315,
+      "sha256": "dadbc06a583e7edebdbdea08a421827ef9c3814ca00269e25a879162619a0552"
+    },
+    "logs/ci/2026-11-12/cloud-epic2-recovery-25/blocked-3b-request-data-provenance.json": {
+      "bytes": 571,
+      "sha256": "908c0f3d66ca4c4905411a1ff82be67c35d2d6fe3ccc1b92da1e3bbae78ded11"
+    },
+    "logs/ci/2026-11-12/cloud-epic2-recovery-25/current-audit-cold-verification.json": {
+      "bytes": 604,
+      "sha256": "9d16ab9612be8e8b97b0323c63b7c48d55042f0f521dfd98be8f298cac21e6ad"
+    },
+    "logs/ci/2026-11-12/cloud-epic2-recovery-25/dependency-install-report.json": {
+      "bytes": 65519,
+      "sha256": "69b409bf9589bba60d555ef04f0182113a6973d2102e46524dd674cd46bc3b60"
+    },
+    "logs/ci/2026-11-12/cloud-epic2-recovery-25/dependency-install.stderr": {
+      "bytes": 264,
+      "sha256": "459aa3ff1a69c4e96daa6aa9ae458d064bd6abdde2e595c898516ebff1cca980"
+    },
+    "logs/ci/2026-11-12/cloud-epic2-recovery-25/dependency-install.stdout": {
+      "bytes": 1844,
+      "sha256": "5de48579ee36ddfdeefe2629eae16900d8fd00972ee7a2618be92521e6cb7bea"
+    },
+    "logs/ci/2026-11-12/cloud-epic2-recovery-25/frozen-owner-targeted-01.txt": {
+      "bytes": 1199,
+      "sha256": "9b09da7e7bc3749ab7b7a64760453741045bbc3da02c764a83ad8e6534b7c411"
+    },
+    "logs/ci/2026-11-12/cloud-epic2-recovery-25/handoff-publication-preflight.json": {
+      "bytes": 1734,
+      "sha256": "0f73ce7dce390d276ccb637298d7ce4ca3502af3cfcb7942bf18579afdce7363"
+    },
+    "logs/ci/2026-11-12/cloud-epic2-recovery-25/independent-native-platform-assessment.md": {
+      "bytes": 3684,
+      "sha256": "f45cca928946fd9ece05bdd8d5b10549b4c3d38bc503a584577a6141053072bd"
+    },
+    "logs/ci/2026-11-12/cloud-epic2-recovery-25/linux-publication-targeted-01.txt": {
+      "bytes": 1146,
+      "sha256": "73df59b6297596d44bfe1bf03edb69100acb959bbf3871e55155e9c46828ccf8"
+    },
+    "logs/ci/2026-11-12/cloud-epic2-recovery-25/pause-process-snapshot.json": {
+      "bytes": 2451,
+      "sha256": "7e80a3f3f3a48bda6bd487b722f5d76fa1e29e4b9459925e9681212d8ad83982"
+    },
+    "logs/ci/2026-11-12/cloud-epic2-recovery-25/post-adapter-evidence-state.json": {
+      "bytes": 503,
+      "sha256": "ccfeb5d54e09d4126fb3ff84906bf351bb89f399ef159bc8cd5ac2f058596fea"
+    },
+    "logs/ci/2026-11-12/cloud-epic2-recovery-25/post-adapter-real-clone-read.json": {
+      "bytes": 7170,
+      "sha256": "63bc7259d17c25ae02840f4a725cf72f40ee78083aacaeba266195dcaa845593"
+    },
+    "logs/ci/2026-11-12/cloud-epic2-recovery-25/post-adapter-real-clone-read.stderr": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "logs/ci/2026-11-12/cloud-epic2-recovery-25/pre-linux-source-epoch.json": {
+      "bytes": 21577,
+      "sha256": "7a7430d4aea08fc5174ec53afc0415317c22504f23fcac05b6fa815978db56ee"
+    },
+    "logs/ci/2026-11-12/cloud-epic2-recovery-25/pre-linux-source-git-verification.json": {
+      "bytes": 150,
+      "sha256": "69794934e49725fe672bfd408d4167bf5e2609e43adcc1645bd8e75d9173939d"
+    },
+    "logs/ci/2026-11-12/cloud-epic2-recovery-25/preservation-input-audit-01.json": {
+      "bytes": 43932,
+      "sha256": "fac1fc444dd871863d9e7a3a68fa31c527f793e3e9ca96cfd6c2b5c642b83817"
+    },
+    "logs/ci/2026-11-12/cloud-epic2-recovery-25/preservation-input-audit-02.json": {
+      "bytes": 44308,
+      "sha256": "823708ac39b74d8dafc84d5aaa55ffd30118ed677e4057ab2a1e189e3671a45f"
+    },
+    "logs/ci/2026-11-12/cloud-epic2-recovery-25/public-3b-prepare-before-linux.stderr": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "logs/ci/2026-11-12/cloud-epic2-recovery-25/public-3b-prepare-before-linux.stdout": {
+      "bytes": 2158,
+      "sha256": "c1b903d19afdbdd57a0261c5b5c03c389073bec8af39371d31b4d2ddcdc775ee"
+    },
+    "logs/ci/2026-11-12/cloud-epic2-recovery-25/public-current-audit.json": {
+      "bytes": 1350,
+      "sha256": "7045c0600c48c791445272579033fa0530fecacc0188272a820855739f0f675a"
+    },
+    "logs/ci/2026-11-12/cloud-epic2-recovery-25/public-current-audit.stderr": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "logs/ci/2026-11-12/cloud-epic2-recovery-25/run_current_audit_once.py": {
+      "bytes": 3197,
+      "sha256": "c99e880321c26066b3a80469b2c1d956b9680ffae69b4d15bbf6d68f757f2ad0"
+    },
+    "logs/ci/2026-11-12/cloud-epic2-recovery-25/singlecap-planning-contract.current.json": {
+      "bytes": 843,
+      "sha256": "ae936175dee7ed94c3ab3811e7688c8f4378a5962e9a6185a00872ef8414cb7e"
+    }
+  }
+}

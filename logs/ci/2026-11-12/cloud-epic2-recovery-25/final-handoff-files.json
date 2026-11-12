@@ -1,0 +1,40 @@
+{
+  "observed_at": "2026-11-12T12:58:13.855194+00:00",
+  "scope": "Final eight staged documentation/preflight files after README heading line-ending correction; full raw/protocol scan retained in prior reports",
+  "sensitive_pattern_matches": [],
+  "identities": {
+    "_bmad-output/implementation-artifacts/b-route/spec-2-10-formal-entrypoint.md": {
+      "bytes": 17084,
+      "sha256": "04382f402820da14315a228a6eee445d9896ccd91a09a2af6819c2cdc446318f"
+    },
+    "_bmad-output/implementation-artifacts/b-route/spec-2-8-public-recovery.md": {
+      "bytes": 33542,
+      "sha256": "af99b36d0f4ac2e13fcf5e24c572c196543edaf101bd36b6368852e39e6dcb9c"
+    },
+    "_bmad-output/implementation-artifacts/b-route/spec-2-9-completed-planning-reuse.md": {
+      "bytes": 27465,
+      "sha256": "7ef2b5751f61bb7c4e15b807e6de77c30960cbbf90c1e07144551891643a23d5"
+    },
+    "docs/handoff/2026-11-12/cloud-continuation/HANDOFF-OTHER-AI-2026-11-12.md": {
+      "bytes": 15203,
+      "sha256": "10278eb616f75add5b9aa9d33fe5d6ec3942b44756b5680ebc7d62f12d7db858"
+    },
+    "docs/handoff/2026-11-12/cloud-continuation/README.md": {
+      "bytes": 16538,
+      "sha256": "15b230bccff50928ed08e06406106b77bfc63c3a76c5b02dd8b35f99c73d395f"
+    },
+    "execution-plans/2026-11-11-cloud-epic2-recovery.md": {
+      "bytes": 53025,
+      "sha256": "759f4333e68798164deaa195d116f498d9dbb054917aacfc2af78cf13b51e4ee"
+    },
+    "logs/ci/2026-11-12/cloud-epic2-recovery-25/handoff-publication-preflight.json": {
+      "bytes": 1734,
+      "sha256": "0f73ce7dce390d276ccb637298d7ce4ca3502af3cfcb7942bf18579afdce7363"
+    },
+    "logs/ci/2026-11-12/cloud-epic2-recovery-25/preservation-input-audit-03.json": {
+      "bytes": 45171,
+      "sha256": "c1a7eb475f7c0da0f8ffec51afe0c5648db8d5c53792a64b6f6fc1bb5c99c351"
+    }
+  },
+  "business_model_test_execution_after_user_stop": 0
+}

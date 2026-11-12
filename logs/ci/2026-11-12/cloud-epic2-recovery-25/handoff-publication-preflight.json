@@ -1,0 +1,84 @@
+{
+  "observed_at": "2026-11-12T12:57:11.301572+00:00",
+  "branch": "build/cloud-epic2-recovery-20261111",
+  "preservation_commit": "a4cced184e50c6e1d61a74ea44bb74c18f3a82af",
+  "fetched_remote": "0c4d16c1b7fa8d8302d58a6c764d481e8f9a0755",
+  "remote_is_ancestor": true,
+  "concurrent_remote_commits": 0,
+  "original_preserved_input_hashes_match": true,
+  "tracked_log_blobs_raw_byte_exact": 181,
+  "process_metadata_only_no_cmdlines_or_environment": [
+    {
+      "pid": 530,
+      "comm": "codex",
+      "kernel_state": "S"
+    },
+    {
+      "pid": 685,
+      "comm": "git",
+      "kernel_state": "Z"
+    },
+    {
+      "pid": 1090,
+      "comm": "git",
+      "kernel_state": "Z"
+    },
+    {
+      "pid": 4019,
+      "comm": "git",
+      "kernel_state": "Z"
+    },
+    {
+      "pid": 4098,
+      "comm": "git",
+      "kernel_state": "Z"
+    },
+    {
+      "pid": 4741,
+      "comm": "git",
+      "kernel_state": "Z"
+    },
+    {
+      "pid": 5137,
+      "comm": "git",
+      "kernel_state": "Z"
+    },
+    {
+      "pid": 5620,
+      "comm": "git",
+      "kernel_state": "Z"
+    },
+    {
+      "pid": 7104,
+      "comm": "git",
+      "kernel_state": "Z"
+    },
+    {
+      "pid": 7354,
+      "comm": "git",
+      "kernel_state": "Z"
+    },
+    {
+      "pid": 7675,
+      "comm": "git",
+      "kernel_state": "Z"
+    },
+    {
+      "pid": 7719,
+      "comm": "git",
+      "kernel_state": "Z"
+    },
+    {
+      "pid": 7728,
+      "comm": "codex",
+      "kernel_state": "S"
+    },
+    {
+      "pid": 7732,
+      "comm": "python3",
+      "kernel_state": "R"
+    }
+  ],
+  "business_model_test_execution_after_user_stop": 0,
+  "operation": "Prepare final handoff documentation commit, then ordinary branch push; no force or main merge"
+}

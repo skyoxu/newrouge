@@ -1,5 +1,13 @@
 # NewRogue cloud continuation checkpoint
 
+## Paused transfer to another AI assistant (2026-11-12)
+
+Read [HANDOFF-OTHER-AI-2026-11-12.md](HANDOFF-OTHER-AI-2026-11-12.md) first. The latest user instruction pauses all new business/model/test execution because another AI assistant will take over. Earlier instructions below are historical and do not authorize restarting work. Keep the current non-main branch and four unrelated EOL-status paths.
+
+Source/evidence preservation commit is a4cced184e50c6e1d61a74ea44bb74c18f3a82af, based on0c4d16c1. The actual two-call source audit completed under the pre-adapter epoch, then formal3B preparation refused its278315-byte common-core lower bound before any native/model dispatch. The narrowly assessed Linux publication adapter and10 targeted passes predate the pause. The adapter changes source identity: the old audit remains genuine historical evidence, not current qualification. Fresh audit0/native0; no complete single-Capability item or whole-Epic acceptance is claimed.
+
+The user explicitly chose to keep current network settings; no official tokenizer encoding table was fetched and no accurate count is claimed. Both source-audit calls and the previous compensation's2+1 remain occupied with failures/unknowns preserved. Full nonsecret originals, privacy/hash inspection and process state are in continuation25. The dedicated handoff records original Story scope, exact paths, remaining blockers and what must not be rerun. Only preservation/documentation and the authorized normal commit/push continue.
+
 ## Windows controls and independent single-Capability continuation24
 
 Read `logs/ci/2026-11-12/cloud-epic2-recovery-24/REPORT.md` first. A non-Aliyun target-Windows route is now actually exercised: existing workflow, narrow selector commit92c5532536b77d38730c2b59e9fe5e06b4662445, one Actions run43211116759/attempt1,4 tests passed/no skips/287.578s/zero models. The broad suite was skipped. Windows process/sharing/cleanup behavior is real; upstream/native/review fixtures remain synthetic. This contributes to original2.8 AC5 and partially2.10 AC6, not whole-chain acceptance. Decoded full job output/native summary/artifact metadata are retained. Local ZIP materialization failed; do not claim its hash was locally verified or rerun the successful job.
