@@ -19,6 +19,7 @@ import stat
 import sys
 
 import _b_route_codec as codec
+import _b_route_compensation_review_profiles as profiles
 
 SUBJECT = 'newrouge.b-route-adoption-review-subject.v1'
 PROOF = 'newrouge.b-route-adoption-review-proof.v1'
@@ -167,6 +168,9 @@ def policy_observations():
         '_b_route_qualified_history_host_v3.py',
         '_b_route_qualified_history_router.py',
         '_b_route_qualified_public_history_v2.py',
+        '_b_route_compensation_review_profiles.py',
+        '_b_route_published_history.py',
+        '_b_route_published_compensation_review.py',
     )
     sources = {name: codec.raw_digest((directory / name).read_bytes()) for name in names}
     schemas = {name: codec.raw_digest(data) for name, data in resources.resources(auxiliary=True)}
@@ -426,7 +430,7 @@ def write_once(root, relative, data):
 def read_subject(root, operation_id):
     candidate = codec.strict_json_loads(path(root, location(operation_id) + '/subject.json').read_bytes())
     require(type(candidate) is dict, 'review subject object', type(candidate).__name__, codec.ReasonCode.INVALID_TYPE)
-    if type(candidate) is dict and candidate.get('schema_version') == 'newrouge.b-route-qualified-compensation-review-subject.v2':
+    if type(candidate) is dict and candidate.get('schema_version') in ('newrouge.b-route-qualified-compensation-review-subject.v2', 'newrouge.b-route-qualified-compensation-review-subject.v3'):
         return _qualified_owner_v2().read_subject(root, operation_id)
     if type(candidate) is dict and candidate.get('schema_version') == 'newrouge.b-route-qualified-compensation-review-subject.v1':
         return _qualified_owner().read_subject(root, operation_id)
@@ -498,7 +502,7 @@ def _legacy_verify_semantic(root, subject):
 
 
 def support_names(mode):
-    if mode == 'qualified_public_private.v2':
+    if mode in ('qualified_public_private.v2','qualified_public_private.v3'):
         return _qualified_owner_v2().support_names()
     if mode == 'qualified_public_private.v1':
         return _qualified_owner().support_names()
@@ -538,7 +542,7 @@ def verified_historical_support(root, original):
             and original['frozen']['request'].get('host_review_ref', {}).get('schema_version') == 'newrouge.b-route-adoption-review-proof.v3'):
         handle = _qualified_owner_v2().history(root, original)
         return {'subject': handle.subject(), 'files': handle.files(), 'roles': handle.roles()}
-    if original['frozen']['request'].get('host_review_ref', {}).get('schema_version') == 'newrouge.b-route-qualified-compensation-review-proof.v2':
+    if original['frozen']['request'].get('host_review_ref', {}).get('schema_version') in ('newrouge.b-route-qualified-compensation-review-proof.v2', 'newrouge.b-route-qualified-compensation-review-proof.v3'):
         handle = _qualified_owner_v2().history(root, original)
         return {'subject': handle.subject(), 'files': handle.files(), 'roles': handle.roles()}
     if original['frozen']['request'].get('host_review_ref', {}).get('schema_version') == 'newrouge.b-route-qualified-compensation-review-proof.v1':
@@ -570,7 +574,7 @@ def verified_historical_support(root, original):
 
 
 def model_packet(root, subject):
-    if subject.get('schema_version') == 'newrouge.b-route-qualified-compensation-review-subject.v2':
+    if subject.get('schema_version') in ('newrouge.b-route-qualified-compensation-review-subject.v2', 'newrouge.b-route-qualified-compensation-review-subject.v3'):
         return _qualified_owner_v2().model_packet(root, subject)
     if subject.get('schema_version') == 'newrouge.b-route-qualified-compensation-review-subject.v1':
         return _qualified_owner().model_packet(root, subject)
@@ -584,7 +588,7 @@ def model_packet(root, subject):
 
 def verdict_bindings(subject, *, root=None, packet=None):
     """Return identities only; this is never an approval or verdict producer."""
-    if subject.get('schema_version') == 'newrouge.b-route-qualified-compensation-review-subject.v2':
+    if subject.get('schema_version') in ('newrouge.b-route-qualified-compensation-review-subject.v2', 'newrouge.b-route-qualified-compensation-review-subject.v3'):
         derived = model_packet(root, subject) if packet is None else packet
         return _qualified_owner_v2().bindings(subject, derived)
     if subject.get('schema_version') == 'newrouge.b-route-qualified-compensation-review-subject.v1':
@@ -604,7 +608,7 @@ def verdict_bindings(subject, *, root=None, packet=None):
 
 
 def verdict_schema(subject, *, root=None, packet=None):
-    if subject.get('schema_version') == 'newrouge.b-route-qualified-compensation-review-subject.v2':
+    if subject.get('schema_version') in ('newrouge.b-route-qualified-compensation-review-subject.v2', 'newrouge.b-route-qualified-compensation-review-subject.v3'):
         return _qualified_owner_v2().verdict_schema(subject, root=root, packet=packet)
     if subject.get('schema_version') == 'newrouge.b-route-qualified-compensation-review-subject.v1':
         return _qualified_owner().verdict_schema(subject, root=root, packet=packet)
@@ -621,7 +625,7 @@ def verdict_schema(subject, *, root=None, packet=None):
 
 
 def check_verdict(subject, value, *, root=None, packet=None):
-    if subject.get('schema_version') == 'newrouge.b-route-qualified-compensation-review-subject.v2':
+    if subject.get('schema_version') in ('newrouge.b-route-qualified-compensation-review-subject.v2', 'newrouge.b-route-qualified-compensation-review-subject.v3'):
         owner = _qualified_owner_v2()
         return owner.check_verdict(subject, value, schema=owner.verdict_schema(subject, root=root, packet=packet))
     if subject.get('schema_version') == 'newrouge.b-route-qualified-compensation-review-subject.v1':
@@ -731,7 +735,7 @@ def _saved_material_delivery(buffers):
 
 
 def prompt(subject, *, root=None, packet=None, delivery=None):
-    if subject.get('schema_version') == 'newrouge.b-route-qualified-compensation-review-subject.v2':
+    if subject.get('schema_version') in ('newrouge.b-route-qualified-compensation-review-subject.v2', 'newrouge.b-route-qualified-compensation-review-subject.v3'):
         return _qualified_owner_v2().prompt(subject, root=root, packet=packet, delivery=delivery)
     if subject.get('schema_version') == 'newrouge.b-route-qualified-compensation-review-subject.v1':
         return _qualified_owner().prompt(subject, root=root, packet=packet, delivery=delivery)
@@ -782,7 +786,7 @@ def _runner_frame(prompt_text, schema):
 
 def review_artifacts(root, subject, *, packet=None, delivery=None):
     """All expensive derivation/encoding is complete before the short writer."""
-    if subject.get('schema_version') == 'newrouge.b-route-qualified-compensation-review-subject.v2':
+    if subject.get('schema_version') in ('newrouge.b-route-qualified-compensation-review-subject.v2', 'newrouge.b-route-qualified-compensation-review-subject.v3'):
         return _qualified_owner_v2().artifacts(root, subject, packet=packet, delivery=delivery)
     if subject.get('schema_version') == 'newrouge.b-route-qualified-compensation-review-subject.v1':
         return _qualified_owner().artifacts(root, subject, packet=packet, delivery=delivery)
@@ -813,7 +817,7 @@ def _support_buffers(root, operation_id, mode):
 
 
 def verify_semantic(root, subject, *, packet=None, buffers=None):
-    if subject.get('schema_version') == 'newrouge.b-route-qualified-compensation-review-subject.v2':
+    if subject.get('schema_version') in ('newrouge.b-route-qualified-compensation-review-subject.v2', 'newrouge.b-route-qualified-compensation-review-subject.v3'):
         return _qualified_owner_v2().verify_semantic(root, subject, packet=packet, buffers=buffers)
     if subject.get('schema_version') == 'newrouge.b-route-qualified-compensation-review-subject.v1':
         return _qualified_owner().verify_semantic(root, subject, packet=packet, buffers=buffers)
@@ -852,7 +856,7 @@ def verify_semantic(root, subject, *, packet=None, buffers=None):
 def produce_proof(root, operation_id):
     """Replay before the metadata lease; caller binds returned support bytes."""
     route = codec.strict_json_loads(path(root, location(operation_id) + '/subject.json').read_bytes())
-    if type(route) is dict and route.get('schema_version') == 'newrouge.b-route-qualified-compensation-review-subject.v2':
+    if type(route) is dict and route.get('schema_version') in ('newrouge.b-route-qualified-compensation-review-subject.v2', 'newrouge.b-route-qualified-compensation-review-subject.v3'):
         return _qualified_owner_v2().produce_proof(root, operation_id)
     if type(route) is dict and route.get('schema_version') == 'newrouge.b-route-qualified-compensation-review-subject.v1':
         return _qualified_owner().produce_proof(root, operation_id)
@@ -880,7 +884,7 @@ def produce_proof(root, operation_id):
 
 def seal(root, operation_id, value):
     """Commit the already verified proof under its caller's complete scopes."""
-    if value.get('schema_version') == 'newrouge.b-route-qualified-compensation-review-proof.v2':
+    if value.get('schema_version') in ('newrouge.b-route-qualified-compensation-review-proof.v2', 'newrouge.b-route-qualified-compensation-review-proof.v3'):
         return _qualified_owner_v2().seal(root, operation_id, value)
     if value.get('schema_version') == 'newrouge.b-route-qualified-compensation-review-proof.v1':
         return _qualified_owner().seal(root, operation_id, value)
@@ -923,7 +927,7 @@ def verify_saved(root, request):
 
 
 def _verify_saved(root, request):
-    if request.get('host_review_ref', {}).get('schema_version') == 'newrouge.b-route-qualified-compensation-review-proof.v2':
+    if request.get('host_review_ref', {}).get('schema_version') in ('newrouge.b-route-qualified-compensation-review-proof.v2', 'newrouge.b-route-qualified-compensation-review-proof.v3'):
         require(request.get('schema_version') == 'newrouge.b-route-compensation-request.v2'
                 and request.get('producer') == 'compensation', 'exact qualified compensation request family', request.get('schema_version'))
         return _qualified_owner_v2().verify_saved(root, request)

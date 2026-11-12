@@ -9,6 +9,7 @@ import _b_route_codec as codec
 import _planning_apply_journal as journal
 import _b_route_qualified_compensation_review as old
 import _b_route_qualified_compensation_review_v2 as new
+import _b_route_published_compensation_review as published
 from _b_route_qualified_historical_v3_protocol import family,need
 
 
@@ -17,6 +18,7 @@ def for_operation(operation):
     if operation['schema_version']=='newrouge.b-route-adoption-operation.v2':
         return new if family(operation)=='v3' else old
     proof=request.get('host_review_ref',{}).get('schema_version','')
+    if proof==published.PROOF:return published
     if proof==new.PROOF:return new
     if proof==old.PROOF:return old
     need(not proof.startswith('newrouge.b-route-qualified-compensation-review-proof.'),
@@ -26,6 +28,7 @@ def for_operation(operation):
 
 def for_subject(subject):
     version=subject.get('schema_version')
+    if version==published.SUBJECT:return published
     if version==new.SUBJECT:return new
     need(not str(version).startswith('newrouge.b-route-qualified-compensation-review-subject.')
          or version==old.SUBJECT, 'unknown qualified subject cannot downgrade')
@@ -33,7 +36,7 @@ def for_subject(subject):
 
 
 def for_snapshot(snapshot, *, original):
-    selected=for_operation(original)
+    selected=published if getattr(snapshot,'review_profile',None) == published.PROFILE else for_operation(original)
     for name,pin in list(snapshot.files.items()):
         if pin is None or not name.endswith('.json') or name.startswith(old.review.BASE+'/'):continue
         data=snapshot.read(name)
@@ -45,7 +48,7 @@ def for_snapshot(snapshot, *, original):
         ref=operation['frozen']['request']['material']['handoff_ref']
         need(name==ref['path'] and codec.raw_digest(data)==ref['raw_digest'],
              'same actual journal capsule reference before version selection')
-        if for_operation(operation) is new:selected=new
+        if for_operation(operation) is new and selected is not published:selected=new
     return selected
 
 

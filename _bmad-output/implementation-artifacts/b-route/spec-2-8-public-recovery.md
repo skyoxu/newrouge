@@ -9,6 +9,25 @@ review_loop_iteration: 0
 context: []
 ---
 
+## Cloud continuation: published history (2026-11-12)
+
+Original AC4 remains unchanged. Under the user's explicit direction and a clean
+Astra max proportionality assessment, [ADR-0056](../../../../docs/adr/ADR-0056-b-route-published-history-compensation.md)
+adds a distinct published-only Cloud history verifier and explicit review v3
+profile. It verifies genuine publication and exact saved evidence/full recorded
+public semantics, and does not claim execution of the original owner. Old proof
+and reader meanings, all current compensation gates, independent new review,
+Task/status/Acceptance/history/B-source and budget obligations remain.
+
+Actual Cloud factory/build and full public prepare reached the unchanged
+capacity gate: final full request316310 bytes; genuine render147247600/170M.
+Complete cold canonical reading and focused profile/publication/owned-before
+checks have separate passing evidence. The current UTF8 upper-bound counter
+rejects316310+2000 at70000; original prepare11's101371-token failure is retained.
+No new provider review, real compensation reserve/apply/publication or formal
+Story acceptance follows. Complete results and failed attempts are preserved in
+`logs/ci/2026-11-12/cloud-epic2-recovery-15/REPORT.md`. Status remains in-progress.
+
 <frozen-after-approval reason="按用户既定全权实施授权由 Root 确认；原始 AC1–5 范围不变">
 
 ## Intent

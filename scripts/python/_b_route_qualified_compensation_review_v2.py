@@ -15,6 +15,8 @@ import _planning_apply_journal as journal
 import _b_route_adoption_review as review
 import _b_route_qualified_compensation_materials_v2 as materials
 import _b_route_qualified_history_router as original_host
+import _b_route_compensation_review_profiles as profiles
+import _b_route_published_history as published
 import _b_route_qualified_compensation_review as previous_owner
 
 SUBJECT=materials.SUBJECT
@@ -59,7 +61,7 @@ def selected(original):
         original_host.family(original)
         return True
     if version=='newrouge.b-route-compensation-operation.v2':
-        return proof==PROOF
+        return proof in (PROOF,profiles.PUBLISHED.name('proof'))
     return False
 
 
@@ -94,7 +96,7 @@ class SavedHistory:
         need(key is _MINT,'actual completely verified saved qualified owner only')
         self._root,self._operation,self._operation_raw=root,operation,operation_raw
         self._inputs,self._derived=inputs,derived
-        self._binding={'schema_version':materials.PREFIX+'saved-history-auth.v2',
+        self._binding={'schema_version':profiles.subject(inputs.subject).name('saved-history-auth'),
             'claim':'exact_new_qualified_saved_proof_and_private_captures',
             'operation_id':operation['operation_id'],'operation_raw_digest':codec.raw_digest(operation_raw),
             'frozen_digest':operation['frozen_digest'],'subject_digest':codec.canonical_digest(inputs.subject),
@@ -123,7 +125,7 @@ class SavedHistory:
         s=self._inputs.subject
         # Complete new owner's public business semantics; exact full old raw
         # operation/frozen/request remain separately authenticated host evidence.
-        return {'schema_version':materials.PREFIX+'public-operation.v2','claim':CLAIM,
+        return {'schema_version':profiles.subject(s).name('public-operation'),'claim':profiles.subject(s).claim,
             'operation_id':s['operation_id'],'operation_schema':self._operation['schema_version'],
             'operation_raw_digest':codec.raw_digest(self._operation_raw),'frozen_digest':self._operation['frozen_digest'],
             'request_raw_digest':self._operation['request_raw_digest'],'subject_digest':codec.canonical_digest(s),
@@ -147,9 +149,9 @@ def captured_source(root,subject,name,context=None):
     if type(context) in (previous_owner._SavedInputs,previous_owner.LegacyHistory):
         return previous_owner.captured_source(root,subject,name,context)
     encoded=subject['current_files'].get(name)
-    if encoded is None and subject.get('schema_version')==SUBJECT:
+    if encoded is None and subject.get('schema_version') in (SUBJECT,profiles.PUBLISHED.name('subject')):
         need(name in subject['private_files'],'complete actual private carrier reference',name)
-        data=resolve_private_file(root,name,subject['private_files'][name])[0]
+        data=resolve_private_file(root,name,subject['private_files'][name],context=context)[0]
     else:
         need(type(encoded) is str,'complete private captured semantic source',name)
         data=base64.b64decode(encoded,validate=True)
@@ -167,11 +169,12 @@ def captured_source(root,subject,name,context=None):
     return data
 
 
-def history(root,original):
+def history(root,original, *, profile=profiles.ORIGINAL, context=None):
     root=Path(root).absolute()
     actual=journal.read_operation(root,operation_id=original['operation_id'])
     need(same(actual,original),'actual complete mixed-journal original operation')
-    key=(str(root),original['operation_id'],codec.canonical_digest(original))
+    key=(str(root),original['operation_id'],codec.canonical_digest(original),profile.name('subject'),
+         codec.canonical_digest(context.subject) if context is not None else None)
     with action() as graph:
         need(key not in graph['active'],'acyclic genuine original review history')
         if key in graph['histories']:
@@ -180,7 +183,8 @@ def history(root,original):
         try:
             if original['schema_version']=='newrouge.b-route-adoption-operation.v2':
                 need(selected(original),'exact qualified original adoption family')
-                value=original_host.authenticate(root,original['operation_id'])
+                value=(published.verify(root,original['operation_id'],context=context) if profile is profiles.PUBLISHED
+                       else original_host.authenticate(root,original['operation_id']))
                 value.checked_original(root,original)
             elif selected(original):
                 inputs,derived=_verify_saved(root,original['frozen']['request'])
@@ -198,8 +202,8 @@ def history(root,original):
         finally:graph['active'].remove(key)
 
 
-def original_review(snapshot,original):
-    handle=history(snapshot.root,original)
+def original_review(snapshot,original, *, profile=profiles.ORIGINAL):
+    handle=history(snapshot.root,original,profile=profile)
     # These are actual verified raw supports, not caller roles or dictionaries.
     for name,data in handle.files().items():need(snapshot.read(name)==data,'original exact historical support',name)
     need(snapshot.read(journal._operation_ref(original['operation_id']))==handle.operation_raw(),
@@ -219,7 +223,7 @@ def read_subject(root,operation_id):
     review.shape(value,('schema_version','producer','operation_id','request','preview','policy_identity',
         'original_operation','original_effects','current_files','private_files','task_definitions','native_threads','native_turns'),
         'complete explicit factored qualified private subject')
-    need(value['schema_version']==SUBJECT and value['producer']=='compensation' and value['operation_id']==operation_id
+    need(value['schema_version'] in (SUBJECT,profiles.PUBLISHED.name('subject')) and value['producer']=='compensation' and value['operation_id']==operation_id
          and value['policy_identity']==review.policy_identity(),'same installed qualified owner policy')
     journal.validate_operation_request(value['request']);journal._operation_schema(value['preview'],'Frozen')
     need(value['request']['operation_id']==operation_id and same(value['preview']['request'],value['request'])
@@ -244,7 +248,7 @@ def bindings(subject,derived):
          and p['policy_identity']==subject['policy_identity']
          and p['required_checks']==review.obligations(subject),
          'same complete private subject/policy/original denominator')
-    return {'schema_version':VERDICT,'subject_digest':codec.canonical_digest(subject),'claim':CLAIM,
+    return {'schema_version':profiles.subject(subject).name('verdict'),'subject_digest':codec.canonical_digest(subject),'claim':profiles.subject(subject).claim,
         'materials_digest':p['materials_digest'],'roles_digest':p['roles_digest'],
         'presentation_digest':codec.canonical_digest(p),'historical_auth_digest':p['historical_auth_digest']}
 
@@ -254,7 +258,7 @@ def _bindings_from_packet(subject,packet, *, work):
     p=packet['presentation']
     need(p['full_subject_digest']==codec.canonical_digest(subject) and p['policy_identity']==subject['policy_identity']
          and p['required_checks']==review.obligations(subject),'exact private subject/policy/denominator')
-    return {'schema_version':VERDICT,'subject_digest':codec.canonical_digest(subject),'claim':CLAIM,
+    return {'schema_version':profiles.subject(subject).name('verdict'),'subject_digest':codec.canonical_digest(subject),'claim':profiles.subject(subject).claim,
         'materials_digest':p['materials_digest'],'roles_digest':p['roles_digest'],
         'presentation_digest':codec.canonical_digest(p),'historical_auth_digest':p['historical_auth_digest']}
 
@@ -281,16 +285,16 @@ def check_verdict(subject,value, *, schema):
 
 
 def prompt(subject, *, root=None, packet=None, delivery=None):
-    need(delivery in (None,DELIVERY),'exact qualified delivery family; no legacy fallback')
+    need(delivery in (None,profiles.subject(subject).name('delivery')),'exact qualified delivery family; no legacy fallback')
     d=model_packet(root,subject) if packet is None else packet
     return materials.render(d)
 
 
 def artifacts(root,subject, *, packet=None,delivery=None):
-    need(delivery in (None,DELIVERY),'qualified delivery only')
+    need(delivery in (None,profiles.subject(subject).name('delivery')),'qualified delivery only')
     d=model_packet(root,subject) if packet is None else packet
     schema=verdict_schema(subject,root=root,packet=d)
-    text=prompt(subject,root=root,packet=d,delivery=DELIVERY)
+    text=prompt(subject,root=root,packet=d,delivery=profiles.subject(subject).name('delivery'))
     request=review._runner_frame(text,schema)
     from _capability_input_integrity import CODEX_MAX_TURN_BYTES,configured_input_limit,measure_request
     # This is headroom within the unchanged total input policy, not a provider
@@ -313,7 +317,7 @@ def _protocol(root,subject,buffers,schema):
     from _planning_execution_binding import receipt_from,validate_execution
     need(buffers['w/schema.json']==raw(schema),'exact original strict schema bytes')
     text=buffers['w/prompt.txt'].decode('utf-8')
-    need(text.startswith(DELIVERY+' '),'explicit saved qualified route hint')
+    need(text.startswith(profiles.subject(subject).name('delivery')+' '),'explicit saved qualified route hint')
     request=review._runner_frame(text,schema)
     need(buffers['request.txt']==request.encode('utf-8'),'exact full saved wrapper/schema/request')
     execution=codec.strict_json_loads(buffers['execution.json'])
@@ -335,7 +339,7 @@ def _inputs(root,subject, *, proof=None):
     root=Path(root).absolute();home=review.location(subject['operation_id'])
     buffers={name:review.path(root,home+'/'+name).read_bytes() for name in support_names()}
     need(buffers['subject.json']==raw(subject),'same actual private saved subject bytes')
-    packet={'schema_version':materials.PACKET,'presentation':codec.strict_json_loads(buffers['presentation.json']),
+    packet={'schema_version':profiles.subject(subject).name('packet'),'presentation':codec.strict_json_loads(buffers['presentation.json']),
         'roles':codec.strict_json_loads(buffers['roles.json']),'materials':codec.strict_json_loads(buffers['materials.json'])}
     import _b_route_compact_literal as compact
     work=compact._work(None)
@@ -354,7 +358,7 @@ def _inputs(root,subject, *, proof=None):
 def _complete(inputs):
     with action():
         d=model_packet(inputs.root,inputs.subject,context=inputs)
-        expected=artifacts(inputs.root,inputs.subject,packet=d,delivery=DELIVERY)
+        expected=artifacts(inputs.root,inputs.subject,packet=d,delivery=profiles.subject(inputs.subject).name('delivery'))
         need(all(inputs.buffers[k]==v for k,v in expected.items()),
              'complete rederived new prompt/schema/request/materials/roles/presentation/private-auth buffers')
         d.recheck()
@@ -364,16 +368,16 @@ def _complete(inputs):
 def produce_proof(root,operation_id):
     subject=read_subject(root,operation_id);inputs=_inputs(root,subject)
     d=_complete(inputs);b=bindings(subject,d)
-    return {'schema_version':PROOF,'operation_id':operation_id,'subject_digest':codec.canonical_digest(subject),
-        'policy_identity':subject['policy_identity'],'mode':MODE,'evidence':inputs.evidence,'files':inputs.refs,
+    return {'schema_version':profiles.subject(subject).name('proof'),'operation_id':operation_id,'subject_digest':codec.canonical_digest(subject),
+        'policy_identity':subject['policy_identity'],'mode':profiles.subject(subject).mode,'evidence':inputs.evidence,'files':inputs.refs,
         **{k:b[k] for k in ('claim','materials_digest','roles_digest','presentation_digest','historical_auth_digest')},
-        'request_raw_digest':codec.raw_digest(inputs.buffers['request.txt']),'delivery':DELIVERY}
+        'request_raw_digest':codec.raw_digest(inputs.buffers['request.txt']),'delivery':profiles.subject(subject).name('delivery')}
 
 
 def _verify_saved(root,request):
     ref=request.get('host_review_ref');home=review.location(request['operation_id'])
     review.shape(ref,('path','schema_version','raw_digest'),'qualified proof reference')
-    need(ref['path']==home+'/review.json' and ref['schema_version']==PROOF,'exact owned new proof family/path')
+    need(ref['path']==home+'/review.json' and ref['schema_version'] in (PROOF,profiles.PUBLISHED.name('proof')),'exact owned new proof family/path')
     data=review.path(root,ref['path']).read_bytes();need(codec.raw_digest(data)==ref['raw_digest'],'exact actual new proof raw')
     proof=codec.strict_json_loads(data)
     need(data==raw(proof),'new owner canonical actual proof raw bytes')
@@ -381,8 +385,8 @@ def _verify_saved(root,request):
         'claim','materials_digest','roles_digest','presentation_digest','historical_auth_digest','request_raw_digest','delivery'),
         'closed qualified proof')
     subject=read_subject(root,request['operation_id'])
-    need(proof['schema_version']==PROOF and proof['operation_id']==request['operation_id']
-         and proof['mode']==MODE and proof['delivery']==DELIVERY and proof['claim']==CLAIM
+    need(ref['schema_version']==proof['schema_version']==profiles.subject(subject).name('proof') and proof['operation_id']==request['operation_id']
+         and proof['mode']==profiles.subject(subject).mode and proof['delivery']==profiles.subject(subject).name('delivery') and proof['claim']==profiles.subject(subject).claim
          and proof['subject_digest']==codec.canonical_digest(subject)
          and proof['policy_identity']==subject['policy_identity']
          and same(subject['request'],review.request_body(request)),'complete new request/subject/policy/claim binding')
@@ -399,13 +403,13 @@ def verify_saved(root,request):
 
 
 def seal(root,operation_id,value):
-    need(value['schema_version']==PROOF and value['operation_id']==operation_id
+    need(value['schema_version'] in (PROOF,profiles.PUBLISHED.name('proof')) and value['operation_id']==operation_id
          and value['policy_identity']==review.policy_identity(),'same actual qualified proof/current policy')
     _proof_shape(value)
     # Writer receives only produce_proof's fully checked result, as the original
     # owner does; no model/native/codec replay is moved into the short writer.
     home=review.location(operation_id);review.write_once(root,home+'/review.json',raw(value))
-    return {'path':home+'/review.json','schema_version':PROOF,'raw_digest':codec.raw_digest(raw(value))}
+    return {'path':home+'/review.json','schema_version':value['schema_version'],'raw_digest':codec.raw_digest(raw(value))}
 
 
 def bind_action(snapshot):
@@ -413,9 +417,10 @@ def bind_action(snapshot):
     if graph is None:return
     root=str(Path(snapshot.root).absolute())
     values=snapshot._qualified_history_handles
+    profile=getattr(snapshot,'review_profile',profiles.ORIGINAL)
     for key,handle in graph['histories'].items():
-        if key[0]!=root:continue
-        need(type(handle) in (*original_host.AUTHENTICATED_TYPES,SavedHistory,LegacyHistory,previous_owner.SavedHistory,previous_owner.LegacyHistory),
+        if key[0]!=root or key[3]!=profile.name('subject'):continue
+        need(type(handle) in (*original_host.AUTHENTICATED_TYPES,published.PublishedHistoryVerification,SavedHistory,LegacyHistory,previous_owner.SavedHistory,previous_owner.LegacyHistory),
              'genuine actual historical owner handles only')
         if all(v.identity()!=handle.identity() for v in values):values.append(handle)
 
@@ -437,8 +442,9 @@ def _proof_shape(value):
     review.shape(value,('schema_version','operation_id','subject_digest','policy_identity','mode','evidence','files',
         'claim','materials_digest','roles_digest','presentation_digest','historical_auth_digest','request_raw_digest','delivery'),
         'closed qualified proof')
-    need(value['schema_version']==PROOF and value['mode']==MODE and value['claim']==CLAIM
-         and value['delivery']==DELIVERY,'explicit new proof/mode/claim/delivery')
+    profile=profiles.select('proof',value['schema_version'])
+    need(value['mode']==profile.mode and value['claim']==profile.claim
+         and value['delivery']==profile.name('delivery'),'explicit new proof/mode/claim/delivery')
 
 
 def _auth_raw(derived,request,schema):
@@ -519,7 +525,7 @@ def qualified_capture_hint(subject):
     return False
 
 
-def family_for_snapshot(snapshot):
+def family_for_snapshot(snapshot, *, profile=profiles.ORIGINAL):
     qualified_family=getattr(snapshot,'qualified_family',False)
     threads=set(snapshot.compensation_threads);turns=set(snapshot.compensation_turns)
     for name in list(snapshot.files):
@@ -530,8 +536,8 @@ def family_for_snapshot(snapshot):
         if type(value) is not dict or not str(value.get('schema_version','')).startswith('newrouge.b-route-qualified-origin-capsule.'):continue
         need(value['schema_version']=='newrouge.b-route-qualified-origin-capsule.v1','known qualified capsule version; no legacy downgrade')
         op=journal.read_operation(snapshot.root,operation_id=value['operation_id'])
-        h=history(snapshot.root,op)
-        need(type(h) in original_host.AUTHENTICATED_TYPES,'actual qualified capsule original owner')
+        h=history(snapshot.root,op,profile=profile)
+        need(type(h) in (*original_host.AUTHENTICATED_TYPES,published.PublishedHistoryVerification) if profile is profiles.PUBLISHED else type(h) in original_host.AUTHENTICATED_TYPES,'actual qualified capsule original owner')
         cap_ref=op['frozen']['request']['material']['handoff_ref']
         need(codec.raw_digest(data)==cap_ref['raw_digest'] and value==h._capsule,
              'exact genuine captured qualified source carrier')
@@ -544,7 +550,7 @@ def family_for_snapshot(snapshot):
     return qualified_family
 
 
-def consider_legacy_authorities(snapshot,subject):
+def consider_legacy_authorities(snapshot,subject, *, profile=profiles.ORIGINAL):
     for row in subject.get('authority_files',[]):
         ref=row['reference']
         data=base64.b64decode(row['raw_base64'],validate=True)
@@ -556,8 +562,8 @@ def consider_legacy_authorities(snapshot,subject):
              and data==row['text'].encode('utf-8') and codec.raw_digest(data)==ref['raw_digest']
              and snapshot.read(ref['path'])==data,'actual typed qualified authority, never a caller role label')
         op=journal.read_operation(snapshot.root,operation_id=cap['operation_id'])
-        handle=history(snapshot.root,op)
-        need(type(handle) in original_host.AUTHENTICATED_TYPES
+        handle=history(snapshot.root,op,profile=profile)
+        need(type(handle) in (*original_host.AUTHENTICATED_TYPES,published.PublishedHistoryVerification)
              and ref['path']==op['frozen']['request']['material']['handoff_ref']['path']
              and ref['raw_digest']==op['frozen']['request']['material']['handoff_ref']['raw_digest']
              and cap==handle._capsule,
@@ -567,33 +573,33 @@ def consider_legacy_authorities(snapshot,subject):
     # native/review independence IDs; no private identifiers enter model view.
 
 
-def _private_meta(handle,kind,role,data):
-    return {'schema_version':materials.PREFIX+'private-file.v2','owner_operation_id':handle.operation()['operation_id'],
+def _private_meta(handle,kind,role,data, *, profile=profiles.ORIGINAL):
+    return {'schema_version':profile.name('private-file'),'owner_operation_id':handle.operation()['operation_id'],
         'owner_subject_digest':handle.identity(),'owner_auth_digest':codec.canonical_digest(handle.binding()),
         'kind':kind,'role':role,'raw_digest':codec.raw_digest(data),'raw_bytes':len(data)}
 
 
-def capture_files(snapshot, *, original):
+def capture_files(snapshot, *, original, profile=profiles.ORIGINAL):
     """New subject only: complete inline semantics + exact private file refs.
 
     Old actual bytes are neither rewritten nor recursively base64 copied. This
     is not a compression witness: each referenced original is resolved through
     its real opaque owner again when consumed. Old v2 subjects remain unchanged.
     """
-    history(snapshot.root,original)
+    history(snapshot.root,original,profile=profile)
     bind_action(snapshot)
     owners={}
     for handle in snapshot._qualified_history_handles:
         for name,data in handle.files().items():
-            owners[name]=_private_meta(handle,'review_support',handle.roles()[name],data)
+            owners[name]=_private_meta(handle,'review_support',handle.roles()[name],data,profile=profile)
         name=journal._operation_ref(handle.operation()['operation_id'])
-        owners[name]=_private_meta(handle,'original_operation','semantic:original_operation',handle.operation_raw())
-        if type(handle) in original_host.AUTHENTICATED_TYPES:
+        owners[name]=_private_meta(handle,'original_operation','semantic:original_operation',handle.operation_raw(),profile=profile)
+        if type(handle) in (*original_host.AUTHENTICATED_TYPES,published.PublishedHistoryVerification):
             ref=handle.operation()['frozen']['request']['material']['handoff_ref']
             if ref['path'] in snapshot.files:
                 data=snapshot.read(ref['path'])
                 need(codec.raw_digest(data)==ref['raw_digest'],'actual qualified private carrier')
-                owners[ref['path']]=_private_meta(handle,'qualified_capsule','host:qualified_origin_proof',data)
+                owners[ref['path']]=_private_meta(handle,'qualified_capsule','host:qualified_origin_proof',data,profile=profile)
     inline,private={},{}
     for name,digest in list(snapshot.files.items()):
         if digest is None:continue
@@ -604,16 +610,17 @@ def capture_files(snapshot, *, original):
     return inline,private
 
 
-def resolve_private_file(root,name,meta):
+def resolve_private_file(root,name,meta, *, context=None):
     if type(meta) is dict and meta.get('schema_version')==materials.PREFIX+'private-file.v1':
         return previous_owner.resolve_private_file(root,name,meta)
     review.shape(meta,('schema_version','owner_operation_id','owner_subject_digest','owner_auth_digest',
         'kind','role','raw_digest','raw_bytes'),'closed qualified private file reference')
-    need(meta['schema_version']==materials.PREFIX+'private-file.v2' and type(meta['raw_bytes']) is int
+    profile=profiles.select('private-file',meta['schema_version'])
+    need(meta['schema_version']==profile.name('private-file') and type(meta['raw_bytes']) is int
          and meta['raw_bytes']>=0,'known qualified private reference version/type')
     codec.validate_reference_path(name)
     operation=journal.read_operation(root,operation_id=meta['owner_operation_id'])
-    handle=history(root,operation)
+    handle=history(root,operation,profile=profile,context=context)
     need(meta['owner_subject_digest']==handle.identity()
          and meta['owner_auth_digest']==codec.canonical_digest(handle.binding()),'actual opaque original owner binding')
     if meta['kind']=='review_support':
@@ -625,7 +632,7 @@ def resolve_private_file(root,name,meta):
              'actual original operation carrier')
         data=handle.operation_raw()
     elif meta['kind']=='qualified_capsule':
-        need(type(handle) in original_host.AUTHENTICATED_TYPES,'actual original qualified capsule owner')
+        need(type(handle) in (*original_host.AUTHENTICATED_TYPES,published.PublishedHistoryVerification),'actual original qualified capsule owner')
         ref=operation['frozen']['request']['material']['handoff_ref']
         need(name==ref['path'] and meta['raw_digest']==ref['raw_digest']
              and meta['role']=='host:qualified_origin_proof','exact original private capsule carrier')
@@ -636,11 +643,11 @@ def resolve_private_file(root,name,meta):
     return data,handle
 
 
-def restore_captured_files(root,subject):
+def restore_captured_files(root,subject, *, context=None):
     """Audit-only lossless logical capture reconstruction, no writes/approval."""
-    need(subject['schema_version']==SUBJECT,'explicit factored qualified subject only')
+    need(subject['schema_version'] in (SUBJECT,profiles.PUBLISHED.name('subject')),'explicit factored qualified subject only')
     result={name:base64.b64decode(value,validate=True) for name,value in subject['current_files'].items()}
     for name,meta in subject['private_files'].items():
         need(name not in result,'disjoint inline/private current capture')
-        result[name]=resolve_private_file(root,name,meta)[0]
+        result[name]=resolve_private_file(root,name,meta,context=context)[0]
     return result

@@ -1,0 +1,13 @@
+{
+  "selectors": [
+    "test_b_route_published_history.PublishedHistoryBoundaryTests",
+    "test_b_route_qualified_historical_v3.HistoricalV3OwnerInstallationTests",
+    "test_b_route_qualified_render_retention_v2.QualifiedCapacityDiagnosticTests"
+  ],
+  "tests_run": 10,
+  "failures": 0,
+  "errors": 0,
+  "skipped": [],
+  "passed": true,
+  "output": "test_complete_phase_and_reserved_row_without_publication_never_read_old_proof (test_b_route_published_history.PublishedHistoryBoundaryTests.test_complete_phase_and_reserved_row_without_publication_never_read_old_proof) ... ok\ntest_historical_terminal_does_not_substitute_for_current_formal_chain (test_b_route_published_history.PublishedHistoryBoundaryTests.test_historical_terminal_does_not_substitute_for_current_formal_chain) ... ok\ntest_neither_history_factory_accepts_a_saved_dictionary_as_a_token (test_b_route_published_history.PublishedHistoryBoundaryTests.test_neither_history_factory_accepts_a_saved_dictionary_as_a_token) ... ok\ntest_private_reference_profile_cannot_be_changed_without_owner_binding (test_b_route_published_history.PublishedHistoryBoundaryTests.test_private_reference_profile_cannot_be_changed_without_owner_binding) ... ok\ntest_published_profile_is_explicit_immutable_and_distinct (test_b_route_published_history.PublishedHistoryBoundaryTests.test_published_profile_is_explicit_immutable_and_distinct) ... ok\ntest_saved_current_before_requires_verified_scope_not_a_caller_dict (test_b_route_published_history.PublishedHistoryBoundaryTests.test_saved_current_before_requires_verified_scope_not_a_caller_dict) ... ok\ntest_mixed_or_invalid_owner_is_not_reported_as_uninstalled_template (test_b_route_qualified_historical_v3.HistoricalV3OwnerInstallationTests.test_mixed_or_invalid_owner_is_not_reported_as_uninstalled_template) ... ok\ntest_uninstalled_template_reports_dependency_without_releasing_reader (test_b_route_qualified_historical_v3.HistoricalV3OwnerInstallationTests.test_uninstalled_template_reports_dependency_without_releasing_reader) ... ok\ntest_admitted_capacity_keeps_the_existing_artifact_path (test_b_route_qualified_render_retention_v2.QualifiedCapacityDiagnosticTests.test_admitted_capacity_keeps_the_existing_artifact_path) ... ok\ntest_capacity_refusal_preserves_reason_and_details_through_public_boundary (test_b_route_qualified_render_retention_v2.QualifiedCapacityDiagnosticTests.test_capacity_refusal_preserves_reason_and_details_through_public_boundary) ... ok\n\n----------------------------------------------------------------------\nRan 10 tests in 0.005s\n\nOK\n"
+}

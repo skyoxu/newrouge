@@ -111,3 +111,38 @@ def project_content(content, allocations):
             rows.append(visit(definition))
         projected['definitions'][plural] = rows
     return {name: projected[name] for name in FIELDS}
+
+
+def project_retained_fields(content, allocations):
+    """View-only host identity interpretation; storage remains the exact original ref."""
+    project_content(content, allocations)  # Existing complete typed allocation validator.
+    maps = {'requirements': _mapping(allocations, 'requirements',
+        {r['requirement_id'] for r in content['requirements']}, required=True)}
+    owners = {}
+    for kind, plural in _KINDS.items():
+        maps[plural] = _mapping(allocations, plural, {r['id'] for r in content['definitions'][plural]}, required=(kind == 'flow'))
+        for row in content['definitions'][plural]:
+            owners[(kind, row['id'], row['proposed_owner_key'])] = {'kind': kind,
+                'definition_id': maps[plural][row['id']], 'owner_plan_id': allocations['plan_id'],
+                'owner_revision': allocations['plan_revision']}
+    def visit(value):
+        if type(value) is list:
+            return [visit(item) for item in value]
+        if type(value) is not dict:
+            return deepcopy(value)
+        if set(value) == _EXISTING_USE:
+            return deepcopy(value)
+        if 'proposed_owner_key' in value:
+            key = (value.get('kind'), value.get('definition_id'), value.get('proposed_owner_key'))
+            if set(value) != _PROPOSED_USE or key not in owners:
+                _fail(codec.ReasonCode.UNRESOLVED_REFERENCE, 'exact retained native proposed owner', sorted(value))
+            return deepcopy(owners[key])
+        result = {}
+        for field, item in value.items():
+            if field in ('requirement_id', 'requirement_ids', 'flow_id', 'flow_ids'):
+                mapping = maps['requirements' if field.startswith('requirement') else 'flows']
+                result[field] = [mapping.get(x, x) for x in item] if type(item) is list else mapping.get(item, item)
+            else:
+                result[field] = visit(item)
+        return result
+    return {name: visit(content[name]) for name in sorted(RETAINED_IN_NATIVE_PROOF)}

@@ -13,6 +13,8 @@ import _b_route_codec as codec
 from _b_route_qualified_historical_v3_protocol import check_subject_family
 import _b_route_qualified_history_host as host2
 import _b_route_qualified_history_host_v3 as host3
+import _b_route_published_history as published
+from _b_route_compensation_review_profiles import OLD_CLAIM, PUBLISHED_CLAIM
 
 FRAME = 'newrouge.b-route-qualified-public-history-frame.v2'
 OPERATION_VIEW = 'newrouge.b-route-qualified-public-operation-view.v2'
@@ -26,6 +28,18 @@ SOURCE = 'docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.
 SOURCE_DIGEST = 'sha256:7e5e1fe8aeb5937c70caa16aea2a9e1784a429c70c30a4f7f4d66601f1880061'
 
 
+def descriptor(claim):
+    need(claim in (OLD_CLAIM, PUBLISHED_CLAIM), 'known explicit public history claim')
+    version = 'v2' if claim == OLD_CLAIM else 'v3'
+    return ('newrouge.b-route-qualified-public-history-frame.' + version,
+            'newrouge.b-route-qualified-public-operation-view.' + version,
+            'newrouge.b-route-qualified-public-carrier-mapping.' + version)
+
+
+def _claim(authentication):
+    return PUBLISHED_CLAIM if type(authentication) is published.PublishedHistoryVerification else CLAIM
+
+
 def need(ok, expected):
     if not ok:
         raise ValueError(expected)
@@ -36,6 +50,13 @@ def raw(value):
 
 
 def _checked(root, operation, authentication):
+    if type(authentication) is published.PublishedHistoryVerification:
+        authentication.checked_original(root, operation)
+        b, p = authentication.binding(), authentication.public_subject()
+        need(b['schema_version'] == published.SCHEMA and b['original_owner_executed_now'] is False
+             and p['private_subject_digest'] == b['private_subject_digest']
+             and codec.canonical_digest(p) == b['public_subject_digest'], 'actual published history DATA result')
+        return b, p
     need(type(authentication) in (host2.AuthenticatedHistory,host3.AuthenticatedHistory),
          'opaque genuine held-worker token only')
     if type(authentication) is host2.AuthenticatedHistory:
@@ -49,10 +70,12 @@ def _checked(root, operation, authentication):
 
 def operation_view(root, operation, authentication):
     b, public = _checked(root, operation, authentication)
+    claim = _claim(authentication)
+    _, operation_schema, _ = descriptor(claim)
     # Every semantic value below comes from actual original public_subject.
     # Original request/frozen/effects/private proof bytes remain authenticated
     # host evidence; their digests are technical identities, not semantic text.
-    return {'schema_version': OPERATION_VIEW, 'claim': CLAIM,
+    return {'schema_version': operation_schema, 'claim': claim,
         'operation_id': public['operation_id'], 'operation_raw_digest': b['operation_raw_digest'],
         'frozen_digest': b['frozen_digest'], 'request_raw_digest': b['request_raw_digest'],
         'private_subject_digest': b['private_subject_digest'], 'public_subject_digest': b['public_subject_digest'],
@@ -63,7 +86,9 @@ def operation_view(root, operation, authentication):
 
 def frame(root, operation, authentication):
     b, public = _checked(root, operation, authentication)
-    return {'schema_version': FRAME, 'claim': CLAIM, 'operation_id': operation['operation_id'],
+    claim = _claim(authentication)
+    frame_schema, _, _ = descriptor(claim)
+    return {'schema_version': frame_schema, 'claim': claim, 'operation_id': operation['operation_id'],
         'private_subject_digest': b['private_subject_digest'],
         'public_subject_digest': b['public_subject_digest'],
         'historical_auth_digest': codec.canonical_digest(b),
@@ -91,9 +116,11 @@ def capsule_mapping(root, operation, authentication, locator, *, carrier_bytes, 
     is an auxiliary disclosure adapter, not a change to the formal game schema.
     """
     b, public = _checked(root, operation, authentication)
+    claim = _claim(authentication)
+    _, _, mapping_schema = descriptor(claim)
     need(type(locator) is dict and set(locator) == {'owner','ref','files'}
          and locator['owner'] == 'planning_proof', 'registered typed original proof owner')
-    need(type(current_subject) is dict and current_subject.get('schema_version') in (QUALIFIED_SUBJECT,'newrouge.b-route-qualified-compensation-review-subject.v1','newrouge.b-route-compensation-review-subject.v2')
+    need(type(current_subject) is dict and current_subject.get('schema_version') in (QUALIFIED_SUBJECT,'newrouge.b-route-qualified-compensation-review-subject.v3','newrouge.b-route-qualified-compensation-review-subject.v1','newrouge.b-route-compensation-review-subject.v2')
          and current_subject.get('producer') == 'compensation'
          and type(current_subject.get('original_operation')) is dict
          and current_subject['request']['compensates']['operation_id']
@@ -141,7 +168,7 @@ def capsule_mapping(root, operation, authentication, locator, *, carrier_bytes, 
         document_bytes = raw(public['native_content'])
         document = {'raw_digest': codec.raw_digest(document_bytes), 'raw_bytes': len(document_bytes),
                     'text': document_bytes.decode('utf-8')}
-    return {'schema_version': MAPPING, 'claim': CLAIM, 'frame_digest': frame_digest,
+    return {'schema_version': mapping_schema, 'claim': claim, 'frame_digest': frame_digest,
         'historical_subject_digest': b['private_subject_digest'], 'historical_public_digest': b['public_subject_digest'],
         'historical_auth_digest': codec.canonical_digest(b), 'candidate_digest':
             codec.canonical_digest(public['native_content']), 'carrier_path': path,
@@ -160,19 +187,27 @@ def validate_frame(value):
     need(type(value) is dict and set(value) == {'schema_version','claim','operation_id',
         'private_subject_digest','public_subject_digest','historical_auth_digest','operation_view','semantic_fields'},
         'closed qualified public frame')
+    claim = value['claim']
+    frame_schema, operation_schema, _ = descriptor(claim)
     p, op = value['semantic_fields'], value['operation_view']
-    need(value['schema_version'] == FRAME and value['claim'] == CLAIM and p['schema_version'] in PUBLICS
+    need(value['schema_version'] == frame_schema and value['claim'] == claim and p['schema_version'] in PUBLICS
          and value['operation_id'] == p['operation_id']
          and value['private_subject_digest'] == p['private_subject_digest']
          and value['public_subject_digest'] == codec.canonical_digest(p), 'exact explicit public frame identity')
     need(type(op) is dict and set(op) == {'schema_version','claim','operation_id','operation_raw_digest',
         'frozen_digest','request_raw_digest','private_subject_digest','public_subject_digest','identity_alignment',
-        'allocations','target_before_files','targets'} and op['schema_version'] == OPERATION_VIEW
-        and op['claim'] == CLAIM and op['operation_id'] == p['operation_id']
+        'allocations','target_before_files','targets'} and op['schema_version'] == operation_schema
+        and op['claim'] == claim and op['operation_id'] == p['operation_id']
         and op['private_subject_digest'] == value['private_subject_digest']
         and op['public_subject_digest'] == value['public_subject_digest'], 'closed exact public operation view')
     for name in ('identity_alignment','allocations','target_before_files','targets'):
         need(raw(op[name]) == raw(p[name]), 'complete type-exact public operation semantics, without omission')
+    validate_public_subject(p)
+    return value
+
+
+def validate_public_subject(p):
+    """Closed semantic DATA only; never authenticates an owner or execution."""
     extras={'plan_storage','review_scope','origin_evidence_role','current_selection'} if p['schema_version']==PUBLICS[1] else set()
     need(set(p) == {'schema_version','operation_id','private_subject_digest','policy_identity','source',
         'native_content','identity_alignment','allocations','target_before_files','targets','origin_binding',
@@ -200,7 +235,7 @@ def validate_frame(value):
         and codec.canonical_digest(p['targets']) == p['disclosure']['complete_targets'],
         'complete original source/candidate/targets, never digest substitutes')
     if p['schema_version']==PUBLICS[1]:_validate_v3_fields(p)
-    return value
+    return p
 
 
 INLINE = ('source_identity','requirements','definitions','logical_references','requirement_verification',

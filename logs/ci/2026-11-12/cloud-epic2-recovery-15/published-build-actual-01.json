@@ -1,0 +1,10 @@
+{
+  "passed": true,
+  "subject_schema": "newrouge.b-route-qualified-compensation-review-subject.v3",
+  "subject_digest": "sha256:20c44258ebe5a602c40f85cbd61c36b6314482c523380e1fa6480e40cb73d0e4",
+  "scope_count": 29,
+  "current_files": 9,
+  "private_files": 9,
+  "model_dispatched": false,
+  "reserved": false
+}

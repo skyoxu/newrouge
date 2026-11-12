@@ -1,0 +1,40 @@
+{
+  "passed": true,
+  "packet_schema": "newrouge.b-route-qualified-compensation-review-packet.v3",
+  "claim": "complete_recorded_public_semantics_with_published_history_byte_verification",
+  "canonical_cold_work_charged": 109845617,
+  "work_limit": 170000000,
+  "frames": 2,
+  "documents": 11,
+  "checks": [
+    "b_source_and_binding_retention",
+    "complete_old_current_new_scope",
+    "cumulative_requirements_and_obligations",
+    "current_before_and_later_edits",
+    "exact_pending_claim_relation",
+    "existing_formal_semantic_sources",
+    "original_raw_frozen_effects",
+    "target:0",
+    "task_status_acceptance_history"
+  ],
+  "negative_cases": [
+    {
+      "case": "old-root-claim",
+      "rejected": true
+    },
+    {
+      "case": "old-packet-version",
+      "rejected": true
+    },
+    {
+      "case": "native-meaning-drop",
+      "rejected": true
+    },
+    {
+      "case": "scope-denominator-drop",
+      "rejected": true
+    }
+  ],
+  "data_only": true,
+  "new_authority_granted": false
+}

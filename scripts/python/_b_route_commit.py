@@ -541,6 +541,26 @@ def _publication_proven(root, envelope, intent, *, graph=None, historical=False)
     receipt_raw = (_read(root, _receipt_path(envelope)) if graph is None else graph['local_bytes'][_receipt_path(envelope)])
     _require(receipt_raw == projection.serialized(intent['receipt']),
              'unchanged published receipt', envelope['operation_id'])
+    if not _lineage_proven(root, envelope, intent, current, graph=graph):
+        return False
+    try:
+        if historical:
+            records._publication_history(root, catalog_raw=current,
+                receipt_ref=projection.reference(_receipt_path(envelope), receipt_raw))
+        else:
+            records.published_bundle(root, catalog_raw=current,
+                scope_ids=envelope['frozen']['scope_ids'], task_join=_task_join(root))
+    except codec.CodecError:
+        # Missing or damaged formal evidence proves no terminal. Current
+        # consumption also retains its independent freshness requirement.
+        return False
+    _require(_read(root, records.CATALOG_PATH) == current,
+             'same catalog throughout terminal proof', records.CATALOG_PATH, codec.ReasonCode.INPUT_STALE)
+    return True
+
+
+def _lineage_proven(root, envelope, intent, current, *, graph=None):
+    """Exact saved publication ancestry; not current-state admission."""
     # A complete phase plus an unrelated valid current chain cannot prove this
     # operation was ever published. Follow only saved publication
     # images back from the actual catalog. This also retains terminal history
@@ -566,19 +586,6 @@ def _publication_proven(root, envelope, intent, *, graph=None, historical=False)
         if expanded == observed:
             return False
         observed = expanded
-    try:
-        if historical:
-            records._publication_history(root, catalog_raw=current,
-                receipt_ref=projection.reference(_receipt_path(envelope), receipt_raw))
-        else:
-            records.published_bundle(root, catalog_raw=current,
-                scope_ids=envelope['frozen']['scope_ids'], task_join=_task_join(root))
-    except codec.CodecError:
-        # Missing or damaged formal evidence proves no terminal. Current
-        # consumption also retains its independent freshness requirement.
-        return False
-    _require(_read(root, records.CATALOG_PATH) == current,
-             'same catalog throughout terminal proof', records.CATALOG_PATH, codec.ReasonCode.INPUT_STALE)
     return True
 
 

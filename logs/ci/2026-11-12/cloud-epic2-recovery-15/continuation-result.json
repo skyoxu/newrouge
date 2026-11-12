@@ -1,0 +1,180 @@
+{
+  "schema": "newrouge.cloud-epic2-continuation-result.v1",
+  "baseline": "53e7eddd8c594b23b1620d2e737e84b2b12c88ab",
+  "branch": "build/cloud-epic2-recovery-20261111",
+  "status": "published_cloud_route_implemented_and_offline_verified_capacity_pending",
+  "new_review_profile": "newrouge.b-route-qualified-compensation-review-subject.v3",
+  "new_history_schema": "newrouge.b-route-published-history-verification.v1",
+  "clean_astra_max_assessment": "agreed and implementation static recheck closed; no additional unapproved major tradeoff identified",
+  "actual_migrated_history_verification": true,
+  "actual_migrated_compensation_build": true,
+  "final_source_policy": "sha256:49f9b7dc1ddf31470f6293b76a5937605f0cf1bc5163aa3cf984970fcafbb252",
+  "source_resource_pins_verified_current": 79,
+  "actual_genuine_render": {
+    "frame_bytes": 313399,
+    "work_limit": 170000000,
+    "work_charged": 147247600,
+    "packet_schema": "newrouge.b-route-qualified-compensation-review-packet.v3",
+    "claim": "complete_recorded_public_semantics_with_published_history_byte_verification"
+  },
+  "actual_complete_request": {
+    "path": "/workspace/newrouge/logs/ci/2026-11-12/cloud-epic2-recovery-15/published-complete-request-02.txt",
+    "bytes": 316310,
+    "sha256": "f8fb183a57054303877324a90ac44904ad6fe73e17355ea50971aff7664d721a",
+    "policy": {
+      "max_bytes": 1048576,
+      "max_input_tokens": 70000,
+      "reserved_tokens": 2000
+    }
+  },
+  "actual_capacity_result": "blocked at unchanged70000 gate: UTF8 byte upper bound316310 plus2000; not measured model tokens",
+  "final_frame_canonical_cold_validation": true,
+  "cold_work_charged": 109845617,
+  "tampered_packet_cases_rejected": [
+    {
+      "case": "old-root-claim",
+      "rejected": true
+    },
+    {
+      "case": "old-packet-version",
+      "rejected": true
+    },
+    {
+      "case": "native-meaning-drop",
+      "rejected": true
+    },
+    {
+      "case": "scope-denominator-drop",
+      "rejected": true
+    }
+  ],
+  "focused_attempts": 8,
+  "focused_test_executions": 20,
+  "focused_error_executions_retained": 3,
+  "distinct_methods_with_passing_evidence": 14,
+  "older_scoped_regression": "still blocked at upstream conservative capacity check; not passed",
+  "new_helper_task_done_acceptance_history_and_owned_origins_test": "passed with actual isolated formal/Task bytes and explicitly synthetic upstream bookkeeping; no real provider/history grant",
+  "original_critical_files_unchanged": true,
+  "new_real_subject_persisted": false,
+  "old_owner_executed": false,
+  "new_project_model_calls": 0,
+  "new_real_compensation_reserved_or_applied": false,
+  "financial_actions": false,
+  "unknown_replays_or_releases": false,
+  "full_regression": false,
+  "network_or_auth_retry": false,
+  "main_merged": false,
+  "remote_write": false,
+  "fast_enabled": false,
+  "aliyun_actions": false,
+  "remaining": [
+    "Applicable formal Cloud model/config/window and official encoding evidence for one explicit compensation-only capacity/runner policy",
+    "New actual independent semantic execution with legitimate applicable budget/authorization; no credentials requested",
+    "Genuine compensation commit/recovery/read and original Windows AC5/formal acceptance",
+    "Story2.9/2.10 remaining original acceptance dependencies and paid-segmentation authority remain separate"
+  ],
+  "further_historical_material_request": false,
+  "formal_story28_complete": false,
+  "evidence_files": [
+    {
+      "path": "REPORT.md",
+      "bytes": 10151,
+      "sha256": "271af429105d6e00230fce1ccaa1e627b93e0c1e18a35209ff8266a343b29043"
+    },
+    {
+      "path": "astra-max-assessment.md",
+      "bytes": 5129,
+      "sha256": "d3c259696b1e31056fc3aa0a6752530669879e94e9b7510a47f15bf95aafc797"
+    },
+    {
+      "path": "capacity-analysis.json",
+      "bytes": 2860,
+      "sha256": "0e37a1d5c056ec5c3ecd4a9923600335948948a4fad5df9622ee9b465f79d182"
+    },
+    {
+      "path": "focused-01.json",
+      "bytes": 2584,
+      "sha256": "9cd29ff7795aef8aa0d2413abe8dc87186c014d2a4f58d340737dc087a5901bd"
+    },
+    {
+      "path": "focused-02.json",
+      "bytes": 544,
+      "sha256": "52fa77d931fa0536f65e98006abcc80218212210a2bf9cc01d11d2b6fc9d374e"
+    },
+    {
+      "path": "focused-cli-06.json",
+      "bytes": 566,
+      "sha256": "205c207ed2c4a55bbdc78dcfd16d1aaefe6d2a4a87ec91745cf76a882365c373"
+    },
+    {
+      "path": "focused-compatibility-08.json",
+      "bytes": 1311,
+      "sha256": "ac92659d09ff67df4fbebe6ab47b164a60694ceabaa4217e867f8ec2df32d185"
+    },
+    {
+      "path": "focused-recovery-03.json",
+      "bytes": 8636,
+      "sha256": "52d9a625a6369134ad61f0f2fa37a8888e1b563a03af2619ea88236e0f15ef3b"
+    },
+    {
+      "path": "focused-recovery-04.json",
+      "bytes": 1950,
+      "sha256": "6ae82824082fc7557e58878bfd89858106847eb83fe22a229efb520b251218cf"
+    },
+    {
+      "path": "focused-recovery-05.json",
+      "bytes": 674,
+      "sha256": "dbdb665157f31d4501d41516d5799766af678906e4a74665620519c13af2a77c"
+    },
+    {
+      "path": "focused-task-preservation-07.json",
+      "bytes": 674,
+      "sha256": "e3505354130adfd762d3079d00241b2adec9c2a5715fe13e355b6a41ab9e91b3"
+    },
+    {
+      "path": "published-build-actual-01.json",
+      "bytes": 312,
+      "sha256": "f6710fd50fb642f78c8467d6874eb689ea41b15f2de6c058a9191022641e8d6a"
+    },
+    {
+      "path": "published-cold-read-01.json",
+      "bytes": 895,
+      "sha256": "2652d2fdae670854c7689d64ab13e36592c698c25176d53f694964a434e774dd"
+    },
+    {
+      "path": "published-cold-read-02.json",
+      "bytes": 1009,
+      "sha256": "ebab3763e24ffbb8bb2a4b0237c0d134d34a080a4ad6c460994d565934356c16"
+    },
+    {
+      "path": "published-complete-request-01.txt",
+      "bytes": 316312,
+      "sha256": "7a850557fcfdc5266ef901aa0c897738ab2b74ad3568aa63e2f1b017f149eed2"
+    },
+    {
+      "path": "published-complete-request-02.txt",
+      "bytes": 316310,
+      "sha256": "f8fb183a57054303877324a90ac44904ad6fe73e17355ea50971aff7664d721a"
+    },
+    {
+      "path": "published-history-actual-01.json",
+      "bytes": 2215,
+      "sha256": "9d9bf1a9353a005c37dbad88e1862db0de9be1aae52ffcd20de7d0dd0f4d1645"
+    },
+    {
+      "path": "published-prepare-actual-01.json",
+      "bytes": 4411,
+      "sha256": "617a23d6f6d36dedeafba49101af6c75ae223da7d341b25d498bb61e40dcc1ab"
+    },
+    {
+      "path": "published-prepare-actual-02.json",
+      "bytes": 18212,
+      "sha256": "f87023f6a778304d47c5693626de46d86ecb67fe0dc389b82d02482f850e5e36"
+    },
+    {
+      "path": "run_actual_published_prepare.py",
+      "bytes": 3372,
+      "sha256": "a01518b6f02e3c645c302ee24ade8d3e8507f357c925e37d3709ff3947079b2c"
+    }
+  ]
+}

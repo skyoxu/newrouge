@@ -107,3 +107,31 @@ Qualified v2 warm render 的输入只做原 JSON/type/node/depth/bytes 预检；
 完整 decoder、冷 canonical 重编码或原资源限额。prepare08 的100M失败保留，
 两项受影响正反复验证据为 `story28-r62-render-retention-tests-03/result.json`，
 不代表真实大材料或 Story 已通过。
+
+## Cloud published-history profile
+
+[ADR-0056](../adr/ADR-0056-b-route-published-history-compensation.md) adds an explicit
+`newrouge.b-route-qualified-compensation-review-delivery.v3` for already-published
+adoption-v3 history. Select it on the existing review-prepare entry before build;
+complete/reserve/commit/recovery retain the saved subject/proof version. It does
+not follow an old-owner authentication failure as a fallback.
+
+The current Cloud factory verifies the real publication, exact saved evidence
+and independently reconstructed complete public semantics. Its distinct result
+does not claim to execute the old owner/interpreter/Windows Job, reauthenticate
+the old native producer, approve a new compensation or grant a budget. Old
+physical identities remain historical observations; current root/policy/pins
+are checked separately. No public semantic fields are dropped for capacity.
+
+New subject/proof/delivery/material versions and claims are explicit; old routes
+keep their meaning. All actual current-before/scope/effects/Task/history/B-source,
+pending/locks, fresh independent semantic review and unique commit-engine gates
+remain. The exact reviewed-before recovery path only covers this consumer's
+owned before/after values while catalog publication is incomplete. It does not
+release old unknowns or accept other source drift. Windows AC5 remains separate.
+
+Actual Cloud evidence is in `logs/ci/2026-11-12/cloud-epic2-recovery-15`.
+Published-history verification, build, genuine full material rendering and cold
+canonical reading have executed. The new complete request still hits the
+unchanged70000 capacity gate; no new provider review, reserve/apply, publication
+or formal Story completion follows from these offline results.

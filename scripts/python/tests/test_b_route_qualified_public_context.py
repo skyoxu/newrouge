@@ -25,7 +25,8 @@ class QualifiedPublicContextTests(unittest.TestCase):
         deliveries = (None,
             'newrouge.b-route-compensation-review-delivery.v3',
             'newrouge.b-route-compensation-review-delivery.v4',
-            'newrouge.b-route-qualified-compensation-review-delivery.v1')
+            'newrouge.b-route-qualified-compensation-review-delivery.v1',
+            'newrouge.b-route-qualified-compensation-review-delivery.v3')
         for delivery in deliveries:
             with self.subTest(delivery=delivery):
                 service = ModuleType('_b_route_adoption')

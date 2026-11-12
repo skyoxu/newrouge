@@ -15,6 +15,7 @@ import _b_route_adoption_review as review
 import _b_route_commit_projection as projection
 import _b_route_records as records
 import _planning_apply_journal as journal
+import _b_route_compensation_review_profiles as profiles
 
 REQUEST = journal.COMPENSATION_REQUEST
 SUBJECT = 'newrouge.b-route-compensation-review-subject.v2'
@@ -183,7 +184,7 @@ def _unique_refs(rows):
     return sorted({codec.canonical_digest(row): row for row in rows}.values(), key=lambda row: row['path'])
 
 
-def _original_review(snapshot, operation):
+def _original_review(snapshot, operation, *, profile=profiles.ORIGINAL):
     """Bind immutable original review bytes, without replaying stale authority.
 
     The new review is independent of both the original native producer and
@@ -191,7 +192,10 @@ def _original_review(snapshot, operation):
     a prerequisite for compensating the exact stale claim.
     """
     from _b_route_qualified_compensation_dispatch import for_operation
-    qualified=for_operation(operation)
+    if profile is profiles.PUBLISHED:
+        import _b_route_published_compensation_review as qualified
+    else:
+        qualified=for_operation(operation)
     if qualified.selected(operation):
         return qualified.original_review(snapshot, operation)
     request = operation['frozen']['request']
@@ -266,7 +270,7 @@ def _preserve_plan(current, selected, original):
         require(all(row in selected[field] for row in current[field]), 'cumulative evidence retained', field)
 
 
-def build(root, request, *, allocations=None):
+def build(root, request, *, allocations=None, review_profile=profiles.ORIGINAL):
     """Read actual current formal bytes and derive the whole preview and scope."""
     root = Path(root).absolute()
     journal.validate_operation_request(request)
@@ -275,7 +279,8 @@ def build(root, request, *, allocations=None):
     require(original is not None and relation_for(original) == request['compensates']
             and request['operation_id'] != original['operation_id'], 'new ID bound to exact original claim', request['compensates'])
     snapshot = adoption.Snapshot(root)
-    snapshot.compensation_threads, snapshot.compensation_turns = _original_review(snapshot, original)
+    snapshot.review_profile = review_profile
+    snapshot.compensation_threads, snapshot.compensation_turns = _original_review(snapshot, original,profile=review_profile)
     task_join = adoption._task_context(snapshot)
     catalog_raw = snapshot.read(records.CATALOG_PATH)
     bundle = records._PublishedBundle({records.CATALOG_PATH: catalog_raw}, root, records.CATALOG_PATH, None, task_join)
@@ -503,9 +508,12 @@ def _review_preview_body(root, request, *, seal=False, delivery=None):
     root = Path(root).absolute()
     saved_path = review.path(root, review.location(request['operation_id']) + '/subject.json')
     saved = review.read_subject(root, request['operation_id']) if saved_path.exists() else None
-    snapshot, frozen = build(root, request, allocations=saved['preview']['allocations'] if saved else None)
+    profile = profiles.subject(saved) if saved and saved['schema_version'] in (profiles.ORIGINAL.name('subject'),profiles.PUBLISHED.name('subject')) else profiles.ORIGINAL
+    if saved is None and delivery == profiles.PUBLISHED.name('delivery'):
+        profile = profiles.PUBLISHED
+    snapshot, frozen = build(root, request, allocations=saved['preview']['allocations'] if saved else None,review_profile=profile)
     with business_guard(root, frozen['scope_ids'], operation_id=request['operation_id'], review_only=True):
-        snapshot, checked = build(root, request, allocations=frozen['allocations'])
+        snapshot, checked = build(root, request, allocations=frozen['allocations'],review_profile=profile)
         require(checked == frozen, 'same compensation preview under complete business scopes', request['operation_id'])
         subject = make_subject(snapshot, request, frozen)
         require(saved is None or saved == subject, 'unchanged complete review subject', request['operation_id'],
@@ -555,7 +563,8 @@ def _run_body(root, operation_id, request_raw, *, reserve_only=False):
         request = existing['frozen']['request']
         request_raw = base64.b64decode(existing['request_raw_base64'], validate=True)
     subject, support = review.verify_saved(root, request)
-    snapshot, frozen = build(root, review.request_body(request), allocations=subject['preview']['allocations'])
+    profile = profiles.subject(subject) if subject['schema_version'] in (profiles.ORIGINAL.name('subject'),profiles.PUBLISHED.name('subject')) else profiles.ORIGINAL
+    snapshot, frozen = build(root, review.request_body(request), allocations=subject['preview']['allocations'],review_profile=profile)
     require(make_subject(snapshot, review.request_body(request), frozen) == subject,
             'complete current-before, original effects and independent review', operation_id, codec.ReasonCode.INPUT_STALE)
     import _b_route_qualified_compensation_dispatch as qualified
@@ -596,7 +605,8 @@ def _commit_context_body(root, *, operation_id):
     require(envelope['state'] == 'reserved', 'reserved reviewed compensation', operation_id)
     request = envelope['frozen']['request']
     subject, support = review.verify_saved(root, request)
-    snapshot, frozen = build(root, review.request_body(request), allocations=envelope['frozen']['allocations'])
+    profile = profiles.subject(subject) if subject['schema_version'] in (profiles.ORIGINAL.name('subject'),profiles.PUBLISHED.name('subject')) else profiles.ORIGINAL
+    snapshot, frozen = build(root, review.request_body(request), allocations=envelope['frozen']['allocations'],review_profile=profile)
     require(make_subject(snapshot, review.request_body(request), frozen) == subject,
             'same current formal chain and reviewed compensation', operation_id, codec.ReasonCode.INPUT_STALE)
     import _b_route_qualified_compensation_dispatch as qualified
@@ -613,7 +623,7 @@ def verify_observations(root, envelope, intent, *, facts, published=False):
     """Replay saved current-before and permit only this owner's exact effects."""
     from _b_route_commit import _read, _decode, _digest, _catalog_frame
     subject = review.read_subject(root, envelope['operation_id'])
-    require(subject['schema_version'] == SUBJECT and subject['policy_identity'] == intent['policy_identity'],
+    require(subject['schema_version'] in (SUBJECT,profiles.ORIGINAL.name('subject'),profiles.PUBLISHED.name('subject')) and subject['policy_identity'] == intent['policy_identity'],
             'current compensation rules and original reviewed subject', envelope['operation_id'], codec.ReasonCode.INPUT_STALE)
     expected = deepcopy(subject['preview'])
     expected['request'] = envelope['frozen']['request']
@@ -625,11 +635,17 @@ def verify_observations(root, envelope, intent, *, facts, published=False):
     require(codec.raw_digest(_decode(intent['catalog_before'])) == envelope['frozen']['compensation']['current_catalog_digest'],
             'reviewed original current catalog image', envelope['operation_id'])
     permitted = {row['path']: {row['before_raw_digest'], row['after_raw_digest']} for row in envelope['frozen']['targets']}
-    for name, encoded in subject['current_files'].items():
+    if subject['schema_version'] in (profiles.ORIGINAL.name('subject'),profiles.PUBLISHED.name('subject')):
+        from _b_route_qualified_compensation_review_v2 import restore_captured_files, _inputs
+        context = _inputs(root,subject,proof=proof) if subject['schema_version'] == profiles.PUBLISHED.name('subject') else None
+        captured = restore_captured_files(root, subject,context=context)
+    else:
+        captured = {name: base64.b64decode(encoded,validate=True) for name,encoded in subject['current_files'].items()}
+    for name, data in captured.items():
         if name == records.CATALOG_PATH:
             continue
         actual = _digest(_read(root, name, optional=True))
-        require(actual in permitted.get(name, {codec.raw_digest(base64.b64decode(encoded, validate=True))}),
+        require(actual in permitted.get(name, {codec.raw_digest(data)}),
                 'unchanged reviewed source/current-before or owned exact effect', name, codec.ReasonCode.INPUT_STALE)
         facts.file(str(root / name), actual)
     for ref in envelope['frozen']['authority_refs']:

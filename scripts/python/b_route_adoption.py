@@ -41,7 +41,8 @@ def register_arguments(parser):
         'newrouge.b-route-compensation-review-delivery.v3',
         'newrouge.b-route-compensation-review-delivery.v4',
         'newrouge.b-route-qualified-compensation-review-delivery.v1',
-        'newrouge.b-route-qualified-compensation-review-delivery.v2'),
+        'newrouge.b-route-qualified-compensation-review-delivery.v2',
+        'newrouge.b-route-qualified-compensation-review-delivery.v3'),
         help='Explicit compensation review-prepare transport; omission preserves delivery.v3')
     parser.set_defaults(func=run)
     return parser

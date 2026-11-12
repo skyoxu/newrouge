@@ -117,6 +117,7 @@ B_ROUTE_RUNTIME_DETERMINISTIC_TESTS = (
     "scripts.python.tests.test_b_route_commit_images",
     "scripts.python.tests.test_b_route_initial_legacy",
     "scripts.python.tests.test_b_route_qualified_historical_v3",
+    "scripts.python.tests.test_b_route_published_history",
     "scripts.python.tests.test_b_route_qualified_render_retention_v2",
     "scripts.python.tests.test_b_route_commit_recovery",
     "scripts.python.tests.test_b_route_compensation",

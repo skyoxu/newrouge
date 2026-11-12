@@ -17,6 +17,7 @@ import _planning_apply_journal as journal
 import _b_route_qualified_origin as qualified_origin
 from _b_route_record_owners import resolve_owned_ref, OWNERS
 import _b_route_qualified_public_history_v2 as public
+import _b_route_compensation_review_profiles as profiles
 from _b_route_qualified_historical_v3_protocol import check_subject_family
 
 PREFIX = 'newrouge.b-route-qualified-compensation-review-'
@@ -30,7 +31,7 @@ DELIVERY = PREFIX + 'delivery.v2'
 CLAIM = public.CLAIM
 AUTH = PREFIX + 'historical-auth.v2'
 ADOPTION_SUBJECTS = ('newrouge.b-route-adoption-review-subject.v2','newrouge.b-route-adoption-review-subject.v3')
-SUBJECTS=(SUBJECT,'newrouge.b-route-qualified-compensation-review-subject.v1')
+SUBJECTS=(SUBJECT,profiles.PUBLISHED.name('subject'),'newrouge.b-route-qualified-compensation-review-subject.v1')
 LEGACY_ADOPTION = accounting.OLD_SUBJECT
 LEGACY_COMPENSATION = accounting.COMP_SUBJECT
 LEGACY_PUBLIC = PREFIX+'legacy-public-subject.v2'
@@ -162,6 +163,15 @@ def _current_source_set_uses(frames, preview, formal, raw_files, spend):
 
 def derive(root, subject, *, checks, work=None, context=None):
     from _b_route_qualified_compensation_review_v2 import history, action, LegacyHistory, resolve_private_file
+    profile = profiles.subject(subject)
+    SUBJECT = profile.name('subject')
+    MATERIALS = profile.name('materials')
+    ROLES = profile.name('roles')
+    PRESENTATION = profile.name('presentation')
+    PACKET = profile.name('packet')
+    FRAME = profile.name('frame')
+    CLAIM = profile.claim
+    AUTH = profile.name('historical-auth')
     work = compact._work(work)
     need(subject.get('schema_version') == SUBJECT and subject.get('producer') == 'compensation',
          'explicit qualified compensation subject')
@@ -218,7 +228,7 @@ def derive(root, subject, *, checks, work=None, context=None):
                  and row['text'].encode('utf-8')==data and codec.raw_digest(data)==ref['raw_digest'],
                  'exact actual qualified authority carrier, independent of caller role labels')
             op=journal.read_operation(root,operation_id=cap['operation_id'])
-            h=history(root,op)
+            h=history(root,op,profile=profile,context=context)
             need(op['schema_version']=='newrouge.b-route-adoption-operation.v2'
                  and ref['path']==op['frozen']['request']['material']['handoff_ref']['path']
                  and ref['raw_digest']==op['frozen']['request']['material']['handoff_ref']['raw_digest']
@@ -273,7 +283,7 @@ def derive(root, subject, *, checks, work=None, context=None):
                 codec.validate_reference_path(name)
                 need(name.casefold() not in aliases,'disjoint unaliased inline/private captures',name)
                 aliases.add(name.casefold())
-                data,owner=resolve_private_file(root,name,meta)
+                data,owner=resolve_private_file(root,name,meta,context=context)
                 retain(owner)
                 if meta['kind']=='qualified_capsule':
                     leaf=qualified_leaf(owner.operation(),owner)
@@ -300,7 +310,7 @@ def derive(root, subject, *, checks, work=None, context=None):
         need(ordered(value['original_effects']) == ordered(original['frozen']['targets'])
              and value['request']['compensates']['operation_id'] == original['operation_id'],
              'complete exact original effects/relation')
-        saved = history(root, original)
+        saved = history(root, original,profile=profile,context=context)
         key = retain(saved)
         before = saved.subject()
         previous = visit(before,saved,saved.saved_inputs() if hasattr(saved,'saved_inputs') else None)
@@ -386,7 +396,7 @@ def derive(root, subject, *, checks, work=None, context=None):
                              'known source capsule version; no qualified/private fallback')
                         # Read exact actual operation, not caller capsule metadata.
                         cap_op = journal.read_operation(root,operation_id=candidate['operation_id'])
-                        cap_handle = history(root,cap_op)
+                        cap_handle = history(root,cap_op,profile=profile,context=context)
                         leaf = qualified_leaf(cap_op,cap_handle)
                         if leaf != previous and leaf not in frame['source_subjects']: frame['source_subjects'].append(leaf)
                         carriers[witness] = (cap_op,cap_handle,leaf)
@@ -480,6 +490,15 @@ def derive(root, subject, *, checks, work=None, context=None):
 
 
 def _validate(packet, *, work=None):
+    profile = profiles.packet(packet)
+    SUBJECT = profile.name('subject')
+    MATERIALS = profile.name('materials')
+    ROLES = profile.name('roles')
+    PRESENTATION = profile.name('presentation')
+    PACKET = profile.name('packet')
+    FRAME = profile.name('frame')
+    CLAIM = profile.claim
+    AUTH = profile.name('historical-auth')
     work = compact._work(work)
     metric = compact._json_preflight(packet,work)
     work.spend(metric[0]+metric[1]+4*metric[5],phase='qualified.validate.complete')
@@ -511,7 +530,8 @@ def _validate(packet, *, work=None):
         need(f['public_subject_digest']==codec.canonical_digest(f['semantic_fields']),'complete public frame identity')
         if f['subject_schema'] in ADOPTION_SUBJECTS:
             check_subject_family(f['subject_schema'],f['semantic_fields'].get('schema_version'))
-            public.validate_frame({'schema_version':public.FRAME,'claim':CLAIM,'operation_id':f['operation_id'],
+            need(f['operation_view']['claim'] in ((profiles.OLD_CLAIM,) if profile is profiles.ORIGINAL else (profiles.OLD_CLAIM,profiles.PUBLISHED_CLAIM)), 'original profile cannot consume published-only history')
+            public.validate_frame({'schema_version':public.descriptor(f['operation_view']['claim'])[0],'claim':f['operation_view']['claim'],'operation_id':f['operation_id'],
                 'private_subject_digest':f['subject_digest'],'public_subject_digest':f['public_subject_digest'],
                 'historical_auth_digest':f['historical_auth_digest'],'operation_view':f['operation_view'],
                 'semantic_fields':f['semantic_fields']})
@@ -563,10 +583,10 @@ def _validate(packet, *, work=None):
                     need('semantic:original_operation' in row['roles'] and m['carrier_raw_digest']==row['raw_digest']
                          and m['public_document_digest']==node['raw_digest'],'exact original operation public mapping')
                 elif m.get('kind')=='qualified_native':
-                    _validate_mapping(m,row,node)
+                    _validate_mapping(m,row,node,profile=profile)
                 else: need(False,'known typed public mapping')
             elif row['public_mapping'] is not None:
-                _validate_mapping(row['public_mapping'],row,None)
+                _validate_mapping(row['public_mapping'],row,None,profile=profile)
             rows.append(row)
     need(used==set(documents) and p['full_subject_digest'] in frames
          and frames[p['full_subject_digest']]['subject_schema']==SUBJECT,
@@ -648,8 +668,8 @@ def _validate(packet, *, work=None):
                     'frozen_digest','request_raw_digest','subject_digest','request','allocations','scope_ids','targets'),
                     'new qualified public operation view')
                 fields=previous['semantic_fields']
-                need(view['schema_version']==PREFIX+('public-operation.v2' if previous['subject_schema']==SUBJECT else 'public-operation.v1')
-                     and view['claim']==(CLAIM if previous['subject_schema']==SUBJECT else
+                need(view['schema_version']==PREFIX+'public-operation.'+previous['subject_schema'].rsplit('.',1)[1]
+                     and view['claim']==(profiles.subject(fields).claim if previous['subject_schema'] in (profiles.ORIGINAL.name('subject'),profiles.PUBLISHED.name('subject')) else
                          'complete_original_owner_public_semantics_with_exact_private_historical_auth')
                      and view['operation_schema']=='newrouge.b-route-compensation-operation.v2'
                      and view['operation_id']==previous['operation_id']
@@ -661,13 +681,13 @@ def _validate(packet, *, work=None):
     return packet
 
 
-def _validate_mapping(m,row,node):
+def _validate_mapping(m,row,node, *, profile=profiles.ORIGINAL):
     fields=('schema_version','claim','frame_digest','historical_subject_digest','historical_public_digest',
         'historical_auth_digest','candidate_digest','carrier_path','carrier_raw_digest','carrier_raw_bytes',
         'owner','ref','source_record','source_record_raw_digest','public_pointer','role','kind')
     if m.get('kind')=='qualified_native':fields+=('public_document_digest',)
     shape(m,fields,'closed qualified carrier mapping')
-    need(m['schema_version']==public.MAPPING and m['claim']==CLAIM
+    need(m['schema_version']==public.descriptor(m['claim'])[2] and m['claim'] in ((profiles.OLD_CLAIM,) if profile is profiles.ORIGINAL else (profiles.OLD_CLAIM,profiles.PUBLISHED_CLAIM))
          and m['carrier_path']==row['path']
          and m['carrier_raw_digest']==row['raw_digest'] and m['carrier_raw_bytes']==row['raw_bytes']
          and m['owner']=='planning_proof'
@@ -693,7 +713,9 @@ def _render(derived):
     accounting._live(w,'qualified.input.live',(*pm,vm),(*pb,2*vm[5]))
     # Full semantic validation is performed on D(E(snapshot)) below. Its exact
     # equality to original proves the complete input without a second pass here.
-    header=DELIVERY+' '+INSTRUCTION+' '+compact.instruction(compact.RESIDUAL_SCHEMA)
+    profile=profiles.packet(packet)
+    instruction=INSTRUCTION if profile is profiles.ORIGINAL else profile.instruction
+    header=profile.name('delivery')+' '+instruction+' '+compact.instruction(compact.RESIDUAL_SCHEMA)
     w.spend(len(header)*4,phase='qualified.header')
     hb=compact._utf8_size(header,w)
     original,metric=accounting._ordered(packet,w,pm,pb,'qualified.original.ordered')
@@ -746,13 +768,17 @@ def _read_prompt(prompt, *, work=None):
     w.spend(len(prompt),phase='qualified.cold.frame')
     split=prompt.find('\n')
     need(split>0,'explicit qualified header and full body')
-    expected=DELIVERY+' '+INSTRUCTION+' '+compact.instruction(compact.RESIDUAL_SCHEMA)
+    marker=prompt[:split].split(' ',1)[0]
+    profile=profiles.select('delivery',marker)
+    instruction=INSTRUCTION if profile is profiles.ORIGINAL else profile.instruction
+    expected=profile.name('delivery')+' '+instruction+' '+compact.instruction(compact.RESIDUAL_SCHEMA)
     w.spend(len(expected)+len(prompt),phase='qualified.cold.header')
     need(prompt[:split]==expected,'exact new delivery/claim/decoder; no legacy fallback')
     body=prompt[split+1:]
     retained=accounting._live(w,'qualified.cold.input',buffers=(2*size,))
     packet,schema=compact._decode_complete(body,w,retained=retained)
     need(schema==compact.RESIDUAL_SCHEMA,'explicit unchanged compact-v4 body grammar')
+    need(profiles.packet(packet) is profile,'same explicit delivery and packet profile')
     metric=compact._json_preflight(packet,w)
     held=accounting._live(w,'qualified.cold.canonical',(metric,),(2*size,compact.MAX_ENCODED_BYTES))
     previous=getattr(w,'_residual_retained',None);w._residual_retained=held

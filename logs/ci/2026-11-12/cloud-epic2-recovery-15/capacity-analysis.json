@@ -1,0 +1,58 @@
+{
+  "schema": "newrouge.compensation-capacity-analysis.v1",
+  "original_prepare11": {
+    "estimated_input_tokens": 101371,
+    "continuation_reserve": 2000,
+    "limit": 70000,
+    "complete_request_chars": 316309,
+    "complete_request_bytes": 316309,
+    "token_counter": "max(o200k_base,cl100k_base)+10_percent"
+  },
+  "new_complete_request": {
+    "path": "/workspace/newrouge/logs/ci/2026-11-12/cloud-epic2-recovery-15/published-complete-request-02.txt",
+    "bytes": 316310,
+    "sha256": "f8fb183a57054303877324a90ac44904ad6fe73e17355ea50971aff7664d721a",
+    "source_policy": "sha256:49f9b7dc1ddf31470f6293b76a5937605f0cf1bc5163aa3cf984970fcafbb252",
+    "genuine_render": {
+      "frame_bytes": 313399,
+      "work_limit": 170000000,
+      "work_charged": 147247600,
+      "packet_schema": "newrouge.b-route-qualified-compensation-review-packet.v3",
+      "claim": "complete_recorded_public_semantics_with_published_history_byte_verification"
+    },
+    "counter": "utf8_byte_upper_bound",
+    "input_upper_bound": 316310,
+    "continuation_reserve": 2000,
+    "upper_bound_plus_reserve": 318310,
+    "o200k_base_count": null,
+    "cl100k_base_count": null,
+    "original_token_counts_reused_for_new_request": false
+  },
+  "limits_unchanged": {
+    "compensation_total_input_gate": 70000,
+    "shared_default_total_input_gate": 96000,
+    "request_bytes": 1048576,
+    "local_work": 170000000
+  },
+  "prior_metadata": {
+    "path": "logs/ci/2026-11-11/cloud-epic2-recovery-02/runner-metadata-local-state.json",
+    "sha256": "ed6eaf2d5dd1254fb2f636cab836bce02dc924396581956724f5b7761991ac48",
+    "cli_version": "0.163.0",
+    "effective_config": {
+      "model": null,
+      "model_provider": null,
+      "model_reasoning_effort": null,
+      "model_context_window": null,
+      "model_auto_compact_token_limit": null,
+      "service_tier": null
+    },
+    "applicable_current_model_window_established": false,
+    "known_refresh_failure": "HTTP401 token could not be parsed; no materially new authentication evidence supplied",
+    "refresh_retried": false
+  },
+  "capacity_interpretation": "The UTF-8 upper bound is conservative and is not a measured model token count. Original prepare11 had101371+2000>70000, and96000 was insufficient. New complete bytes are now saved; exact tokenizer counting needs the officially available tables, not replay of original producers.",
+  "encoding_policy_denial_retried": false,
+  "new_paid_or_model_calls": 0,
+  "next_minimum": "Obtain applicable formal Cloud model/config/window and usable official encoding evidence, then evaluate one explicit compensation-only policy aligned with existing runner --max-input-tokens. No source/material deletion, shared Cap/MVG limit change, fiscal-pool creation or paid dispatch follows from this analysis.",
+  "sparse_semantics_or_additional_compression_started": false
+}

@@ -1,0 +1,24 @@
+{
+  "passed": true,
+  "packet_schema": "newrouge.b-route-qualified-compensation-review-packet.v3",
+  "claim": "complete_recorded_public_semantics_with_published_history_byte_verification",
+  "packet_bytes": 1428302,
+  "packet_sha256": "4bfd67972b5547e4cb06cd09463dbf7b3f1b675857e97ce05522e3b8dd5d1d81",
+  "packet_data_path": "/workspace/newrouge-recovery-data/batch03-05f5fbf9/work/published-profile-cold-packet-01.json",
+  "frames": 2,
+  "documents": 11,
+  "required_checks": [
+    "b_source_and_binding_retention",
+    "complete_old_current_new_scope",
+    "cumulative_requirements_and_obligations",
+    "current_before_and_later_edits",
+    "exact_pending_claim_relation",
+    "existing_formal_semantic_sources",
+    "original_raw_frozen_effects",
+    "target:0",
+    "task_status_acceptance_history"
+  ],
+  "work_remaining": 60155154,
+  "data_only": true,
+  "new_authority_granted": false
+}

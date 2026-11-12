@@ -1,0 +1,10 @@
+{
+  "selectors": [
+    "test_b_route_qualified_public_context.QualifiedPublicContextTests.test_delivery_default_v3_explicit_v4_and_qualified_are_not_rewritten"
+  ],
+  "tests_run": 1,
+  "failures": 0,
+  "errors": 0,
+  "passed": true,
+  "output": "test_delivery_default_v3_explicit_v4_and_qualified_are_not_rewritten (test_b_route_qualified_public_context.QualifiedPublicContextTests.test_delivery_default_v3_explicit_v4_and_qualified_are_not_rewritten) ... ok\n\n----------------------------------------------------------------------\nRan 1 test in 0.165s\n\nOK\n"
+}

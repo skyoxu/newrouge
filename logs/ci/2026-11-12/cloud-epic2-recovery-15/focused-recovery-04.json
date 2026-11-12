@@ -1,0 +1,10 @@
+{
+  "selectors": [
+    "test_b_route_published_history.PublishedRecoveryBeforeTests.test_real_formal_before_view_survives_owned_origins_after_and_rejects_unknown_bytes"
+  ],
+  "tests_run": 1,
+  "failures": 0,
+  "errors": 1,
+  "passed": false,
+  "output": "test_real_formal_before_view_survives_owned_origins_after_and_rejects_unknown_bytes (test_b_route_published_history.PublishedRecoveryBeforeTests.test_real_formal_before_view_survives_owned_origins_after_and_rejects_unknown_bytes)\nActual formal/Task bytes; synthetic upstream bookkeeping, no model proof. ... ERROR\n\n======================================================================\nERROR: test_real_formal_before_view_survives_owned_origins_after_and_rejects_unknown_bytes (test_b_route_published_history.PublishedRecoveryBeforeTests.test_real_formal_before_view_survives_owned_origins_after_and_rejects_unknown_bytes)\nActual formal/Task bytes; synthetic upstream bookkeeping, no model proof.\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/workspace/newrouge/scripts/python/tests/test_b_route_published_history.py\", line 151, in test_real_formal_before_view_survives_owned_origins_after_and_rejects_unknown_bytes\n    snapshot,frozen=compensation.build(root,request)\n                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/workspace/newrouge/scripts/python/_b_route_compensation.py\", line 329, in build\n    old_plan = next((row['after_payload'] for row in original['frozen']['targets']\n               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/workspace/newrouge/scripts/python/_b_route_compensation.py\", line 330, in <genexpr>\n    if row['schema_version'] == adoption.PLAN), None)\n       ~~~^^^^^^^^^^^^^^^^^^\nKeyError: 'schema_version'\n\n----------------------------------------------------------------------\nRan 1 test in 1.333s\n\nFAILED (errors=1)\n"
+}

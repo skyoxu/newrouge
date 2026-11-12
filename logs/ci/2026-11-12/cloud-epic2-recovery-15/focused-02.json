@@ -1,0 +1,10 @@
+{
+  "selectors": [
+    "test_b_route_published_history.PublishedHistoryBoundaryTests.test_saved_proof_reference_must_match_its_actual_profile_version"
+  ],
+  "tests_run": 1,
+  "failures": 0,
+  "errors": 0,
+  "passed": true,
+  "output": "test_saved_proof_reference_must_match_its_actual_profile_version (test_b_route_published_history.PublishedHistoryBoundaryTests.test_saved_proof_reference_must_match_its_actual_profile_version) ... ok\n\n----------------------------------------------------------------------\nRan 1 test in 0.001s\n\nOK\n"
+}

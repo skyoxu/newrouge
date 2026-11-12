@@ -1,0 +1,10 @@
+{
+  "selectors": [
+    "test_b_route_published_history.PublishedRecoveryBeforeTests.test_real_formal_before_view_survives_owned_origins_after_and_rejects_unknown_bytes"
+  ],
+  "tests_run": 1,
+  "failures": 0,
+  "errors": 0,
+  "passed": true,
+  "output": "test_real_formal_before_view_survives_owned_origins_after_and_rejects_unknown_bytes (test_b_route_published_history.PublishedRecoveryBeforeTests.test_real_formal_before_view_survives_owned_origins_after_and_rejects_unknown_bytes)\nActual formal/Task bytes; synthetic upstream bookkeeping, no model proof. ... ok\n\n----------------------------------------------------------------------\nRan 1 test in 1.552s\n\nOK\n"
+}
