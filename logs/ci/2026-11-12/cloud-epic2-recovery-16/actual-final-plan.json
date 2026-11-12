@@ -1,0 +1,133 @@
+{
+  "schema_version": "newrouge.b-route-compensation-segment-plan.v1",
+  "claim": "offline_complete_context_preflight_without_execution_authority",
+  "operation_id": "NativeV15Origin03Compensation01",
+  "subject_digest": "sha256:10e42e1ede2c17db9cc09c286b069d900b41179c21d9d90aefe8247fcf2881a8",
+  "packet_raw_digest": "sha256:c8e22fc9f3d836a1ecca95876eb1d2f498806039ae7b8b68ed807b43022a5466",
+  "source_policy": "sha256:67c33f19cb7438d5e361ac5f8d8b55ea346d9db0fb6c698f3ea98bd94885bbfc",
+  "delivery": "newrouge.b-route-qualified-compensation-review-segment-input.v1",
+  "orchestrator": "deterministic_cli",
+  "cross_request_memory": false,
+  "partition_basis": "Conservative complete closure; safe further decomposition is not yet established. Length does not establish a semantic boundary. No LLM partition or continuation decisions.",
+  "inventory": [
+    {
+      "path": "/presentation",
+      "ordered_raw_digest": "sha256:1744175fcd9e8aad21ec5a793748d9503e5597b2f5724c04711dc36410eadc3b",
+      "ordered_bytes": 941
+    },
+    {
+      "path": "/roles",
+      "ordered_raw_digest": "sha256:d09322c0f04beed7dcc1676888df1c3be29b4296fa904dd85b501cf3757680c3",
+      "ordered_bytes": 20471
+    },
+    {
+      "path": "/materials/frames/0",
+      "ordered_raw_digest": "sha256:a55f350f89e59c35be0771d0d1e4604e8484d1ca9e72038f749338c993fcb8d0",
+      "ordered_bytes": 270140
+    },
+    {
+      "path": "/materials/frames/1",
+      "ordered_raw_digest": "sha256:9c17e60b539119f3fe2f6693b89b4dfbe34cac9a6c361ac28494d3ddea88561e",
+      "ordered_bytes": 332826
+    },
+    {
+      "path": "/materials/documents/0",
+      "ordered_raw_digest": "sha256:ec00f91adc21940da9d297fe6799e1bbcf4df3d7f7db7f3e838f2536ad072659",
+      "ordered_bytes": 282
+    },
+    {
+      "path": "/materials/documents/1",
+      "ordered_raw_digest": "sha256:d6fb789cb9becca2010ce9ed4a40295824863858c78c5fed7ce1da405048392d",
+      "ordered_bytes": 122517
+    },
+    {
+      "path": "/materials/documents/2",
+      "ordered_raw_digest": "sha256:71a92981061992570b4f3eed7066e73c82105b86d7be4aa3370922c3cd8ff01c",
+      "ordered_bytes": 422
+    },
+    {
+      "path": "/materials/documents/3",
+      "ordered_raw_digest": "sha256:fab213534a0ef8e8128c8b0b50f2d9510f0a1d405d7e66f5095d843da4a63109",
+      "ordered_bytes": 862
+    },
+    {
+      "path": "/materials/documents/4",
+      "ordered_raw_digest": "sha256:5f04a505b9fa9106491e974af6304361b67731b8f02d1d8f1f672f6f276d881f",
+      "ordered_bytes": 7175
+    },
+    {
+      "path": "/materials/documents/5",
+      "ordered_raw_digest": "sha256:2ac11ac8b1239046d69650c3e36676919ef7baf76985e3b8195d97697b8bdc6a",
+      "ordered_bytes": 36002
+    },
+    {
+      "path": "/materials/documents/6",
+      "ordered_raw_digest": "sha256:f7ce130e8b7692caaae72c7ae26112764ceb3602101f4527ebfe980f026b8e7e",
+      "ordered_bytes": 35629
+    },
+    {
+      "path": "/materials/documents/7",
+      "ordered_raw_digest": "sha256:843bbce55ed0c32a0bfdd7666fda0e9005028a8144b7e3122f8f7a7e74eaffb6",
+      "ordered_bytes": 105431
+    },
+    {
+      "path": "/materials/documents/8",
+      "ordered_raw_digest": "sha256:dc46c53c6b4454eb6e211a277c66b60adb06f368aabee81d7b06917b47c465f1",
+      "ordered_bytes": 12931
+    },
+    {
+      "path": "/materials/documents/9",
+      "ordered_raw_digest": "sha256:9121cc90485cfd243d05adf8e5e1a3337d21603f319995c59f2f50157c0428c1",
+      "ordered_bytes": 416
+    },
+    {
+      "path": "/materials/documents/10",
+      "ordered_raw_digest": "sha256:7ec9d907fe6cec5e66ff04c1c9ab90e6a29b687eea5e90de4ae1d1443ee5b787",
+      "ordered_bytes": 106607
+    }
+  ],
+  "nodes": [
+    {
+      "node_id": "complete-context",
+      "ordinal": 0,
+      "dependencies": [],
+      "required_checks": [
+        "b_source_and_binding_retention",
+        "complete_old_current_new_scope",
+        "cumulative_requirements_and_obligations",
+        "current_before_and_later_edits",
+        "exact_pending_claim_relation",
+        "existing_formal_semantic_sources",
+        "original_raw_frozen_effects",
+        "target:0",
+        "task_status_acceptance_history"
+      ],
+      "inventory_paths": [
+        "/presentation",
+        "/roles",
+        "/materials/frames/0",
+        "/materials/frames/1",
+        "/materials/documents/0",
+        "/materials/documents/1",
+        "/materials/documents/2",
+        "/materials/documents/3",
+        "/materials/documents/4",
+        "/materials/documents/5",
+        "/materials/documents/6",
+        "/materials/documents/7",
+        "/materials/documents/8",
+        "/materials/documents/9",
+        "/materials/documents/10"
+      ],
+      "closure": "complete_owner_packet_pending_proven_semantic_partition",
+      "input_token_limit": 70000,
+      "context_token_limit": 96000,
+      "output_reserve": 2000,
+      "request_ref": "logs/ci/b-route-compensation-segments/3608f41364f51cf23e598ee90f2a4b9f129951664438aa791b5e021da20e874f/nodes/000/request.txt",
+      "request_raw_digest": "sha256:4081653c9c9a47cbeb07cfe79db061e4784c3d97c2ffc68c652a13926a530899"
+    }
+  ],
+  "required_model_requests_if_admitted": 1,
+  "model_budget_authority": null,
+  "new_execution_proof_implemented": false
+}

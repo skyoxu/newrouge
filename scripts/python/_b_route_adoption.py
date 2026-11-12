@@ -918,6 +918,16 @@ def prepare_review(root, *, operation_id, request_ref, compensation_delivery=Non
 
 
 @public
+def preflight_segmented_compensation(root, *, operation_id, request_ref, compensation_delivery):
+    root=Path(root).resolve()
+    request=journal.validate_operation_request(safe_path(root,request_ref).read_bytes())
+    require(request['operation_id']==operation_id and request['schema_version']==journal.COMPENSATION_REQUEST
+            and 'host_review_ref' not in request,'fresh explicit compensation segment preflight',operation_id)
+    import _b_route_compensation as compensation
+    return compensation.review_preview(root,request,delivery=compensation_delivery,segmented_preflight=True)
+
+
+@public
 def complete_review(root, *, operation_id):
     import _b_route_adoption_review as review
     root = Path(root).resolve()

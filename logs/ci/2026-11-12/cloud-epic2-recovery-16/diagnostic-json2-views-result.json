@@ -1,0 +1,27 @@
+{
+  "passed": true,
+  "views": 10,
+  "document_indices": [
+    0,
+    1,
+    2,
+    3,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10
+  ],
+  "body_bytes": 121396,
+  "original_complete_request_bytes": 316310,
+  "original_body_bytes": 309384,
+  "work_charged": 95584566,
+  "work_limit": 170000000,
+  "all_original_semantic_bytes_restored": true,
+  "ordered_packet_raw_digest": "sha256:8486391460cbe90fb1e986fde37856a4070deae04c12c68f9fb44eb9ff0ce80a",
+  "real_token_counts": null,
+  "qualified_delivery_produced": false,
+  "full_private_owner_account_verified": false,
+  "scope": "DATA candidate: fixed complete packet only, not a model/provider admission or production render"
+}

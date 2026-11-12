@@ -1,0 +1,27 @@
+{
+  "source": "installed Codex CLI0.163.0 debug models --bundled; offline, refresh skipped",
+  "catalog_bytes": 658607,
+  "catalog_sha256": "69af12f94a39dabd1a1ded8f5257b4884d2118902ea2b5b9cffbf4a1925dfa65",
+  "models": [
+    {
+      "slug": "gpt-6-astra",
+      "context_window": 272000,
+      "effective_context_window_percent": 95,
+      "max_context_window": 872000
+    },
+    {
+      "slug": "gpt-6.1-sol",
+      "context_window": 272000,
+      "effective_context_window_percent": 95,
+      "max_context_window": 872000
+    }
+  ],
+  "current_selected_effective_model": null,
+  "remote_authentication_verified": false,
+  "project_segment_input_limit": 70000,
+  "project_context_limit": 96000,
+  "real_request_token_counts": null,
+  "official_tokenizer_tables_available": false,
+  "new_network_auth_model_attempts": 0,
+  "limitations": "Bundled metadata does not authorize a call or prove this account selected a model/window; no denied table download was retried."
+}

@@ -1,0 +1,52 @@
+Traceback (most recent call last):
+  File "/workspace/newrouge/scripts/python/_b_route_adoption.py", line 761, in checked
+    return function(root, operation_id=operation_id, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/newrouge/scripts/python/_b_route_adoption.py", line 927, in preflight_segmented_compensation
+    return compensation.review_preview(root,request,delivery=compensation_delivery,segmented_preflight=True)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/newrouge/scripts/python/_b_route_compensation.py", line 709, in review_preview
+    return _review_preview_body(root, request, seal=seal, delivery=delivery,segmented_preflight=segmented_preflight)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/newrouge/scripts/python/_b_route_compensation.py", line 543, in _review_preview_body
+    result=segments.prepare(root,derived)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/newrouge/scripts/python/_b_route_compensation_segments.py", line 180, in prepare
+    return _resume(root,home,derived,pins)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/newrouge/scripts/python/_b_route_compensation_segments.py", line 85, in _resume
+    restored=materials.read_segment_input(prompt,work=derived.work,
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/newrouge/scripts/python/_b_route_qualified_compensation_materials_v2.py", line 942, in read_segment_input
+    return _read_prompt(prompt,work=work,json_views=True,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/newrouge/scripts/python/_b_route_qualified_compensation_materials_v2.py", line 906, in _read_prompt
+    expected=_json_views(packet,w,(*external_metrics,metric,pm),(*external_buffers,2*size,size))
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/newrouge/scripts/python/_b_route_qualified_compensation_materials_v2.py", line 752, in _json_views
+    core=accounting._mv_core_with_texts(snapshot,replacements,w,
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/newrouge/scripts/python/_b_route_compensation_review_materials.py", line 871, in _mv_core_with_texts
+    _mv_metadata(work, len(replacements), (*metrics, measured, measured), buffers, 'multiview.core.live')
+  File "/workspace/newrouge/scripts/python/_b_route_compensation_review_materials.py", line 801, in _mv_metadata
+    _live(work, phase, (*metrics, extra), buffers)
+  File "/workspace/newrouge/scripts/python/_b_route_compensation_review_materials.py", line 345, in _live
+    compact._metric(size, nodes, depth, phase=phase)
+  File "/workspace/newrouge/logs/ci/2026-11-12/cloud-epic2-recovery-16/diagnose_actual_resume.py", line 18, in observe_metric
+    try:return metric(*args,**kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/newrouge/scripts/python/_b_route_compact_literal.py", line 1809, in _metric
+    raise ValueError("Compact input exceeds " + RESOURCE_POLICY +
+ValueError: Compact input exceeds newrouge.b-route-resource-pipeline.v4; bytes_bound=69605895; nodes_bound=142471; depth_bound=19; phase=multiview.core.live
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/workspace/newrouge/logs/ci/2026-11-12/cloud-epic2-recovery-16/diagnose_actual_resume.py", line 22, in <module>
+    value=owner.preflight_segmented_compensation(Path('/workspace/newrouge-recovery-data/batch03-05f5fbf9/work/target-compensation-prepare'),operation_id='NativeV15Origin03Compensation01',request_ref='logs/ci/b-route-requests/native-v15-origin03-compensation-01/request.json',compensation_delivery='newrouge.b-route-qualified-compensation-review-delivery.v3')
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/newrouge/scripts/python/_b_route_adoption.py", line 771, in checked
+    fail(codec.ReasonCode.IDENTITY_UNPROVABLE, 'complete current adoption evidence',
+  File "/workspace/newrouge/scripts/python/_b_route_adoption.py", line 31, in fail
+    raise codec.CodecError(codec.Diagnostic(reason, codec.Stage.BUNDLE,
+_b_route_codec.CodecError: identity_unprovable

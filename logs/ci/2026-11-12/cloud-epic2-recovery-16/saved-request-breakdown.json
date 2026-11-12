@@ -1,0 +1,308 @@
+{
+  "request_sha256": "f8fb183a57054303877324a90ac44904ad6fe73e17355ea50971aff7664d721a",
+  "request_bytes": 316310,
+  "header_bytes": 4014,
+  "codec_body_bytes": 309384,
+  "wrapper_schema_bytes": 2911,
+  "decoded_packet_compact_json_bytes": 1049841,
+  "decoded_packet_data_path": "/workspace/newrouge-recovery-data/batch03-05f5fbf9/work/published-profile-final-packet-02.json",
+  "frames": [
+    {
+      "operation_id": "NativeV15Origin03Compensation01",
+      "schema": "newrouge.b-route-qualified-compensation-review-subject.v3",
+      "total_compact_json_bytes": 268814,
+      "public_field_bytes": {
+        "schema_version": 59,
+        "producer": 14,
+        "operation_id": 33,
+        "request": 1029,
+        "preview": 90864,
+        "policy_identity": 73,
+        "original_operation": 79492,
+        "original_effects": 76313,
+        "task_definitions": 2
+      }
+    },
+    {
+      "operation_id": "NativeV15Origin03",
+      "schema": "newrouge.b-route-adoption-review-subject.v3",
+      "total_compact_json_bytes": 331117,
+      "public_field_bytes": {
+        "schema_version": 44,
+        "operation_id": 19,
+        "private_subject_digest": 73,
+        "policy_identity": 73,
+        "source": 7239,
+        "native_content": 76379,
+        "identity_alignment": 1415,
+        "allocations": 744,
+        "target_before_files": 277,
+        "targets": 76313,
+        "origin_binding": 332,
+        "target_binding": 404,
+        "disclosure": 340,
+        "plan_storage": 12177,
+        "review_scope": 67916,
+        "origin_evidence_role": 225,
+        "current_selection": 6794
+      }
+    }
+  ],
+  "documents": [
+    {
+      "index": 0,
+      "raw_bytes": 146,
+      "digest": "sha256:050a156a25f0fa55585057f06dafbef7419789bfb60ade5215028677e119925e",
+      "uses": [
+        {
+          "path": "docs/planning/b-route/task-origins.v1.json",
+          "roles": [
+            "semantic:catalog_graph",
+            "semantic:formal_record",
+            "semantic:original_target"
+          ]
+        }
+      ]
+    },
+    {
+      "index": 1,
+      "raw_bytes": 115903,
+      "digest": "sha256:3529ae13140eb456326c0a69c1e393c63924e9fe52b8e3d7acd8f747f2e4e157",
+      "uses": [
+        {
+          "path": "logs/ci/b-route-operations/operations/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/operation.json",
+          "roles": [
+            "host:operation_metadata",
+            "semantic:original_operation"
+          ]
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "raw_bytes": 283,
+      "digest": "sha256:499d49af5e6273631d38bd6c51f1a4329fe1f4a8b28b2c4005056a8082dd37c7",
+      "uses": [
+        {
+          "path": "docs/workflows/chapter3-source-set.json",
+          "roles": [
+            "semantic:declared_source"
+          ]
+        }
+      ]
+    },
+    {
+      "index": 3,
+      "raw_bytes": 681,
+      "digest": "sha256:67f96a837974e89bdfdb97fdf4386b3d89d308375c4d161136677daeaefcc020",
+      "uses": [
+        {
+          "path": "logs/ci/2026-11-06/b-route-sources/s25-v15-exclusive-offline/prepare-02/prepare/source-manifest.json",
+          "roles": [
+            "semantic:declared_source"
+          ]
+        }
+      ]
+    },
+    {
+      "index": 4,
+      "raw_bytes": 7044,
+      "digest": "sha256:7e5e1fe8aeb5937c70caa16aea2a9e1784a429c70c30a4f7f4d66601f1880061",
+      "uses": [
+        {
+          "path": "docs/testing/story-2-5-controlled-acceptance/exclusive-resolution-v15.md",
+          "roles": [
+            "semantic:declared_source",
+            "semantic:manifest_source"
+          ]
+        }
+      ]
+    },
+    {
+      "index": 5,
+      "raw_bytes": 33023,
+      "digest": "sha256:86317dea22202aff8261fb01da2a6b078f2c3e3f860e57d411216a06131fc7f2",
+      "uses": [
+        {
+          "path": "docs/planning/b-route/catalog.v1.json",
+          "roles": [
+            "semantic:catalog_graph",
+            "semantic:formal_record"
+          ]
+        }
+      ]
+    },
+    {
+      "index": 6,
+      "raw_bytes": 33622,
+      "digest": "sha256:8ec08628ff77980b92ead4de5e076fe4f4b1bc1ed4b2922fa7f2d84b5744535f",
+      "uses": [
+        {
+          "path": "docs/planning/b-route/commits/NativeV15Origin03.json",
+          "roles": [
+            "semantic:catalog_graph",
+            "semantic:formal_record"
+          ]
+        }
+      ]
+    },
+    {
+      "index": 7,
+      "raw_bytes": 99279,
+      "digest": "sha256:965faffefde5731b92e581d30be7ae8854db73844ec5411dd337e0b563e54f20",
+      "uses": [
+        {
+          "path": "docs/planning/b-route/plans/PLAN-bed480ce3e404b2cbaf5514d80a7f941/1.json",
+          "roles": [
+            "semantic:catalog_graph",
+            "semantic:formal_record",
+            "semantic:original_target"
+          ]
+        }
+      ]
+    },
+    {
+      "index": 8,
+      "raw_bytes": 12321,
+      "digest": "sha256:b0c661a2838a07a0b88fe32cd8a6cebc480cec06325f07fe89264f858799db97",
+      "uses": [
+        {
+          "path": "logs/ci/2026-11-06/b-route-sources/s25-v15-exclusive-offline/prepare-02/prepare/source-blocks.json",
+          "roles": [
+            "semantic:declared_source"
+          ]
+        }
+      ]
+    },
+    {
+      "index": 9,
+      "raw_bytes": 265,
+      "digest": "sha256:cc07d8eef84b3285e0ccda33b1f5ae915d9f74dba3c1823f47b988315ae6f7f0",
+      "uses": [
+        {
+          "path": "docs/planning/b-route/policy.v1.json",
+          "roles": [
+            "semantic:catalog_graph",
+            "semantic:formal_record",
+            "semantic:original_target"
+          ]
+        }
+      ]
+    },
+    {
+      "index": 10,
+      "raw_bytes": 100162,
+      "digest": "sha256:ffe97880a0050a9df42f4eafd6dd9c0d6995a9de37812f1c32e8c865e9942923",
+      "uses": [
+        {
+          "path": "logs/ci/b-route-origin-captures/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/capsule.json",
+          "roles": [
+            "host:qualified_origin_proof",
+            "semantic:qualified_native_content"
+          ]
+        }
+      ]
+    }
+  ],
+  "largest_original_strings": [
+    {
+      "path": "/materials/documents/1/text",
+      "utf8_bytes": 115903,
+      "json_bytes": 122401
+    },
+    {
+      "path": "/materials/documents/10/text",
+      "utf8_bytes": 100162,
+      "json_bytes": 106491
+    },
+    {
+      "path": "/materials/documents/7/text",
+      "utf8_bytes": 99279,
+      "json_bytes": 105315
+    },
+    {
+      "path": "/materials/documents/6/text",
+      "utf8_bytes": 33622,
+      "json_bytes": 35514
+    },
+    {
+      "path": "/materials/documents/5/text",
+      "utf8_bytes": 33023,
+      "json_bytes": 35887
+    },
+    {
+      "path": "/materials/documents/8/text",
+      "utf8_bytes": 12321,
+      "json_bytes": 12816
+    },
+    {
+      "path": "/materials/frames/1/semantic_fields/source/text",
+      "utf8_bytes": 7044,
+      "json_bytes": 7061
+    },
+    {
+      "path": "/materials/documents/4/text",
+      "utf8_bytes": 7044,
+      "json_bytes": 7061
+    },
+    {
+      "path": "/materials/frames/0/semantic_fields/preview/targets/0/after_payload/definitions/commands/3/responsibility",
+      "utf8_bytes": 2423,
+      "json_bytes": 2425
+    },
+    {
+      "path": "/materials/frames/0/semantic_fields/original_operation/targets/0/after_payload/definitions/commands/3/responsibility",
+      "utf8_bytes": 2423,
+      "json_bytes": 2425
+    },
+    {
+      "path": "/materials/frames/0/semantic_fields/original_effects/0/after_payload/definitions/commands/3/responsibility",
+      "utf8_bytes": 2423,
+      "json_bytes": 2425
+    },
+    {
+      "path": "/materials/frames/1/semantic_fields/native_content/definitions/commands/3/responsibility",
+      "utf8_bytes": 2423,
+      "json_bytes": 2425
+    },
+    {
+      "path": "/materials/frames/1/semantic_fields/targets/0/after_payload/definitions/commands/3/responsibility",
+      "utf8_bytes": 2423,
+      "json_bytes": 2425
+    },
+    {
+      "path": "/materials/frames/1/operation_view/targets/0/after_payload/definitions/commands/3/responsibility",
+      "utf8_bytes": 2423,
+      "json_bytes": 2425
+    },
+    {
+      "path": "/materials/frames/0/semantic_fields/preview/targets/0/after_payload/definitions/commands/4/responsibility",
+      "utf8_bytes": 1855,
+      "json_bytes": 1857
+    },
+    {
+      "path": "/materials/frames/0/semantic_fields/original_operation/targets/0/after_payload/definitions/commands/4/responsibility",
+      "utf8_bytes": 1855,
+      "json_bytes": 1857
+    },
+    {
+      "path": "/materials/frames/0/semantic_fields/original_effects/0/after_payload/definitions/commands/4/responsibility",
+      "utf8_bytes": 1855,
+      "json_bytes": 1857
+    },
+    {
+      "path": "/materials/frames/1/semantic_fields/native_content/definitions/commands/4/responsibility",
+      "utf8_bytes": 1855,
+      "json_bytes": 1857
+    }
+  ],
+  "body_character_classes": {
+    "punctuation": 47283,
+    "letter": 167493,
+    "digit": 41743,
+    "space": 52865
+  },
+  "decoder_work_charged": 15839849,
+  "prior_canonical_validation_reused": true,
+  "new_capacity_admission_claimed": false
+}

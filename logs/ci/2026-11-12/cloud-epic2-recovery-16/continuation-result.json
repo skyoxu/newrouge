@@ -1,0 +1,42 @@
+{
+  "base_head": "efcf329e03257f02f79b6a3bd84ecf804199475e",
+  "branch": "build/cloud-epic2-recovery-20261111",
+  "phase": "offline deterministic compensation segment plan/preflight/resume",
+  "status": "implemented_offline_capacity_not_admitted",
+  "final_request_bytes": 128918,
+  "counter": "utf8_byte_upper_bound",
+  "actual_token_counts": null,
+  "node_count": 1,
+  "same_account_resume_verified": true,
+  "cold": {
+    "passed": true,
+    "work_charged": 85262204,
+    "work_limit": 170000000,
+    "frames": 2,
+    "documents": 11,
+    "checks": 9,
+    "complete_packet_byte_exact": true,
+    "canonical_compact_and_view_selection_verified": true,
+    "scope": "standalone bounded DATA cold reader only; no genuine Derived/private graphs retained in this process",
+    "model_dispatched": false,
+    "old_owner_executed": false
+  },
+  "targeted_final_methods": 13,
+  "targeted_final_passed": 13,
+  "actual_archive_verification": "actual-final-archive-verification.json",
+  "review": "astra-max-assessment.md",
+  "remaining": [
+    "Official dual-tokenizer tables are unavailable under the current enforced network policy; no denied fetch retried. Current conservative closure not admitted.",
+    "No safe additional semantic partition yet proven; seven Requirements share one flow. Not proof that all packet is indivisible.",
+    "Finite sequential paid consumer and new segmented execution proof are not implemented by this offline stage. Actual decomposition/counting and applicable budget/unknown authority are needed before that route can execute.",
+    "New independent semantic review, compensation commit/recovery, applicable Windows AC5 and formal2.8-2.10 acceptance remain unexecuted; prior results retained."
+  ],
+  "model_calls": 0,
+  "paid_or_fiscal_actions": 0,
+  "unknown_replays": 0,
+  "unknown_releases": 0,
+  "whole_regression": false,
+  "fast_enabled": false,
+  "main_merged": false,
+  "aliyun_actions": false
+}

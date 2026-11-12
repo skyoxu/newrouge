@@ -1,0 +1,13 @@
+{
+  "passed": true,
+  "work_charged": 85262204,
+  "work_limit": 170000000,
+  "frames": 2,
+  "documents": 11,
+  "checks": 9,
+  "complete_packet_byte_exact": true,
+  "canonical_compact_and_view_selection_verified": true,
+  "scope": "standalone bounded DATA cold reader only; no genuine Derived/private graphs retained in this process",
+  "model_dispatched": false,
+  "old_owner_executed": false
+}

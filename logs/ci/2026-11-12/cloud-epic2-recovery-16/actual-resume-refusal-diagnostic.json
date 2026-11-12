@@ -1,0 +1,16 @@
+{
+  "observed_refusal": "Compact input exceeds newrouge.b-route-resource-pipeline.v4",
+  "bytes_bound": 69605895,
+  "limit_bytes": 67108864,
+  "nodes_bound": 142471,
+  "depth_bound": 19,
+  "phase": "multiview.core.live",
+  "actual_stage": "same-account cold JSON2 view reselection while genuine private graphs remain held",
+  "source_trace": "logs/ci/2026-11-12/cloud-epic2-recovery-16/actual-resume-refusal.stderr",
+  "source_sha256": "1bbcdf3a7a207c893d35403251c94ffb22b21c6fbfbe3fd614b3a757f098ac04",
+  "instrumentation": "original _metric/_EncodingWork.spend called and refusal re-raised unchanged; diagnostic wrapper then left CodecError uncaught",
+  "work_limit_raised": false,
+  "memory_limit_raised": false,
+  "model_dispatched": false,
+  "original_archived_state_modified": false
+}

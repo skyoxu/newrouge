@@ -1,0 +1,11 @@
+# Clean Astra max scope and implementation assessment
+
+Reviewer: isolated `capacity_json_views_scope_review`, gpt-6-astra/max, clean fork; static/source review only, no product tests/model/fiscal execution by reviewer.
+
+The user's latest clarification overrides the earlier total-request wording:70000 applies per segment; CLI owns deterministic partition/capacity/order/continuation. Whole-request extension B is cancelled. The reviewer approved a necessary minimal offline compensation adapter, separate from Capability/MVG candidate contracts and fiscal issuers. Seven Requirements share one flow; arbitrary seven-way slicing is unsupported. An8+1 model-node proposal was rejected because it does not reduce the first closure or establish independent pending semantics. One conservative complete closure is not a theorem of indivisibility or delivered segmentation.
+
+Initial implementation review found one P1 (retained parsed/reconstructed text/resource-accounting gaps) and three P2s (tampered ready state, alternate view selection, extra scan on old cold route). They were repaired using original COW/metadata/JSON2/digest owners, cumulative retained buffers, full envelope witness/cold canonical rederivation, measured/rederived state and unchanged legacy scan behavior. Further precise P1 tail fixes covered UTF8 bounds, packet/archive/inventory serialization and the same account/private graphs.
+
+Actual same-account cold resume then refused69605895 bytes_bound at multiview.core.live, exceeding the unchanged64MiB guard. The reviewer approved the necessary optimization: with genuine current originals, perform the full canonical warm E/D/validate/ordered-exact/envelope witness before loading archive buffers, then compare archived prompt RAW BYTES exactly; retain packet/pins/plan/schema/measurement/state verification in the same derived.work. No guard is raised, no account reset, and no paid operation retried. Standalone cold verification remains available.
+
+Final static result: reported P1 tails closed; no remaining P1/P2 within the reviewed scope. This is a static assessment, not runtime acceptance. Actual final preflight04/resume03 and standalone cold results are reported separately. No new governance or approval gate was added.

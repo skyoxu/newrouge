@@ -169,6 +169,8 @@ def policy_observations():
         '_b_route_qualified_history_router.py',
         '_b_route_qualified_public_history_v2.py',
         '_b_route_compensation_review_profiles.py',
+        '_b_route_compensation_segments.py',
+        '_b_route_segmented_requests.py',
         '_b_route_published_history.py',
         '_b_route_published_compensation_review.py',
     )

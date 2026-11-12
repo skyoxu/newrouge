@@ -30,20 +30,20 @@ class _Parser(argparse.ArgumentParser):
 def register_arguments(parser):
     parser.add_argument("--root", default=".")
     parser.add_argument("--origin-profile", help="Existing finite profile; origin-prepare only")
-    parser.add_argument("--stage", choices=("origin-prepare", "review-prepare", "review-complete", "prepare", "reserve", "inspect",
+    parser.add_argument("--stage", choices=("origin-prepare", "review-prepare", "review-segmented-preflight", "review-complete", "prepare", "reserve", "inspect",
                                           "apply", "verify", "publish", "read", "recover-inspect", "recover"), required=True)
     parser.add_argument("--context", action="store_true",
         help="Include original retained/published context; inspect/read only, no reuse or resume")
     parser.epilog = CONTEXT_HELP
     parser.add_argument("--operation-id", required=True)
-    parser.add_argument("--request", help="Complete request reference; review-prepare or prepare only")
+    parser.add_argument("--request", help="Complete request reference; review-prepare, review-segmented-preflight or prepare only")
     parser.add_argument('--compensation-review-delivery', choices=(
         'newrouge.b-route-compensation-review-delivery.v3',
         'newrouge.b-route-compensation-review-delivery.v4',
         'newrouge.b-route-qualified-compensation-review-delivery.v1',
         'newrouge.b-route-qualified-compensation-review-delivery.v2',
         'newrouge.b-route-qualified-compensation-review-delivery.v3'),
-        help='Explicit compensation review-prepare transport; omission preserves delivery.v3')
+        help='Explicit compensation review transport; segmented preflight requires qualified delivery.v3')
     parser.set_defaults(func=run)
     return parser
 
@@ -133,15 +133,15 @@ def _execute(args):
         return prepare_origin(Path(args.root).absolute(), operation_id=args.operation_id, profile=args.origin_profile)
     if getattr(args, 'origin_profile', None) is not None:
         raise ValueError('origin-profile is only accepted by origin-prepare')
-    if args.stage not in ("review-prepare", "review-complete", "prepare", "reserve", "inspect", "apply", "verify", "publish", "read", "recover-inspect", "recover"):
+    if args.stage not in ("review-prepare", "review-segmented-preflight", "review-complete", "prepare", "reserve", "inspect", "apply", "verify", "publish", "read", "recover-inspect", "recover"):
         raise codec.CodecError(codec.Diagnostic(codec.ReasonCode.INVALID_ARGUMENT,
             entity_id=args.operation_id, expected="prepare|reserve|inspect", actual=args.stage))
-    if (args.stage in ("review-prepare", "prepare")) != (args.request is not None):
+    if (args.stage in ("review-prepare", "review-segmented-preflight", "prepare")) != (args.request is not None):
         raise codec.CodecError(codec.Diagnostic(codec.ReasonCode.INVALID_ARGUMENT,
-            entity_id=args.operation_id, expected="--request on review-prepare or prepare only",
+            entity_id=args.operation_id, expected="--request on review-prepare, review-segmented-preflight or prepare only",
             actual={"stage": args.stage, "request_supplied": args.request is not None}))
     compensation_delivery = getattr(args, 'compensation_review_delivery', None)
-    if compensation_delivery is not None and args.stage != 'review-prepare':
+    if compensation_delivery is not None and args.stage not in ('review-prepare','review-segmented-preflight'):
         raise codec.CodecError(codec.Diagnostic(codec.ReasonCode.INVALID_ARGUMENT,
             entity_id=args.operation_id, expected='delivery selection on compensation review-prepare only',
             actual=args.stage))
@@ -191,6 +191,9 @@ def _execute(args):
         value = service.recover(root, operation_id=args.operation_id)
     elif commit_stage:
         value = service.execute(root, operation_id=args.operation_id, stage=args.stage)
+    elif args.stage == 'review-segmented-preflight':
+        value=service.preflight_segmented_compensation(root,operation_id=args.operation_id,
+            request_ref=args.request,compensation_delivery=compensation_delivery)
     elif args.stage == "review-prepare":
         delivery_kwargs = {} if compensation_delivery is None else {'compensation_delivery': compensation_delivery}
         value = service.prepare_review(root, operation_id=args.operation_id, request_ref=args.request, **delivery_kwargs)

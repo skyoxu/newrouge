@@ -1,0 +1,39 @@
+{
+  "actual_preflight_status": "blocked",
+  "same_account_resume_completed": true,
+  "same_exact_request_after_resume": true,
+  "node_count": 1,
+  "node_request_bytes": 128918,
+  "previous_single_request_bytes": 316310,
+  "frames": 2,
+  "documents": 11,
+  "required_check_count": 9,
+  "required_checks": [
+    "b_source_and_binding_retention",
+    "complete_old_current_new_scope",
+    "cumulative_requirements_and_obligations",
+    "current_before_and_later_edits",
+    "exact_pending_claim_relation",
+    "existing_formal_semantic_sources",
+    "original_raw_frozen_effects",
+    "target:0",
+    "task_status_acceptance_history"
+  ],
+  "all11_literal_documents_byte_exact_to_prior_actual_packet": true,
+  "all_archived_file_digests_match": true,
+  "source_pin_count": 81,
+  "all_source_pins_current": true,
+  "original_critical_files": {
+    "docs/planning/b-route/catalog.v1.json": true,
+    "docs/planning/b-route/commits/NativeV15Origin03.json": true,
+    "logs/ci/b-route-operations/operations/98aa98a912402629817c45fc29be487f6e15f97460110c8527694fcf1a9c4659/operation.json": true
+  },
+  "all_original_critical_files_unchanged": true,
+  "model_dispatched": false,
+  "budget_reserved_or_released": false,
+  "business_reserve_or_apply": false,
+  "full_regression": false,
+  "workflow_raw_equal_HEAD": true,
+  "source_epoch": "actual-segmented-preflight-04 + actual-segmented-resume-03",
+  "scope": "actual genuine preparation/resume and archive observations, not provider tokens or semantic qualification"
+}

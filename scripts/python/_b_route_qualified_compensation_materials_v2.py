@@ -28,6 +28,16 @@ PRESENTATION = PREFIX + 'presentation.v2'
 PACKET = PREFIX + 'packet.v2'
 FRAME = PREFIX + 'frame.v2'
 DELIVERY = PREFIX + 'delivery.v2'
+SEGMENT_DELIVERY = PREFIX + 'segment-input.v1'
+JSON_VIEWS = PREFIX + 'json2-views.v1'
+JSON_VIEW_INSTRUCTION = (
+    'After the compact decoder, decode json2-views.v1: packet_core is the complete packet. '
+    'For each views row, replace packet_core.materials.documents[document].text '
+    '(exact placeholder {"json2_view":row ordinal}) with the COMPLETE value serialized as '
+    'JSON ensure_ascii=False, indent=2, allow_nan=False and one final LF. Preserve key order, '
+    'types and every string. Reconstruct every declared document; no text is a summary. '
+    'ordered_packet_digest binds the complete restored ordered packet. This is an explicit '
+    'segment input, not an old single-request execution proof. ')
 CLAIM = public.CLAIM
 AUTH = PREFIX + 'historical-auth.v2'
 ADOPTION_SUBJECTS = ('newrouge.b-route-adoption-review-subject.v2','newrouge.b-route-adoption-review-subject.v3')
@@ -703,7 +713,94 @@ def _validate_mapping(m,row,node, *, profile=profiles.ORIGINAL):
              'explicit original opaque proof, not a hidden semantic carrier')
 
 
-def _render(derived):
+def _json_views(snapshot, w, metrics=(), buffers=()):
+    """Transform complete byte-exact JSON2 objects using the existing COW owner."""
+    original, metric = accounting._ordered(snapshot,w,metrics,buffers,'segment.views.original')
+    documents=snapshot['materials']['documents']
+    meta=accounting._mv_metadata(w,len(documents),(*metrics,metric),(*buffers,metric[5]),
+                                'segment.views.metadata')
+    views,replacements,parsed_metrics=[],[],[]
+    for index,node in enumerate(documents):
+        w.spend(32,phase='segment.views.select')
+        text=node['text']
+        if not text.startswith(('{\n','{}\n')):continue
+        size=compact._utf8_size(text,w)
+        try:nodes=compact._syntax_preflight(text,w,json_only=True)
+        except ValueError as error:
+            # Only malformed source syntax is literal prose. Resource/work
+            # refusals must propagate rather than become an optional view miss.
+            if str(error).startswith(('Unsupported ','Unbalanced ','Unterminated ')):continue
+            raise
+        bound=compact._metric(6*size+32*nodes+2,nodes,compact.MAX_DEPTH,
+                              phase='segment.views.parse.bound')
+        held=(*metrics,metric,meta,*parsed_metrics)
+        accounting._live(w,'segment.views.parse',(*held,bound),(*buffers,metric[5],size))
+        w.spend(size+nodes,phase='segment.views.parse')
+        try:value=codec.strict_json_loads(text.encode('utf-8'))
+        except (codec.CodecError,json.JSONDecodeError):continue
+        if type(value) is not dict:
+            del value
+            continue
+        vm=compact._json_preflight(value,w)
+        if not accounting._json2_equals(value,text,w,(*held,vm),(*buffers,metric[5])):
+            del value
+            continue
+        parsed_metrics.append(vm)
+        replacements.append((index,{'json2_view':len(views)}))
+        views.append({'document':index,'value':value})
+        del value
+    core=accounting._mv_core_with_texts(snapshot,replacements,w,
+        (*metrics,metric,meta,*parsed_metrics),(*buffers,metric[5])) if views else snapshot
+    digest=accounting._ordered_digest(original,metric[5],w,(*metrics,metric,meta,*parsed_metrics),buffers)
+    return {'schema_version':JSON_VIEWS,'ordered_packet_digest':digest,
+            'packet_core':core,'views':views}
+
+
+def _restore_json_views(envelope,w,metrics=(),buffers=()):
+    shape(envelope,('schema_version','ordered_packet_digest','packet_core','views'),'explicit complete JSON2 views')
+    need(envelope['schema_version']==JSON_VIEWS and type(envelope['views']) is list,'exact JSON2 view version/list')
+    packet=envelope['packet_core'];documents=packet['materials']['documents']
+    em=compact._json_preflight(envelope,w)
+    need(len(envelope['views'])<=len(documents),'bounded complete view count')
+    meta=accounting._mv_metadata(w,len(envelope['views']),(*metrics,em),buffers,'segment.views.restore.metadata')
+    replacements,retained_text_bound=[],0
+    previous=-1
+    for ordinal,row in enumerate(envelope['views']):
+        w.spend(128,phase='segment.views.restore.row')
+        shape(row,('document','value'),'exact JSON2 view row')
+        index=row['document']
+        need(type(index) is int and previous<index<len(documents),'unique ordered existing JSON2 document index')
+        previous=index;node=documents[index];placeholder=node['text']
+        need(type(placeholder) is dict and set(placeholder)=={'json2_view'}
+             and type(placeholder['json2_view']) is int and placeholder['json2_view']==ordinal
+             and type(row['value']) is dict,'exact placeholder and complete JSON object')
+        need(type(node['raw_bytes']) is int and 0<=node['raw_bytes']<=compact.MAX_ENCODED_BYTES,'bounded original document size')
+        text,data,bound=accounting._json2(row['value'],w,(*metrics,em,meta),(*buffers,retained_text_bound))
+        w.spend(len(data)+32,phase='segment.views.restore.raw_digest')
+        need(len(data)==node['raw_bytes'] and codec.raw_digest(data)==node['raw_digest'],'byte-exact original JSON2 document')
+        accounting._live(w,'segment.views.restore.text_cache',(*metrics,em,meta),
+                         (*buffers,retained_text_bound,6*bound+2,len(data)))
+        retained_text_bound+=6*bound+2
+        replacements.append((index,text))
+        del text,data
+    restored=accounting._mv_core_with_texts(packet,replacements,w,(*metrics,em,meta),
+        (*buffers,retained_text_bound)) if replacements else packet
+    text,rm=accounting._ordered(restored,w,(*metrics,em,meta),(*buffers,retained_text_bound),
+                               'segment.views.restored.digest')
+    digest=accounting._ordered_digest(text,rm[5],w,(*metrics,em,meta,rm),(*buffers,retained_text_bound))
+    need(digest==envelope['ordered_packet_digest'],'complete original ordered packet digest')
+    return restored
+
+
+def _header(profile,json_views):
+    instruction=INSTRUCTION if profile is profiles.ORIGINAL else profile.instruction
+    if json_views:
+        need(profile is profiles.PUBLISHED,'explicit published-history segment input only')
+        return SEGMENT_DELIVERY+' '+instruction+' '+JSON_VIEW_INSTRUCTION+compact.instruction(compact.RESIDUAL_SCHEMA)
+    return profile.name('delivery')+' '+instruction+' '+compact.instruction(compact.RESIDUAL_SCHEMA)
+
+
+def _render(derived, *, json_views=False):
     need(type(derived) is Derived,'genuine owned qualified material derivation')
     derived.freeze_auth()
     w=derived.work
@@ -714,8 +811,7 @@ def _render(derived):
     # Full semantic validation is performed on D(E(snapshot)) below. Its exact
     # equality to original proves the complete input without a second pass here.
     profile=profiles.packet(packet)
-    instruction=INSTRUCTION if profile is profiles.ORIGINAL else profile.instruction
-    header=profile.name('delivery')+' '+instruction+' '+compact.instruction(compact.RESIDUAL_SCHEMA)
+    header=_header(profile,json_views)
     w.spend(len(header)*4,phase='qualified.header')
     hb=compact._utf8_size(header,w)
     original,metric=accounting._ordered(packet,w,pm,pb,'qualified.original.ordered')
@@ -723,7 +819,13 @@ def _render(derived):
     compact._syntax_preflight(original,w,json_only=True)
     w.spend(metric[0]+metric[1],phase='qualified.snapshot.copy')
     snapshot=json.loads(original)
-    retained=accounting._live(w,'qualified.atomic.live',(*pm,metric,metric),
+    if json_views:snapshot=_json_views(snapshot,w,(*pm,metric),(*pb,metric[5],2*hb))
+    sm=compact._json_preflight(snapshot,w) if json_views else metric
+    if json_views:
+        envelope_original,_=accounting._ordered(snapshot,w,(*pm,metric,sm),
+            (*pb,metric[5],2*hb),'segment.warm.envelope.witness')
+        pb=[*pb,sm[5]]
+    retained=accounting._live(w,'qualified.atomic.live',(*pm,metric,sm),
         (*pb,metric[5],2*hb,compact.MAX_ENCODED_BYTES))
     previous=getattr(w,'_residual_retained',None)
     # Keep body admission above. Temporary caches close before body formatting,
@@ -744,6 +846,15 @@ def _render(derived):
     rm=compact._json_preflight(restored,w)
     accounting._live(w,'qualified.restored.validation.live',(*pm,metric,rm),
         (*pb,metric[5],2*hb,body_bytes,2*rm[5]))
+    if json_views:
+        envelope_text,_=accounting._ordered(restored,w,(*pm,metric,rm),
+            (*pb,metric[5],2*hb,body_bytes),'segment.warm.envelope.restored')
+        w.spend(len(envelope_original)+len(envelope_text),phase='segment.warm.envelope.compare')
+        need(envelope_text==envelope_original,'complete unchanged JSON2 envelope roundtrip')
+        del envelope_original,envelope_text
+        pb=pb[:-1]
+        restored=_restore_json_views(restored,w,(*pm,metric),(*pb,metric[5],2*hb,body_bytes))
+        rm=compact._json_preflight(restored,w)
     validate(restored,work=w)
     text,_=accounting._ordered(restored,w,(*pm,metric,rm),
         (*pb,metric[5],2*hb,body_bytes),'qualified.exact.restored.ordered')
@@ -762,31 +873,49 @@ def _render(derived):
     return result
 
 
-def _read_prompt(prompt, *, work=None):
+def _read_prompt(prompt, *, work=None, json_views=False):
     w=compact._work(work)
     size=compact._encoded_preflight(prompt,w)
     w.spend(len(prompt),phase='qualified.cold.frame')
     split=prompt.find('\n')
     need(split>0,'explicit qualified header and full body')
     marker=prompt[:split].split(' ',1)[0]
-    profile=profiles.select('delivery',marker)
-    instruction=INSTRUCTION if profile is profiles.ORIGINAL else profile.instruction
-    expected=profile.name('delivery')+' '+instruction+' '+compact.instruction(compact.RESIDUAL_SCHEMA)
+    if json_views:
+        need(marker==SEGMENT_DELIVERY,'explicit segment input marker; no old delivery alias')
+        profile=profiles.PUBLISHED
+    else:profile=profiles.select('delivery',marker)
+    expected=_header(profile,json_views)
     w.spend(len(expected)+len(prompt),phase='qualified.cold.header')
     need(prompt[:split]==expected,'exact new delivery/claim/decoder; no legacy fallback')
     body=prompt[split+1:]
     retained=accounting._live(w,'qualified.cold.input',buffers=(2*size,))
     packet,schema=compact._decode_complete(body,w,retained=retained)
     need(schema==compact.RESIDUAL_SCHEMA,'explicit unchanged compact-v4 body grammar')
-    need(profiles.packet(packet) is profile,'same explicit delivery and packet profile')
     metric=compact._json_preflight(packet,w)
-    held=accounting._live(w,'qualified.cold.canonical',(metric,),(2*size,compact.MAX_ENCODED_BYTES))
+    held=accounting._live(w,'qualified.cold.canonical',(metric,),
+                          (2*size,compact.MAX_ENCODED_BYTES))
     previous=getattr(w,'_residual_retained',None);w._residual_retained=held
     try:canonical=compact._ATOMIC_PRODUCER(packet,schema=schema,work=w)
     finally:w._residual_retained=previous
     w.spend(len(canonical)+len(body),phase='qualified.cold.canonical.compare')
     need(canonical==body,'complete genuine canonical E(D(body)) equality')
-    accounting._live(w,'qualified.cold.validation',(metric,),(2*size,compact.MAX_ENCODED_BYTES,2*metric[5]))
+    if json_views:
+        envelope=packet
+        packet=_restore_json_views(envelope,w,buffers=(2*size,size))
+        pm=compact._json_preflight(packet,w)
+        expected=_json_views(packet,w,(metric,pm),(2*size,size))
+        xm=compact._json_preflight(expected,w)
+        left,lm=accounting._ordered(envelope,w,(metric,pm,xm),(2*size,size),
+                                    'segment.cold.envelope')
+        right,_=accounting._ordered(expected,w,(metric,pm,xm,lm),(2*size,size,lm[5]),
+                                     'segment.cold.canonical_views')
+        w.spend(len(left)+len(right),phase='segment.cold.canonical_views.compare')
+        need(left==right,'complete deterministic JSON2 view selection; no alternate segment representation')
+        del envelope,expected,left,right
+        metric=compact._json_preflight(packet,w)
+    need(profiles.packet(packet) is profile,'same explicit delivery and packet profile')
+    accounting._live(w,'qualified.cold.validation',(metric,),
+                     (2*size,compact.MAX_ENCODED_BYTES,2*metric[5]))
     return validate(packet,work=w)
 
 
@@ -802,6 +931,15 @@ def render(derived):
     except codec.CodecError:raise
     except (ValueError,TypeError,KeyError,IndexError,UnicodeError,RecursionError) as error:
         need(False,'complete qualified material action within unchanged codec limits',type(error).__name__)
+
+
+def render_segment_input(derived):
+    """Offline explicit segment transport; no single-request proof consumer."""
+    return _render(derived,json_views=True)
+
+
+def read_segment_input(prompt, *, work=None):
+    return _read_prompt(prompt,work=work,json_views=True)
 
 
 def read_prompt(prompt, *, work=None):

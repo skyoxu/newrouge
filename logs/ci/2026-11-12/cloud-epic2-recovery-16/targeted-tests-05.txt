@@ -1,0 +1,18 @@
+test_cli_preflight_routes_to_offline_service_only (test_b_route_compensation_segments.SegmentInputTests.test_cli_preflight_routes_to_offline_service_only) ... ok
+test_cold_reader_rejects_alternate_view_selection (test_b_route_compensation_segments.SegmentInputTests.test_cold_reader_rejects_alternate_view_selection) ... ok
+test_json_views_preserve_every_original_byte_and_type (test_b_route_compensation_segments.SegmentInputTests.test_json_views_preserve_every_original_byte_and_type) ... ok
+test_missing_duplicate_wrong_digest_and_placeholder_reject (test_b_route_compensation_segments.SegmentInputTests.test_missing_duplicate_wrong_digest_and_placeholder_reject) ... ok
+test_old_marker_is_not_a_segment_marker (test_b_route_compensation_segments.SegmentInputTests.test_old_marker_is_not_a_segment_marker) ... ok
+test_per_segment_input_and_context_are_separate_limits (test_b_route_compensation_segments.SegmentInputTests.test_per_segment_input_and_context_are_separate_limits) ... ok
+test_resource_refusal_is_not_treated_as_literal_prose (test_b_route_compensation_segments.SegmentInputTests.test_resource_refusal_is_not_treated_as_literal_prose) ... ok
+test_restoration_accounts_for_prior_complete_texts (test_b_route_compensation_segments.SegmentInputTests.test_restoration_accounts_for_prior_complete_texts) ... ok
+test_resume_recomputes_state_instead_of_trusting_ready_flag (test_b_route_compensation_segments.SegmentInputTests.test_resume_recomputes_state_instead_of_trusting_ready_flag) ... ok
+test_small_original_fixture_preserves_full_canonical_wire_and_auth (test_b_route_qualified_render_retention_v2.QualifiedWarmLifecycleTests.test_small_original_fixture_preserves_full_canonical_wire_and_auth) ... ok
+test_frame_reservation_and_released_temporaries_follow_actual_phases (test_b_route_qualified_render_retention_v2.QualifiedWarmLifecycleTests.test_frame_reservation_and_released_temporaries_follow_actual_phases) ... ok
+test_admitted_capacity_keeps_the_existing_artifact_path (test_b_route_qualified_render_retention_v2.QualifiedCapacityDiagnosticTests.test_admitted_capacity_keeps_the_existing_artifact_path) ... ok
+test_capacity_refusal_preserves_reason_and_details_through_public_boundary (test_b_route_qualified_render_retention_v2.QualifiedCapacityDiagnosticTests.test_capacity_refusal_preserves_reason_and_details_through_public_boundary) ... ok
+
+----------------------------------------------------------------------
+Ran 13 tests in 14.115s
+
+OK

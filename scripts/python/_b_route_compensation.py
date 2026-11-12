@@ -502,9 +502,11 @@ def _persist_review(root, subject, artifacts):
     return value
 
 
-def _review_preview_body(root, request, *, seal=False, delivery=None):
+def _review_preview_body(root, request, *, seal=False, delivery=None, segmented_preflight=False):
     from _b_route_operation_scope import business_guard, writer_boundary
     require(not seal or delivery is None, 'saved delivery inferred only during review completion', delivery)
+    require(not segmented_preflight or (not seal and delivery==profiles.PUBLISHED.name('delivery')),
+            'explicit published-history offline segmented preflight',delivery)
     root = Path(root).absolute()
     saved_path = review.path(root, review.location(request['operation_id']) + '/subject.json')
     saved = review.read_subject(root, request['operation_id']) if saved_path.exists() else None
@@ -533,6 +535,14 @@ def _review_preview_body(root, request, *, seal=False, delivery=None):
             require(delivery not in ('newrouge.b-route-qualified-compensation-review-delivery.v1',
                                     'newrouge.b-route-qualified-compensation-review-delivery.v2'),
                     'legacy ancestry retains legacy v3/v4 delivery', delivery)
+        if segmented_preflight:
+            # No business review is prepared/sealed and no old one-turn proof is
+            # emitted. The adapter saves its own offline plan and input archive.
+            import _b_route_compensation_segments as segments
+            derived=qualified.model_packet(root,subject)
+            result=segments.prepare(root,derived)
+            snapshot.verify()
+            return result
         artifacts = None if seal else review.review_artifacts(root, subject, delivery=delivery)
         qualified.bind_action(snapshot)
         policy, pins = review.policy_observations()
@@ -693,10 +703,10 @@ def prove_resolution(root, successor, original, graph):
         task_join=adoption._task_context(adoption.Snapshot(root)), verify_tasks=False)
 
 
-def review_preview(root, request, *, seal=False, delivery=None):
+def review_preview(root, request, *, seal=False, delivery=None, segmented_preflight=False):
     from _b_route_qualified_compensation_dispatch import action
     with action():
-        return _review_preview_body(root, request, seal=seal, delivery=delivery)
+        return _review_preview_body(root, request, seal=seal, delivery=delivery,segmented_preflight=segmented_preflight)
 
 
 def run(root, operation_id, request_raw, *, reserve_only=False):

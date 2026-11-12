@@ -1,0 +1,20 @@
+# ADR-0057: Deterministic compensation segment preflight
+
+- Status: Accepted for offline preparation only; execution and semantic qualification pending
+- Date: 2026-11-12
+- Scope: Epic2 Story2.8; extends ADR-0042 and ADR-0056
+- Authority: User clarification that70000 is per segment and CLI owns partitioning, capacity, order and continuation; clean Astra max necessity/proportionality review
+
+## Decision
+
+1. Add explicit `b-route-adoption --stage review-segmented-preflight` with the complete new compensation request and published-history delivery.v3 selection. It derives the genuine current owner packet under the existing business guard. It saves a separate offline archive, not the old review-prepared subject or proof. No model, fiscal, reserve, apply, old-driver or unknown replay is performed.
+2. Reuse the existing request counter and segmented request binding check: each actual final serialized input is at most70000; input plus this compensation node's existing2000 output reserve is at most96000; the original1MiB gate remains. The old one-shot route is unchanged. Its earlier `input+2000<=70000` failure is preserved; it is not a whole-workflow input limit. No total workflow input ceiling is introduced.
+3. CLI freezes the complete packet, typed inventory, source pins, fixed node order, all required checks, actual schema/request/measurement, preflight status and next node. Restore verifies the archived inputs against the current owner-derived packet and source policy. No LLM chooses boundaries, capacity, continuation or retries. Offline state cannot establish a completed model node or fiscal authority.
+4. The initial implementation deliberately retains one conservative complete-context closure with every original check. In this actual request all seven Requirements share one flow and command/state definitions. Independent semantic partitions are not yet proven; this is not a finding that the entire packet is inherently indivisible. Do not manufacture a second model node merely to move one check without reducing its dependencies. Future safe decomposition must retain full relevant original semantics and cross-domain joint review, not summaries or implicit model memory.
+5. Explicit segment-input.v1 uses json2-views.v1 over the existing compact-v4 grammar. Only complete semantic document objects whose JSON2+LF serialization exactly equals their original bytes become typed views. Every view declares its original document index; restoration checks the exact placeholder, order, full original byte size/digest and complete ordered packet digest. Prose and differently formatted JSON remain literal. Producer E/D, complete packet validation, exact original/current equality and cold canonical reencoding remain mandatory in the same170M/private-retention account. The old delivery markers do not accept this segment marker.
+6. A UTF8 byte-upper-bound refusal means current conservative admission failed, not that measured tokens exceed70000. The installed bundled CLI model catalog is offline capability metadata, not remote authorization or the selected runtime model/window. No speculative capacity increase or alternate tokenizer download route is authorized.
+7. This stage implements no paid dispatch or new execution proof. Existing proof.v3's single independent execution cannot silently stand for several turns. Later real execution requires an explicit finite plan, legitimate current budget/unknown accounting and per-node fresh high/no-tools runtime/input/output bindings. The archive never supplies those permissions. Capability/MVG candidate counts, four phases and fiscal issuers are not imposed on compensation.
+
+## Delivery boundary
+
+Offline preflight, lossless representation and recovery verification can be tested independently. A saved plan is not a capacity repair, segmented execution qualification, new semantic approval, compensation publication, AC4 completion or Epic acceptance. Existing failures and previously passed Story2.9/2.10 evidence retain their original source epochs.

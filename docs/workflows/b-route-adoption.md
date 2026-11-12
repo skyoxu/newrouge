@@ -16,7 +16,7 @@ py -3 scripts/python/b_route_adoption.py --root . --stage reserve --operation-id
 py -3 scripts/python/dev_cli.py b-route-adoption --root . --stage inspect --operation-id OP-1
 ```
 
-Only review-prepare and prepare accept --request. The candidate admission remains
+Only review-prepare, review-segmented-preflight and prepare accept --request. The candidate admission remains
 review_ref. Attach the returned distinct host_review_ref to the final request;
 there is no caller-approved boolean or environment bypass. Both direct/dev_cli
 entries and parser dispatch use the same service. All block results use the
@@ -57,7 +57,26 @@ For a compensation-resolved operation, `read` keeps the existing resolved-by
 route. `read --context` refuses to present that successor as the original receipt
 and returns the original owner successor resume reference; no receipt or reuse
 authority is invented. Qualified/compensation delivery selection remains limited
-to review-prepare, with the existing default v3 and explicit v4/qualified routes.
+to review-prepare and the explicit offline review-segmented-preflight described below.
+
+### Offline compensation segment preflight
+
+`py -3 scripts/python/dev_cli.py b-route-adoption --root <target> --stage review-segmented-preflight --operation-id <new-compensation-id> --request <complete-request.json> --compensation-review-delivery newrouge.b-route-qualified-compensation-review-delivery.v3`
+
+The deterministic CLI derives current published-history materials, freezes a
+separate plan/input archive under logs/ci/b-route-compensation-segments, and
+checks each full node request against70000 input/96000 input-plus-reserve/1MiB.
+The existing compensation output reserve is2000. Repeating the command with
+unchanged actual inputs verifies and reuses its offline archive; it does not
+retry a model or a business operation. A capacity block returns exit2 with the
+measurement and next-node reference retained. This stage does not return a
+host_review_ref or runner command and never dispatches/reserves/applies.
+
+The initial conservative closure retains every frame, document and required
+check. Safe further semantic decomposition and real segmented execution remain
+pending; byte-upper-bound refusal is not a measured tokenizer result. The explicit
+lossless segment-input.v1 is not accepted as an old one-turn execution proof.
+See [ADR-0057](../adr/ADR-0057-compensation-segmented-cli-preflight.md).
 
 ## Review subject and provenance
 

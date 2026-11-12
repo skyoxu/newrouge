@@ -487,9 +487,9 @@ def task_view_payload_chunks(workspace: Path, *, char_budget: int = TASK_VIEW_CH
     return chunks
 
 
-def measure_request(payload: str, *, max_bytes: int, max_input_tokens: int,
-                    reserved_tokens: int = 0) -> dict:
-    """Bound the final serialized request, including wrappers and prompt text."""
+def request_measurement(payload: str, *, max_bytes: int, max_input_tokens: int,
+                        reserved_tokens: int = 0) -> dict:
+    """Measure without admitting context; retain truthful reports on refusal."""
     if max_bytes <= 0 or max_input_tokens <= 0 or reserved_tokens < 0:
         raise ValueError('capability_input_integrity_invalid_budget')
     data = payload.encode('utf-8')
@@ -512,11 +512,20 @@ def measure_request(payload: str, *, max_bytes: int, max_input_tokens: int,
               'request_chars': len(payload), 'request_bytes': len(data), 'input_token_estimate': tokens, 'token_counts': counts,
               'token_counter': counter, 'max_bytes': max_bytes, 'max_input_tokens': max_input_tokens,
               'reserved_continuation_tokens': reserved_tokens, 'truncation_allowed': False}
+    return report
+
+
+def measure_request(payload: str, *, max_bytes: int, max_input_tokens: int,
+                    reserved_tokens: int = 0) -> dict:
+    """Bound the final serialized request, including wrappers and prompt text."""
+    report = request_measurement(payload, max_bytes=max_bytes,
+        max_input_tokens=max_input_tokens, reserved_tokens=reserved_tokens)
+    tokens = report['input_token_estimate']
     if tokens + reserved_tokens > max_input_tokens:
         raise ValueError(f'runner_context_budget_exceeded:estimated_input_tokens={tokens};'
                          f'continuation_reserve={reserved_tokens};limit={max_input_tokens};'
-                         f'complete_request_chars={len(payload)};complete_request_bytes={len(data)};'
-                         f'token_counter={counter}')
+                         f'complete_request_chars={len(payload)};complete_request_bytes={report["request_bytes"]};'
+                         f'token_counter={report["token_counter"]}')
     return report
 
 
