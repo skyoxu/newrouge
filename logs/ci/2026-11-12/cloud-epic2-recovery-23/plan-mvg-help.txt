@@ -1,0 +1,50 @@
+usage: dev_cli.py plan-mvg [-h] --stage
+                           {prepare,generate,review,validate,verify-selection,apply,rebind-handoff,status,audit,reopen-plan,reopen}
+                           [--repo-root REPO_ROOT] --run-id RUN_ID
+                           [--input-stage {legacy,3b}]
+                           [--planning-contract PLANNING_CONTRACT]
+                           [--prepared-ref PREPARED_REF]
+                           [--planning-profile PLANNING_PROFILE]
+                           [--candidate CANDIDATE]
+                           [--capabilities CAPABILITIES] [--manifest MANIFEST]
+                           [--evidence-ref EVIDENCE_REF] [--task-id TASK_ID]
+                           [--allow-unready-draft]
+                           [--run-invocation-limit RUN_INVOCATION_LIMIT]
+                           [--timeout-sec TIMEOUT_SEC]
+                           [--llm-backend LLM_BACKEND] [--runner RUNNER]
+                           [--confirm] [--change-plan CHANGE_PLAN]
+                           [--handoff-out HANDOFF_OUT]
+                           [--conflict-report CONFLICT_REPORT]
+                           [--conflict-report-sha256 CONFLICT_REPORT_SHA256]
+                           [--audit AUDIT] [--audit-sha256 AUDIT_SHA256]
+                           [--plan PLAN] [--plan-sha256 PLAN_SHA256]
+
+options:
+  -h, --help            show this help message and exit
+  --stage {prepare,generate,review,validate,verify-selection,apply,rebind-handoff,status,audit,reopen-plan,reopen}
+  --repo-root REPO_ROOT
+  --run-id RUN_ID
+  --input-stage {legacy,3b}
+  --planning-contract PLANNING_CONTRACT
+  --prepared-ref PREPARED_REF
+  --planning-profile PLANNING_PROFILE
+  --candidate CANDIDATE
+  --capabilities CAPABILITIES
+  --manifest MANIFEST
+  --evidence-ref EVIDENCE_REF
+  --task-id TASK_ID
+  --allow-unready-draft
+  --run-invocation-limit RUN_INVOCATION_LIMIT
+  --timeout-sec TIMEOUT_SEC
+  --llm-backend LLM_BACKEND
+  --runner RUNNER       isolated runner; defaults to Codex for explicit 3B and
+                        OpenAI for legacy review
+  --confirm
+  --change-plan CHANGE_PLAN
+  --handoff-out HANDOFF_OUT
+  --conflict-report CONFLICT_REPORT
+  --conflict-report-sha256 CONFLICT_REPORT_SHA256
+  --audit AUDIT
+  --audit-sha256 AUDIT_SHA256
+  --plan PLAN
+  --plan-sha256 PLAN_SHA256

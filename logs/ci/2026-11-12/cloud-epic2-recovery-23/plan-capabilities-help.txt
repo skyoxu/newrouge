@@ -1,0 +1,50 @@
+usage: dev_cli.py plan-capabilities [-h] --stage
+                                    {prepare,generate,review,preview-alignment,align,apply,validate-candidate,verify-selection,status}
+                                    [--repo-root REPO_ROOT] --run-id RUN_ID
+                                    [--input-stage {legacy,3b}]
+                                    [--planning-contract PLANNING_CONTRACT]
+                                    [--prepared-ref PREPARED_REF]
+                                    [--planning-profile PLANNING_PROFILE]
+                                    [--task-id TASK_ID]
+                                    [--allow-unready-draft]
+                                    [--source-manifest SOURCE_MANIFEST]
+                                    [--ledger LEDGER] [--semantics SEMANTICS]
+                                    [--model-batch-char-budget MODEL_BATCH_CHAR_BUDGET]
+                                    [--candidate-retry-limit CANDIDATE_RETRY_LIMIT]
+                                    [--review-retry-limit REVIEW_RETRY_LIMIT]
+                                    [--candidate-budget-sec CANDIDATE_BUDGET_SEC]
+                                    [--synthesis-budget-sec SYNTHESIS_BUDGET_SEC]
+                                    [--total-budget-sec TOTAL_BUDGET_SEC]
+                                    [--request-limit REQUEST_LIMIT]
+                                    [--runner RUNNER]
+                                    [--timeout-sec TIMEOUT_SEC]
+                                    [--alignment-override ALIGNMENT_OVERRIDE]
+                                    [--candidate CANDIDATE] [--confirm]
+
+options:
+  -h, --help            show this help message and exit
+  --stage {prepare,generate,review,preview-alignment,align,apply,validate-candidate,verify-selection,status}
+  --repo-root REPO_ROOT
+  --run-id RUN_ID
+  --input-stage {legacy,3b}
+  --planning-contract PLANNING_CONTRACT
+  --prepared-ref PREPARED_REF
+  --planning-profile PLANNING_PROFILE
+  --task-id TASK_ID
+  --allow-unready-draft
+  --source-manifest SOURCE_MANIFEST
+  --ledger LEDGER
+  --semantics SEMANTICS
+  --model-batch-char-budget MODEL_BATCH_CHAR_BUDGET
+                        override the Capability planner's source batch size
+  --candidate-retry-limit CANDIDATE_RETRY_LIMIT
+  --review-retry-limit REVIEW_RETRY_LIMIT
+  --candidate-budget-sec CANDIDATE_BUDGET_SEC
+  --synthesis-budget-sec SYNTHESIS_BUDGET_SEC
+  --total-budget-sec TOTAL_BUDGET_SEC
+  --request-limit REQUEST_LIMIT
+  --runner RUNNER
+  --timeout-sec TIMEOUT_SEC
+  --alignment-override ALIGNMENT_OVERRIDE
+  --candidate CANDIDATE
+  --confirm

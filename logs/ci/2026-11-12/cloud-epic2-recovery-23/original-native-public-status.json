@@ -1,0 +1,2 @@
+{"status": "blocked", "reason": "execution_transition_absolute_root_required"}
+[dev_cli] running: /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3 /workspace/newrouge/scripts/python/plan_mvg.py --repo-root /workspace/newrouge-recovery-data/batch03-05f5fbf9/data/nx status --run-id m4 --input-stage 3b --prepared-ref logs/ci/2026-11-06/b-route-planning-input/i4/ca51aa929b8a29089c302f08eb9c0a7bfd0876026b31d5d7b2dee9b7c939fb48/prepared.json --planning-profile 3b-mvg-v1

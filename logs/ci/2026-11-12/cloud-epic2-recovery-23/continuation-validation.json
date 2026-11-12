@@ -1,0 +1,39 @@
+{
+  "first_commit": "76d3282359a931b2cd249f8dd41250d36c2bbaff",
+  "branch": "build/cloud-epic2-recovery-20261111",
+  "source_policy_unchanged": "sha256:580ab96f584efecb61e870c1539402d041fcbe3369a293204c6f97f5710da05e",
+  "source_pins": 84,
+  "original34_review_records_unchanged": true,
+  "protected10_publication_artifacts_unchanged": true,
+  "old2_plus_additional1_still_occupied": true,
+  "new_model_calls": 0,
+  "business_transitions": 0,
+  "actual_public_exit_codes": [
+    0,
+    2,
+    0
+  ],
+  "same_receipt_and_plan_revision2": true,
+  "original_resolved_route_preserved": true,
+  "recovery_state_complete_next_stage_null": true,
+  "pending_marker_absent": true,
+  "formal_zero_Task_chain": true,
+  "default_route": "A",
+  "logical_parts": [
+    "domain_rules",
+    "csharp_adapter",
+    "binding",
+    "scene"
+  ],
+  "native_original_inputs_unchanged": true,
+  "native_registry_entries": 0,
+  "raw_native_status_child_exit_unknown_preserved": true,
+  "json_documents_valid": 8,
+  "raw_stdout_capture_with_retained_trace": [
+    "original-native-public-status.json"
+  ],
+  "old_logged_git_blobs_equal_original_raw_bytes": true,
+  "targeted_tests_reused": 56,
+  "new_full_suite_or_provider_test": false,
+  "whole_Epic_acceptance": "pending target Windows and real single-Capability native scope"
+}

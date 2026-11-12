@@ -1,5 +1,15 @@
 # NewRogue cloud continuation checkpoint
 
+## Committed continuation23 and real entrypoint observations
+
+Read `logs/ci/2026-11-12/cloud-epic2-recovery-23/REPORT.md` first. The reviewed171 source/evidence paths from continuations20–22 were committed/pushed as76d3282359a931b2cd249f8dd41250d36c2bbaff on the same non-main branch; remote SHA was verified. Raw and decoded-protocol credential scans found no matches; the four initial EOL-status paths were excluded and preserved. Older statements about uncommitted changes below are historical checkpoints.
+
+Three actual fresh processes from unrelated cwd confirm the same compensation receipt/plan revision2, the original operation's explicit resolved-by context refusal with successor resume_ref, and complete recovery-inspection state with no next stage. All10 protected artifacts remain byte-exact. This adds genuine Story2.10 cross-process evidence, with zero new model calls or business replay. Source policy580ab96f.../84 pins and continuation22's56 targeted passes remain applicable.
+
+Original m4 is selected/generated but kind=all, with registry epoch0/entries0. Its complete unchanged prepared input is correctly ineligible for single-Capability recovery; actual public status returns execution_transition_absolute_root_required. Its raw output and the reporting parser error are retained; child exit was not saved and remains unknown. Do not register/relabel it, rebase Windows absolute roots or turn historical13/campaign290 into a new allowance.
+
+Original2.8 AC5 and2.10 AC6 explicitly require target-Windows behavior. Current executor is Linux with no configured Windows runtime; production native initialization also requires Windows. Remaining real2.9 positive reuse/epoch/reopen and2.10 all-prerequisite acceptance require genuine single-Capability/current native input and the target runtime. REPORT.md records exact bounded commands, unchanged native-source/test evidence and coverage limits. This is not a subscription shortage or a request for new governance. No extra review is needed for the resolved compensation; old2+additional1 are spent and unchanged. Whole-Epic acceptance remains in-progress.
+
 ## Formal repair and publication22
 
 Read `logs/ci/2026-11-12/cloud-epic2-recovery-22/REPORT.md` and `final-state-audit.json` first. The independently assessed ADR0060 same-operation lane consumed exactly one additional subscription review and sealed genuine proof.v2. All seven fresh checks approved. Original2/2, both original intents, full refusal and old unknown remain byte-exact; additional1 is also occupied, cumulative3. Continuation21's diagnostic-only proposal was never dispatched and is superseded.

@@ -1,0 +1,67 @@
+{
+  "cases": [
+    {
+      "case": "fresh-direct-compensation-read",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "/workspace/newrouge/scripts/python/b_route_adoption.py",
+        "--root",
+        "/workspace/newrouge-recovery-data/batch03-05f5fbf9/work/target-compensation-prepare",
+        "--stage",
+        "read",
+        "--operation-id",
+        "NativeV15Origin03Compensation01",
+        "--context"
+      ],
+      "cwd": "/tmp",
+      "exit_code": 0,
+      "elapsed_seconds": 111.62447313300072,
+      "output": "fresh-direct-compensation-read.json"
+    },
+    {
+      "case": "fresh-dev-original-resolution-read",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "/workspace/newrouge/scripts/python/dev_cli.py",
+        "b-route-adoption",
+        "--root",
+        "/workspace/newrouge-recovery-data/batch03-05f5fbf9/work/target-compensation-prepare",
+        "--stage",
+        "read",
+        "--operation-id",
+        "NativeV15Origin03",
+        "--context"
+      ],
+      "cwd": "/tmp",
+      "exit_code": 2,
+      "elapsed_seconds": 52.74218856299922,
+      "output": "fresh-dev-original-resolution-read.json"
+    },
+    {
+      "case": "fresh-dev-compensation-recovery-inspect",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "/workspace/newrouge/scripts/python/dev_cli.py",
+        "b-route-adoption",
+        "--root",
+        "/workspace/newrouge-recovery-data/batch03-05f5fbf9/work/target-compensation-prepare",
+        "--stage",
+        "recover-inspect",
+        "--operation-id",
+        "NativeV15Origin03Compensation01"
+      ],
+      "cwd": "/tmp",
+      "exit_code": 0,
+      "elapsed_seconds": 55.21246605000033,
+      "output": "fresh-dev-compensation-recovery-inspect.json"
+    }
+  ],
+  "protected10_artifacts_unchanged": true,
+  "new_model_calls": 0,
+  "business_transitions": 0,
+  "apply_or_recover_replayed": false,
+  "observed_at": "2026-11-12T11:27:41.943896+00:00"
+}

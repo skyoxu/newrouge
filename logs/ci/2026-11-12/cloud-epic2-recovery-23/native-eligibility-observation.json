@@ -1,0 +1,116 @@
+{
+  "native_root": "/workspace/newrouge-recovery-data/batch03-05f5fbf9/data/nx",
+  "original_files_before_and_after": {
+    "logs/ci/mvg-planning/m4/run.json": "8acee02c87466a40f70b4751dfb74d5fde51bbd7054c7a0072323cb46714cb85",
+    "logs/ci/mvg-recovery/registry.json": "05448a506baa8473fc84273ee6b1098caf36a47990d660259adb9f33ff0ee177"
+  },
+  "run_id": "m4",
+  "phase": "generated",
+  "selection_status": "selected",
+  "selected_items": 1,
+  "original_scope": {
+    "scope_id": "controlled-exclusive-resolution-v15",
+    "kind": "all",
+    "ids": []
+  },
+  "checkpoint": {
+    "transaction_id": "sha256:7cdbbac0aa6e135803ee128348e353f4d4c528d0e0263210c7ec04c8247c7046",
+    "path": "capability-checkpoints/7cdbbac0aa6e135803ee128348e353f4d4c528d0e0263210c7ec04c8247c7046/payload.json",
+    "payload_sha256": "sha256:52c3c97fa2937c34df18b9e6fb90470cda99f7878d447457d818ae4787f11c27"
+  },
+  "registry_epoch": 0,
+  "registry_entries": 0,
+  "prepared": {
+    "path": "logs/ci/2026-11-06/b-route-planning-input/i4/ca51aa929b8a29089c302f08eb9c0a7bfd0876026b31d5d7b2dee9b7c939fb48/prepared.json",
+    "exists": true,
+    "raw_digest": "sha256:f84d3d7db59439382992ffdcddf5e9983185bc5f690d55f24ec0169eca421d6b",
+    "bytes": 1140425,
+    "actual_binding_result": {
+      "status": "not_eligible",
+      "reason": "b_route_recovery_requires_single_capability_target"
+    }
+  },
+  "registration_attempted": false,
+  "partial_or_all_scope_relabelled": false,
+  "original_inputs_modified": false,
+  "historical_campaign_limit": 290,
+  "old_native_logical_calls": 13,
+  "old_native_calls_are_not_new_allowance": true,
+  "new_model_calls": 0,
+  "public_status": {
+    "command": [
+      "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+      "-B",
+      "/workspace/newrouge/scripts/python/dev_cli.py",
+      "plan-mvg",
+      "--repo-root",
+      "/workspace/newrouge-recovery-data/batch03-05f5fbf9/data/nx",
+      "--stage",
+      "status",
+      "--run-id",
+      "m4",
+      "--input-stage",
+      "3b",
+      "--prepared-ref",
+      "logs/ci/2026-11-06/b-route-planning-input/i4/ca51aa929b8a29089c302f08eb9c0a7bfd0876026b31d5d7b2dee9b7c939fb48/prepared.json",
+      "--planning-profile",
+      "3b-mvg-v1"
+    ],
+    "cwd": "/tmp",
+    "exit_code": null,
+    "exit_observation": "Original stdout retained; child exit was not saved before reporter parse error",
+    "postprocessing_elapsed_seconds": 0.08797830300045462,
+    "output": {
+      "status": "blocked",
+      "reason": "execution_transition_absolute_root_required"
+    },
+    "trailing_command_trace_retained": true,
+    "command_repeated": false
+  },
+  "environment": {
+    "os_name": "posix",
+    "system": "Linux",
+    "release": "6.18.57",
+    "wine": null,
+    "qemu": null,
+    "kvm": false,
+    "pwsh": null,
+    "powershell": null
+  },
+  "native_initialization_current_contract": "_b_route_planning_runtime._publish_new_run requires os.name == nt",
+  "native_Source_tests_unchanged_since_original_checkpoint": [
+    {
+      "path": "scripts/python/_b_route_completed_reuse.py",
+      "sha256": "8ffe25c6204607bd177b67c6b40971ec7725b148e2976625d0023eed285a8713"
+    },
+    {
+      "path": "scripts/python/_mvg_capability_recovery.py",
+      "sha256": "c84490855099e5b891a9b467cb7c5d212c1aac292c8245cfa8e11c29403e64c4"
+    },
+    {
+      "path": "scripts/python/_mvg_capability_checkpoint.py",
+      "sha256": "546fe588a6e9d71cc0d9b2536d5815f75b2c2aade642c6c9dc99f513700ac408"
+    },
+    {
+      "path": "scripts/python/_mvg_capability_selection.py",
+      "sha256": "7989af52919d3ce439a91aa09638525e8993f8caefa60523fac78815c52134e9"
+    },
+    {
+      "path": "scripts/python/_mvg_global_audit.py",
+      "sha256": "c0c282a8f4d1601ebda250a4218ee7ea8e9a82d8ed71606db3b763d4bc9b3120"
+    },
+    {
+      "path": "scripts/python/_b_route_planning_runtime.py",
+      "sha256": "b9562da3e400dbbdd183e9208e8ac60ccb7f4038762a05f999518a9fe80304ff"
+    },
+    {
+      "path": "scripts/python/plan_mvg.py",
+      "sha256": "3a070ede17844c23ac1d328dbe8ff54594a8cb67c0dfc8f210ff7d4db39e6cd8"
+    },
+    {
+      "path": "scripts/python/tests/test_b_route_completed_reuse.py",
+      "sha256": "6186ff70c1315822cd1f30046ce3025cea70a4cd192b581a82ebf3f3a215201a"
+    }
+  ],
+  "qualification": "Original DATA eligibility and actual blocked public observation; no current native authentication, positive reuse or Windows acceptance claim"
+}

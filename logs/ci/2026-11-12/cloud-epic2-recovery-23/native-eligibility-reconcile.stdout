@@ -1,0 +1,77 @@
+{
+  "native_root": "/workspace/newrouge-recovery-data/batch03-05f5fbf9/data/nx",
+  "original_files_before_and_after": {
+    "logs/ci/mvg-planning/m4/run.json": "8acee02c87466a40f70b4751dfb74d5fde51bbd7054c7a0072323cb46714cb85",
+    "logs/ci/mvg-recovery/registry.json": "05448a506baa8473fc84273ee6b1098caf36a47990d660259adb9f33ff0ee177"
+  },
+  "run_id": "m4",
+  "phase": "generated",
+  "selection_status": "selected",
+  "selected_items": 1,
+  "original_scope": {
+    "scope_id": "controlled-exclusive-resolution-v15",
+    "kind": "all",
+    "ids": []
+  },
+  "registry_epoch": 0,
+  "registry_entries": 0,
+  "prepared": {
+    "path": "logs/ci/2026-11-06/b-route-planning-input/i4/ca51aa929b8a29089c302f08eb9c0a7bfd0876026b31d5d7b2dee9b7c939fb48/prepared.json",
+    "exists": true,
+    "raw_digest": "sha256:f84d3d7db59439382992ffdcddf5e9983185bc5f690d55f24ec0169eca421d6b",
+    "bytes": 1140425,
+    "actual_binding_result": {
+      "status": "not_eligible",
+      "reason": "b_route_recovery_requires_single_capability_target"
+    }
+  },
+  "registration_attempted": false,
+  "partial_or_all_scope_relabelled": false,
+  "original_inputs_modified": false,
+  "historical_campaign_limit": 290,
+  "old_native_logical_calls": 13,
+  "old_native_calls_are_not_new_allowance": true,
+  "new_model_calls": 0,
+  "public_status": {
+    "command": [
+      "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+      "-B",
+      "/workspace/newrouge/scripts/python/dev_cli.py",
+      "plan-mvg",
+      "--repo-root",
+      "/workspace/newrouge-recovery-data/batch03-05f5fbf9/data/nx",
+      "--stage",
+      "status",
+      "--run-id",
+      "m4",
+      "--input-stage",
+      "3b",
+      "--prepared-ref",
+      "logs/ci/2026-11-06/b-route-planning-input/i4/ca51aa929b8a29089c302f08eb9c0a7bfd0876026b31d5d7b2dee9b7c939fb48/prepared.json",
+      "--planning-profile",
+      "3b-mvg-v1"
+    ],
+    "cwd": "/tmp",
+    "exit_code": null,
+    "exit_observation": "Original stdout retained; child exit was not saved before reporter parse error",
+    "postprocessing_elapsed_seconds": 0.08797830300045462,
+    "output": {
+      "status": "blocked",
+      "reason": "execution_transition_absolute_root_required"
+    },
+    "trailing_command_trace_retained": true,
+    "command_repeated": false
+  },
+  "environment": {
+    "os_name": "posix",
+    "system": "Linux",
+    "release": "6.18.57",
+    "wine": null,
+    "qemu": null,
+    "kvm": false,
+    "pwsh": null,
+    "powershell": null
+  },
+  "native_initialization_current_contract": "_b_route_planning_runtime._publish_new_run requires os.name == nt",
+  "qualification": "Original DATA eligibility and actual blocked public observation; no current native authentication, positive reuse or Windows acceptance claim"
+}

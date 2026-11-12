@@ -1,0 +1,166 @@
+{
+  "branch": "build/cloud-epic2-recovery-20261111",
+  "HEAD": "76d3282359a931b2cd249f8dd41250d36c2bbaff",
+  "origin": "https://github.com/skyoxu/newrouge.git",
+  "preexisting4_raw_bytes_match_HEAD": true,
+  "excluded_from_commit": [
+    "docs/handoff/2026-11-11/archive/uncommitted-r22/_bmad-output/implementation-artifacts/b-route/spec-2-5-independent-admission-bounded-selection.md",
+    "docs/handoff/2026-11-11/archive/uncommitted-r60/_bmad-output/implementation-artifacts/b-route/sprint-status.yaml",
+    "docs/handoff/2026-11-11/archive/uncommitted-r60/docs/workflows/mvg-integration-acceptance.md",
+    "workflow.md"
+  ],
+  "intended_files": 37,
+  "decoded_protocol_buffers_scanned": 1,
+  "sensitive_patterns": [],
+  "secret_files_read": false,
+  "identities": {
+    "_bmad-output/implementation-artifacts/b-route/spec-2-10-formal-entrypoint.md": {
+      "bytes": 13986,
+      "sha256": "520a2296ab16cc8543c265d7b3c72484e9ecf7e31a23a9511d5b6172443fbe08"
+    },
+    "_bmad-output/implementation-artifacts/b-route/spec-2-9-completed-planning-reuse.md": {
+      "bytes": 24098,
+      "sha256": "c0901566ea9189ae4347c929098cdb7cb7603f4e9e6c5361b42597a98c964d68"
+    },
+    "docs/handoff/2026-11-12/cloud-continuation/README.md": {
+      "bytes": 12021,
+      "sha256": "208e759da88984c5df219f22c9e071b987f620537ddaed663c2b564cb4486194"
+    },
+    "execution-plans/2026-11-11-cloud-epic2-recovery.md": {
+      "bytes": 49052,
+      "sha256": "d1dcc07f70d01e0fa2e2a20c905a92c3c99a51f6026c772521ed298b3b6def3a"
+    },
+    "logs/ci/2026-11-12/cloud-epic2-recovery-23/PLAN.md": {
+      "bytes": 1514,
+      "sha256": "5da3bab7825ec13a94f1aa93c8a11f7a31819f0f0db8243704299a0538c6d2af"
+    },
+    "logs/ci/2026-11-12/cloud-epic2-recovery-23/REPORT.md": {
+      "bytes": 10165,
+      "sha256": "109a601cd443216ea22964519914363d39ae36117cbd189a78e11cdd248e8cf9"
+    },
+    "logs/ci/2026-11-12/cloud-epic2-recovery-23/audit_commit_inputs.py": {
+      "bytes": 4233,
+      "sha256": "d249ce3eed3b0e8c2c533470d2a71e15e9edf04fc1a6e21b91f74a1b7d34ff14"
+    },
+    "logs/ci/2026-11-12/cloud-epic2-recovery-23/b-route-adoption-help.txt": {
+      "bytes": 3202,
+      "sha256": "de84bdec9d12020fceb83917bb267bb6e3f2293b481d1ee252acc4915eec55b0"
+    },
+    "logs/ci/2026-11-12/cloud-epic2-recovery-23/commit-input-audit.json": {
+      "bytes": 33980,
+      "sha256": "36f5050edc72db9ce4a4083725534328cf0c184730d92b2edcd2f36ea770e815"
+    },
+    "logs/ci/2026-11-12/cloud-epic2-recovery-23/commit.stderr": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "logs/ci/2026-11-12/cloud-epic2-recovery-23/commit.stdout": {
+      "bytes": 15044,
+      "sha256": "8f7c9f78e0f4c025f1ac377344ce376448a27b2d65834e0f50be1b20071897c9"
+    },
+    "logs/ci/2026-11-12/cloud-epic2-recovery-23/continuation-validation.json": {
+      "bytes": 1306,
+      "sha256": "ded88b303a24425dda04ff3011bf8ad044bdc6ef8335745f88869d7ee2d11248"
+    },
+    "logs/ci/2026-11-12/cloud-epic2-recovery-23/fresh-dev-compensation-recovery-inspect.json": {
+      "bytes": 2866,
+      "sha256": "abb77662666f293818a36ab11a1ccbcae61dbbc0823f03cc3007fd61bcbd4fba"
+    },
+    "logs/ci/2026-11-12/cloud-epic2-recovery-23/fresh-dev-compensation-recovery-inspect.stderr": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "logs/ci/2026-11-12/cloud-epic2-recovery-23/fresh-dev-original-resolution-read.json": {
+      "bytes": 508,
+      "sha256": "bb988d57c02fadea7c8d0c4fc4040c3a77f1e7136ff05de71e7673058707f0da"
+    },
+    "logs/ci/2026-11-12/cloud-epic2-recovery-23/fresh-dev-original-resolution-read.stderr": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "logs/ci/2026-11-12/cloud-epic2-recovery-23/fresh-direct-compensation-read.json": {
+      "bytes": 7170,
+      "sha256": "63bc7259d17c25ae02840f4a725cf72f40ee78083aacaeba266195dcaa845593"
+    },
+    "logs/ci/2026-11-12/cloud-epic2-recovery-23/fresh-direct-compensation-read.stderr": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "logs/ci/2026-11-12/cloud-epic2-recovery-23/native-eligibility-observation.json": {
+      "bytes": 4407,
+      "sha256": "0134f504430fd18df71e0f5da5c32fd635adfec28613d8697075fdaaab84f28c"
+    },
+    "logs/ci/2026-11-12/cloud-epic2-recovery-23/native-eligibility-reconcile.stderr": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "logs/ci/2026-11-12/cloud-epic2-recovery-23/native-eligibility-reconcile.stdout": {
+      "bytes": 2769,
+      "sha256": "cb07a8bc75461bae059ced6127a32dd3fc5e56a0cbb2f23868e1e8dc2edc59c7"
+    },
+    "logs/ci/2026-11-12/cloud-epic2-recovery-23/native-eligibility.stderr": {
+      "bytes": 757,
+      "sha256": "390472accd5cc7d40c62cb46a1dd204c52adc0911cc68da722855bbba08f5cd4"
+    },
+    "logs/ci/2026-11-12/cloud-epic2-recovery-23/native-eligibility.stdout": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "logs/ci/2026-11-12/cloud-epic2-recovery-23/observe_native_eligibility.py": {
+      "bytes": 6062,
+      "sha256": "23e9793a356015d0c45bc1ea69fb24b0085fad3a56e00dbd8a945bdae7018224"
+    },
+    "logs/ci/2026-11-12/cloud-epic2-recovery-23/observe_real_public_entries.py": {
+      "bytes": 3215,
+      "sha256": "f3b3c1e8b40af5105974c200f63158761ff73a5cced4204886b094b13d4329f5"
+    },
+    "logs/ci/2026-11-12/cloud-epic2-recovery-23/original-native-binding-input/b-route-prepared.json": {
+      "bytes": 1140425,
+      "sha256": "f84d3d7db59439382992ffdcddf5e9983185bc5f690d55f24ec0169eca421d6b"
+    },
+    "logs/ci/2026-11-12/cloud-epic2-recovery-23/original-native-public-status.json": {
+      "bytes": 494,
+      "sha256": "63aeeafff71981d25f0a836f762bc309152cbbd3bc41a2dd4e2f0ea8883d60b1"
+    },
+    "logs/ci/2026-11-12/cloud-epic2-recovery-23/original-native-public-status.stderr": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "logs/ci/2026-11-12/cloud-epic2-recovery-23/plan-capabilities-help.txt": {
+      "bytes": 2609,
+      "sha256": "d5ebbe50da0b13069667332aa7d4e5bd34cd7a20e2e95a438055d6d8bdbd4be2"
+    },
+    "logs/ci/2026-11-12/cloud-epic2-recovery-23/plan-mvg-help.txt": {
+      "bytes": 2327,
+      "sha256": "69a040e4830960b0f336a89b8aae96bfaed6c90f54808e67b785f58e1e2c19a7"
+    },
+    "logs/ci/2026-11-12/cloud-epic2-recovery-23/public-entry-progress.json": {
+      "bytes": 1824,
+      "sha256": "ae614e5973620b5f0ce282899acf19af2b44704b1f01dfb59c957eba08037183"
+    },
+    "logs/ci/2026-11-12/cloud-epic2-recovery-23/public-entry-wrapper.stderr": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "logs/ci/2026-11-12/cloud-epic2-recovery-23/public-entry-wrapper.stdout": {
+      "bytes": 3496,
+      "sha256": "1d8fe4dd9a353cc1ecf04bf18be8206b0bee2cb3ad7177af943ef06735b10247"
+    },
+    "logs/ci/2026-11-12/cloud-epic2-recovery-23/push.stderr": {
+      "bytes": 109,
+      "sha256": "2a5e3ec5429ffc2595380a49769da15685662190ae74ef916c2ebe2a3df2ae6d"
+    },
+    "logs/ci/2026-11-12/cloud-epic2-recovery-23/push.stdout": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "logs/ci/2026-11-12/cloud-epic2-recovery-23/real-public-entry-observations.json": {
+      "bytes": 2144,
+      "sha256": "4125fc22547cad7bc09785754557a9c17f3fafd032eed9aaf15dda4273412da2"
+    },
+    "logs/ci/2026-11-12/cloud-epic2-recovery-23/validate_continuation.py": {
+      "bytes": 5531,
+      "sha256": "93947e202d1e5fb77816438a2e128ca06272199031727b9167cf3c779915ca9e"
+    }
+  }
+}
