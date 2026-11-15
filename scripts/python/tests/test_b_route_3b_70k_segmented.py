@@ -2972,6 +2972,542 @@ class TrackBSegmented70kTests(unittest.TestCase):
             reduce_d = [r for r in obs_d if r["role"] == "tree_reduce"]
             self.assertEqual(len(reduce_d), 16, f"Expected MAX_STAGE3_REDUCE_ROUNDS=16, got {len(reduce_d)}")
 
+    def test_08a_worker_slice_pause_and_cold_resume_e2e(self):
+        """Verify bounded slice pause/resume across worker subprocesses, Stage 4 repair, and Stage 6a pairwise tournament."""
+        cctx = self._ensure_compact_70k_fixture()
+        root = cctx["root"]
+        slim_inputs = cctx["slim_inputs"]
+        seam_file = cctx["seam_file"]
+        proof_seam = cctx["proof_seam"]
+        prep = cctx["prep"]
+        frozen = cctx["frozen"]
+
+        import _mvg_capability_recovery as mvg_recovery
+
+        mvg_recovery.clear(root)
+        codex_runner = NEWROUGE_PYTHON / "codex_isolated_model_runner.py"
+
+        big_templates = {}
+        for slot_key, var in (
+            ("default", "A"),
+            ("candidate-1", "A"),
+            ("candidate-2", "B"),
+            ("candidate-3", "C"),
+        ):
+            cand_obj = _build_sc25_candidate_content(frozen, variant=var)
+            cand_obj["definitions"]["flows"][0]["entry_condition"] = " ".join(
+                f"Cand-{var}-entry-invariant-{i:04d}-clause-{i * 31}" for i in range(420)
+            )
+            cand_obj["definitions"]["flows"][0]["observable_result"] = " ".join(
+                f"Cand-{var}-outcome-assertion-{i:04d}-state-{i * 47}" for i in range(420)
+            )
+            big_templates[slot_key] = cand_obj
+
+        (self.state_dir / "candidate_templates.json").write_text(
+            json.dumps(big_templates, ensure_ascii=False), encoding="utf-8"
+        )
+        repair_flag = self.state_dir / "enable_stage4_repair.flag"
+        repair_flag.write_text("1", encoding="utf-8")
+        (self.state_dir / "triggered_stage4_repair.flag").unlink(missing_ok=True)
+        try:
+            with patch.object(audit, "verify_current_proof", new=proof_seam), patch.object(
+                planning, "rules_identity", new=lambda _r: slim_inputs["dependencies"]["rules"]
+            ), patch.dict(os.environ, {"FAKE_CODEX_SC25_SEAM_INPUTS": str(seam_file)}):
+                # Slice 0: max_new_dispatches=0 -> immediate clean pause before_candidate
+                turns_start = len(self._read_logged_turns())
+                res0 = runtime.operate(
+                    root,
+                    planner="mvg",
+                    command="generate",
+                    run_id="rsl1",
+                    prepared_ref=prep["resume_ref"],
+                    profile="3b-mvg-v1",
+                    runner=codex_runner,
+                    timeout_sec=120,
+                    max_new_dispatches=0,
+                )
+                self.assertEqual(res0["status"], "paused", res0)
+                self.assertEqual(res0["paused_at"], "before_candidate", res0)
+                self.assertEqual(res0["new_dispatches"], 0)
+                self.assertEqual(len(self._read_logged_turns()), turns_start)
+
+                paused_points: list[str] = [res0["paused_at"]]
+                slice_steps = 0
+                final_gen = None
+                rsl_dir = runtime.run_location(root, "mvg", "rsl1")
+                while True:
+                    slice_steps += 1
+                    self.assertLess(slice_steps, 30, "Too many slice steps without converging")
+                    st_now = json.loads((rsl_dir / "run.json").read_text(encoding="utf-8"))
+                    cur = (st_now.get("capability_selection") or {}).get("current") or {}
+                    adms = cur.get("admissions") or {}
+                    all_admitted = len(adms) == 3 and all(v.get("status") == "admitted" for v in adms.values())
+                    # step=1 once selection starts so p1 -> pause -> p2 -> pause -> turn3 is exercised,
+                    # and step=3/4 across candidates so both mid-candidate and before_selection pauses occur cleanly.
+                    budget = 1 if all_admitted else (3 if slice_steps % 2 == 1 else 4)
+                    out = runtime.operate(
+                        root,
+                        planner="mvg",
+                        command="generate",
+                        run_id="rsl1",
+                        prepared_ref=prep["resume_ref"],
+                        profile="3b-mvg-v1",
+                        runner=codex_runner,
+                        timeout_sec=120,
+                        max_new_dispatches=budget,
+                    )
+                    if out.get("status") == "paused":
+                        self.assertEqual(out["phase"], "paused-between-slices")
+                        self.assertEqual(out["selection_status"], "pending")
+                        self.assertLessEqual(out["new_dispatches"], budget)
+                        paused_points.append(out["paused_at"])
+                        st_out = runtime.operate(
+                            root,
+                            planner="mvg",
+                            command="status",
+                            run_id="rsl1",
+                            prepared_ref=prep["resume_ref"],
+                            profile="3b-mvg-v1",
+                        )
+                        self.assertEqual(st_out["phase"], "paused-between-slices")
+                        self.assertEqual(st_out["selection_status"], "pending")
+                        continue
+                    final_gen = out
+                    break
+
+                self.assertEqual(final_gen["selected"], "winner-chain", final_gen)
+                self.assertIn("candidate", paused_points)
+                self.assertIn("selection", paused_points)
+                self.assertGreaterEqual(paused_points.count("selection"), 2, paused_points)
+
+                s2_dirs = list((rsl_dir / "candidates").rglob("lifecycle-s2"))
+                self.assertGreater(len(s2_dirs), 0)
+
+                turns_before_idem = len(self._read_logged_turns())
+                idem_gen = runtime.operate(
+                    root,
+                    planner="mvg",
+                    command="generate",
+                    run_id="rsl1",
+                    prepared_ref=prep["resume_ref"],
+                    profile="3b-mvg-v1",
+                    runner=codex_runner,
+                    timeout_sec=120,
+                    max_new_dispatches=1,
+                )
+                self.assertEqual(idem_gen["selected"], "winner-chain")
+                self.assertEqual(len(self._read_logged_turns()), turns_before_idem)
+
+                rev_res = runtime.operate(
+                    root,
+                    planner="mvg",
+                    command="review",
+                    run_id="rsl1",
+                    prepared_ref=prep["resume_ref"],
+                    profile="3b-mvg-v1",
+                    runner=codex_runner,
+                    timeout_sec=120,
+                )
+                self.assertEqual(rev_res["status"], "passed", rev_res)
+                ver_res = runtime.operate(
+                    root,
+                    planner="mvg",
+                    command="verify-selection",
+                    run_id="rsl1",
+                    prepared_ref=prep["resume_ref"],
+                    profile="3b-mvg-v1",
+                    runner=codex_runner,
+                    timeout_sec=120,
+                )
+                self.assertEqual(ver_res["status"], "passed", ver_res)
+
+                rsl_state = json.loads((rsl_dir / "run.json").read_text(encoding="utf-8"))
+                selected_step = rsl_state["capability_selection"]["selected"][0]
+                alias_order = list(selected_step["aliases"].keys())
+                winner_slot = selected_step["aliases"][alias_order[0]]
+                self.assertEqual(selected_step["selected_candidate"], winner_slot)
+                expected_flow_id = {
+                    "candidate-1": "FLOW-EXCL-RES-A",
+                    "candidate-2": "FLOW-EXCL-RES-B",
+                    "candidate-3": "FLOW-EXCL-RES-C",
+                }[winner_slot]
+                rsl_handoff = json.loads((rsl_dir / "handoff.json").read_text(encoding="utf-8"))
+                self.assertEqual(
+                    rsl_handoff["proposal"]["content"]["definitions"]["flows"][0]["id"],
+                    expected_flow_id,
+                )
+                # Confirm candidate-1 completed Stage 4 repair across sliced execution
+                c1_adm = selected_step["admissions"]["candidate-1"]
+                c1_prop = json.loads((rsl_dir / c1_adm["proposal_path"]).read_text(encoding="utf-8"))
+                self.assertEqual(
+                    c1_prop["content"]["requirement_verification"][0]["rationale"],
+                    "Repaired flow rationale explicitly aligned with durable journal J.",
+                )
+                manifests = list(rsl_dir.rglob("pairwise-tournament-manifest.json"))
+                self.assertEqual(len(manifests), 1)
+                self.assertEqual(len(json.loads(manifests[0].read_text(encoding="utf-8"))["bindings"]), 3)
+        finally:
+            repair_flag.unlink(missing_ok=True)
+            (self.state_dir / "triggered_stage4_repair.flag").unlink(missing_ok=True)
+
+    def test_08b_slice_pause_direct_edge_cases(self):
+        """Verify CLI guards, pre-repair issue_attempts preservation, post-repair Stage 5 repair_origin restoration, and ADR-0039 fail-closed parity."""
+        cctx = self._ensure_compact_70k_fixture()
+        root = cctx["root"]
+        slim_inputs = cctx["slim_inputs"]
+        proof_seam = cctx["proof_seam"]
+        prep = cctx["prep"]
+        frozen = cctx["frozen"]
+
+        import _b_route_planning_wire as wire
+
+        codex_runner = NEWROUGE_PYTHON / "codex_isolated_model_runner.py"
+
+        # 1. CLI / operate validation guards
+        with self.assertRaisesRegex(ValueError, "b_route_runtime_requires_explicit_3b"):
+            runtime.cli_stage(
+                type("A", (), {"command": "generate", "input_stage": "legacy", "max_new_dispatches": 1})(),
+                planner="mvg",
+            )
+        with patch("sys.stdout", new_callable=io.StringIO) as buf_cli:
+            rc_cli = plan_mvg.main(
+                ["--repo-root", str(root), "generate", "--run-id", "rsl-bad", "--max-new-dispatches", "1"]
+            )
+            self.assertEqual(rc_cli, 2)
+            self.assertIn("b_route_runtime_requires_explicit_3b", buf_cli.getvalue())
+        with self.assertRaisesRegex(ValueError, "b_route_runtime_slice_limit_requires_generate"):
+            runtime.operate(
+                root,
+                planner="mvg",
+                command="status",
+                run_id="rsl-bad",
+                prepared_ref=prep["resume_ref"],
+                profile="3b-mvg-v1",
+                max_new_dispatches=1,
+            )
+        with self.assertRaisesRegex(ValueError, "b_route_runtime_max_new_dispatches_invalid"):
+            runtime.operate(
+                root,
+                planner="mvg",
+                command="generate",
+                run_id="rsl-bad",
+                prepared_ref=prep["resume_ref"],
+                profile="3b-mvg-v1",
+                runner=codex_runner,
+                max_new_dispatches=-1,
+            )
+        with self.assertRaisesRegex(ValueError, "b_route_runtime_pause_after_sec_invalid"):
+            runtime.operate(
+                root,
+                planner="mvg",
+                command="generate",
+                run_id="rsl-bad",
+                prepared_ref=prep["resume_ref"],
+                profile="3b-mvg-v1",
+                runner=codex_runner,
+                pause_after_sec=-1,
+            )
+
+        # 2. Direct edge-case tests: (a) pause BEFORE repair dispatch preserves issue_attempts,
+        #    (b) pause mid multi-segment post-repair Stage 5 restores repair_origin & semantic_start_call,
+        #    (c) ADR-0039 crash (outcome=None) still fails closed on resume.
+        def _const(node: dict | None, default=None):
+            if not isinstance(node, dict):
+                return default
+            if "const" in node:
+                return node["const"]
+            if "enum" in node and isinstance(node["enum"], list) and len(node["enum"]) == 1:
+                return node["enum"][0]
+            return default
+
+        base_cand = _build_sc25_candidate_content(frozen, variant="A")
+        first_req_id = base_cand["requirements"][0]["requirement_id"]
+        extra_flows = []
+        for idx in range(8):
+            fl = deepcopy(base_cand["definitions"]["flows"][0])
+            fl["id"] = f"FLOW-PAUSE-{idx:02d}"
+            fl["proposed_owner_key"] = f"owner-pause-{idx:02d}"
+            fl["requirement_ids"] = [first_req_id]
+            fl["observable_result"] = f"Observable pause {idx:02d} " + ("clause-" * 460)
+            for edge in fl["graph"]["edges"]:
+                edge["from"]["flow_id"] = fl["id"]
+                edge["to"]["flow_id"] = fl["id"]
+                edge["owner"]["definition_id"] = fl["id"]
+                edge["owner"]["proposed_owner_key"] = fl["proposed_owner_key"]
+            for node in fl["graph"]["nodes"]:
+                node["owner"]["definition_id"] = fl["id"]
+                node["owner"]["proposed_owner_key"] = fl["proposed_owner_key"]
+            for bnd in fl["graph"]["boundaries"]:
+                bnd["node"]["flow_id"] = fl["id"]
+            fl["ui"]["owner"]["definition_id"] = fl["id"]
+            fl["ui"]["owner"]["proposed_owner_key"] = fl["proposed_owner_key"]
+            fl["human_verification"]["owner"]["definition_id"] = fl["id"]
+            fl["human_verification"]["owner"]["proposed_owner_key"] = fl["proposed_owner_key"]
+            extra_flows.append(fl)
+            base_cand["requirement_route_memberships"].append(
+                {
+                    "requirement_id": first_req_id,
+                    "flow_id": fl["id"],
+                    "observable_role": f"Exclusive reward pause segment {idx:02d}",
+                }
+            )
+        base_cand["definitions"]["flows"].extend(extra_flows)
+
+        with patch.object(audit, "verify_current_proof", new=proof_seam), patch.object(
+            planning, "rules_identity", new=lambda _r: slim_inputs["dependencies"]["rules"]
+        ):
+            direct_dir = runtime.run_location(root, "mvg", "rsl-direct")
+            direct_state = runtime.create_run(root, direct_dir, "rsl-direct", prep["resume_ref"], "3b-mvg-v1")
+        direct_state["runtime_slot"] = "candidate-1"
+        direct_state["runtime_execution"] = 1
+        direct_state["capability_selection"] = {
+            "binding": "direct",
+            "order": ["controlled-exclusive-resolution-v15"],
+            "selected": [],
+            "accepted_sha256": "direct",
+            "current": {
+                "order_index": 0,
+                "capability_id": "controlled-exclusive-resolution-v15",
+                "base_sha256": "direct",
+                "admissions": {},
+                "selection_attempts": [],
+                "execution": 1,
+            },
+            "total_invocations": 0,
+            "lineage_invocations": {"candidate-1": 0, "candidate-2": 0, "candidate-3": 0},
+            "calls": [],
+        }
+        ws_direct = direct_dir / "candidates/candidate-1/scope-1"
+        (ws_direct / "analysis-input").mkdir(parents=True, exist_ok=True)
+        shutil.copy2(direct_dir / "analysis-input/b-route-prepared.json", ws_direct / "analysis-input/b-route-prepared.json")
+
+        obs_direct: list[dict] = []
+        dispatches_in_slice = [0]
+        max_in_slice = [1]
+        injected_block = [False]
+        repair_prior_projs: list = []
+
+        def direct_reserve(phase, request_identity=None):
+            dispatches_in_slice[0] += 1
+            num = direct_state["capability_selection"]["total_invocations"] + 1
+            direct_state["capability_selection"]["total_invocations"] = num
+            res = {
+                "number": num,
+                "phase": phase,
+                "candidate": "candidate-1",
+                "capability_id": "controlled-exclusive-resolution-v15",
+                "run_id": direct_state["run_id"],
+                "reservation_id": f"rsl-direct:dispatch:{num}",
+                "status": "reserved",
+                "request_identity": deepcopy(request_identity) if request_identity else {},
+            }
+            direct_state["capability_selection"]["calls"].append(res)
+            return deepcopy(res)
+
+        def direct_invoke_factory(call_dir: Path):
+            call_dir.mkdir(parents=True, exist_ok=True)
+
+            def invoke(
+                prompt_text: str,
+                call_no: int,
+                *,
+                output_name: str,
+                output_schema_path: Path,
+                output_schema: dict,
+                before_dispatch,
+            ):
+                materials = wire.read_prompt(prompt_text, wire.CURRENT_SCHEMA)
+                compact_flag = materials["phase"] != "generation"
+                ws_text = seg_input._runner_wrapper_text(
+                    prompt_text, output_schema, compact_schema_file=compact_flag
+                )
+                req_id = {
+                    "runtime_identity": direct_state["runtime_identity"],
+                    "planning_profile": "3b-mvg-v1",
+                    "actual_request_sha256": codec.raw_digest(ws_text.encode("utf-8")),
+                    "fresh_lineage_identity": materials.get("lineage_identity"),
+                }
+                before_dispatch(req_id)
+                props = output_schema["properties"]
+                obs_direct.append({"call_no": call_no, "phase": materials["phase"], "materials": deepcopy(materials)})
+                if materials["phase"] == "generation":
+                    req = materials["root_request"]
+                    role = req.get("synthesis_role") or req["stage"]
+                    if req["stage"] == "batch":
+                        c_obj = {"batch_ordinal": req["ordinal"], "notes": f"b-{req['ordinal']}"}
+                    elif role == "bounded_repair":
+                        c_obj = deepcopy(base_cand)
+                        allowed_paths = materials.get("repair_scope", {}).get("allowed_content_paths", [])
+                        updated_any = False
+                        for p in allowed_paths:
+                            if (
+                                isinstance(p, list)
+                                and len(p) == 2
+                                and p[0] in ("requirement_verification", "coverage_table", "applicability")
+                                and isinstance(p[1], int)
+                            ):
+                                c_obj[p[0]][p[1]]["rationale"] = (
+                                    "Repaired flow rationale explicitly aligned with durable journal J."
+                                )
+                                updated_any = True
+                        if not updated_any:
+                            for sec in ("requirement_verification", "coverage_table", "applicability"):
+                                for row in c_obj.get(sec, [])[:1]:
+                                    row["rationale"] = (
+                                        "Repaired flow rationale explicitly aligned with durable journal J."
+                                    )
+                    else:
+                        c_obj = deepcopy(base_cand)
+                    out_obj = {
+                        "schema_version": _const(props["schema_version"]),
+                        "producer_schema_version": _const(props["producer_schema_version"]),
+                        "input_identity": _const(props["input_identity"]),
+                        "stage": _const(props["stage"]),
+                        "ordinal": _const(props["ordinal"]),
+                        "parent_draft_identities": list(req["parent_draft_identities"]),
+                        "content_json": json.dumps(c_obj, ensure_ascii=False, separators=(",", ":")),
+                    }
+                else:
+                    repair_prior_projs.append(
+                        (
+                            call_no,
+                            materials["root_request"]["segment_index"],
+                            materials.get("prior_candidate") is not None,
+                        )
+                    )
+                    seg_obs = materials["obligations"]
+                    src_idx = {row["id"]: i for i, row in enumerate(materials["qualified_sources"])}
+                    req_idx = next(
+                        (
+                            idx
+                            for idx, ob in enumerate(seg_obs)
+                            if isinstance(ob.get("target"), list) and ob["target"] and ob["target"][0] == "requirement"
+                        ),
+                        None,
+                    )
+                    block_now = (
+                        not injected_block[0]
+                        and materials.get("repair_issue") is None
+                        and req_idx is not None
+                    )
+                    block_idx = req_idx if block_now else -1
+                    if block_now:
+                        injected_block[0] = True
+                    checks = []
+                    findings = []
+                    for i, ob in enumerate(seg_obs):
+                        cited = [next((src_idx[sid] for sid in ob["source_block_ids"] if sid in src_idx), 0)]
+                        if block_now and i == block_idx:
+                            rat = f"Requirement obligation {ob['id']} requires explicit journal J rationale."
+                            checks.append({"id": i, "verdict": "blocked", "rationale": rat, "source_block_ids": cited})
+                            findings.append(rat)
+                        else:
+                            checks.append({"id": i, "verdict": "approved", "rationale": f"Verified {ob['id']}.", "source_block_ids": cited})
+                    out_obj = {
+                        "schema_version": _const(props["schema_version"]),
+                        "input_identity": _const(props["input_identity"]),
+                        "runtime_identity": _const(props["runtime_identity"]),
+                        "proposal_sha256": _const(props["proposal_sha256"]),
+                        "verdict": "blocked" if findings else "approved",
+                        "findings": findings,
+                        "checks": checks,
+                    }
+                out_path = call_dir / output_name
+                out_path.write_bytes(encoded(out_obj))
+                output_schema_path.write_bytes(encoded(output_schema))
+                coord_row = direct_state["capability_selection"]["calls"][-1]
+                coord_row["outcome"] = {"status": "completed", "output_sha256": seg_runtime.file_sha(out_path)}
+                binding = {
+                    "workspace": str(call_dir),
+                    "prompt_path": str(call_dir / "prompt.txt"),
+                    "schema_path": str(output_schema_path),
+                    "output_path": str(out_path),
+                    "request_payload": ws_text,
+                }
+                (call_dir / "prompt.txt").write_text(prompt_text, encoding="utf-8")
+                coord_row["request_identity"]["binding"] = binding
+                return out_path, {"execution_binding": binding}
+
+            return invoke
+
+        with patch.object(audit, "verify_current_proof", new=proof_seam), patch.object(
+            planning, "rules_identity", new=lambda _r: slim_inputs["dependencies"]["rules"]
+        ), patch.object(
+            runtime,
+            "verify_call",
+            side_effect=lambda b: codec.strict_json_loads(Path(b["output_path"]).read_bytes()),
+        ), patch.object(
+            seg_runtime,
+            "verify_segmented_reserved_call",
+            side_effect=lambda rdir, crow, *, state, check_originals=False: (
+                None if (crow.get("outcome") or {}).get("status") != "completed"
+                else crow["request_identity"]["binding"]
+            ),
+        ):
+            def run_direct_slice(budget: int) -> dict:
+                dispatches_in_slice[0] = 0
+                max_in_slice[0] = budget
+                return seg_runtime.generate_segmented_append(
+                    root,
+                    direct_state,
+                    ws_direct,
+                    invoke_factory=direct_invoke_factory,
+                    before_call=direct_reserve,
+                    checkpoint=lambda _p: None,
+                    should_pause=lambda: dispatches_in_slice[0] >= max_in_slice[0],
+                )
+
+            ledger_path = ws_direct / "capability-append/append-ledger.json"
+            while True:
+                res_s = run_direct_slice(1)
+                led_now = json.loads(ledger_path.read_text(encoding="utf-8"))
+                if led_now.get("current", {}).get("issue") is not None:
+                    res_pre_rep = run_direct_slice(0)
+                    self.assertEqual(res_pre_rep["status"], "paused", res_pre_rep)
+                    led_after_pre = json.loads(ledger_path.read_text(encoding="utf-8"))
+                    self.assertEqual(led_after_pre["current"]["issue_attempts"], {})
+                    self.assertNotIn("paused_in_generate", led_after_pre["current"])
+                    break
+                self.assertEqual(res_s["status"], "paused", res_s)
+
+            res_rep = run_direct_slice(1)
+            self.assertEqual(res_rep["status"], "paused", res_rep)
+            led_post_rep = json.loads(ledger_path.read_text(encoding="utf-8"))
+            self.assertEqual(sum(led_post_rep["current"]["issue_attempts"].values()), 1)
+            self.assertIsInstance(led_post_rep["current"].get("pending_semantic"), dict)
+
+            repair_prior_projs.clear()
+            res_rev1 = run_direct_slice(1)
+            self.assertEqual(res_rev1["status"], "paused", res_rev1)
+            self.assertTrue(
+                repair_prior_projs and repair_prior_projs[-1][2] is True,
+                f"Expected repair_origin prior_proposal restored on segment 1: {repair_prior_projs}",
+            )
+
+            last_row = direct_state["capability_selection"]["calls"][-1]
+            saved_outcome = deepcopy(last_row["outcome"])
+            saved_ledger_bytes = ledger_path.read_bytes()
+            try:
+                last_row["outcome"] = None
+                res_crash = run_direct_slice(5)
+                self.assertEqual(res_crash["status"], "blocked", res_crash)
+                self.assertIn(
+                    "b_route_segmented_replay_outcome_not_completed",
+                    json.dumps(res_crash.get("errors", []), ensure_ascii=False),
+                    res_crash,
+                )
+            finally:
+                last_row["outcome"] = saved_outcome
+                ledger_path.write_bytes(saved_ledger_bytes)
+
+            repair_prior_projs.clear()
+            res_done = run_direct_slice(10)
+            self.assertEqual(res_done["status"], "admitted", res_done)
+            self.assertTrue(
+                repair_prior_projs and all(flag is True for _, _, flag in repair_prior_projs),
+                f"Expected repair_origin restored across resumed review segments: {repair_prior_projs}",
+            )
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

@@ -8,9 +8,12 @@ anonymous candidate selection (Stage 6a).
 """
 from __future__ import annotations
 
+from contextlib import contextmanager
+from contextvars import ContextVar
 from copy import deepcopy
 import json
 from pathlib import Path
+from typing import Any
 
 import _b_route_3b_segmented_input as seg_input
 import _b_route_candidate as candidate
@@ -20,6 +23,18 @@ import _b_route_planning_input as planning
 import _b_route_planning_wire as wire
 import _b_route_sources as sources
 from _planning_skill_common import atomic_json, canonical_sha, file_sha, load_json
+
+_ACTIVE_SHOULD_PAUSE: ContextVar[Any] = ContextVar("_ACTIVE_SHOULD_PAUSE", default=None)
+
+
+@contextmanager
+def slice_pause_guard(should_pause: Any):
+    """Bind an inter-dispatch pause predicate across worker/inline call stacks."""
+    token = _ACTIVE_SHOULD_PAUSE.set(should_pause)
+    try:
+        yield
+    finally:
+        _ACTIVE_SHOULD_PAUSE.reset(token)
 
 SEGMENTED_RUNTIME_POLICY = "newrouge.b-route-3b-segmented-runtime.v1"
 SEGMENTED_SELECTOR_POLICY = "newrouge.b-route-3b-segmented-selector.v1"
@@ -770,10 +785,11 @@ def generate_segmented_append(
     selected_records=None,
     cost_budget=None,
     replacement=None,
+    should_pause=None,
 ) -> dict:
     """Execute <=70k segmented Stages 1-5 inside run_capability_append."""
     import _b_route_planning_runtime as runtime
-    from _mvg_capability_append import run_capability_append
+    from _mvg_capability_append import SlicePauseRequested, run_capability_append
 
     frozen = runtime.frozen_input(root, state, prepared=workspace / "analysis-input")
     all_scopes = runtime.scopes(state, workspace / "analysis-input")
@@ -783,6 +799,7 @@ def generate_segmented_append(
         else deepcopy(accepted_seed)
     )
     ledger = load_json(workspace / "capability-append/append-ledger.json", {})
+    prior_local_calls = list(ledger.get("calls") or [])
     count = [ledger.get("total_invocations", 0)]
     repair_origin = [None]
     last_generation_calls_by_proposal: dict[str, list[dict]] = {}
@@ -790,16 +807,94 @@ def generate_segmented_append(
     def check_cost(phase: str, evidence_calls: int) -> None:
         if cost_budget is None:
             return
+        costs = workspace / "capability-append/stage-costs"
+        if len(prior_local_calls) > count[0] and (costs / f"{count[0] + 1}-{phase}.json").is_file():
+            return
         from _mvg_capability_generation import stage_cost_preflight
 
         budget = cost_budget(phase, known_evidence_calls=evidence_calls)
-        costs = workspace / "capability-append/stage-costs"
         stage_cost_preflight(
             costs / f"{count[0] + 1}-{phase}.json",
             phase=phase,
             evidence_calls=evidence_calls,
             **budget,
         )
+
+    def _replay_completed_call(
+        call_no: int,
+        sealed_materials: dict,
+        provider_schema: dict,
+        ws_text: str,
+        phase: str,
+    ) -> tuple[dict, dict] | None:
+        if call_no > len(prior_local_calls):
+            return None
+        local_row = prior_local_calls[call_no - 1]
+        if local_row.get("number") != call_no or local_row.get("phase") != phase:
+            raise ValueError("b_route_segmented_replay_call_mismatch")
+        call_dir = segmented_call_root(workspace, call_no)
+        res_id = local_row.get("reservation_id")
+        if res_id:
+            coord_calls = (state.get("capability_selection") or {}).get("calls", [])
+            matches = [row for row in coord_calls if row.get("reservation_id") == res_id]
+            if len(matches) != 1:
+                raise ValueError("b_route_segmented_replay_reservation_missing")
+            coord_row = matches[0]
+            resolved_run_dir = next((p for p in workspace.parents if (p / "run.json").is_file()), None)
+            if resolved_run_dir is None:
+                resolved_run_dir = runtime.run_location(
+                    root, runtime.descriptor(state)["planner"], state["run_id"]
+                )
+            binding = verify_segmented_reserved_call(
+                resolved_run_dir, coord_row, state=state, check_originals=False
+            )
+            if binding is None or (coord_row.get("outcome") or {}).get("status") != "completed":
+                raise ValueError("b_route_segmented_replay_outcome_not_completed")
+            req_id = coord_row.get("request_identity") or {}
+            actual_sha = codec.raw_digest(ws_text.encode("utf-8"))
+            if (
+                req_id.get("actual_request_sha256") != actual_sha
+                or req_id.get("fresh_lineage_identity") != sealed_materials.get("lineage_identity")
+                or not runtime.same_json(
+                    codec.strict_json_loads(Path(binding["schema_path"]).read_bytes()),
+                    provider_schema,
+                )
+            ):
+                raise ValueError("b_route_segmented_replay_request_changed")
+            raw_val = _verified_call_output(binding, readonly=True)
+            if sealed_materials["phase"] == "generation":
+                decoded = load_json(call_dir / "canonical-draft.json")
+                if not runtime.same_json(_cached_decode_generation_carrier(raw_val), decoded):
+                    raise ValueError("b_route_generation_canonical_draft_changed")
+                return decoded, binding
+            return raw_val, binding
+        out_path = call_dir / "r.json"
+        if not out_path.is_file():
+            raise ValueError("b_route_segmented_replay_output_missing")
+        schema_path = call_dir / "output-schema.json"
+        if schema_path.is_file() and not runtime.same_json(
+            codec.strict_json_loads(schema_path.read_bytes()), provider_schema
+        ):
+            raise ValueError("b_route_segmented_replay_schema_changed")
+        raw_val = codec.strict_json_loads(out_path.read_bytes())
+        binding_path = call_dir / f"execution-binding-{call_no}-r.json"
+        if binding_path.is_file():
+            binding = codec.strict_json_loads(binding_path.read_bytes())
+        else:
+            binding = {
+                "workspace": str(call_dir),
+                "output_path": str(out_path),
+                "request_payload": ws_text,
+            }
+        if sealed_materials["phase"] == "generation":
+            draft_path = call_dir / "canonical-draft.json"
+            decoded = (
+                load_json(draft_path)
+                if draft_path.is_file()
+                else runtime.decode_generation_carrier(raw_val)
+            )
+            return decoded, binding
+        return raw_val, binding
 
     def execute_call(
         sealed_materials: dict,
@@ -816,6 +911,13 @@ def generate_segmented_append(
             prompt_text, provider_schema, compact_schema_file=compact_schema_file
         )
         _assert_under_70k(len(ws_text.encode("utf-8")), frozen, f"{phase}-{call_no}")
+        replayed = _replay_completed_call(call_no, sealed_materials, provider_schema, ws_text, phase)
+        if replayed is not None:
+            return replayed
+        effective_pause = should_pause if should_pause is not None else _ACTIVE_SHOULD_PAUSE.get()
+        if effective_pause is not None and effective_pause():
+            count[0] -= 1
+            raise SlicePauseRequested("b_route_slice_pause_requested")
         call_dir = segmented_call_root(workspace, call_no)
         output, execution = invoke_factory(call_dir)(
             prompt_text,
@@ -840,6 +942,10 @@ def generate_segmented_append(
 
     def propose(scope, accepted, prior, issue, context, call):
         runtime.validate_input(root, workspace, state)
+        live_ledger = load_json(workspace / "capability-append/append-ledger.json", {})
+        live_current = live_ledger.get("current") or {}
+        if "propose_start_call" in live_current:
+            count[0] = int(live_current["propose_start_call"])
         slot = state["runtime_slot"]
         generation_no = state.get("capability_selection", {}).get("generation", 1)
         execution_no = state.get("runtime_execution", 1)
@@ -856,6 +962,14 @@ def generate_segmented_append(
             check_cost("inspect", 1)
             prior_sha = canonical_sha(prior)
             prior_calls = last_generation_calls_by_proposal.get(prior_sha)
+            if prior_calls is None:
+                cur_delta = live_current.get("delta") or {}
+                if (
+                    isinstance(cur_delta.get("generation_calls"), list)
+                    and canonical_sha(live_current.get("proposal")) == prior_sha
+                    and len(cur_delta["generation_calls"]) == len(prior["provenance"]["draft_chain"])
+                ):
+                    prior_calls = list(cur_delta["generation_calls"])
             if prior_calls is None:
                 raise ValueError("b_route_segmented_repair_prior_calls_missing")
             prior_chain = deepcopy(prior["provenance"]["draft_chain"])
@@ -1357,9 +1471,25 @@ def generate_segmented_append(
             },
         }
 
+    def prepare_repair_origin(scope, accepted, prior, issue, context):
+        del scope, accepted, context
+        if prior is not None and issue is not None and issue.get("account_policy") is not None:
+            repair_origin[0] = (
+                prior,
+                runtime.obligations(prior, frozen),
+                runtime.semantic_domain(prior, frozen)[0],
+                issue,
+            )
+        else:
+            repair_origin[0] = None
+
     def semantic(scope, accepted, proposal, call, context):
         # Stage 5: Deterministic <=70k segmented independent admission review
         runtime.validate_input(root, workspace, state)
+        live_ledger = load_json(workspace / "capability-append/append-ledger.json", {})
+        live_pending = (live_ledger.get("current") or {}).get("pending_semantic")
+        if isinstance(live_pending, dict) and "semantic_start_call" in live_pending:
+            count[0] = int(live_pending["semantic_start_call"])
         slot = state["runtime_slot"]
         generation_no = state.get("capability_selection", {}).get("generation", 1)
         execution_no = state.get("runtime_execution", 1)
@@ -1476,6 +1606,7 @@ def generate_segmented_append(
         )
         if runtime.issue_account_policy(state) is not None
         else None,
+        prepare_repair_origin=prepare_repair_origin,
     )
     if result["status"] == "admitted":
         proof = runtime.admission_proof(state, base, all_scopes, result["records"], result["accepted"])
@@ -2325,10 +2456,12 @@ def _build_pair_materials_and_prompt(
     return p_mat, p_prm, pair_schema
 
 
-def make_segmented_selector_factory(root: Path, run_dir: Path, state: dict, config: dict):
+def make_segmented_selector_factory(
+    root: Path, run_dir: Path, state: dict, config: dict, *, should_pause=None
+):
     """Return selector_factory dispatching single <=70k call or 3-turn pairwise + synthesis tournament."""
     import _b_route_planning_runtime as runtime
-    from _mvg_capability_append import RunBudgetExhausted
+    from _mvg_capability_append import RunBudgetExhausted, SlicePauseRequested
     from _mvg_capability_worker import runner_invoke
 
     frozen = runtime.frozen_input(root, state)
@@ -2351,6 +2484,7 @@ def make_segmented_selector_factory(root: Path, run_dir: Path, state: dict, conf
             output_schema: dict,
             before_dispatch,
         ):
+            effective_pause = should_pause if should_pause is not None else _ACTIVE_SHOULD_PAUSE.get()
             index_materials = wire.read_prompt(prompt, runtime.wire_delivery(state))
             if not index_materials.get("tournament_mode"):
                 ws_text = seg_input._runner_wrapper_text(prompt, output_schema, compact_schema_file=False)
@@ -2359,6 +2493,8 @@ def make_segmented_selector_factory(root: Path, run_dir: Path, state: dict, conf
                     int(runtime.measure_actual(frozen, ws_text, output_schema)["request_bytes"]),
                 )
                 _assert_under_70k(eff_bytes, frozen, "selector-single-turn")
+                if effective_pause is not None and effective_pause():
+                    raise SlicePauseRequested("b_route_slice_pause_requested")
                 return runner_invoke(root, run_dir, state, workspace, config, HostMailbox())(
                     prompt,
                     attempt,
@@ -2370,11 +2506,8 @@ def make_segmented_selector_factory(root: Path, run_dir: Path, state: dict, conf
 
             # 3-turn Pairwise + Final Synthesis Tournament when 3-candidate materials exceed 70k / 96k
             aliases = list(index_materials["identity"]["candidates"].keys())
-            needed_turns = len(aliases)
             ledger = state["capability_selection"]
             limit = state.get("mvg.run_invocation_limit", 192)
-            if limit - ledger["total_invocations"] < needed_turns:
-                raise RunBudgetExhausted("run_blocked_budget_exhausted")
 
             sidecar_path = workspace / SELECTOR_FULL_SIDECAR_NAME
             if not sidecar_path.is_file():
@@ -2384,7 +2517,11 @@ def make_segmented_selector_factory(root: Path, run_dir: Path, state: dict, conf
                 raise ValueError("b_route_segmented_selector_sidecar_changed")
 
             attempts_list = ledger["current"]["selection_attempts"]
-            target_attempt_len = len(attempts_list) + 1
+            target_attempt_len = (
+                len(attempts_list)
+                if any(row.get("attempt") == attempt for row in attempts_list)
+                else (len(attempts_list) + 1)
+            )
             reservation_ids: list[str] = []
             bindings_list: list[dict] = []
 
@@ -2396,12 +2533,65 @@ def make_segmented_selector_factory(root: Path, run_dir: Path, state: dict, conf
                 reservation_ids.append(res["reservation_id"])
                 return res
 
-            def run_pair(pair_no: int, left: str, right: str) -> dict:
+            def _replay_selector_call(
+                expected_binding_path: Path, expected_prompt: str, expected_schema: dict
+            ) -> tuple[dict, dict] | None:
+                rel_binding = expected_binding_path.relative_to(run_dir).as_posix()
+                matches = [
+                    row
+                    for row in ledger.get("calls", [])
+                    if (row.get("request_identity") or {}).get("execution_binding_path") == rel_binding
+                    and row.get("phase") == "selection"
+                ]
+                if not matches:
+                    return None
+                if len(matches) != 1:
+                    raise ValueError("b_route_segmented_selector_duplicate_reservation")
+                coord_row = matches[0]
+                binding = verify_segmented_reserved_call(
+                    run_dir, coord_row, state=state, check_originals=False
+                )
+                if binding is None or (coord_row.get("outcome") or {}).get("status") != "completed":
+                    raise ValueError("b_route_segmented_selector_reserved_call_failed")
+                req_id = coord_row.get("request_identity") or {}
+                expected_ws_text = seg_input._runner_wrapper_text(
+                    expected_prompt, expected_schema, compact_schema_file=False
+                )
+                if (
+                    req_id.get("actual_request_sha256") != codec.raw_digest(expected_ws_text.encode("utf-8"))
+                    or req_id.get("selection_input_sha256") != ledger["current"].get("input_sha256")
+                    or not runtime.same_json(
+                        codec.strict_json_loads(Path(binding["schema_path"]).read_bytes()),
+                        expected_schema,
+                    )
+                ):
+                    raise ValueError("b_route_segmented_selector_replay_changed")
+                return coord_row, binding
+
+            def run_pair(pair_no: int, left: str, right: str, *, remaining_turns: int) -> dict:
                 pair = [left, right]
                 _, pair_prompt, pair_schema = _build_pair_materials_and_prompt(
                     state, frozen, index_materials, full_materials, pair_no, left, right
                 )
                 pair_dir = workspace / f"p{pair_no}"
+                replayed = _replay_selector_call(
+                    pair_dir / f"execution-binding-{attempt}-o.json",
+                    pair_prompt,
+                    pair_schema,
+                )
+                if replayed is not None:
+                    coord_row, binding = replayed
+                    parsed = codec.strict_json_loads(Path(binding["output_path"]).read_bytes())
+                    errs = _pairwise_selection_errors(pair, parsed)
+                    if errs:
+                        raise ValueError("b_route_pairwise_selection_output_invalid:" + ";".join(errs))
+                    reservation_ids.append(coord_row["reservation_id"])
+                    bindings_list.append(binding)
+                    return parsed
+                if limit - ledger["total_invocations"] < remaining_turns:
+                    raise RunBudgetExhausted("run_blocked_budget_exhausted")
+                if effective_pause is not None and effective_pause():
+                    raise SlicePauseRequested("b_route_slice_pause_requested")
                 out_path, exec_res = runner_invoke(root, run_dir, state, pair_dir, config, HostMailbox())(
                     pair_prompt,
                     attempt,
@@ -2417,13 +2607,16 @@ def make_segmented_selector_factory(root: Path, run_dir: Path, state: dict, conf
                 bindings_list.append(exec_res["execution_binding"])
                 return parsed
 
-            p1_parsed = run_pair(1, aliases[0], aliases[1])
+            total_turns = len(aliases)
+            p1_parsed = run_pair(1, aliases[0], aliases[1], remaining_turns=total_turns)
             champ = p1_parsed["selected"]
             pairwise_verdicts: dict = {
                 "pair_1": {"pair": [aliases[0], aliases[1]], "result": p1_parsed},
             }
             for idx, challenger in enumerate(aliases[2:], 2):
-                pn_parsed = run_pair(idx, champ, challenger)
+                pn_parsed = run_pair(
+                    idx, champ, challenger, remaining_turns=total_turns - (idx - 1)
+                )
                 pairwise_verdicts[f"pair_{idx}"] = {"pair": [champ, challenger], "result": pn_parsed}
                 champ = pn_parsed["selected"]
             pairwise_verdicts["bracket_winner"] = champ
@@ -2438,6 +2631,11 @@ def make_segmented_selector_factory(root: Path, run_dir: Path, state: dict, conf
                 int(runtime.measure_actual(frozen, turn3_ws_text, output_schema)["request_bytes"]),
             )
             _assert_under_70k(turn3_eff, frozen, "selector-turn3-synthesis")
+
+            if limit - ledger["total_invocations"] < 1:
+                raise RunBudgetExhausted("run_blocked_budget_exhausted")
+            if effective_pause is not None and effective_pause():
+                raise SlicePauseRequested("b_route_slice_pause_requested")
 
             turn3_out_path, turn3_exec = runner_invoke(
                 root, run_dir, state, workspace, config, HostMailbox()

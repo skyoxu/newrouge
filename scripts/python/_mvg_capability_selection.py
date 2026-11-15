@@ -10,7 +10,7 @@ from pathlib import Path
 from _planning_skill_common import atomic_json, canonical_sha, file_sha, load_json, parse_model_json, repo_path
 from _mvg_capability_generation import capability_scopes, seed_proposal, generate_append, admission_proof
 import _mvg_capability_checkpoint as selected_checkpoint
-from _mvg_capability_append import RunBudgetExhausted
+from _mvg_capability_append import RunBudgetExhausted, SlicePauseRequested
 
 STRATEGY = "capability-local-selection.v1"
 
@@ -538,15 +538,46 @@ def selector_cost_preflight(path, *, remaining_run, lineage_invocations, future_
         unknown_future_scope_estimate={"run": 7 * future_scopes, "lineage": 2 * future_scopes})
 
 
-def generate_selected_capabilities(root, run_dir, state, *, backend, invoke_factory, selector_factory, worker_config=None):
+def generate_selected_capabilities(
+    root,
+    run_dir,
+    state,
+    *,
+    backend,
+    invoke_factory,
+    selector_factory,
+    worker_config=None,
+    max_new_dispatches=None,
+    pause_after_sec=None,
+):
     disk = load_json(run_dir / "run.json", None)
     if isinstance(disk, dict) and disk != state:
         raise ValueError("capability_coordinator_state_changed")
-    return _generate_selected_capabilities(root, run_dir, state, backend=backend,
-        invoke_factory=invoke_factory, selector_factory=selector_factory, worker_config=worker_config)
+    return _generate_selected_capabilities(
+        root,
+        run_dir,
+        state,
+        backend=backend,
+        invoke_factory=invoke_factory,
+        selector_factory=selector_factory,
+        worker_config=worker_config,
+        max_new_dispatches=max_new_dispatches,
+        pause_after_sec=pause_after_sec,
+    )
 
 
-def _generate_selected_capabilities(root, run_dir, state, *, backend, invoke_factory, selector_factory, worker_config=None):
+def _generate_selected_capabilities(
+    root,
+    run_dir,
+    state,
+    *,
+    backend,
+    invoke_factory,
+    selector_factory,
+    worker_config=None,
+    max_new_dispatches=None,
+    pause_after_sec=None,
+):
     import plan_mvg as pm
     from _b_route_planning_runtime import enabled as is_3b
     if is_3b(state) and state.get("selection_status") == "selected":
@@ -570,6 +601,16 @@ def _generate_selected_capabilities(root, run_dir, state, *, backend, invoke_fac
     started = _monotonic()
     initial_active = state.get("active_elapsed_seconds", 0)
     candidate_deadlines = {}
+    slice_dispatches = [0]
+
+    def slice_exhausted():
+        if not is_3b(state):
+            return False
+        if max_new_dispatches is not None and slice_dispatches[0] >= max_new_dispatches:
+            return True
+        if pause_after_sec is not None and (_monotonic() - started) >= pause_after_sec:
+            return True
+        return False
 
     def persist():
         if is_3b(state):
@@ -631,6 +672,7 @@ def _generate_selected_capabilities(root, run_dir, state, *, backend, invoke_fac
             authorize_selector_reservation(root, state, phase=phase, candidate=label,
                 request_identity=request, reservation=receipt)
         ledger["total_invocations"] = next_number
+        slice_dispatches[0] += 1
         if label is not None:
             ledger["lineage_invocations"][label] += 1
         ledger.setdefault("calls", []).append(receipt)
@@ -735,6 +777,22 @@ def _generate_selected_capabilities(root, run_dir, state, *, backend, invoke_fac
             for label in candidate_labels(state):
                 admission = current["admissions"].get(label)
                 if admission is None or admission.get("retryable") is True:
+                    if slice_exhausted():
+                        state.update(phase="paused-between-slices", selection_status="pending")
+                        state.pop("selection_block_reason", None)
+                        persist()
+                        return {
+                            "run_id": state["run_id"],
+                            "status": "paused",
+                            "phase": "paused-between-slices",
+                            "selection_status": "pending",
+                            "paused_at": "before_candidate",
+                            "candidate": label,
+                            "capability_id": scope["capability_id"],
+                            "scope_index": index,
+                            "total_invocations": ledger["total_invocations"],
+                            "new_dispatches": slice_dispatches[0],
+                        }
                     budget_root = candidate_root(run_dir, label, generation(state))
                     workspace = scope_workspace(run_dir, label, index, generation(state), current.get("execution", 1))
                     def checkpoint(progress, label=label):
@@ -765,6 +823,15 @@ def _generate_selected_capabilities(root, run_dir, state, *, backend, invoke_fac
                             if is_3b(state):
                                 service_state = deepcopy(state)
                                 service_state.update(runtime_slot=label, runtime_execution=current.get("execution", 1))
+                            from _b_route_3b_segmented_runtime import is_segmented_state, slice_pause_guard
+                            if is_segmented_state(service_state):
+                                with slice_pause_guard(slice_exhausted):
+                                    return generate_append(root, service_state, workspace,
+                                        invoke_factory=lambda target: invoke_factory(budget_root, target, label),
+                                        before_call=lambda phase, request_identity=None: reserve(phase, label, request_identity),
+                                        checkpoint=checkpoint, scope_index=index, accepted_seed=accepted,
+                                        selected_records=prefix, cost_budget=cost_budget,
+                                        replacement=(lambda **kwargs: reserve_replacement(label, **kwargs)) if is_3b(state) else None)
                             return generate_append(root, service_state, workspace,
                                 invoke_factory=lambda target: invoke_factory(budget_root, target, label),
                                 before_call=lambda phase, request_identity=None: reserve(phase, label, request_identity),
@@ -803,6 +870,19 @@ def _generate_selected_capabilities(root, run_dir, state, *, backend, invoke_fac
                             if state.get("b_route_mvg_synthesis_recovery") and label == "candidate-2" and index == 0:
                                 from _b_route_mvg_synthesis_recovery import NAMESPACE
                                 lifecycle_name = "lifecycle-" + NAMESPACE
+                            if lifecycle_name == "lifecycle" and (workspace / lifecycle_name).exists():
+                                local_ledger_path = workspace / "capability-append/append-ledger.json"
+                                local_ledger = load_json(local_ledger_path, {}) if local_ledger_path.is_file() else {}
+                                clean_pause = (
+                                    state.get("phase") == "paused-between-slices"
+                                    or local_ledger.get("status") == "paused"
+                                    or (isinstance(admission, dict) and admission.get("status") == "paused")
+                                )
+                                if clean_pause:
+                                    slice_idx = 2
+                                    while (workspace / f"{lifecycle_name}-s{slice_idx}").exists():
+                                        slice_idx += 1
+                                    lifecycle_name = f"{lifecycle_name}-s{slice_idx}"
                             result = run_candidate(workspace / lifecycle_name, {
                                 "root": str(root.resolve()), "run_dir": str(run_dir.resolve()),
                                 "workspace": str(workspace.resolve()), "state": private_state,
@@ -811,8 +891,39 @@ def _generate_selected_capabilities(root, run_dir, state, *, backend, invoke_fac
                                 reserve=lambda phase, request_identity=None: reserve(phase, label, request_identity),
                                 cost_budget=cost_budget, outcome=publish_outcome, inline=inline,
                                 replacement=(lambda **kwargs: reserve_replacement(label, **kwargs)) if is_3b(state) else None,
+                                should_pause=slice_exhausted if is_3b(state) else None,
                                 **deadline_options)
                             checkpoint(result)
+                        if result.get("status") == "paused":
+                            admission = {
+                                "candidate": label,
+                                "status": "paused",
+                                "lineage": f"{label}-r{generation(state)}",
+                                "generation": generation(state),
+                                "execution": current.get("execution", 1),
+                                "workspace": workspace.relative_to(run_dir).as_posix(),
+                                "errors": result.get("errors", []),
+                                "append_terminal": False,
+                                "retryable": True,
+                                "total_invocations": result["total_invocations"],
+                            }
+                            current["admissions"][label] = admission
+                            state["candidate_admissions"][label] = deepcopy(admission)
+                            state.update(phase="paused-between-slices", selection_status="pending")
+                            state.pop("selection_block_reason", None)
+                            persist()
+                            return {
+                                "run_id": state["run_id"],
+                                "status": "paused",
+                                "phase": "paused-between-slices",
+                                "selection_status": "pending",
+                                "paused_at": "candidate",
+                                "candidate": label,
+                                "capability_id": scope["capability_id"],
+                                "scope_index": index,
+                                "total_invocations": ledger["total_invocations"],
+                                "new_dispatches": slice_dispatches[0],
+                            }
                         admission = {"candidate": label, "status": result["status"], "lineage": f"{label}-r{generation(state)}",
                             "generation": generation(state),
                             "execution": current.get("execution", 1),
@@ -933,8 +1044,25 @@ def _generate_selected_capabilities(root, run_dir, state, *, backend, invoke_fac
                 selection = recorded
                 break
             while selection is None and len(attempts) < pm.MVG_SELECTION_ATTEMPT_LIMIT:
+                if slice_exhausted():
+                    current["stage"] = "selection-paused"
+                    state.update(phase="paused-between-slices", selection_status="pending")
+                    state.pop("selection_block_reason", None)
+                    persist()
+                    return {
+                        "run_id": state["run_id"],
+                        "status": "paused",
+                        "phase": "paused-between-slices",
+                        "selection_status": "pending",
+                        "paused_at": "before_selection",
+                        "capability_id": scope["capability_id"],
+                        "scope_index": index,
+                        "total_invocations": ledger["total_invocations"],
+                        "new_dispatches": slice_dispatches[0],
+                    }
+                paused_attempt = next((row for row in attempts if row.get("status") == "paused"), None)
                 current["stage"] = "selection-preparing"
-                number = len(attempts) + 1
+                number = paused_attempt["attempt"] if paused_attempt is not None else (len(attempts) + 1)
                 if _selector_recovery_active(state):
                     from _b_route_selector_recovery import selector_workspace
                     workspace = selector_workspace(root, state, index, number)
@@ -987,9 +1115,12 @@ def _generate_selected_capabilities(root, run_dir, state, *, backend, invoke_fac
                         public_identity, accepted, {label: load_json(workspace / f"{alias}.json")
                             for alias, label in aliases.items()}, aliases, workspace, work=selection_work)
                     prompt = selector_prompt(materials, work=selection_work)
-                recorded = {"attempt": number, "status": "preparing"}
-                if is_3b(state):
-                    recorded.update(generation=generation(state), execution=current.get("execution", 1))
+                if paused_attempt is not None:
+                    recorded = paused_attempt
+                else:
+                    recorded = {"attempt": number, "status": "preparing"}
+                    if is_3b(state):
+                        recorded.update(generation=generation(state), execution=current.get("execution", 1))
                 persist()
                 try:
                     pm._validate_input_freshness(root, run_dir, state)
@@ -1012,14 +1143,27 @@ def _generate_selected_capabilities(root, run_dir, state, *, backend, invoke_fac
                     def dispatch_selection(request_identity=None):
                         def publish(reservation):
                             recorded.update(status="running", reservation_id=reservation["reservation_id"])
-                            attempts.append(recorded)
+                            if all(row is not recorded for row in attempts):
+                                attempts.append(recorded)
                             current["stage"] = "selection-executing"
                         return reserve("selection", request_identity=request_identity, publish=publish)
                     selected_invoke = (selector_factory(workspace, outcome=publish_outcome) if is_3b(state)
                         else selector_factory(workspace))
-                    output, execution = selected_invoke(prompt, number,
-                        output_name="selection.json", output_schema_path=workspace / "output-schema.json",
-                        output_schema=schema, before_dispatch=dispatch_selection)
+                    if is_3b(state):
+                        from _b_route_3b_segmented_runtime import is_segmented_state, slice_pause_guard
+                        if is_segmented_state(state):
+                            with slice_pause_guard(slice_exhausted):
+                                output, execution = selected_invoke(prompt, number,
+                                    output_name="selection.json", output_schema_path=workspace / "output-schema.json",
+                                    output_schema=schema, before_dispatch=dispatch_selection)
+                        else:
+                            output, execution = selected_invoke(prompt, number,
+                                output_name="selection.json", output_schema_path=workspace / "output-schema.json",
+                                output_schema=schema, before_dispatch=dispatch_selection)
+                    else:
+                        output, execution = selected_invoke(prompt, number,
+                            output_name="selection.json", output_schema_path=workspace / "output-schema.json",
+                            output_schema=schema, before_dispatch=dispatch_selection)
                     result = parse_model_json(output)
                     errors = selection_errors(state, result, candidate_labels=set(candidate_labels(state)),
                         incumbent_present=False, alias_mapping=aliases, viable_labels=set(candidate_labels(state)))
@@ -1045,8 +1189,27 @@ def _generate_selected_capabilities(root, run_dir, state, *, backend, invoke_fac
                     selection = deepcopy(recorded)
                 except RunBudgetExhausted:
                     raise
+                except SlicePauseRequested:
+                    if any(row is recorded for row in attempts):
+                        recorded["status"] = "paused"
+                    current["stage"] = "selection-paused"
+                    state.update(phase="paused-between-slices", selection_status="pending")
+                    state.pop("selection_block_reason", None)
+                    persist()
+                    return {
+                        "run_id": state["run_id"],
+                        "status": "paused",
+                        "phase": "paused-between-slices",
+                        "selection_status": "pending",
+                        "paused_at": "selection",
+                        "attempt": number,
+                        "capability_id": scope["capability_id"],
+                        "scope_index": index,
+                        "total_invocations": ledger["total_invocations"],
+                        "new_dispatches": slice_dispatches[0],
+                    }
                 except (OSError, RuntimeError, ValueError, TimeoutError) as exc:
-                    if recorded["status"] == "preparing":
+                    if all(row is not recorded for row in attempts):
                         raise
                     recorded.update(status="failed", error=str(exc))
                     if is_3b(state):

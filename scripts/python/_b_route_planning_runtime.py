@@ -2284,10 +2284,17 @@ def cli_stage(args, *, planner):
     stage = getattr(args, "input_stage", "legacy")
     profile = getattr(args, "planning_profile", None)
     prepared_ref = getattr(args, "prepared_ref", None)
+    max_new_dispatches = getattr(args, "max_new_dispatches", None)
+    pause_after_sec = getattr(args, "pause_after_sec", None)
     if stage == "legacy":
+        if max_new_dispatches is not None or pause_after_sec is not None:
+            raise ValueError("b_route_runtime_requires_explicit_3b")
         if args.command == "verify-selection" or profile or (prepared_ref and args.command not in {"validate", "validate-candidate"}):
             raise ValueError("b_route_runtime_requires_explicit_3b")
         return None
+    if max_new_dispatches is not None or pause_after_sec is not None:
+        if args.command != "generate":
+            raise ValueError("b_route_runtime_slice_limit_requires_generate")
     if args.command == "prepare":
         if profile:
             raise ValueError("3b prepare owns planning-contract; runtime profile starts at generate")
@@ -2302,10 +2309,24 @@ def cli_stage(args, *, planner):
         raise ValueError("--planning-contract is limited to prepare")
     return operate(Path(args.repo_root).absolute(), planner=planner, command=args.command, run_id=args.run_id,
         prepared_ref=prepared_ref, profile=profile, runner=getattr(args, "runner", None),
-        timeout_sec=getattr(args, "timeout_sec", 1800))
+        timeout_sec=getattr(args, "timeout_sec", 1800),
+        max_new_dispatches=max_new_dispatches,
+        pause_after_sec=pause_after_sec)
 
 
-def operate(root, *, planner, command, run_id, prepared_ref, profile, runner=None, timeout_sec=1800):
+def operate(
+    root,
+    *,
+    planner,
+    command,
+    run_id,
+    prepared_ref,
+    profile,
+    runner=None,
+    timeout_sec=1800,
+    max_new_dispatches=None,
+    pause_after_sec=None,
+):
     from _mvg_capability_checkpoint import coordinator_lock, recover_commit_outcome
     from _mvg_capability_selection import generate_selected_capabilities, verified_prefix
     from _planning_skill_common import inspect_isolated_runner
@@ -2313,6 +2334,12 @@ def operate(root, *, planner, command, run_id, prepared_ref, profile, runner=Non
     root = planning.root_path(root)
     if profile not in PROFILES or PROFILES[profile][0] != planner or command not in {"generate", "review", "verify-selection", "status", "validate"}:
         raise ValueError("b_route_runtime_command_or_profile_invalid")
+    if command != "generate" and (max_new_dispatches is not None or pause_after_sec is not None):
+        raise ValueError("b_route_runtime_slice_limit_requires_generate")
+    if max_new_dispatches is not None and (type(max_new_dispatches) is not int or max_new_dispatches < 0):
+        raise ValueError("b_route_runtime_max_new_dispatches_invalid")
+    if pause_after_sec is not None and (type(pause_after_sec) is not int or pause_after_sec < 0):
+        raise ValueError("b_route_runtime_pause_after_sec_invalid")
     run_dir = run_location(root, planner, run_id)
     if not run_dir.exists():
         if command != "generate":
@@ -2386,7 +2413,8 @@ def operate(root, *, planner, command, run_id, prepared_ref, profile, runner=Non
                             return outcome(kwargs["reservation_id"], kwargs["outcome"])
                     return runner_invoke(root, run_dir, state, workspace, config, HostMailbox())
             result = generate_selected_capabilities(root, run_dir, state, backend="isolated-runner",
-                invoke_factory=None, selector_factory=active_selector_factory, worker_config=config)
+                invoke_factory=None, selector_factory=active_selector_factory, worker_config=config,
+                max_new_dispatches=max_new_dispatches, pause_after_sec=pause_after_sec)
             return {**result, "input_stage": "3b", "formal_adoption": False, "runtime_verified": False}
         if command == "status" and state.get("selection_status") != "selected":
             return {"run_id": run_id, "phase": state["phase"], "selection_status": state["selection_status"],

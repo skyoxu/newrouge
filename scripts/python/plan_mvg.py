@@ -7325,6 +7325,8 @@ def main(argv: list[str] | None = None) -> int:
     p_generate.add_argument("--run-id", required=True)
     p_generate.add_argument("--timeout-sec", type=int, default=1800)
     p_generate.add_argument("--llm-backend", default="codex-cli")
+    p_generate.add_argument("--max-new-dispatches", type=int, default=None)
+    p_generate.add_argument("--pause-after-sec", type=int, default=None)
 
     p_review = sub.add_parser("review")
     p_review.add_argument("--run-id", required=True)

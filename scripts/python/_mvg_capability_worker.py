@@ -175,17 +175,20 @@ def execute(job_path):
     root, run_dir, workspace = (Path(data[key]) for key in ("root", "run_dir", "workspace"))
     mailbox = Mailbox(job_path.parent / "mailbox", binding)
     state = data["state"]
-    result = generate_append(root, state, workspace,
-        invoke_factory=lambda target: runner_invoke(root, run_dir, state, target, data["runner"], mailbox),
-        before_call=lambda phase, request_identity=None: mailbox.request("reserve", phase=phase,
-            request_identity=request_identity),
-        checkpoint=lambda progress: atomic_json(job_path.parent / "progress.json", {
-            "status": progress["status"], "total_invocations": progress["total_invocations"]}),
-        scope_index=data["scope_index"], accepted_seed=data["accepted_seed"],
-        selected_records=data["selected_records"],
-        cost_budget=lambda phase, **kwargs: mailbox.request("cost", phase=phase, **kwargs),
-        replacement=(lambda **kwargs: mailbox.request("replacement", **kwargs))
-            if data["state"].get("input_stage") == "3b" else None)
+    from _b_route_3b_segmented_runtime import is_segmented_state, slice_pause_guard
+    pause_cb = (lambda: mailbox.request("check_pause")) if is_segmented_state(state) else None
+    with slice_pause_guard(pause_cb):
+        result = generate_append(root, state, workspace,
+            invoke_factory=lambda target: runner_invoke(root, run_dir, state, target, data["runner"], mailbox),
+            before_call=lambda phase, request_identity=None: mailbox.request("reserve", phase=phase,
+                request_identity=request_identity),
+            checkpoint=lambda progress: atomic_json(job_path.parent / "progress.json", {
+                "status": progress["status"], "total_invocations": progress["total_invocations"]}),
+            scope_index=data["scope_index"], accepted_seed=data["accepted_seed"],
+            selected_records=data["selected_records"],
+            cost_budget=lambda phase, **kwargs: mailbox.request("cost", phase=phase, **kwargs),
+            replacement=(lambda **kwargs: mailbox.request("replacement", **kwargs))
+                if data["state"].get("input_stage") == "3b" else None)
     # Intermediate drafts and model conversations never cross this boundary.
     output = {"schema_version": SCHEMA, "identity": binding, "pid": os.getpid(),
         "status": result["status"], "total_invocations": result["total_invocations"],
@@ -243,7 +246,7 @@ def _cleanup_candidate(process, job, job_dir, flags, *, primary_error, cleanup_t
     raise error
 
 
-def run_candidate(job_dir, data, *, reserve, cost_budget, outcome, inline=None, replacement=None, timeout_sec=None):
+def run_candidate(job_dir, data, *, reserve, cost_budget, outcome, inline=None, replacement=None, timeout_sec=None, should_pause=None):
     """Run a real OS child; the optional inline callable is a unit-test seam."""
     deadline = time.monotonic() + timeout_sec if timeout_sec is not None else None
     job_dir.mkdir(parents=True, exist_ok=False)
@@ -289,6 +292,8 @@ def run_candidate(job_dir, data, *, reserve, cost_budget, outcome, inline=None, 
                             value = replacement(context=request["context"], issue=request["issue"])
                         elif kind == "outcome":
                             value = outcome(request["reservation_id"], request["outcome"])
+                        elif kind == "check_pause":
+                            value = bool(should_pause()) if should_pause is not None else False
                         else:
                             raise ValueError("worker_mailbox_request_kind_invalid")
                         response["value"] = value

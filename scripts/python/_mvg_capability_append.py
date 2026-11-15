@@ -21,6 +21,10 @@ class RunBudgetExhausted(ValueError):
     """A frozen run budget ended; this is never a candidate finding."""
 
 
+class SlicePauseRequested(RuntimeError):
+    """Coordinator-requested clean inter-dispatch pause between bounded slices."""
+
+
 def issue_key(issue: dict[str, Any]) -> str:
     return str(issue.get("code", "invalid")) + "@" + str(issue.get("path", ""))
 
@@ -140,7 +144,7 @@ def run_capability_append(workspace: Path, *, scopes: list[dict[str, Any]], seed
                           repair_check: Any = None, merge: Any = None, preserve: Any = None,
                           replacement: Any = None, fail_execution_closed: bool = False,
                           resume_propose_attempt: Any = None, repairability: Any = None,
-                          machine_repair_check: Any = None) -> dict[str, Any]:
+                          machine_repair_check: Any = None, prepare_repair_origin: Any = None) -> dict[str, Any]:
     """Admit each slice; retry one issue three times, then restart that slice."""
     merge = merge or merge_append
     preserve = preserve or preservation_errors
@@ -196,6 +200,8 @@ def run_capability_append(workspace: Path, *, scopes: list[dict[str, Any]], seed
         raise ValueError("Capability append checkpoint changed")
     if ledger["status"] in {"retired", "blocked"}:
         return ledger
+    if ledger["status"] == "paused":
+        ledger["status"] = "generating"
     try:
         for index in range(len(ledger["records"]), len(scopes)):
             scope = scopes[index]
@@ -207,90 +213,129 @@ def run_capability_append(workspace: Path, *, scopes: list[dict[str, Any]], seed
             if current["capability_id"] != scope["capability_id"]:
                 raise ValueError("Capability append current scope changed")
             while True:
-                issue = current["issue"]
-                if issue:
-                    key = issue_key(issue)
-                    locally_repairable = True if repairability is None else repairability(
-                        deepcopy(current["proposal"]), deepcopy(issue))
-                    if type(locally_repairable) is not bool:
-                        raise ValueError("append_repairability_boolean_required")
-                    resumed = False
-                    if resume_propose_attempt is not None:
-                        resumed = resume_propose_attempt(deepcopy(current), deepcopy(ledger))
-                        if type(resumed) is not bool:
-                            raise ValueError("append_resume_propose_attempt_boolean_required")
-                    if resumed:
-                        # The typed owner durably claims only a partially executed
-                        # attempt already counted here. No counter is refunded.
-                        pass
-                    elif not locally_repairable or current["issue_attempts"].get(key, 0) >= 3:
-                        if not locally_repairable and replacement is None:
-                            ledger.update(status="retired", errors=[{"code": "append_unrepairable_business_issue"}])
-                            persist()
-                            return ledger
-                        if replacement is not None:
-                            approval = replacement(context=current["context"] + 1, issue=key)
-                            if approval is None:
-                                ledger.update(status="retired", errors=[{"code": "append_replacement_rounds_exhausted"}])
+                pending_semantic = current.get("pending_semantic")
+                resume_semantic_only = isinstance(pending_semantic, dict)
+                resumed_from_paused_generate = bool(not resume_semantic_only and current.get("paused_in_generate"))
+                issue = deepcopy(current.get("issue")) if resume_semantic_only else current["issue"]
+                issue_attempts_before = deepcopy(current["issue_attempts"])
+                review_only = bool(issue and issue.get("code") == "append_semantic_execution_invalid"
+                                   and current["proposal"] is not None)
+                if not resume_semantic_only:
+                    if issue and not resumed_from_paused_generate:
+                        key = issue_key(issue)
+                        locally_repairable = True if repairability is None else repairability(
+                            deepcopy(current["proposal"]), deepcopy(issue))
+                        if type(locally_repairable) is not bool:
+                            raise ValueError("append_repairability_boolean_required")
+                        resumed = False
+                        if resume_propose_attempt is not None:
+                            resumed = resume_propose_attempt(deepcopy(current), deepcopy(ledger))
+                            if type(resumed) is not bool:
+                                raise ValueError("append_resume_propose_attempt_boolean_required")
+                        if resumed:
+                            # The typed owner durably claims only a partially executed
+                            # attempt already counted here. No counter is refunded.
+                            pass
+                        elif not locally_repairable or current["issue_attempts"].get(key, 0) >= 3:
+                            if not locally_repairable and replacement is None:
+                                ledger.update(status="retired", errors=[{"code": "append_unrepairable_business_issue"}])
                                 persist()
                                 return ledger
-                            ledger.setdefault("replacement_reservations", []).append(approval)
-                        ledger["restarts"].append({"capability_id": scope["capability_id"],
-                            "context": current["context"], "issue_id": key,
-                            "repair_attempts": current["issue_attempts"].get(key, 0),
-                            **({"reason": "unrepairable_business_issue"} if not locally_repairable else {})})
-                        # Only the immutable scope and accepted predecessors survive.
-                        current = {"capability_id": scope["capability_id"], "context": current["context"] + 1,
-                                   "issue": None, "issue_attempts": {}, "proposal": None, "delta": None}
-                        ledger["current"] = current
-                        issue = None
-                    else:
-                        current["issue_attempts"][key] = current["issue_attempts"].get(key, 0) + 1
-                persist()
-                before_invocations = ledger["total_invocations"]
-                stage = "generate"
-                proposal = None
-                delta = None
-                try:
-                    review_only = bool(issue and issue.get("code") == "append_semantic_execution_invalid"
-                                       and current["proposal"] is not None)
-                    if review_only:
-                        proposal, delta = deepcopy(current["proposal"]), deepcopy(current["delta"])
-                    else:
-                        delta = propose(scope, deepcopy(ledger["accepted"]), deepcopy(current["proposal"]),
-                                        deepcopy(issue), current["context"], call)
-                        proposal = merge(ledger["accepted"], delta, scope)
-                    preservation_issues = preserve(ledger["accepted"], proposal)
-                    machine_issues = machine(scope, ledger["accepted"], proposal)
-                    issues = preservation_issues + machine_issues
-                    if any(str(row.get('code', '')).startswith('requirement_source_gap:') for row in issues):
-                        ledger.update(status='blocked', errors=deepcopy(issues))
-                        current.update(proposal=proposal, delta=delta, issues=issues)
-                        persist()
-                        return ledger
-                    rejection = []
-                    if issue and current["proposal"] is not None and not review_only:
-                        old_preservation = preserve(ledger["accepted"], current["proposal"])
-                        old_machine = machine(scope, ledger["accepted"], current["proposal"])
-                        if machine_repair_check is None:
-                            # Preserve the original combined difference for legacy callers.
-                            if {issue_key(row) for row in issues} - {issue_key(row) for row in old_preservation + old_machine}:
-                                rejection.append("repair_new_machine_issue")
+                            if replacement is not None:
+                                approval = replacement(context=current["context"] + 1, issue=key)
+                                if approval is None:
+                                    ledger.update(status="retired", errors=[{"code": "append_replacement_rounds_exhausted"}])
+                                    persist()
+                                    return ledger
+                                ledger.setdefault("replacement_reservations", []).append(approval)
+                            ledger["restarts"].append({"capability_id": scope["capability_id"],
+                                "context": current["context"], "issue_id": key,
+                                "repair_attempts": current["issue_attempts"].get(key, 0),
+                                **({"reason": "unrepairable_business_issue"} if not locally_repairable else {})})
+                            # Only the immutable scope and accepted predecessors survive.
+                            current = {"capability_id": scope["capability_id"], "context": current["context"] + 1,
+                                       "issue": None, "issue_attempts": {}, "proposal": None, "delta": None}
+                            ledger["current"] = current
+                            issue = None
+                            issue_attempts_before = {}
                         else:
-                            # Preservation is independent authority. A machine witness
-                            # can never exempt a newly weakened accepted predecessor.
-                            if {issue_key(row) for row in preservation_issues} - {issue_key(row) for row in old_preservation}:
-                                rejection.append("repair_new_preservation_issue")
-                            machine_rejection = machine_repair_check(deepcopy(current["proposal"]), deepcopy(proposal))
-                            if (type(machine_rejection) is not list or
-                                    any(type(error) is not str or not error for error in machine_rejection)):
-                                raise ValueError("append_machine_repair_errors_required")
-                            rejection += machine_rejection
-                        if repair_check:
-                            rejection += repair_check(current["proposal"], proposal, issue, scope=scope)
+                            current["issue_attempts"][key] = current["issue_attempts"].get(key, 0) + 1
+                    if not resumed_from_paused_generate or "propose_start_call" not in current:
+                        current["propose_start_call"] = ledger["total_invocations"]
+                    persist()
+                    before_invocations = ledger["total_invocations"]
+                    stage = "generate"
+                    proposal = None
+                    delta = None
+                else:
+                    delta = deepcopy(pending_semantic["delta"])
+                    proposal = merge(ledger["accepted"], delta, scope)
+                    if canonical_sha(proposal) != canonical_sha(pending_semantic["proposal"]):
+                        raise ValueError("Capability append paused semantic proposal changed")
+                    if prepare_repair_origin is not None and not review_only:
+                        prior_prop = pending_semantic.get("prior_proposal")
+                        repaired_iss = pending_semantic.get("repaired_issue")
+                        prepare_repair_origin(scope, ledger["accepted"], deepcopy(prior_prop),
+                                              deepcopy(repaired_iss), current["context"])
+                    persist()
+                    before_invocations = ledger["total_invocations"]
+                    stage = "semantic"
+                try:
+                    if not resume_semantic_only:
+                        review_only = bool(issue and issue.get("code") == "append_semantic_execution_invalid"
+                                           and current["proposal"] is not None)
+                        if review_only:
+                            proposal, delta = deepcopy(current["proposal"]), deepcopy(current["delta"])
+                        else:
+                            delta = propose(scope, deepcopy(ledger["accepted"]), deepcopy(current["proposal"]),
+                                            deepcopy(issue), current["context"], call)
+                            proposal = merge(ledger["accepted"], delta, scope)
+                        current.pop("paused_in_generate", None)
+                        current.pop("propose_start_call", None)
+                        preservation_issues = preserve(ledger["accepted"], proposal)
+                        machine_issues = machine(scope, ledger["accepted"], proposal)
+                        issues = preservation_issues + machine_issues
+                        if any(str(row.get('code', '')).startswith('requirement_source_gap:') for row in issues):
+                            ledger.update(status='blocked', errors=deepcopy(issues))
+                            current.update(proposal=proposal, delta=delta, issues=issues)
+                            persist()
+                            return ledger
+                        rejection = []
+                        if issue and current["proposal"] is not None and not review_only:
+                            old_preservation = preserve(ledger["accepted"], current["proposal"])
+                            old_machine = machine(scope, ledger["accepted"], current["proposal"])
+                            if machine_repair_check is None:
+                                # Preserve the original combined difference for legacy callers.
+                                if {issue_key(row) for row in issues} - {issue_key(row) for row in old_preservation + old_machine}:
+                                    rejection.append("repair_new_machine_issue")
+                            else:
+                                # Preservation is independent authority. A machine witness
+                                # can never exempt a newly weakened accepted predecessor.
+                                if {issue_key(row) for row in preservation_issues} - {issue_key(row) for row in old_preservation}:
+                                    rejection.append("repair_new_preservation_issue")
+                                machine_rejection = machine_repair_check(deepcopy(current["proposal"]), deepcopy(proposal))
+                                if (type(machine_rejection) is not list or
+                                        any(type(error) is not str or not error for error in machine_rejection)):
+                                    raise ValueError("append_machine_repair_errors_required")
+                                rejection += machine_rejection
+                            if repair_check:
+                                rejection += repair_check(current["proposal"], proposal, issue, scope=scope)
+                    else:
+                        issues = preserve(ledger["accepted"], proposal) + machine(scope, ledger["accepted"], proposal)
+                        rejection = deepcopy(pending_semantic.get("rejection", []))
                     gate = None
                     if not issues and not rejection:
                         stage = "semantic"
+                        if not resume_semantic_only:
+                            current["pending_semantic"] = {
+                                "proposal": deepcopy(proposal),
+                                "delta": deepcopy(delta),
+                                "rejection": deepcopy(rejection),
+                                "prior_proposal": deepcopy(current["proposal"]),
+                                "repaired_issue": deepcopy(issue),
+                                "semantic_start_call": ledger["total_invocations"],
+                            }
+                            persist()
                         gate = semantic(scope, ledger["accepted"], proposal, call, current["context"])
                         issues = gate.get("issues", [])
                         if issue and issue.get("path") == "semantic-review":
@@ -300,14 +345,31 @@ def run_capability_append(workspace: Path, *, scopes: list[dict[str, Any]], seed
                             # making partial progress. Keep that proposal for
                             # the remaining original three repair attempts;
                             # admission still requires an issue-free review.
+                    current.pop("pending_semantic", None)
                     if rejection:
                         ledger.setdefault("rejected_repairs", []).append({"capability_id": scope["capability_id"],
                             "context": current["context"], "invocations": ledger["total_invocations"], "errors": rejection})
                         proposal, delta = deepcopy(current["proposal"]), deepcopy(current["delta"])
                         issues = deepcopy(current.get("issues") or [issue])
+                except SlicePauseRequested:
+                    if not resume_semantic_only and stage == "generate":
+                        start_call = current.get("propose_start_call", before_invocations)
+                        if ledger["total_invocations"] == start_call:
+                            if issue:
+                                current["issue_attempts"] = issue_attempts_before
+                            current.pop("paused_in_generate", None)
+                            current.pop("propose_start_call", None)
+                        else:
+                            current["paused_in_generate"] = True
+                    ledger["status"] = "paused"
+                    persist()
+                    return ledger
                 except (AppendBudgetExhausted, RunBudgetExhausted):
                     raise
                 except (OSError, RuntimeError, ValueError) as exc:
+                    current.pop("pending_semantic", None)
+                    current.pop("paused_in_generate", None)
+                    current.pop("propose_start_call", None)
                     from plan_mvg import classify_review_error
                     if "mvg_stage_cost_budget_insufficient" in str(exc):
                         ledger.update(status="blocked", errors=[{

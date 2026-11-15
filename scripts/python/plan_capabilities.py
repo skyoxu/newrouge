@@ -2476,6 +2476,9 @@ def main(argv: list[str] | None = None) -> int:
         p_stage.add_argument("--run-id", required=True)
         p_stage.add_argument("--runner", default=default_runner)
         p_stage.add_argument("--timeout-sec", type=int, default=2700)
+        if name == "generate":
+            p_stage.add_argument("--max-new-dispatches", type=int, default=None)
+            p_stage.add_argument("--pause-after-sec", type=int, default=None)
 
     p_preview = sub.add_parser("preview-alignment")
     p_preview.add_argument("--run-id", required=True)
