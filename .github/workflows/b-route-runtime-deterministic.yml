@@ -112,6 +112,10 @@ jobs:
         run: |
           $ErrorActionPreference = 'Continue'
           New-Item -ItemType Directory -Force 'logs/ci/b-route-deterministic' | Out-Null
+          $basePython = (& $env:BR_PYTHON -B -c "import pathlib, sys, sysconfig; venv_sp = sysconfig.get_path('purelib'); base = pathlib.Path(sys._base_executable).resolve(); print(base)").Trim()
+          & $basePython -B -c "import os, pathlib, sysconfig; venv_sp = str((pathlib.Path(os.environ['BR_PYTHON']).resolve().parents[1] / 'Lib/site-packages').resolve()); pth = pathlib.Path(sysconfig.get_path('purelib')) / 'br_private_venv.pth'; pth.write_text(venv_sp + '\n', encoding='utf-8')"
+          & $basePython -B -c "import jsonschema, tiktoken"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $env:PYTHONPATH = @((Join-Path $env:GITHUB_WORKSPACE 'scripts/python'), (Join-Path $env:GITHUB_WORKSPACE 'scripts/python/tests'), (Join-Path $env:GITHUB_WORKSPACE 'scripts/sc'), $env:GITHUB_WORKSPACE) -join [IO.Path]::PathSeparator
           $env:TIKTOKEN_CACHE_DIR = $env:BR_TIKTOKEN_CACHE_DIR
           $env:TEMP = $env:BR_TEST_TEMP
@@ -124,19 +128,21 @@ jobs:
             'scripts.python.tests.test_codex_isolated_model_runner',
             'scripts.python.tests.test_codex_app_server_stdio'
           )
-          & $env:BR_PYTHON -X dev -B -m unittest @selectors -v 2>&1 | Tee-Object -FilePath 'logs/ci/b-route-deterministic/push-unit-tests.log'
+          & $basePython -X dev -B -m unittest @selectors -v 2>&1 | Tee-Object -FilePath 'logs/ci/b-route-deterministic/push-unit-tests.log'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Run four existing Windows recovery controls
         if: github.event_name == 'push' || inputs.suite == 'windows-recovery'
         shell: pwsh
         run: |
+          $basePython = (& $env:BR_PYTHON -B -c "import pathlib, sys; print(pathlib.Path(sys._base_executable).resolve())").Trim()
+          & $basePython -B -c "import os, pathlib, sysconfig; venv_sp = str((pathlib.Path(os.environ['BR_PYTHON']).resolve().parents[1] / 'Lib/site-packages').resolve()); pth = pathlib.Path(sysconfig.get_path('purelib')) / 'br_private_venv.pth'; pth.write_text(venv_sp + '\n', encoding='utf-8')"
           $env:PYTHONPATH = @((Join-Path $env:GITHUB_WORKSPACE 'scripts/python'), (Join-Path $env:GITHUB_WORKSPACE 'scripts/python/tests'), (Join-Path $env:GITHUB_WORKSPACE 'scripts/sc'), $env:GITHUB_WORKSPACE) -join [IO.Path]::PathSeparator
           $env:TIKTOKEN_CACHE_DIR = $env:BR_TIKTOKEN_CACHE_DIR
           $env:TEMP = $env:BR_TEST_TEMP
           $env:TMP = $env:BR_TEST_TEMP
           $env:ADOPTION_TEST_TEMP = $env:BR_TEST_TEMP
-          & $env:BR_PYTHON -X dev -B scripts/ci/run_b_route_windows_recovery_checks.py
+          & $basePython -X dev -B scripts/ci/run_b_route_windows_recovery_checks.py
           exit $LASTEXITCODE
 
       - name: Verify clean-clone published adoption read and tamper rejection

@@ -588,7 +588,23 @@ def run_llm_exec(
             or os.environ.get("NEWROGUE_AGY_SUBAGENT_CMD")
             or ""
         ).strip()
-        cmd = shlex.split(bridge_raw, posix=(os.name != "nt"))
+        if os.name == "nt":
+            import ctypes
+            from ctypes import wintypes
+
+            argc = ctypes.c_int(0)
+            cmd_line_to_argv = ctypes.windll.shell32.CommandLineToArgvW
+            cmd_line_to_argv.argtypes = [wintypes.LPCWSTR, ctypes.POINTER(ctypes.c_int)]
+            cmd_line_to_argv.restype = ctypes.POINTER(wintypes.LPWSTR)
+            argv_ptr = cmd_line_to_argv(bridge_raw, ctypes.byref(argc))
+            if not argv_ptr:
+                return 2, "agy-subagent bridge command could not be parsed\n", [backend_name]
+            try:
+                cmd = [argv_ptr[i] for i in range(argc.value)]
+            finally:
+                ctypes.windll.kernel32.LocalFree(argv_ptr)
+        else:
+            cmd = shlex.split(bridge_raw, posix=True)
         child_env = dict(os.environ)
         child_env["SC_AGY_OUTPUT_LAST_MESSAGE"] = str(output_last_message)
         child_env["SC_AGY_OUTPUT_SCHEMA"] = str(output_schema or "")
