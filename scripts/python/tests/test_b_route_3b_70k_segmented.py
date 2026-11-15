@@ -2691,6 +2691,287 @@ class TrackBSegmented70kTests(unittest.TestCase):
         fake_batches = [{"ordinal": 1, "unit_count": len(units), "parts": units}]
         self.assertEqual(seg_input.reconstruct_inputs(hdr, fake_batches, hf), edge_inputs)
 
+    def test_07_stage3_single_window_compaction_sharding_and_fail_closed(self):
+        """Verify Stage 3 single-window compaction, deterministic lossless sharding, non-shrink retry, and fail-closed >70k rejection."""
+        cctx = self._ensure_compact_70k_fixture()
+        root = cctx["root"]
+        slim_inputs = cctx["slim_inputs"]
+        proof_seam = cctx["proof_seam"]
+        prep = cctx["prep"]
+        frozen = cctx["frozen"]
+        import _b_route_planning_wire as wire
+
+        def _const(node: dict | None, default=None):
+            if not isinstance(node, dict):
+                return default
+            if "const" in node:
+                return node["const"]
+            if "enum" in node and isinstance(node["enum"], list) and len(node["enum"]) == 1:
+                return node["enum"][0]
+            return default
+
+        def _run_direct_stage3(run_id: str, handler):
+            run_dir = runtime.run_location(root, "mvg", run_id)
+            state = runtime.create_run(root, run_dir, run_id, prep["resume_ref"], "3b-mvg-v1")
+            state["runtime_slot"] = "candidate-1"
+            state["runtime_execution"] = 1
+            ws = run_dir / "candidates/candidate-1/scope-1"
+            (ws / "analysis-input").mkdir(parents=True, exist_ok=True)
+            shutil.copy2(run_dir / "analysis-input/b-route-prepared.json", ws / "analysis-input/b-route-prepared.json")
+            observed: list[dict] = []
+
+            def invoke_factory(call_dir: Path):
+                call_dir.mkdir(parents=True, exist_ok=True)
+
+                def invoke(
+                    prompt_text: str,
+                    call_no: int,
+                    *,
+                    output_name: str,
+                    output_schema_path: Path,
+                    output_schema: dict,
+                    before_dispatch,
+                ):
+                    before_dispatch(
+                        {
+                            "runtime_identity": state["runtime_identity"],
+                            "planning_profile": "3b-mvg-v1",
+                        }
+                    )
+                    ws_text = seg_input._runner_wrapper_text(
+                        prompt_text, output_schema, compact_schema_file=(call_no > 0 and "checks" in output_schema.get("properties", {}))
+                    )
+                    # Generation uses compact_schema_file=False, semantic uses True; re-measure via runtime phase below
+                    materials = wire.read_prompt(prompt_text, wire.CURRENT_SCHEMA)
+                    compact_flag = materials["phase"] != "generation"
+                    ws_text = seg_input._runner_wrapper_text(
+                        prompt_text, output_schema, compact_schema_file=compact_flag
+                    )
+                    ws_bytes = len(ws_text.encode("utf-8"))
+                    self.assertLessEqual(ws_bytes, seg_runtime.MAX_WORKSPACE_PAYLOAD_BYTES)
+                    props = output_schema["properties"]
+                    if materials["phase"] == "generation":
+                        content_obj = handler(materials, observed)
+                        out_obj = {
+                            "schema_version": _const(props["schema_version"]),
+                            "producer_schema_version": _const(props["producer_schema_version"]),
+                            "input_identity": _const(props["input_identity"]),
+                            "stage": _const(props["stage"]),
+                            "ordinal": _const(props["ordinal"]),
+                            "parent_draft_identities": list(materials["root_request"]["parent_draft_identities"]),
+                            "content_json": json.dumps(content_obj, ensure_ascii=False, separators=(",", ":")),
+                        }
+                    else:
+                        seg_obs = materials["obligations"]
+                        src_idx = {row["id"]: i for i, row in enumerate(materials["qualified_sources"])}
+                        checks = [
+                            {
+                                "id": i,
+                                "verdict": "approved",
+                                "rationale": f"Verified {ob['id']}.",
+                                "source_block_ids": [
+                                    next((src_idx[sid] for sid in ob["source_block_ids"] if sid in src_idx), 0)
+                                ],
+                            }
+                            for i, ob in enumerate(seg_obs)
+                        ]
+                        out_obj = {
+                            "schema_version": _const(props["schema_version"]),
+                            "input_identity": _const(props["input_identity"]),
+                            "runtime_identity": _const(props["runtime_identity"]),
+                            "proposal_sha256": _const(props["proposal_sha256"]),
+                            "verdict": "approved",
+                            "findings": [],
+                            "checks": checks,
+                        }
+                    out_path = call_dir / output_name
+                    out_path.write_bytes(encoded(out_obj))
+                    output_schema_path.write_bytes(encoded(output_schema))
+                    return out_path, {
+                        "execution_binding": {
+                            "workspace": str(call_dir),
+                            "output_path": str(out_path),
+                            "request_payload": ws_text,
+                        }
+                    }
+
+                return invoke
+
+            res = seg_runtime.generate_segmented_append(
+                root,
+                state,
+                ws,
+                invoke_factory=invoke_factory,
+                before_call=lambda phase, request_identity=None: None,
+                checkpoint=lambda _ledger: None,
+            )
+            return res, observed
+
+        valid_candidate = _build_sc25_candidate_content(frozen, variant="A")
+
+        with patch.object(audit, "verify_current_proof", new=proof_seam), patch.object(
+            planning, "rules_identity", new=lambda _r: slim_inputs["dependencies"]["rules"]
+        ), patch.object(
+            runtime,
+            "verify_call",
+            side_effect=lambda b: codec.strict_json_loads(Path(b["output_path"]).read_bytes()),
+        ):
+            # Case A: Reproduces r1c exact failure shape (batch -> tree_reduce emits 48KB -> single-window tree_reduce compacts -> final_synthesis fits <= 70KB)
+            def handler_case_a(materials: dict, observed: list[dict]):
+                req = materials["root_request"]
+                role = req.get("synthesis_role") or req["stage"]
+                observed.append({"stage": req["stage"], "role": role, "req": deepcopy(req)})
+                if req["stage"] == "batch":
+                    if req["ordinal"] == 1:
+                        return {"batch_1": "x" * 52_000}
+                    return {"batch_rest": req["ordinal"], "notes": "small"}
+                if role == "tree_reduce":
+                    if len(req["window_drafts"]) > 1:
+                        return {"merged_uncompacted": "y" * 48_000}
+                    return {"compacted": "ok", "from_len": len(req["window_drafts"])}
+                return deepcopy(valid_candidate)
+
+            res_a, obs_a = _run_direct_stage3("rst3-case-a", handler_case_a)
+            self.assertEqual(res_a["status"], "admitted", res_a)
+            batch_reqs_a = [r["req"] for r in obs_a if r["role"] == "batch"]
+            self.assertTrue(
+                all(
+                    r.get("intermediate_draft_budget", {}).get("target_compact_bytes")
+                    == seg_runtime.MAX_INTERMEDIATE_DRAFT_BYTES
+                    for r in batch_reqs_a
+                )
+            )
+            reduce_reqs_a = [r["req"] for r in obs_a if r["role"] == "tree_reduce"]
+            self.assertTrue(
+                any(len(r["window_drafts"]) == 1 and "compaction_target" in r for r in reduce_reqs_a),
+                reduce_reqs_a,
+            )
+
+            # Case B: Extreme >70KB single window (nested list + single-key dict + large str) -> deterministic lossless sharding -> convergence
+            extreme_payload = {
+                "items_list": [{"idx": i, "payload": f"row-{i:04d}-{'Z' * 72}"} for i in range(300)],
+                "single_key_nested": {"deep_str": "".join(f"[{i:04d}:nested]" for i in range(2100))},
+                "plain_blob": "".join(f"<blob-{i:04d}>" for i in range(2400)),
+                "source_tag": "sc25-lossless",
+            }
+            self.assertGreater(seg_runtime._compact_bytes_len(extreme_payload), 80_000)
+
+            def handler_case_b(materials: dict, observed: list[dict]):
+                req = materials["root_request"]
+                role = req.get("synthesis_role") or req["stage"]
+                observed.append({"stage": req["stage"], "role": role, "req": deepcopy(req)})
+                if req["stage"] == "batch":
+                    if req["ordinal"] == 1:
+                        return deepcopy(extreme_payload)
+                    return {"batch_rest": req["ordinal"]}
+                if role == "tree_reduce":
+                    return {
+                        "compacted_shards": [w.get("shard", w["ordinal"]) for w in req["window_drafts"]],
+                        "keys": sorted(k for w in req["window_drafts"] for k in w["content"].keys()),
+                    }
+                return deepcopy(valid_candidate)
+
+            res_b, obs_b = _run_direct_stage3("rst3-case-b", handler_case_b)
+            self.assertEqual(res_b["status"], "admitted", res_b)
+            # Reconstruct batch-1 shards from observed Stage 3 calls (tree_reduce + final_synthesis) and assert 100% lossless recovery
+            shard_windows_b: dict[str, dict] = {}
+            for rec in obs_b:
+                if rec["role"] in ("tree_reduce", "final_synthesis"):
+                    for w in rec["req"]["window_drafts"]:
+                        if w.get("ordinal") == 1 and "shard" in w:
+                            shard_windows_b[w["shard"]] = w["content"]
+            self.assertGreaterEqual(len(shard_windows_b), 4, shard_windows_b.keys())
+            total_shard_count = int(next(iter(shard_windows_b)).split("/", 1)[1])
+            self.assertEqual(
+                set(shard_windows_b),
+                {f"{idx}/{total_shard_count}" for idx in range(1, total_shard_count + 1)},
+            )
+            rec_items: list = []
+            rec_nested = ""
+            rec_blob = ""
+            rec_tag = None
+            for shard_key in sorted(shard_windows_b, key=lambda s: int(s.split("/", 1)[0])):
+                chunk = shard_windows_b[shard_key]
+                sk = chunk.get("_sharded_key")
+                if sk == "items_list":
+                    rec_items.extend(chunk["items_list"])
+                elif sk == "single_key_nested":
+                    rec_nested += chunk["single_key_nested"]["inner" if "inner" in chunk["single_key_nested"] else "deep_str"]
+                elif sk == "plain_blob":
+                    rec_blob += chunk["plain_blob"]
+                else:
+                    if "source_tag" in chunk:
+                        rec_tag = chunk["source_tag"]
+                    if "items_list" in chunk:
+                        rec_items.extend(chunk["items_list"])
+                    if "plain_blob" in chunk:
+                        rec_blob += chunk["plain_blob"]
+                    if "single_key_nested" in chunk:
+                        rec_nested += chunk["single_key_nested"]["deep_str"]
+            self.assertEqual(rec_items, extreme_payload["items_list"])
+            self.assertEqual(rec_nested, extreme_payload["single_key_nested"]["deep_str"])
+            self.assertEqual(rec_blob, extreme_payload["plain_blob"])
+            self.assertEqual(rec_tag, extreme_payload["source_tag"])
+
+            # Case C: Non-shrinking stubborn model on first two single-window compactions -> shards on single_compact_attempts == 2 -> recovers cleanly
+            nonshrink_payload = {
+                f"k_{i}": "".join(f"v{i}-{j:03d}-" for j in range(300)) for i in range(24)
+            }
+            self.assertGreater(seg_runtime._compact_bytes_len(nonshrink_payload), 44_000)
+            reduce_single_calls = [0]
+
+            def handler_case_c(materials: dict, observed: list[dict]):
+                req = materials["root_request"]
+                role = req.get("synthesis_role") or req["stage"]
+                observed.append({"stage": req["stage"], "role": role, "req": deepcopy(req)})
+                if req["stage"] == "batch":
+                    if req["ordinal"] == 1:
+                        return deepcopy(nonshrink_payload)
+                    return {"ok": req["ordinal"]}
+                if role == "tree_reduce":
+                    has_shards = any("shard" in w for w in req["window_drafts"])
+                    if not has_shards and len(req["window_drafts"]) == 1:
+                        reduce_single_calls[0] += 1
+                        if reduce_single_calls[0] <= 2:
+                            return deepcopy(nonshrink_payload)
+                    if not has_shards and len(req["window_drafts"]) > 1:
+                        return deepcopy(nonshrink_payload)
+                    return {"shrunk": True}
+                return deepcopy(valid_candidate)
+
+            res_c, obs_c = _run_direct_stage3("rst3-case-c", handler_case_c)
+            self.assertEqual(res_c["status"], "admitted", res_c)
+            self.assertEqual(reduce_single_calls[0], 2)
+            self.assertTrue(
+                any("shard" in w for r in obs_c if r["role"] == "tree_reduce" for w in r["req"]["window_drafts"])
+            )
+
+            # Case D: Fail-closed bounded stop when model refuses compaction forever (hits MAX_STAGE3_REDUCE_ROUNDS and rejects >70k final_synthesis)
+            monolithic = {"unshrinkable": "M" * 48_000}
+
+            def handler_case_d(materials: dict, observed: list[dict]):
+                req = materials["root_request"]
+                role = req.get("synthesis_role") or req["stage"]
+                observed.append({"stage": req["stage"], "role": role, "req": deepcopy(req)})
+                if req["stage"] == "batch":
+                    if req["ordinal"] == 1:
+                        return deepcopy(monolithic)
+                    return {"tiny": req["ordinal"]}
+                if role == "tree_reduce":
+                    return deepcopy(monolithic)
+                return deepcopy(valid_candidate)
+
+            res_d, obs_d = _run_direct_stage3("rst3-case-d", handler_case_d)
+            self.assertEqual(res_d["status"], "blocked", res_d)
+            self.assertEqual(res_d["errors"][0]["code"], "append_execution_failure", res_d)
+            self.assertIn(
+                "b_route_segmented_payload_exceeds_70k:final-synthesis-",
+                res_d["errors"][0]["detail"],
+                res_d,
+            )
+            reduce_d = [r for r in obs_d if r["role"] == "tree_reduce"]
+            self.assertEqual(len(reduce_d), 16, f"Expected MAX_STAGE3_REDUCE_ROUNDS=16, got {len(reduce_d)}")
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

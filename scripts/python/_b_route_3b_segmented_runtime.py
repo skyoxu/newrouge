@@ -26,6 +26,8 @@ SEGMENTED_SELECTOR_POLICY = "newrouge.b-route-3b-segmented-selector.v1"
 MAX_WORKSPACE_PAYLOAD_BYTES = seg_input.MAX_WORKSPACE_PAYLOAD_BYTES
 CONTEXT_TOKEN_LIMIT = seg_input.CONTEXT_TOKEN_LIMIT
 MAX_ROLLING_DRAFT_BYTES = 6_500
+MAX_INTERMEDIATE_DRAFT_BYTES = 18_000
+MAX_STAGE3_SHARD_BYTES = 24_000
 
 
 def is_segmented_state(state: dict | None) -> bool:
@@ -970,7 +972,19 @@ def generate_segmented_append(
                         ],
                     }
 
-                def make_batch_call(rs):
+                def _batch_budget_hint() -> dict:
+                    return {
+                        "target_compact_bytes": MAX_INTERMEDIATE_DRAFT_BYTES,
+                        "rule": (
+                            "Emit concise structured planning index strictly preserving exact source_identity "
+                            "(manifest_ref, ledger_ref, source_revision, source_manifest_digest), exact "
+                            "proposals/requirements fields (id, source_block_ids, acceptance_intent, "
+                            "non_task_sinks, prior_requirement_ids), file paths/raw_digest, and flow/entity/"
+                            "boundary/handoff/obligation IDs; omit long scenario transcripts and duplicate prose."
+                        ),
+                    }
+
+                def make_batch_call(rs, *, include_budget_hint: bool = True):
                     req = {
                         "schema_version": seg_input.SEGMENTED_REQUEST_SCHEMA,
                         "input_identity": frozen["input_identity"],
@@ -981,6 +995,8 @@ def generate_segmented_append(
                         "rolling_state": rs,
                         "parent_draft_identities": parent_ids,
                     }
+                    if include_budget_hint:
+                        req["intermediate_draft_budget"] = _batch_budget_hint()
                     with runtime.request_resources() as work:
                         return _build_generation_materials(
                             state,
@@ -995,7 +1011,7 @@ def generate_segmented_append(
                             work=work,
                         )
 
-                sealed, prov_schema, prompt_text, ws_bytes = make_batch_call(rolling_state)
+                sealed, prov_schema, prompt_text, ws_bytes = make_batch_call(rolling_state, include_budget_hint=True)
                 if not _fits_turn_budget(ws_bytes, frozen) and rolling_draft is not None:
                     # Roll over window immediately so payload stays strictly <= 70,000 bytes and <= 96,000 tokens
                     window_terminals.append(rolling_draft)
@@ -1007,7 +1023,9 @@ def generate_segmented_append(
                             codec.canonical_digest(w) for w in window_terminals
                         ],
                     }
-                    sealed, prov_schema, prompt_text, ws_bytes = make_batch_call(rolling_state)
+                    sealed, prov_schema, prompt_text, ws_bytes = make_batch_call(rolling_state, include_budget_hint=True)
+                if not _fits_turn_budget(ws_bytes, frozen):
+                    sealed, prov_schema, prompt_text, ws_bytes = make_batch_call(rolling_state, include_budget_hint=False)
                 _assert_under_70k(ws_bytes, frozen, f"batch-{ordinal}")
                 draft, binding = execute_call(sealed, prov_schema, prompt_text, "generate", call)
                 drafts.append(draft)
@@ -1024,14 +1042,104 @@ def generate_segmented_append(
             if rolling_draft is not None:
                 window_terminals.append(rolling_draft)
 
-            # Stage 3: Tree-reduce window terminals (if >1 and needed) + final synthesis into candidate.SCHEMA
+            # Stage 3: Tree-reduce / compact window terminals until final synthesis fits <= 70k / 96k
             active_windows = [
                 {"ordinal": w["ordinal"], "identity": codec.canonical_digest(w), "content": w["content"]}
                 for w in window_terminals
             ]
             auth_core = _authoritative_core_summary(frozen)
 
-            def make_synth_call(win_items: list[dict], role: str, include_auth_core: bool):
+            def _shard_value_chunks(key: str, val, max_chunk_bytes: int) -> list[dict]:
+                if isinstance(val, list) and len(val) > 1:
+                    chunks: list[dict] = []
+                    cur_items: list = []
+                    start_idx = 0
+                    for idx, item in enumerate(val):
+                        cand = {key: [*cur_items, item], "_sharded_key": key, "_slice": [start_idx, idx + 1]}
+                        if cur_items and _compact_bytes_len(cand) > max_chunk_bytes:
+                            chunks.append({key: cur_items, "_sharded_key": key, "_slice": [start_idx, idx]})
+                            cur_items = [item]
+                            start_idx = idx
+                        else:
+                            cur_items.append(item)
+                    if cur_items:
+                        chunks.append({key: cur_items, "_sharded_key": key, "_slice": [start_idx, len(val)]})
+                    if len(chunks) > 1:
+                        return chunks
+                if isinstance(val, dict) and val:
+                    sub_shards = _shard_dict_chunks(val, max_chunk_bytes=max_chunk_bytes)
+                    if len(sub_shards) > 1:
+                        return [{key: sub, "_sharded_key": key} for sub in sub_shards]
+                if isinstance(val, str) and len(val) > 1:
+                    text_chunks: list[dict] = []
+                    pos = 0
+                    total_len = len(val)
+                    while pos < total_len:
+                        lo, hi, best = 1, total_len - pos, 1
+                        while lo <= hi:
+                            mid = (lo + hi) // 2
+                            probe = {key: val[pos : pos + mid], "_sharded_key": key, "_char_range": [pos, pos + mid]}
+                            if _compact_bytes_len(probe) <= max_chunk_bytes:
+                                best = mid
+                                lo = mid + 1
+                            else:
+                                hi = mid - 1
+                        text_chunks.append({key: val[pos : pos + best], "_sharded_key": key, "_char_range": [pos, pos + best]})
+                        pos += best
+                    if len(text_chunks) > 1:
+                        return text_chunks
+                return [{key: val}]
+
+            def _shard_dict_chunks(obj: dict, *, max_chunk_bytes: int) -> list[dict]:
+                chunks: list[dict] = []
+                cur: dict = {}
+                for k, v in obj.items():
+                    cand = {**cur, k: v}
+                    if _compact_bytes_len(cand) <= max_chunk_bytes:
+                        cur = cand
+                        continue
+                    if cur:
+                        chunks.append(cur)
+                        cur = {}
+                    single = {k: v}
+                    if _compact_bytes_len(single) <= max_chunk_bytes:
+                        cur = single
+                    else:
+                        sub_parts = _shard_value_chunks(k, v, max_chunk_bytes)
+                        if len(sub_parts) > 1:
+                            chunks.extend(sub_parts)
+                        else:
+                            chunks.append(single)
+                if cur:
+                    chunks.append(cur)
+                return chunks
+
+            def _shard_oversized_window(win: dict, *, max_chunk_bytes: int) -> list[dict]:
+                content_obj = win["content"]
+                if not isinstance(content_obj, dict) or _compact_bytes_len(content_obj) <= max_chunk_bytes:
+                    return [win]
+                raw_chunks = _shard_dict_chunks(content_obj, max_chunk_bytes=max_chunk_bytes)
+                if len(raw_chunks) <= 1:
+                    return [win]
+                total_shards = len(raw_chunks)
+                return [
+                    {
+                        "ordinal": win["ordinal"],
+                        "identity": win["identity"],
+                        **({"parent_shard": win["shard"]} if "shard" in win else {}),
+                        "shard": f"{s_idx}/{total_shards}",
+                        "content": chunk,
+                    }
+                    for s_idx, chunk in enumerate(raw_chunks, 1)
+                ]
+
+            def make_synth_call(
+                win_items: list[dict],
+                role: str,
+                include_auth_core: bool,
+                *,
+                target_compact_bytes: int | None = None,
+            ):
                 synth_ordinal = len(drafts) + 1
                 parent_ids = [codec.canonical_digest(d) for d in drafts]
                 hdr = (
@@ -1053,6 +1161,17 @@ def generate_segmented_append(
                     "window_drafts": win_items,
                     "parent_draft_identities": parent_ids,
                 }
+                if role == "tree_reduce":
+                    req["compaction_target"] = {
+                        "target_compact_bytes": int(target_compact_bytes or MAX_INTERMEDIATE_DRAFT_BYTES),
+                        "hard_max_compact_bytes": MAX_STAGE3_SHARD_BYTES,
+                        "purpose": (
+                            "Deduplicate and compact window_drafts so final_synthesis fits alongside the 38KB "
+                            "candidate schema closure. Preserve exact source_identity paths/digests/revision, "
+                            "exact proposals/requirements fields, file paths/raw_digest, and concise flow/"
+                            "entity/boundary/handoff/obligation IDs; drop verbose scenario transcripts and duplicate prose."
+                        ),
+                    }
                 if include_auth_core:
                     req["authoritative_core"] = auth_core
                 with runtime.request_resources() as work:
@@ -1069,44 +1188,130 @@ def generate_segmented_append(
                         work=work,
                     )
 
-            ready_final = None
-            while len(active_windows) > 1:
-                cand_all = make_synth_call(active_windows, "final_synthesis", True)
+            def _try_final_synthesis(win_items: list[dict]):
+                cand_all = make_synth_call(win_items, "final_synthesis", True)
                 if _fits_turn_budget(cand_all[3], frozen):
-                    ready_final = cand_all
-                    break
-                cand_no_core = make_synth_call(active_windows, "final_synthesis", False)
+                    return cand_all
+                cand_no_core = make_synth_call(win_items, "final_synthesis", False)
                 if _fits_turn_budget(cand_no_core[3], frozen):
-                    ready_final = cand_no_core
+                    return cand_no_core
+                return None
+
+            empty_final_bytes = make_synth_call([], "final_synthesis", False)[3]
+            reserved_toks = int(frozen["inputs"]["contract"]["limits"]["reserved_tokens"])
+            eff_budget = min(MAX_WORKSPACE_PAYLOAD_BYTES, CONTEXT_TOKEN_LIMIT - reserved_toks)
+            hard_final_window_cap = max(8_000, eff_budget - empty_final_bytes - 4_000)
+            default_compact_target = max(8_000, min(MAX_INTERMEDIATE_DRAFT_BYTES, int(hard_final_window_cap * 0.72)))
+
+            MAX_STAGE3_REDUCE_ROUNDS = 16
+            reduce_rounds = 0
+            single_compact_attempts = 0
+            ready_final = _try_final_synthesis(active_windows)
+            while ready_final is None:
+                if reduce_rounds >= MAX_STAGE3_REDUCE_ROUNDS:
                     break
-                # Deterministically reduce largest prefix >= 2 (or 1 if oversized) fitting <= 70,000 bytes and <= 96,000 tokens
-                group_end = 1
+                reduce_rounds += 1
+                group_start = 0
+                group_end = 0
                 best_reduce = None
-                for k in range(2, len(active_windows) + 1):
-                    cand_k = make_synth_call(active_windows[:k], "tree_reduce", False)
-                    if _fits_turn_budget(cand_k[3], frozen):
-                        group_end = k
-                        best_reduce = cand_k
-                    else:
-                        break
+
+                if len(active_windows) > 1:
+                    # Prefer largest prefix >= 2 fitting tree_reduce; otherwise check any adjacent pair >= 2
+                    for k in range(2, len(active_windows) + 1):
+                        cand_k = make_synth_call(
+                            active_windows[:k],
+                            "tree_reduce",
+                            False,
+                            target_compact_bytes=default_compact_target,
+                        )
+                        if _fits_turn_budget(cand_k[3], frozen):
+                            group_start, group_end = 0, k
+                            best_reduce = cand_k
+                        else:
+                            break
+                    if best_reduce is None:
+                        for start_i in range(1, len(active_windows) - 1):
+                            cand_pair = make_synth_call(
+                                active_windows[start_i : start_i + 2],
+                                "tree_reduce",
+                                False,
+                                target_compact_bytes=default_compact_target,
+                            )
+                            if _fits_turn_budget(cand_pair[3], frozen):
+                                group_start, group_end = start_i, start_i + 2
+                                best_reduce = cand_pair
+                                break
+
                 if best_reduce is None:
-                    best_reduce = make_synth_call(active_windows[:1], "tree_reduce", False)
+                    # Either len == 1 still > final_synthesis budget, or every pair > tree_reduce 70k budget.
+                    # Compact the largest single window (or shard it deterministically if > tree_reduce budget).
+                    single_compact_attempts += 1
+                    target_idx = max(
+                        range(len(active_windows)),
+                        key=lambda i: _compact_bytes_len(active_windows[i]["content"]),
+                    )
+                    target_b = (
+                        default_compact_target
+                        if single_compact_attempts == 1
+                        else max(6_000, default_compact_target // min(single_compact_attempts, 3))
+                    )
+                    cand_single = make_synth_call(
+                        [active_windows[target_idx]],
+                        "tree_reduce",
+                        False,
+                        target_compact_bytes=target_b,
+                    )
+                    if _fits_turn_budget(cand_single[3], frozen):
+                        group_start, group_end = target_idx, target_idx + 1
+                        best_reduce = cand_single
+                    else:
+                        shards = _shard_oversized_window(
+                            active_windows[target_idx], max_chunk_bytes=MAX_STAGE3_SHARD_BYTES
+                        )
+                        if len(shards) > 1:
+                            active_windows = [
+                                *active_windows[:target_idx],
+                                *shards,
+                                *active_windows[target_idx + 1 :],
+                            ]
+                            ready_final = _try_final_synthesis(active_windows)
+                            continue
+                        group_start, group_end = target_idx, target_idx + 1
+                        best_reduce = cand_single
+
                 r_sealed, r_sch, r_prm, r_bytes = best_reduce
                 _assert_under_70k(r_bytes, frozen, f"tree-reduce-{len(drafts) + 1}")
+                prev_slice_bytes = sum(
+                    _compact_bytes_len(w["content"]) for w in active_windows[group_start:group_end]
+                )
                 reduced_draft, reduced_binding = execute_call(
                     r_sealed, r_sch, r_prm, "generate", call
                 )
                 drafts.append(reduced_draft)
                 planning.validate_draft_chain(frozen, drafts)
                 executions.append(reduced_binding)
+                new_win = {
+                    "ordinal": reduced_draft["ordinal"],
+                    "identity": codec.canonical_digest(reduced_draft),
+                    "content": reduced_draft["content"],
+                }
                 active_windows = [
-                    {
-                        "ordinal": reduced_draft["ordinal"],
-                        "identity": codec.canonical_digest(reduced_draft),
-                        "content": reduced_draft["content"],
-                    },
+                    *active_windows[:group_start],
+                    new_win,
                     *active_windows[group_end:],
                 ]
+                ready_final = _try_final_synthesis(active_windows)
+                if (
+                    ready_final is None
+                    and group_end - group_start == 1
+                    and len(active_windows) == 1
+                    and _compact_bytes_len(new_win["content"]) >= prev_slice_bytes
+                    and single_compact_attempts >= 2
+                ):
+                    shard_cap = max(8_000, min(MAX_STAGE3_SHARD_BYTES, prev_slice_bytes // 3))
+                    shards = _shard_oversized_window(new_win, max_chunk_bytes=shard_cap)
+                    if len(shards) > 1:
+                        active_windows = shards
 
             if ready_final is not None:
                 final_sealed, final_sch, final_prm, final_bytes = ready_final
