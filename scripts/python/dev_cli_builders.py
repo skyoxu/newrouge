@@ -632,6 +632,56 @@ def build_serve_project_health_cmd(args) -> list[str]:
     return cmd
 
 
+def enforce_paid_api_opt_in(backend: str | None, *, allow_paid_api: bool = False, repo_root: str | Path = ".") -> None:
+    import os
+    env_allowed = str(os.environ.get("NEWROGUE_ALLOW_PAID_API") or os.environ.get("SC_ALLOW_PAID_API") or "").strip().lower() in {"1", "true", "yes"}
+    if allow_paid_api or env_allowed:
+        os.environ["NEWROGUE_ALLOW_PAID_API"] = "1"
+    name = str(backend or "").strip().lower()
+    if not name:
+        return
+    opt_in_backends = {"openai-api", "gemini-api"}
+    try:
+        from _isolated_runner_registry import load_llm_routing
+        routing = load_llm_routing(Path(repo_root).resolve())
+        backends_cfg = routing.get("plane_a", {}).get("backends", {})
+        if isinstance(backends_cfg, dict):
+            for key, cfg in backends_cfg.items():
+                if isinstance(cfg, dict) and cfg.get("opt_in_only") is True:
+                    opt_in_backends.add(str(key).strip().lower())
+    except Exception:
+        pass
+    if name in opt_in_backends and not (allow_paid_api or env_allowed):
+        raise ValueError(f"paid API backend '{name}' is opt-in only; pass --allow-paid-api to authorize")
+
+
+def _resolve_cli_plane_b_runner(raw_runner: str | None, repo_root: str | Path) -> str:
+    import os
+    aliases = {"auto": None, "codex": "codex", "gemini": "gemini", "codex-cli": "codex", "gemini-cli": "gemini"}
+    default_codex = str(Path(__file__).resolve().with_name("codex_isolated_model_runner.py"))
+    default_codex_set = {
+        default_codex,
+        "codex_isolated_model_runner.py",
+        "scripts/python/codex_isolated_model_runner.py",
+    }
+    raw_str = str(raw_runner).strip() if raw_runner is not None else None
+    lowered = raw_str.lower() if raw_str is not None else None
+    if lowered in aliases or (
+        (raw_str is None or raw_str in default_codex_set)
+        and str(os.environ.get("NEWROGUE_PLANE_B_RUNNER") or "").strip()
+    ):
+        from _isolated_runner_registry import resolve_plane_b_runner
+        target_root = Path(repo_root).resolve()
+        tool_root = Path(__file__).resolve().parents[2]
+        runner_root = target_root if (target_root / "scripts/python/codex_isolated_model_runner.py").is_file() else tool_root
+        routing_env = dict(os.environ)
+        if "NEWROGUE_LLM_ROUTING_PATH" not in routing_env and (target_root / "docs/workflows/llm-routing.json").is_file():
+            routing_env["NEWROGUE_LLM_ROUTING_PATH"] = str((target_root / "docs/workflows/llm-routing.json").resolve())
+        requested = aliases[lowered] if lowered in aliases else None
+        return str(resolve_plane_b_runner(runner_root, requested, env=routing_env))
+    return raw_runner if raw_runner is not None else default_codex
+
+
 def build_plan_capabilities_cmd(args) -> list[str]:
     _planning_stage_arguments(args)
     # A page/launcher can invoke dev_cli by absolute path from another cwd.
@@ -661,7 +711,7 @@ def build_plan_capabilities_cmd(args) -> list[str]:
         ]
     elif args.stage in {"generate", "review", "align"}:
         if args.runner:
-            cmd += ["--runner", args.runner]
+            cmd += ["--runner", _resolve_cli_plane_b_runner(args.runner, args.repo_root)]
         cmd += ["--timeout-sec", str(args.timeout_sec)]
     elif args.stage == "apply":
         if args.alignment_override:
@@ -715,6 +765,9 @@ def _planning_stage_arguments(args):
 
 
 def _runtime_arguments(args, cmd):
+    enforce_paid_api_opt_in(None, allow_paid_api=bool(getattr(args, "allow_paid_api", False)), repo_root=getattr(args, "repo_root", "."))
+    if getattr(args, "allow_paid_api", False):
+        cmd.append("--allow-paid-api")
     if getattr(args, "input_stage", "legacy") == "3b" and getattr(args, "planning_profile", ""):
         cmd += ["--input-stage", "3b", "--prepared-ref", args.prepared_ref,
                 "--planning-profile", args.planning_profile]
@@ -725,9 +778,11 @@ def build_plan_mvg_cmd(args) -> list[str]:
     _planning_stage_arguments(args)
     runner = args.runner
     if runner is None:
-        runner = (str(Path(__file__).resolve().with_name("codex_isolated_model_runner.py"))
+        runner = (_resolve_cli_plane_b_runner(None, args.repo_root)
                   if getattr(args, "input_stage", "legacy") == "3b"
                   else "scripts/python/openai_isolated_model_runner.py")
+    elif runner in {"auto", "codex", "gemini", "codex-cli", "gemini-cli"}:
+        runner = _resolve_cli_plane_b_runner(runner, args.repo_root)
     if getattr(args, "candidate", "") and args.stage != "validate":
         raise ValueError("--candidate is limited to explicit 3b MVG validate")
     cmd = [sys.executable, str(Path(__file__).resolve().with_name("plan_mvg.py")), "--repo-root", args.repo_root, args.stage]
@@ -755,6 +810,8 @@ def build_plan_mvg_cmd(args) -> list[str]:
         elif getattr(args, "candidate", ""):
             raise ValueError("legacy MVG validate does not accept --candidate")
     elif args.stage == "generate":
+        if getattr(args, "input_stage", "legacy") != "3b":
+            enforce_paid_api_opt_in(args.llm_backend, allow_paid_api=getattr(args, "allow_paid_api", False), repo_root=args.repo_root)
         cmd += ["--timeout-sec", str(args.timeout_sec), "--llm-backend", args.llm_backend]
         if getattr(args, "input_stage", "legacy") == "3b":
             cmd += ["--runner", runner]

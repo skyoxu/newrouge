@@ -83,6 +83,7 @@ class RuntimeCITests(unittest.TestCase):
         environment = runtime_call.kwargs['environment']
         self.assertEqual(environment['TIKTOKEN_CACHE_DIR'], 'private-cache')
         self.assertEqual((environment['TEMP'], environment['TMP']), ('private-temp', 'private-temp'))
+        self.assertEqual(environment['ADOPTION_TEST_TEMP'], 'private-temp')
         self.assertEqual(original_call.args[0], ['py', '-3', 'original.py'])
         self.assertNotIn('environment', original_call.kwargs)
 
@@ -175,6 +176,9 @@ class RuntimeCITests(unittest.TestCase):
 
     def test_pr_paths_include_selected_tests_and_actual_pipe_fixture_owners(self):
         workflow = WORKFLOW.read_text(encoding='utf-8')
+        self.assertIn('timeout-minutes: 90', workflow)
+        self.assertIn("- name: Verify clean-clone published adoption read and tamper rejection", workflow)
+        self.assertIn("empty stdout (rc={proc.returncode})", workflow)
         path_block = workflow.split('    paths:\n', 1)[1].split('  workflow_dispatch:', 1)[0]
         patterns = [line.strip()[3:-1] for line in path_block.splitlines()
             if line.strip().startswith("- '") and line.strip().endswith("'")]
@@ -188,6 +192,13 @@ class RuntimeCITests(unittest.TestCase):
             'scripts/python/run_gate_bundle.py',
             'scripts/python/b_route_worker_recovery.py',
             'scripts/python/openai_isolated_model_runner.py',
+            'scripts/python/gemini_isolated_model_runner.py',
+            'scripts/python/_gemini_cli_protocol.py',
+            'scripts/python/_isolated_runner_registry.py',
+            'scripts/python/_b_route_3b_segmented_input.py',
+            'scripts/python/_b_route_3b_segmented_runtime.py',
+            'scripts/python/b_route_adoption.py',
+            'docs/workflows/llm-routing.json',
             'scripts/python/_capability_input_integrity.py',
             'scripts/sc/_llm_backend.py',
             'scripts/ci/prepare_b_route_runtime.ps1',
@@ -196,6 +207,7 @@ class RuntimeCITests(unittest.TestCase):
             'scripts/python/tests/fixtures/story25_loop3_worker_lifetime_base.py.txt',
             'scripts/python/tests/fixtures/codex_app_server_stdio_child.py',
             'scripts/python/tests/fixtures/b_route_bound_protocol_runner.py',
+            'scripts/python/tests/fixtures/b_route_fake_gemini_cli.py',
             'scripts/python/tests/fixtures/story25_host_fault_base_sources.json',
         ])
         for path in governed:

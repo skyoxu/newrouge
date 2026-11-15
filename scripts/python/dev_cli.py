@@ -473,6 +473,8 @@ def cmd_generate_knowledge_links(args: argparse.Namespace) -> int:
 
 
 def cmd_chapter6_knowledge(args: argparse.Namespace) -> int:
+    from dev_cli_builders import enforce_paid_api_opt_in
+    enforce_paid_api_opt_in(args.llm_backend, allow_paid_api=getattr(args, "allow_paid_api", False), repo_root=args.repo_root)
     from chapter6_knowledge import run
     result = run(Path(args.repo_root).resolve(), str(args.task_id), args.write_task_refs, args.semantic, args.llm_backend)
     print(json.dumps(result, ensure_ascii=False))
@@ -857,6 +859,8 @@ def build_parser() -> argparse.ArgumentParser:
     p_cap.add_argument("--total-budget-sec", type=int, default=13500)
     p_cap.add_argument("--request-limit", type=int, default=96)
     p_cap.add_argument("--runner", default=str(Path(__file__).resolve().with_name("codex_isolated_model_runner.py")))
+    p_cap.add_argument("--allow-paid-api", action="store_true",
+        help="explicitly authorize opt-in paid API backends (openai-api, gemini-api)")
     p_cap.add_argument("--timeout-sec", type=int, default=2700)
     p_cap.add_argument("--alignment-override", default="")
     p_cap.add_argument("--candidate", default="")
@@ -888,8 +892,10 @@ def build_parser() -> argparse.ArgumentParser:
     p_mvg_plan.add_argument("--run-invocation-limit", type=int, default=None)
     p_mvg_plan.add_argument("--timeout-sec", type=int, default=1800)
     p_mvg_plan.add_argument("--llm-backend", default="codex-cli")
+    p_mvg_plan.add_argument("--allow-paid-api", action="store_true",
+        help="explicitly authorize opt-in paid API backends (openai-api, gemini-api)")
     p_mvg_plan.add_argument("--runner", default=None,
-        help="isolated runner; defaults to Codex for explicit 3B and OpenAI for legacy review")
+        help="isolated runner; defaults to Codex for explicit 3B (or configured Plane B alias) and OpenAI for legacy review")
     p_mvg_plan.add_argument("--confirm", action="store_true")
     p_mvg_plan.add_argument("--change-plan", default="")
     p_mvg_plan.add_argument("--handoff-out", default="")
@@ -1065,6 +1071,8 @@ def build_parser() -> argparse.ArgumentParser:
     p_c6k.add_argument("--write-task-refs", action="store_true")
     p_c6k.add_argument("--semantic", action="store_true")
     p_c6k.add_argument("--llm-backend", default="codex-cli")
+    p_c6k.add_argument("--allow-paid-api", action="store_true",
+        help="explicitly authorize opt-in paid API backends (openai-api, gemini-api)")
     p_c6k.set_defaults(func=cmd_chapter6_knowledge)
 
     p_semantic_publish = sub.add_parser('publish-chapter6-semantics',

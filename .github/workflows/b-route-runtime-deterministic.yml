@@ -3,9 +3,6 @@ name: B-route Runtime Deterministic Checks
 on:
   push:
     branches: [build/cloud-epic2-recovery-20261111]
-    paths:
-      - '.github/workflows/b-route-runtime-deterministic.yml'
-      - 'scripts/ci/run_b_route_windows_recovery_checks.py'
   pull_request:
     branches: [main]
     types: [synchronize, opened, reopened]
@@ -15,8 +12,11 @@ on:
       - 'scripts/python/b_route_worker_recovery.py'
       - 'scripts/python/_planning_*.py'
       - 'scripts/python/_codex_app_server.py'
+      - 'scripts/python/_isolated_runner_registry.py'
+      - 'scripts/python/*gemini*.py'
       - 'scripts/python/codex_isolated_model_runner.py'
       - 'scripts/python/openai_isolated_model_runner.py'
+      - 'docs/workflows/llm-routing.json'
       - 'scripts/python/_capability_input_integrity.py'
       - 'scripts/sc/_llm_backend.py'
       - 'scripts/python/_mvg_*.py'
@@ -43,7 +43,19 @@ on:
       - 'scripts/python/tests/fixtures/story25_host_fault_base_sources.json'
       - 'scripts/python/tests/fixtures/story25_loop3_*'
       - 'scripts/python/tests/fixtures/codex_app_server_stdio_child.py'
+      - 'scripts/python/b_route_adoption.py'
+      - 'scripts/python/account_b_route_sources.py'
+      - 'scripts/python/preflight_b_route_migration.py'
+      - 'scripts/python/inventory_b_route_baseline.py'
+      - 'scripts/python/capture_b_route_protection.py'
+      - 'scripts/python/validate_b_route_records.py'
+      - 'scripts/python/verify_b_route_reference.py'
+      - 'scripts/python/check_capability_task_evidence.py'
+      - 'scripts/python/_project_health_planning.py'
+      - 'scripts/python/_model_response_identity.py'
+      - 'docs/planning/b-route/**'
       - 'docs/planning/b-route/schemas/**'
+      - 'logs/ci/*/*/published-clone-input/**'
   workflow_dispatch:
     inputs:
       suite:
@@ -58,7 +70,7 @@ permissions:
 jobs:
   deterministic-runtime:
     runs-on: windows-latest
-    timeout-minutes: 60
+    timeout-minutes: 90
     env:
       PYTHONUTF8: '1'
       PYTHONIOENCODING: 'utf-8'
@@ -88,10 +100,32 @@ jobs:
         if: github.event_name != 'push' && inputs.suite != 'windows-recovery'
         shell: pwsh
         run: |
+          $ErrorActionPreference = 'Continue'
           New-Item -ItemType Directory -Force 'logs/ci/b-route-deterministic' | Out-Null
           $env:PYTHONPATH = @((Join-Path $env:GITHUB_WORKSPACE 'scripts/python'), (Join-Path $env:GITHUB_WORKSPACE 'scripts/python/tests'), (Join-Path $env:GITHUB_WORKSPACE 'scripts/sc'), $env:GITHUB_WORKSPACE) -join [IO.Path]::PathSeparator
           & $env:BR_PYTHON -X dev -B scripts/python/run_gate_bundle.py --mode b-route-runtime --out-dir 'logs/ci/b-route-deterministic' --skip-prune-runs 2>&1 | Tee-Object -FilePath 'logs/ci/b-route-deterministic/unit-tests.log'
           exit $LASTEXITCODE
+
+      - name: Run current B-route multi-model, 70k segmentation and CI checks
+        if: github.event_name == 'push'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Continue'
+          New-Item -ItemType Directory -Force 'logs/ci/b-route-deterministic' | Out-Null
+          $env:PYTHONPATH = @((Join-Path $env:GITHUB_WORKSPACE 'scripts/python'), (Join-Path $env:GITHUB_WORKSPACE 'scripts/python/tests'), (Join-Path $env:GITHUB_WORKSPACE 'scripts/sc'), $env:GITHUB_WORKSPACE) -join [IO.Path]::PathSeparator
+          $env:TIKTOKEN_CACHE_DIR = $env:BR_TIKTOKEN_CACHE_DIR
+          $env:TEMP = $env:BR_TEST_TEMP
+          $env:TMP = $env:BR_TEST_TEMP
+          $env:ADOPTION_TEST_TEMP = $env:BR_TEST_TEMP
+          $selectors = @(
+            'scripts.python.tests.test_b_route_runtime_ci',
+            'scripts.python.tests.test_b_route_gemini_isolated_runner',
+            'scripts.python.tests.test_b_route_3b_70k_segmented',
+            'scripts.python.tests.test_codex_isolated_model_runner',
+            'scripts.python.tests.test_codex_app_server_stdio'
+          )
+          & $env:BR_PYTHON -X dev -B -m unittest @selectors -v 2>&1 | Tee-Object -FilePath 'logs/ci/b-route-deterministic/push-unit-tests.log'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Run four existing Windows recovery controls
         if: github.event_name == 'push' || inputs.suite == 'windows-recovery'
@@ -103,6 +137,91 @@ jobs:
           $env:TMP = $env:BR_TEST_TEMP
           $env:ADOPTION_TEST_TEMP = $env:BR_TEST_TEMP
           & $env:BR_PYTHON -X dev -B scripts/ci/run_b_route_windows_recovery_checks.py
+          exit $LASTEXITCODE
+
+      - name: Verify clean-clone published adoption read and tamper rejection
+        if: github.event_name == 'push' || inputs.suite != 'windows-recovery'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force 'logs/ci/b-route-deterministic' | Out-Null
+          $pyLines = @(
+            "import hashlib, json, os, shutil, subprocess, sys, tempfile",
+            "from pathlib import Path",
+            "repo = Path(os.environ['GITHUB_WORKSPACE']).resolve()",
+            "cli = repo.joinpath('scripts', 'python', 'dev_cli' + '.py')",
+            "manifests = sorted(repo.glob('logs/ci/*/*/published-clone-input/MANIFEST.json'))",
+            "required_hist = repo / 'logs/ci/2026-11-12/cloud-epic2-recovery-24/published-clone-input/MANIFEST.json'",
+            "assert required_hist in manifests, f'missing historical published-clone-input manifest: {manifests}'",
+            "temp_parent = Path(os.environ.get('BR_TEST_TEMP') or tempfile.gettempdir()).resolve()",
+            "temp_parent.mkdir(parents=True, exist_ok=True)",
+            "observations = []",
+            "def materialize_clean_clone(bundle_dir: Path, manifest: dict) -> Path:",
+            "    clone_root = Path(tempfile.mkdtemp(prefix='br-clean-clone-', dir=str(temp_parent))).resolve()",
+            "    for rel_path, meta in sorted(manifest.items()):",
+            "        raw = (bundle_dir / rel_path).read_bytes()",
+            "        assert len(raw) == meta['bytes'], f'size mismatch for {rel_path}'",
+            "        assert hashlib.sha256(raw).hexdigest() == meta['sha256'], f'sha256 mismatch for {rel_path}'",
+            "        dest = clone_root / rel_path",
+            "        dest.parent.mkdir(parents=True, exist_ok=True)",
+            "        with dest.open('xb') as handle:",
+            "            handle.write(raw)",
+            "    assert not (clone_root / 'logs').exists(), 'clean clone must have no historical logs directory'",
+            "    return clone_root",
+            "def run_adoption(clone_root: Path, stage: str, op_id: str) -> tuple[int, dict, str]:",
+            "    cmd = [sys.executable, '-B', str(cli), 'b-route-adoption', '--root', str(clone_root), '--stage', stage, '--operation-id', op_id, '--context']",
+            "    proc = subprocess.run(cmd, cwd=str(temp_parent), capture_output=True, text=True, encoding='utf-8')",
+            "    if not proc.stdout.strip():",
+            "        raise SystemExit(f'empty stdout (rc={proc.returncode}): {proc.stderr}')",
+            "    try:",
+            "        payload = json.loads(proc.stdout)",
+            "    except json.JSONDecodeError as exc:",
+            "        raise SystemExit(f'invalid json stdout (rc={proc.returncode}): {exc}; stderr={proc.stderr}; stdout={proc.stdout!r}') from exc",
+            "    return proc.returncode, payload, proc.stderr",
+            "for manifest_path in manifests:",
+            "    bundle_dir = manifest_path.parent",
+            "    manifest = json.loads(manifest_path.read_text(encoding='utf-8'))",
+            "    catalog = json.loads((bundle_dir / 'docs/planning/b-route/catalog.v1.json').read_text(encoding='utf-8'))",
+            "    active_ops = sorted({head['receipt_ref']['entity_id'] for head in catalog.get('scope_heads', [])})",
+            "    assert active_ops, f'no active scope_heads in {manifest_path}'",
+            "    for op_id in active_ops:",
+            "        exact_root = materialize_clean_clone(bundle_dir, manifest)",
+            "        tamper_root = materialize_clean_clone(bundle_dir, manifest)",
+            "        try:",
+            "            before = {rel: hashlib.sha256((exact_root / rel).read_bytes()).hexdigest() for rel in manifest}",
+            "            rc_read, read_payload, _ = run_adoption(exact_root, 'read', op_id)",
+            "            assert rc_read == 0 and read_payload.get('formal_adoption') is True, read_payload",
+            "            assert read_payload['context']['operation_id'] == op_id, read_payload",
+            "            assert all(hashlib.sha256((exact_root / rel).read_bytes()).hexdigest() == dg for rel, dg in before.items())",
+            "            rc_inspect, inspect_payload, _ = run_adoption(exact_root, 'inspect', op_id)",
+            "            assert rc_inspect == 2 and inspect_payload.get('formal_adoption') is False, inspect_payload",
+            "            assert inspect_payload.get('diagnostics'), inspect_payload",
+            "            plan_rel = read_payload['context']['plan_refs'][0]['path']",
+            "            with (tamper_root / plan_rel).open('ab') as handle:",
+            "                handle.write(bytes([10]))",
+            "            rc_tamper, tamper_payload, _ = run_adoption(tamper_root, 'read', op_id)",
+            "            assert rc_tamper == 2 and tamper_payload.get('formal_adoption') is False, tamper_payload",
+            "            assert tamper_payload.get('diagnostics'), tamper_payload",
+            "            observations.append({",
+            "                'bundle': bundle_dir.relative_to(repo).as_posix(),",
+            "                'operation_id': op_id,",
+            "                'read_exit_code': rc_read,",
+            "                'read_formal_adoption': read_payload['formal_adoption'],",
+            "                'inspect_logless_exit_code': rc_inspect,",
+            "                'inspect_logless_formal_adoption': inspect_payload['formal_adoption'],",
+            "                'tampered_plan_path': plan_rel,",
+            "                'tamper_exit_code': rc_tamper,",
+            "                'tamper_formal_adoption': tamper_payload['formal_adoption'],",
+            "                'formal_bytes_unchanged': True,",
+            "            })",
+            "        finally:",
+            "            shutil.rmtree(exact_root, ignore_errors=True)",
+            "            shutil.rmtree(tamper_root, ignore_errors=True)",
+            "out_file = repo / 'logs/ci/b-route-deterministic/clean-clone-adoption-check.json'",
+            "report = {'status': 'ok', 'bundle_count': len(manifests), 'observations': observations}",
+            "out_file.write_text(json.dumps(report, ensure_ascii=False, indent=2) + chr(10), encoding='utf-8')",
+            "print(json.dumps(report, ensure_ascii=False))"
+          )
+          ($pyLines -join "`n") | & $env:BR_PYTHON -X dev -B -
           exit $LASTEXITCODE
 
       - name: Preserve deterministic test and dependency evidence

@@ -1,0 +1,44 @@
+{
+  "schema_version": "newrouge.llm-routing.v1",
+  "plane_b": {
+    "default_runner": "scripts/python/codex_isolated_model_runner.py",
+    "runners": {
+      "codex": {
+        "script": "scripts/python/codex_isolated_model_runner.py",
+        "provider": "openai",
+        "model": "codex-runtime-configured",
+        "reasoning_effort": "high"
+      },
+      "gemini": {
+        "script": "scripts/python/gemini_isolated_model_runner.py",
+        "provider": "google",
+        "model": "gemini-4-carbon-high",
+        "reasoning_effort": "high",
+        "system_instruction": "Return ONLY a single valid JSON value matching the requested JSON Schema. Do not wrap output in Markdown code fences, commentary, or prose. Do not invoke any filesystem, shell, web, browser, MCP, or subagent tools."
+      }
+    }
+  },
+  "plane_a": {
+    "default_backend": "codex-cli",
+    "backends": {
+      "codex-cli": {
+        "opt_in_only": false
+      },
+      "gemini-cli": {
+        "opt_in_only": false,
+        "model": "gemini-4-carbon-high"
+      },
+      "agy-subagent": {
+        "opt_in_only": false,
+        "isolation_scope": "host_subagent_with_read_tools",
+        "plane_b_forbidden": true
+      },
+      "openai-api": {
+        "opt_in_only": true
+      },
+      "gemini-api": {
+        "opt_in_only": true
+      }
+    }
+  }
+}

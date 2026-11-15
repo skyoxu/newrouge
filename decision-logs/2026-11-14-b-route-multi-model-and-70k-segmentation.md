@@ -1,0 +1,21 @@
+# Decision Log: B-Route Dual-Plane Multi-Model Routing and 70k Deterministic 3B Segmentation
+
+- Title: B-Route Dual-Plane Multi-Model Routing and 70k Deterministic 3B Segmentation
+- Date: 2026-11-14
+- Status: accepted
+- Supersedes: none
+- Superseded by: none
+- Branch: build/cloud-epic2-recovery-20261111
+- Git Head: 50e7e58ffdccca2d755c34563a9816708e4769e5
+- Why now: Formal 3B planning hit single-call input capacity rejection on full 3A source audit bundles while cross-host execution required a physically toolless Gemini CLI Plane B runner alongside Codex CLI without relaxing any isolation or token safety ceiling.
+- Context: Under ADR-0038 and ADR-0040, Plane B stages (3A independent source audit, 3B Capability/MVG candidate generation and review, adoption review, and compensation review) require fresh, zero-tool model invocations with cold-start protocol replay and strict <= 96,000 token bounds, while preserving all historical Codex proofs and zero-touch SHA-256 pinned modules.
+- Decision: Adopt ADR-0062 and ADR-0063 to (1) enforce deterministic CLI structural segmentation at <= 70,000 UTF-8 bytes per call (with 26,000 token output reserve under the 96,000 ceiling and zero LLM boundary guessing) across all 6 native 3B and adoption/compensation review stages, and (2) introduce _isolated_runner_registry.py plus physically sandboxed gemini_isolated_model_runner.py pinned to gemini-4-carbon-high supporting official Google Antigravity CLI (agy) and Gemini CLI (gemini) stream-json transports (ephemeral HOME/GEMINI_CLI_HOME with 0600 OAuth credentials only, sandboxed zero-tool enforcement, neutral system prompt, stdin payload, stream-json cold-start replay, and --allow-paid-api opt-in blocking for paid APIs) while preserving 100% of existing Codex runner proofs and defaults.
+- Consequences: Native 3B planning and > 70,000 byte non-mechanical adoption reviews run deterministically within per-call byte/token and Windows 259-character path budgets on both Codex CLI and Gemini CLI, and b-route-runtime-deterministic.yml verifies deterministic suites, Windows process control, and clean-clone published bundle tamper checks on push and pull_request.
+- Recovery impact: Historical non-segmented artifacts, failed capacity evidence directories, story25 campaign records, and published continuation24 commit bundles remain untouched and cold-replayable; future Plane B runs must execute zero-call prepare before spending model permits.
+- Validation: py -3 scripts/python/run_gate_bundle.py --mode b-route-runtime; py -3 scripts/python/validate_recovery_docs.py; py -3 scripts/python/check_docs_utf8_integrity.py; py -3 scripts/python/check_gate_bundle_consistency.py; py -3 scripts/python/check_workflow_gate_enforcement.py
+- Related ADRs: `docs/adr/ADR-0038-semantic-delivery-topology.md`, `docs/adr/ADR-0038-mvg-candidate-admission.md`, `docs/adr/ADR-0040-b-route-stages-authority-and-activation.md`, `docs/adr/ADR-0042-shared-segmented-planning-protocol.md`, `docs/adr/ADR-0062-3b-deterministic-70k-segmented-runtime.md`, `docs/adr/ADR-0063-multi-model-routing-and-gemini-isolated-runner.md`
+- Related execution plans: n/a (governed directly by ADR-0062 and ADR-0063 without a separate repository execution-plans entry)
+- Related task id(s): n/a (pre-3C zero-Task B-route governance and runtime infrastructure)
+- Related run id: n/a (deterministic Phase 1 governance and offline harness implementation with zero live model calls)
+- Related latest.json: n/a (not a Chapter 6 run_review_pipeline single-task run)
+- Related pipeline artifacts: `logs/ci/2026-11-12/cloud-epic2-recovery-24/published-clone-input/MANIFEST.json`

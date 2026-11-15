@@ -22,6 +22,7 @@ import re
 import stat
 import subprocess
 import sys
+import sysconfig
 import weakref
 
 import _b_route_codec as codec
@@ -59,9 +60,9 @@ def closed(value, keys, reason):
 
 def role(path):
     codec.validate_reference_path(path)
-    require(not any(p.casefold() in {'.codex', '.aws', '.ssh', 'sessions', 'archived_sessions', 'credentials', 'auth'}
+    require(not any(p.casefold() in {'.codex', '.gemini', '.aws', '.ssh', 'sessions', 'archived_sessions', 'credentials', 'auth'}
                     or p.casefold().startswith('.env') for p in path.split('/'))
-        and Path(path).name.casefold() not in {'auth.json', 'credentials.json', 'credentials.toml', 'id_rsa', 'id_ed25519'},
+        and Path(path).name.casefold() not in {'auth.json', 'oauth_creds.json', 'google_accounts.json', 'credentials.json', 'credentials.toml', 'id_rsa', 'id_ed25519'},
         'sensitive_role_before_io')
     return path
 
@@ -115,6 +116,44 @@ def read_ref(obs, ref):
     return data, result
 
 
+def _configured_segmented_runner_script():
+    raw_choice = (
+        os.environ.get('NEWROGUE_SEGMENTED_RUNNER')
+        or os.environ.get('NEWROGUE_PLANE_B_RUNNER')
+        or os.environ.get('NEWROGUE_PLANE_B_PROVIDER')
+        or ''
+    ).strip()
+    if raw_choice in {'gemini', 'gemini-cli', 'gemini_isolated_model_runner.py', 'scripts/python/gemini_isolated_model_runner.py'}:
+        return 'gemini_isolated_model_runner.py'
+    return 'codex_isolated_model_runner.py'
+
+
+def _is_official_runner_script(name):
+    try:
+        from _isolated_runner_registry import is_official_isolated_runner_name
+        return is_official_isolated_runner_name(name)
+    except ImportError:
+        return Path(name).name in {'codex_isolated_model_runner.py', 'gemini_isolated_model_runner.py'}
+
+
+def _site_package_paths(task):
+    paths = [str(task / 'story22-tokenizer-deps')]
+    for key in ('purelib', 'platlib'):
+        candidate = sysconfig.get_paths().get(key)
+        if candidate and candidate not in paths:
+            paths.append(candidate)
+    for entry in sys.path:
+        if entry and 'site-packages' in entry and entry not in paths:
+            paths.append(entry)
+    for fallback in (
+        r'C:\Users\Administrator\Documents\Codex\2026-11-04\task-2\python-env\Lib\site-packages',
+        r'C:\Program Files\Python312\Lib\site-packages',
+    ):
+        if fallback not in paths:
+            paths.append(fallback)
+    return paths
+
+
 def policy_identity():
     from _b_route_schema_resources import identity
     directory = Path(__file__).absolute().parent
@@ -128,7 +167,18 @@ def policy_identity():
         '_mvg_capability_recovery.py', '_mvg_capability_checkpoint.py', '_planning_apply_journal.py',
         '_planning_execution_binding.py', '_codex_app_server.py', 'codex_isolated_model_runner.py',
         'openai_isolated_model_runner.py', '_b_route_schema_resources.py')
-    model_files = {name: codec.raw_digest((directory.parents[1] / name).read_bytes()) for name in _DESCRIBE_NAMES}
+    active_runner = _configured_segmented_runner_script()
+    if active_runner == 'gemini_isolated_model_runner.py':
+        names = (*names, '_gemini_cli_protocol.py', 'gemini_isolated_model_runner.py', '_isolated_runner_registry.py')
+        source_names = _MODEL_SOURCE_NAMES
+    else:
+        source_names = _DESCRIBE_NAMES
+    model_files = {
+        (name if '/' in name else 'scripts/python/' + name): codec.raw_digest(
+            (directory.parents[1] / (name if '/' in name else 'scripts/python/' + name)).read_bytes()
+        )
+        for name in source_names
+    }
     return {'source_root': str(directory.parents[1]), 'python': sys.version,
         'files': {name: codec.raw_digest((directory / name).read_bytes()) for name in names},
         'model_source_files': model_files, 'schemas': identity(auxiliary=True)}
@@ -146,6 +196,8 @@ _DESCRIBE_NAMES = ('scripts/python/codex_isolated_model_runner.py', 'scripts/pyt
     'scripts/python/_planning_skill_common.py', 'scripts/python/_codex_app_server.py',
     'scripts/python/_model_response_identity.py', 'scripts/python/_capability_task_evidence.py',
     'scripts/python/_capability_input_integrity.py', 'scripts/sc/_llm_backend.py')
+_MODEL_SOURCE_NAMES = (*_DESCRIBE_NAMES, 'scripts/python/_gemini_cli_protocol.py',
+    'scripts/python/gemini_isolated_model_runner.py', 'scripts/python/_isolated_runner_registry.py')
 _SOURCE_BOOT = r'''
 import hashlib,importlib.machinery,pathlib,stat,sys
 def source_bytes(p):
@@ -180,7 +232,7 @@ OWNER=pathlib.Path(q['owner']);PINS=q['pins'];ROOT=pathlib.Path(q['root'])
 exec(q['source_boot'],globals())
 def role(p):
  p=pathlib.Path(p)
- if any(x.casefold() in {'.codex','.aws','.ssh','sessions','archived_sessions','credentials','auth'} or x.casefold().startswith('.env') for x in p.parts) or p.name.casefold() in {'auth.json','credentials.json','credentials.toml','id_rsa','id_ed25519'}:raise PermissionError('sensitive_io')
+ if any(x.casefold() in {'.codex','.gemini','.aws','.ssh','sessions','archived_sessions','credentials','auth'} or x.casefold().startswith('.env') for x in p.parts) or p.name.casefold() in {'auth.json','oauth_creds.json','google_accounts.json','credentials.json','credentials.toml','id_rsa','id_ed25519'}:raise PermissionError('sensitive_io')
 def guard(event,args):
  if event.startswith('socket.') or event in {'os.system','os.startfile','os.exec','os.spawn','pty.spawn'}:raise PermissionError('offline_only')
  if event in {'os.mkdir','os.remove','os.rmdir','os.rename','os.link','os.symlink','os.truncate','os.chmod','os.chown','os.utime','shutil.copyfile','shutil.rmtree'}:raise PermissionError('read_only')
@@ -196,7 +248,7 @@ def describe_command():
  pins={name:PINS[name] for name in q['describe_names']}
  script=str(OWNER/'scripts/python/codex_isolated_model_runner.py')
  code='import pathlib,sys,hashlib,os\nOWNER=pathlib.Path('+repr(str(OWNER))+');PINS='+repr(pins)+'\n'+q['source_boot']
- code+='\ndef guard(e,a):\n if e.startswith("socket.") or e in {"subprocess.Popen","os.system","os.startfile","os.exec","os.spawn","pty.spawn","os.mkdir","os.remove","os.rename","os.rmdir","os.link","os.symlink","os.truncate","os.chmod","os.chown","os.utime","shutil.copyfile","shutil.rmtree"}: raise PermissionError("describe_read_only")\n if e=="open":\n  if (isinstance(a[1],str) and any(c in a[1] for c in "wax+")) or (a[2] or 0)&(os.O_WRONLY|os.O_RDWR|os.O_CREAT|os.O_APPEND|os.O_TRUNC): raise PermissionError("describe_read_only")\n  if isinstance(a[0],(str,bytes,os.PathLike)):\n   p=pathlib.Path(os.fsdecode(a[0])); parts={v.casefold() for v in p.parts}\n   if parts&{".codex",".aws",".ssh","sessions","archived_sessions","credentials","auth"} or any(v.startswith(".env") for v in parts) or p.name.casefold() in {"auth.json","credentials.json","credentials.toml","id_rsa","id_ed25519"}: raise PermissionError("describe_sensitive_io")\nsys.addaudithook(guard)\n'
+ code+='\ndef guard(e,a):\n if e.startswith("socket.") or e in {"subprocess.Popen","os.system","os.startfile","os.exec","os.spawn","pty.spawn","os.mkdir","os.remove","os.rename","os.rmdir","os.link","os.symlink","os.truncate","os.chmod","os.chown","os.utime","shutil.copyfile","shutil.rmtree"}: raise PermissionError("describe_read_only")\n if e=="open":\n  if (isinstance(a[1],str) and any(c in a[1] for c in "wax+")) or (a[2] or 0)&(os.O_WRONLY|os.O_RDWR|os.O_CREAT|os.O_APPEND|os.O_TRUNC): raise PermissionError("describe_read_only")\n  if isinstance(a[0],(str,bytes,os.PathLike)):\n   p=pathlib.Path(os.fsdecode(a[0])); parts={v.casefold() for v in p.parts}\n   if parts&{".codex",".gemini",".aws",".ssh","sessions","archived_sessions","credentials","auth"} or any(v.startswith(".env") for v in parts) or p.name.casefold() in {"auth.json","oauth_creds.json","google_accounts.json","credentials.json","credentials.toml","id_rsa","id_ed25519"}: raise PermissionError("describe_sensitive_io")\nsys.addaudithook(guard)\n'
  code+='sys.path[:0]='+repr([str(OWNER/'scripts/python'),str(OWNER/'scripts/sc')])+'\nsys.argv=['+repr(script)+',"--describe"]\n'
  code+='p=pathlib.Path('+repr(script)+');data=source_bytes(p)\nexec(compile(data,str(p),"exec"),{"__name__":"__main__","__file__":str(p),"__package__":None})\n'
  code+='for name,expected in PINS.items():\n assert "sha256:"+hashlib.sha256(source_bytes(OWNER/name)).hexdigest()==expected,"describe_source_drift"\n'
@@ -254,15 +306,13 @@ def _original_assemble(root, planning_contract, owner, *, mode='assemble'):
     from _b_route_execution_transition import _source_manifest
     before = _source_manifest(owner, _PRESERVED_COMMIT)
     task = owner.parent
-    deps = [str(task / 'story22-tokenizer-deps'),
-        r'C:\Users\Administrator\Documents\Codex\2026-11-04\task-2\python-env\Lib\site-packages',
-        r'C:\Program Files\Python312\Lib\site-packages']
+    deps = _site_package_paths(task)
     import shutil
     git = shutil.which('git')
     require(git is not None, 'git_metadata_unavailable')
     request = {'root': str(Path(root).absolute()), 'owner': str(owner), 'planning_contract': planning_contract,
         'pins': {name: row['raw_digest'] for name, row in before.items()}, 'dependencies': deps,
-        'describe_names': list(_DESCRIBE_NAMES), 'git': git, 'mode': mode, 'source_boot': _SOURCE_BOOT}
+        'describe_names': [name for name in _DESCRIBE_NAMES if name in before], 'git': git, 'mode': mode, 'source_boot': _SOURCE_BOOT}
     completed = subprocess.run([sys.executable, '-I', '-S', '-B', '-c', _BRIDGE], input=wire(request),
         stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=str(owner), timeout=1800, check=False,
         creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
@@ -953,13 +1003,12 @@ def verify_plan_authority(root, authority):
     return deepcopy(facts)
 
 
-def _model_bootstrap(source):
+def _model_bootstrap(source, runner_script='codex_isolated_model_runner.py'):
     owner = Path(source._policy['source_root'])
     task = Path(__file__).absolute().parents[3]
-    dependencies = [str(task / 'story22-tokenizer-deps'),
-        r'C:\Users\Administrator\Documents\Codex\2026-11-04\task-2\python-env\Lib\site-packages',
-        r'C:\Program Files\Python312\Lib\site-packages']
-    runner = str(owner / 'scripts/python/codex_isolated_model_runner.py')
+    dependencies = _site_package_paths(task)
+    require(_is_official_runner_script(runner_script), 'official_isolated_runner_script')
+    runner = str(owner / 'scripts/python' / Path(runner_script).name)
     code = ('import pathlib,sys\nOWNER=pathlib.Path(' + repr(str(owner)) + ');PINS='
         + repr(source._policy['model_source_files']) + '\n' + _SOURCE_BOOT)
     code += '\nsys.path[:0]=' + repr([str(owner / 'scripts/python'), str(owner / 'scripts/sc'), *dependencies]) + '\n'
@@ -991,12 +1040,14 @@ class _RunnerTransport(Mapping):
 @contextmanager
 def _source_runner_scope(root, runner, source):
     verify_candidate_context(root, source)
-    expected = Path(source._policy['source_root']) / 'scripts/python/codex_isolated_model_runner.py'
+    runner_name = Path(runner).name
+    require(_is_official_runner_script(runner_name), 'exact_source_bound_official_runner')
+    expected = Path(source._policy['source_root']) / 'scripts/python' / runner_name
     require(Path(runner).absolute() == expected, 'exact_source_bound_official_runner')
     token = _RunnerTransport(_SEAL)
     facts = {'source': source, 'launches': [], 'closed': False, 'data': None}
     _TRANSPORTS[token] = facts
-    bootstrap = _model_bootstrap(source)
+    bootstrap = _model_bootstrap(source, runner_name)
     prior = subprocess.Popen
     def launch(command, *args, **kwargs):
         require(type(command) in {list, tuple} and all(type(x) is str for x in command)
@@ -1050,9 +1101,11 @@ def replay_runner_transport(root, provenance, *, logical_command):
         'closed_actual_runner_transport')
     source = active['source']
     verify_candidate_context(root, source)
-    code = _model_bootstrap(source)
-    expected_runner = Path(source._policy['source_root']) / 'scripts/python/codex_isolated_model_runner.py'
     logical = list(logical_command)
+    runner_name = Path(logical[2]).name if len(logical) >= 3 else ''
+    require(_is_official_runner_script(runner_name), 'exact_original_source_transport_replay')
+    code = _model_bootstrap(source, runner_name)
+    expected_runner = Path(source._policy['source_root']) / 'scripts/python' / runner_name
     require(logical[:3] == [sys.executable, '-B', str(expected_runner)]
         and provenance['schema_version'] == 'newrouge.b-route-segmented-runner-transport.v1'
         and provenance['logical_argv'] == logical
@@ -1067,7 +1120,10 @@ def _run_identity(source, plan, description):
     candidates = source['domain']['manifest']['candidates']
     # Original native budget slots are stable across new run IDs/business IDs.
     lineages = {row['label']: 'candidate-' + str(n + 1) for n, row in enumerate(candidates)}
-    runner = Path(source._policy['source_root']) / 'scripts/python/codex_isolated_model_runner.py'
+    runner_script = ('gemini_isolated_model_runner.py'
+        if 'scripts/python/gemini_isolated_model_runner.py' in source._policy.get('model_source_files', {})
+        else 'codex_isolated_model_runner.py')
+    runner = Path(source._policy['source_root']) / 'scripts/python' / runner_script
     return {'schema_version': 'newrouge.b-route-segmented-runtime-identity.v1',
         'protocol': _core().PROTOCOL, 'plan_digest': plan['plan_digest'], 'native_profile_budget_source': profile,
         'source_policy': source._policy, 'host_input_identity': source['frozen']['input_identity'],
@@ -1080,7 +1136,10 @@ def _run_identity(source, plan, description):
 
 def _describe(root, source):
     from _planning_skill_common import inspect_isolated_runner
-    runner = Path(source._policy['source_root']) / 'scripts/python/codex_isolated_model_runner.py'
+    runner_script = ('gemini_isolated_model_runner.py'
+        if 'scripts/python/gemini_isolated_model_runner.py' in source._policy.get('model_source_files', {})
+        else 'codex_isolated_model_runner.py')
+    runner = Path(source._policy['source_root']) / 'scripts/python' / runner_script
     with _source_runner_scope(root, runner, source):
         description = inspect_isolated_runner(runner, suppress_bytecode=True)
     require(description.get('requested_reasoning_effort') == 'high' and description.get('model_tools') == []

@@ -81,8 +81,12 @@ def rules_identity():
         "_mvg_capability_worker.py", "_mvg_worker_lifetime.py", "_mvg_capability_selection.py",
         "_mvg_capability_checkpoint.py", "_mvg_capability_generation.py", "_planning_skill_common.py",
         "_mvg_capability_recovery.py", "_b_route_completed_reuse.py",
-        "_codex_app_server.py", "openai_isolated_model_runner.py", "codex_isolated_model_runner.py")
-    return {"candidate": candidate.rules_identity(), "runtime": {name: file_sha(Path(__file__).with_name(name)) for name in files}}
+        "_codex_app_server.py", "openai_isolated_model_runner.py", "codex_isolated_model_runner.py",
+        "_isolated_runner_registry.py", "_gemini_cli_protocol.py", "gemini_isolated_model_runner.py",
+        "_b_route_3b_segmented_input.py", "_b_route_3b_segmented_runtime.py")
+    local_dir = Path(__file__).resolve().parent
+    base_dir = Path(planning.__file__).resolve().parent
+    return {"candidate": candidate.rules_identity(), "runtime": {name: file_sha((local_dir / name) if (local_dir / name).is_file() else (base_dir / name)) for name in files}}
 
 
 def frozen_input(root, state, *, prepared=None, check_originals=True):
@@ -111,9 +115,10 @@ def _frozen_input_owned(root, state, *, prepared=None, check_originals=True):
         from _b_route_execution_transition import load_prepared
         frozen = load_prepared(root, state)
     else:
+        from _b_route_3b_segmented_input import load_prepared as load_3b_prepared
         if not same_json(rules_identity(), desc["rules"]):
             raise ValueError("b_route_runtime_input_or_rules_changed")
-        frozen = planning.load_prepared(root, desc["prepared_ref"], revalidate=check_originals)
+        frozen = load_3b_prepared(root, desc["prepared_ref"], revalidate=check_originals)
         if not check_originals and not same_json(planning.rules_identity(root), frozen["inputs"]["dependencies"]["rules"]):
             raise ValueError("b_route_runtime_planning_rules_changed")
     if canonical_sha(frozen) != desc["frozen_sha256"] or frozen["input_identity"] != desc["input_identity"]:
@@ -573,6 +578,9 @@ def immutable_candidate_checks(proposal, frozen, byte_store):
 
 def admission_machine(root, state, proposal, *, check_originals=True):
     """Versioned admission preflight; historical canonical machine stays exact."""
+    from _b_route_3b_segmented_runtime import cached_admission_machine, is_segmented_state
+    if is_segmented_state(state):
+        return cached_admission_machine(root, state, proposal, check_originals=check_originals)
     if machine_business_policy(state) is not None:
         frozen = frozen_input(root, state, check_originals=check_originals)
         store = candidate.frozen_bytes(root, descriptor(state)["prepared_ref"], frozen, sources.Observations(root))
@@ -638,6 +646,10 @@ def lineage_identity(state, base, slot, context, generation=1, execution=1):
 
 def complete_context(prepared, scope, base, proposal=None, **_kwargs):
     frozen = codec.strict_json_loads((prepared / "b-route-prepared.json").read_bytes())
+    from _b_route_3b_segmented_input import is_segmented_frozen
+    if is_segmented_frozen(frozen):
+        from _b_route_3b_segmented_runtime import complete_segmented_context
+        return complete_segmented_context(frozen, scope, base, proposal)
     # Synthesis reconstruction includes every original character and raw proof.
     return {"frozen_input": frozen, "scope": scope, "accepted_seed": base, "proposal": proposal}
 
@@ -1303,6 +1315,12 @@ def generate_append(root, state, workspace, *, invoke_factory, before_call, chec
                     accepted_seed=None, selected_records=None, cost_budget=None, replacement=None):
     if selector_recovery_active(state):
         raise ValueError("b_route_selector_recovery_generation_forbidden")
+    from _b_route_3b_segmented_runtime import generate_segmented_append, is_segmented_state
+    if is_segmented_state(state):
+        return generate_segmented_append(root, state, workspace, invoke_factory=invoke_factory,
+            before_call=before_call, checkpoint=checkpoint, scope_index=scope_index,
+            accepted_seed=accepted_seed, selected_records=selected_records,
+            cost_budget=cost_budget, replacement=replacement)
     from _mvg_capability_append import run_capability_append
     frozen = frozen_input(root, state, prepared=workspace / "analysis-input")
     all_scopes = scopes(state, workspace / "analysis-input")
@@ -1434,7 +1452,7 @@ def generate_append(root, state, workspace, *, invoke_factory, before_call, chec
         machine_repair_check=lambda before, after: machine_repair_errors(root, state, before, after),
         replacement=replacement, fail_execution_closed=True,
         repairability=(lambda before, issue: repair_is_local(before, frozen, issue, root=root, state=state))
-            if issue_account_policy(state) is not None else None, **recovery_options)
+            if ((enabled(state) or "b_route_issue_account_policy" in state) and issue_account_policy(state) is not None) else None, **recovery_options)
     if result["status"] == "admitted":
         proof = admission_proof(state, base, all_scopes, result["records"], result["accepted"])
         execution = aggregate_execution(state, result["accepted"], proof, result["total_invocations"])
@@ -1474,6 +1492,9 @@ def execution_errors(state, proposal, execution, proof):
 
 
 def proof_errors(root, state, proposal, proof, *, check_originals=True):
+    from _b_route_3b_segmented_runtime import is_segmented_state, segmented_proof_errors
+    if is_segmented_state(state):
+        return segmented_proof_errors(root, state, proposal, proof, check_originals=check_originals)
     try:
         if state.get("b_route_execution_history"):
             from _b_route_execution_transition import source_state_for_proof
@@ -1686,6 +1707,9 @@ def verify_bound_reservation(run_dir, state, binding, *, candidate_slot, scope_i
 
 
 def verify_proof_reservations(root, state, proof, *, admission=None, check_originals=True):
+    from _b_route_3b_segmented_runtime import is_segmented_state, verify_segmented_proof_reservations
+    if is_segmented_state(state):
+        return verify_segmented_proof_reservations(root, state, proof, admission=admission, check_originals=check_originals)
     from _mvg_capability_selection import scope_workspace
     run_dir = run_location(root, descriptor(state)["planner"], state["run_id"])
     for index, record in enumerate(proof["records"]):
@@ -1792,6 +1816,9 @@ def _selector_material_value(state, scope, public, files, *, selector_policy=Non
 
 
 def selector_materials(state, frozen, scope, public, base, proposals, aliases, workspace, *, work=None):
+    from _b_route_3b_segmented_runtime import is_segmented_state, segmented_selector_materials
+    if is_segmented_state(state):
+        return segmented_selector_materials(state, frozen, scope, public, base, proposals, aliases, workspace, work=work)
     raw_files, files = _selector_files(state, frozen, scope, base, proposals, aliases, work=work)
     for name, raw in raw_files.items():
         if sources.checked_path(workspace, name).read_bytes() != raw:
@@ -1834,6 +1861,9 @@ def preview_selector_request(root, state):
 
 
 def selector_prompt(materials, *, work=None):
+    if materials.get("segmented_selector_policy"):
+        from _b_route_3b_segmented_runtime import segmented_selector_prompt
+        return segmented_selector_prompt(materials, work=work)
     aliases = materials["identity"]["candidates"]
     instruction = ("Compare only the admitted increments in " + ", ".join(alias + ".json" for alias in aliases) + ". "
         "accepted-seed.json is read-only context and is never a candidate or fallback. All candidates share the same frozen input "
@@ -1849,6 +1879,9 @@ def selector_prompt(materials, *, work=None):
 
 def check_selector_materials(root, run_dir, state, materials, workspace, *, check_originals=True):
     """Reconstruct complete virtual files from admitted artifacts, never public hashes alone."""
+    from _b_route_3b_segmented_runtime import check_segmented_selector_materials, is_segmented_state
+    if is_segmented_state(state):
+        return check_segmented_selector_materials(root, run_dir, state, materials, workspace, check_originals=check_originals)
     from _mvg_capability_selection import candidate_artifacts, selection_identity
     frozen = frozen_input(root, state, check_originals=check_originals)
     units = scopes(state, run_dir / "analysis-input")
@@ -1891,6 +1924,10 @@ def check_selector_materials(root, run_dir, state, materials, workspace, *, chec
 
 
 def verify_selector_reservation(run_dir, state, scope, index, step, receipt, comparison_workspace, output, *, check_originals=True):
+    from _b_route_3b_segmented_runtime import is_segmented_state, verify_segmented_selector_reservation
+    if is_segmented_state(state):
+        return verify_segmented_selector_reservation(run_dir, state, scope, index, step, receipt,
+            comparison_workspace, output, check_originals=check_originals)
     binding = receipt["execution_binding"]
     sandbox = comparison_workspace / "llm-sandbox" / f"attempt-{step['attempt']}" / "selection"
     row = verify_bound_reservation(run_dir, state, binding, candidate_slot=None, scope_id=scope["capability_id"],
@@ -1959,7 +1996,7 @@ def capture_binding(workspace, prompt_path, schema_path, output_path, request_pa
 def execution_output_name(name, output_name):
     if not name.startswith(output_name + ".") or Path(name).name != name:
         return False
-    for suffix in (".app-server.jsonl", ".app-server.stderr.txt"):
+    for suffix in (".app-server.jsonl", ".app-server.stderr.txt", ".gemini-stream.jsonl", ".gemini-stream.stderr.txt"):
         if name.endswith(suffix):
             identifier = name[len(output_name) + 1:-len(suffix)]
             return len(identifier) == 32 and all(char in "0123456789abcdef" for char in identifier)
@@ -2005,8 +2042,16 @@ def require_live_high(state, runner=None, *, current_info=None):
     """Live dispatch only; historical execution replay uses its captured effort."""
     import os
     captured = state.get("runner_configuration", {}).get("backend_info", {})
-    if (os.environ.get("NEWROGUE_CODEX_REASONING_EFFORT") != "high"
-            or captured.get("requested_reasoning_effort") != "high"):
+    codex_effort = os.environ.get("NEWROGUE_CODEX_REASONING_EFFORT")
+    gemini_effort = os.environ.get("NEWROGUE_GEMINI_REASONING_EFFORT")
+    runner_name = Path(str(runner or state.get("runner_configuration", {}).get("runner") or "")).name
+    if runner_name == "gemini_isolated_model_runner.py":
+        effective_env_effort = gemini_effort if gemini_effort is not None else codex_effort
+        if gemini_effort is not None and codex_effort is not None and gemini_effort != codex_effort:
+            raise ValueError("b_route_live_dispatch_requires_high")
+    else:
+        effective_env_effort = codex_effort
+    if effective_env_effort != "high" or captured.get("requested_reasoning_effort") != "high":
         raise ValueError("b_route_live_dispatch_requires_high")
     if current_info is None:
         from _planning_skill_common import inspect_isolated_runner
@@ -2016,6 +2061,10 @@ def require_live_high(state, runner=None, *, current_info=None):
 
 
 def prepare_dispatch(root, run_dir, state, runner, workspace, prompt_path, schema_path, output_path, attempt, binding_path, *, timeout_sec):
+    from _b_route_3b_segmented_runtime import is_segmented_state, prepare_segmented_dispatch
+    if is_segmented_state(state):
+        return prepare_segmented_dispatch(root, run_dir, state, runner, workspace, prompt_path,
+            schema_path, output_path, attempt, binding_path, timeout_sec=timeout_sec)
     # Historical source roots are valid for read-only proof replay. A new
     # dispatch must name the code actually executing this native dispatcher.
     transition = state.get("b_route_execution_transition")
@@ -2089,6 +2138,9 @@ def _reserved_state(run_dir, row, state=None):
 
 
 def verify_reserved_call(run_dir, row, *, state=None, check_originals=True):
+    if row.get("request_identity", {}).get("segmented_runtime_policy"):
+        from _b_route_3b_segmented_runtime import verify_segmented_reserved_call
+        return verify_segmented_reserved_call(run_dir, row, state=state, check_originals=check_originals)
     from _mvg_capability_selection import _artifact
     request = row["request_identity"]
     if canonical_sha({k: v for k, v in request.items() if k != "request_sha256"}) != request["request_sha256"]:
@@ -2176,7 +2228,8 @@ def verify_reserved_call(run_dir, row, *, state=None, check_originals=True):
             # the same captured records serialized with LF. Preserve both raw
             # artifacts and allow only that exact platform newline difference.
             if (path.name not in binding["generated_outputs"] or not execution_output_name(path.name, output.name)
-                or (path.name.endswith(".app-server.jsonl") and path.read_bytes().replace(b"\r\n", b"\n") != raw)):
+                or (path.name.endswith((".app-server.jsonl", ".gemini-stream.jsonl"))
+                    and path.read_bytes().replace(b"\r\n", b"\n") != raw)):
                 raise ValueError("b_route_dispatch_unreserved_input_or_output:" + path.name)
     return binding
 
@@ -2211,12 +2264,17 @@ def run_location(root, planner, run_id):
     call = result / "candidates/candidate-3/scope-192/capability-append/c64"
     sandbox = call / "llm-sandbox/attempt-64/r"
     suffix = "." + "9" * 10 + "." + "9" * 20 + "." + "f" * 32 + ".tmp"
-    protocol = sandbox / ("r.json." + "f" * 32 + ".app-server.jsonl")
+    protocol = sandbox / ("r.json." + "f" * 32 + ".gemini-stream.jsonl")
+    selector = result / (
+        "capability-selection/generation-64/scope-192/execution-64/attempt-64/p2/llm-sandbox/attempt-1/s/selection.json."
+        + "f" * 32
+        + ".gemini-stream.stderr.txt"
+    )
     atomic_targets = [sandbox / "runner-input-integrity.json", sandbox / "output-schema.json",
                       call / "execution-binding-64-r.json", call / "host-execution-64-r.json"]
     paths = [str(path) + suffix for path in atomic_targets]
     paths += [str(protocol), str(protocol.with_suffix(".stderr.txt")),
-              str(protocol.with_suffix(".host-cleanup.json"))]
+              str(protocol.with_suffix(".host-cleanup.json")), str(selector)]
     if max(len(path.encode("utf-16-le")) // 2 for path in paths) > 259:
         raise ValueError("b_route_runtime_path_capacity:choose_a_shorter_run_id_or_root")
     return result
@@ -2286,13 +2344,26 @@ def operate(root, *, planner, command, run_id, prepared_ref, profile, runner=Non
                     invoke_factory=None, selector_factory=None, worker_config=None)
             if type(timeout_sec) is not int or timeout_sec < 1:
                 raise ValueError("b_route_runtime_timeout_invalid")
-            runner = sources.checked_path(root, runner) if not Path(runner).is_absolute() else Path(runner)
+            import os
+            from _isolated_runner_registry import OFFICIAL_RUNNER_SCRIPTS, resolve_plane_b_runner
+            base_dir = Path(__file__).parent if Path(__file__).with_name("codex_isolated_model_runner.py").is_file() else Path(planning.__file__).parent
+            runner_repo_root = base_dir.parents[1]
+            routing_env = dict(os.environ)
+            if "NEWROGUE_LLM_ROUTING_PATH" not in routing_env and (root / "docs/workflows/llm-routing.json").is_file():
+                routing_env["NEWROGUE_LLM_ROUTING_PATH"] = str((root / "docs/workflows/llm-routing.json").resolve())
+            if runner is None or str(runner).strip().lower() == "auto":
+                runner = resolve_plane_b_runner(runner_repo_root, None, env=routing_env)
+            elif str(runner).strip().lower() in {"codex", "gemini", "codex-cli", "gemini-cli"}:
+                alias = "codex" if str(runner).strip().lower().startswith("codex") else "gemini"
+                runner = resolve_plane_b_runner(runner_repo_root, alias, env=routing_env)
+            else:
+                runner = sources.checked_path(root, runner) if not Path(runner).is_absolute() else Path(runner)
             if not runner.is_file():
                 raise ValueError("b_route_runtime_runner_missing")
-            allowed_runner = Path(__file__).with_name("codex_isolated_model_runner.py").resolve()
+            allowed_runners = {(base_dir / script_name).resolve() for script_name in OFFICIAL_RUNNER_SCRIPTS}
             if state.get("b_route_execution_transition"):
-                allowed_runner = Path(state["b_route_execution_transition"]["original_source_root"]) / "scripts/python/codex_isolated_model_runner.py"
-            if runner.resolve() != allowed_runner.resolve():
+                allowed_runners = {(Path(state["b_route_execution_transition"]["original_source_root"]) / "scripts/python/codex_isolated_model_runner.py").resolve()}
+            if runner.resolve() not in allowed_runners:
                 raise ValueError("b_route_runtime_requires_replayable_official_runner")
             info = inspect_isolated_runner(runner)
             config = {"runner": str(runner.resolve()), "runner_sha256": file_sha(runner), "backend": "isolated-runner",
@@ -2302,16 +2373,20 @@ def operate(root, *, planner, command, run_id, prepared_ref, profile, runner=Non
                 raise ValueError("b_route_runtime_runner_configuration_changed")
             state["runner_configuration"] = config
             atomic_json(run_dir / "run.json", state)
-            def selector_factory(workspace, *, outcome):
-                class HostMailbox:
-                    reservation = None
-                    def request(self, kind, **kwargs):
-                        if kind != "outcome":
-                            raise ValueError("b_route_coordinator_mailbox_kind_invalid")
-                        return outcome(kwargs["reservation_id"], kwargs["outcome"])
-                return runner_invoke(root, run_dir, state, workspace, config, HostMailbox())
+            from _b_route_3b_segmented_runtime import is_segmented_state, make_segmented_selector_factory
+            if is_segmented_state(state):
+                active_selector_factory = make_segmented_selector_factory(root, run_dir, state, config)
+            else:
+                def active_selector_factory(workspace, *, outcome):
+                    class HostMailbox:
+                        reservation = None
+                        def request(self, kind, **kwargs):
+                            if kind != "outcome":
+                                raise ValueError("b_route_coordinator_mailbox_kind_invalid")
+                            return outcome(kwargs["reservation_id"], kwargs["outcome"])
+                    return runner_invoke(root, run_dir, state, workspace, config, HostMailbox())
             result = generate_selected_capabilities(root, run_dir, state, backend="isolated-runner",
-                invoke_factory=None, selector_factory=selector_factory, worker_config=config)
+                invoke_factory=None, selector_factory=active_selector_factory, worker_config=config)
             return {**result, "input_stage": "3b", "formal_adoption": False, "runtime_verified": False}
         if command == "status" and state.get("selection_status") != "selected":
             return {"run_id": run_id, "phase": state["phase"], "selection_status": state["selection_status"],
@@ -2331,9 +2406,10 @@ def operate(root, *, planner, command, run_id, prepared_ref, profile, runner=Non
 
 def create_run(root, run_dir, run_id, prepared_ref, profile):
     from _mvg_capability_checkpoint import STRATEGY, SCHEMA
+    from _b_route_3b_segmented_input import is_segmented_frozen, load_prepared as load_3b_prepared
     if profile not in PROFILES:
         raise ValueError("b_route_runtime_profile_invalid")
-    frozen = planning.load_prepared(root, prepared_ref)
+    frozen = load_3b_prepared(root, prepared_ref)
     planner, _, request_limit = PROFILES[profile]
     limits = profile_limits(profile)
     desc = {"schema_version": PROFILE, "profile": profile, "planner": planner, "prepared_ref": prepared_ref,
@@ -2347,6 +2423,10 @@ def create_run(root, run_dir, run_id, prepared_ref, profile):
     state["b_route_issue_account_policy"] = account_policy
     state["b_route_output_schema_policy"] = PROVIDER_SCHEMA_POLICY
     state["b_route_machine_business_policy"] = MACHINE_BUSINESS_POLICY
+    if is_segmented_frozen(frozen):
+        from _b_route_3b_segmented_runtime import SEGMENTED_RUNTIME_POLICY
+        state["b_route_segmented_runtime_policy"] = SEGMENTED_RUNTIME_POLICY
+        state["b_route_input_compact_policy"] = compact.CURRENT_SCHEMA
     publish_initial_run(root, run_dir, state, frozen)
     return state
 

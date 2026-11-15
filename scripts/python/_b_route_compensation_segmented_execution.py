@@ -5,6 +5,7 @@ call limits never prove funding entitlement or campaign reconciliation. This is 
 offline capacity archive. No arbitrary caller plan issues semantic authority.
 """
 from copy import deepcopy
+import os
 from pathlib import Path
 
 import _b_route_codec as codec
@@ -123,9 +124,35 @@ def _request(subject,packet,plan,node,base,completed):
             {'node_id':node['node_id'],'reason':str(error),'measurement':report},codec.ReasonCode.INVALID_ARGUMENT)
     return prompt,schema,request,report
 
-def _command(workspace):
-    runner=Path(__file__).with_name('codex_isolated_model_runner.py')
-    return [*_runner_prefix(runner,suppress_bytecode=True),'--workspace',str(workspace),
+def _official_runner(runner=None, *, root=None):
+    from _isolated_runner_registry import is_official_isolated_runner_name, resolve_plane_b_runner
+    if runner is None:
+        selected_name = review._selected_review_runner_script(root)
+        candidate = Path(__file__).with_name(selected_name)
+    else:
+        candidate = Path(runner)
+        if not candidate.is_absolute() and candidate.parent == Path('.'):
+            repo_root = Path(root) if root is not None and (Path(root) / 'docs/workflows/llm-routing.json').is_file() else Path(__file__).resolve().parents[2]
+            effective_env = dict(os.environ)
+            if effective_env.get('NEWROGUE_ALLOW_TEST_MODEL_OVERRIDE') != '1':
+                effective_env.pop('NEWROGUE_LLM_ROUTING_PATH', None)
+            candidate = resolve_plane_b_runner(repo_root, requested_runner=str(runner), env=effective_env)
+    need(is_official_isolated_runner_name(candidate.name), 'official isolated Plane B runner script')
+    return Path(__file__).with_name(candidate.name)
+
+def _provider_ok(runner_name, provider):
+    if runner_name == 'gemini_isolated_model_runner.py':
+        return provider in {'google', 'gemini', 'gemini-cli'}
+    return runner_name == 'codex_isolated_model_runner.py' and provider == 'openai'
+
+def _expected_node_model(runner_name, root=None):
+    if runner_name == 'gemini_isolated_model_runner.py':
+        return review._governed_gemini_model(root)
+    return 'auto'
+
+def _command(workspace, runner=None, *, root=None):
+    selected = _official_runner(runner, root=root)
+    return [*_runner_prefix(selected,suppress_bytecode=True),'--workspace',str(workspace),
         '--prompt-file',str(workspace/'prompt.txt'),'--output',str(workspace/'output.json'),
         '--timeout-sec',str(TIMEOUT),'--output-schema',str(workspace/'schema.json'),'--model-request-budget','1']
 
@@ -205,15 +232,20 @@ def _replay(root,subject,plan,packet,node,prefix):
         and _read(root,directory+'/request.txt')==request.encode('utf-8')
         and _read(root,directory+'/measurement.json')==review.raw(report),'complete original node inputs and remeasured wrapper')
     execution=_json(root,directory+'/execution.json');output=_read(root,directory+'/w/output.json')
-    need(execution['command']==_command(workspace),'exact official single-request runner argv')
+    cmd_tokens=execution.get('command') if isinstance(execution.get('command'),list) else []
+    recorded_runners=[Path(t).name for t in cmd_tokens if isinstance(t,str) and Path(t).name in ('codex_isolated_model_runner.py','gemini_isolated_model_runner.py')]
+    need(len(recorded_runners)==1 and execution['command']==_command(workspace,runner=recorded_runners[0],root=root),'exact official single-request runner argv')
     receipt=receipt_from(execution)
-    validate_execution(workspace,execution,receipt,'auto',output,prompt=_frame(prompt,schema),schema=schema,
+    expected_model=_expected_node_model(recorded_runners[0],root)
+    validate_execution(workspace,execution,receipt,expected_model,output,prompt=_frame(prompt,schema),schema=schema,
                        require_runtime=True,expected_reasoning_effort='high')
     evidence=receipt['model_identity_evidence'][0]
     threads=set(subject['native_threads'])|{r['evidence']['thread_id'] for r in prefix}
     turns=set(subject['native_turns'])|{r['evidence']['turn_id'] for r in prefix}
-    need(evidence['model_provider']=='openai' and evidence['thread_id'] not in threads
-         and evidence['turn_id'] not in turns,'official high/no-tools thread and turn independent of all ancestors and nodes')
+    need(_provider_ok(recorded_runners[0],evidence['model_provider']) and evidence['thread_id'] not in threads
+         and evidence['turn_id'] not in turns
+         and all(r['evidence']['runtime_configuration']['model']==evidence['model'] for r in prefix),
+         'official high/no-tools thread, turn, and consistent model independent of all ancestors and nodes')
     verdict=codec.strict_json_loads(output);_verdict(verdict,schema,node)
     outcome={'output_digest':codec.raw_digest(output),'execution_digest':codec.raw_digest(_read(root,directory+'/execution.json'))}
     result={'schema_version':DELIVERY,'node_id':node['node_id'],'identity':identity,'admission':admission_ref,
@@ -293,22 +325,25 @@ def execute(root,operation_id, *, publication_only=False,derived=None,model_requ
                     and _read(root,directory+'/w/schema.json')==_schema_bytes(schema)
                     and {p.name for p in workspace.iterdir()}=={'prompt.txt','schema.json'},'unchanged complete input files')
                 dispatch_attempts+=1
-                run_isolated_model(Path(__file__).with_name('codex_isolated_model_runner.py'),workspace=workspace,
+                active_runner=_official_runner(root=root)
+                run_isolated_model(active_runner,workspace=workspace,
                     prompt_path=workspace/'prompt.txt',output_path=workspace/'output.json',timeout_sec=TIMEOUT,
                     wall_timeout_sec=TIMEOUT+30,output_schema=workspace/'schema.json',model_request_budget=1,
                     execution_log=review.path(root,directory+'/execution.json'),suppress_bytecode=True,reasoning_effort='high')
                 execution=_json(root,directory+'/execution.json');output=_read(root,directory+'/w/output.json')
                 receipt=receipt_from(execution)
-                validate_execution(workspace,execution,receipt,'auto',output,prompt=_frame(prompt,schema),schema=schema,
+                expected_model=_expected_node_model(active_runner.name,root)
+                validate_execution(workspace,execution,receipt,expected_model,output,prompt=_frame(prompt,schema),schema=schema,
                                    require_runtime=True,expected_reasoning_effort='high')
                 derived.recheck()
                 need(review.policy_identity()==plan['source_policy'],'unchanged current source after node execution')
                 evidence=receipt['model_identity_evidence'][0]
                 _verdict(codec.strict_json_loads(output),schema,node)
-                need(evidence['model_provider']=='openai' and evidence['thread_id'] not in
+                need(_provider_ok(active_runner.name,evidence['model_provider']) and evidence['thread_id'] not in
                     set(subject['native_threads'])|{r['evidence']['thread_id'] for r in prefix}
-                    and evidence['turn_id'] not in set(subject['native_turns'])|{r['evidence']['turn_id'] for r in prefix},
-                    'independent official high/no-tools node thread and turn')
+                    and evidence['turn_id'] not in set(subject['native_turns'])|{r['evidence']['turn_id'] for r in prefix}
+                    and all(r['evidence']['runtime_configuration']['model']==evidence['model'] for r in prefix),
+                    'independent official high/no-tools node thread, turn, and consistent model')
                 result={'schema_version':DELIVERY,'node_id':node['node_id'],'identity':identity,'admission':admission_ref,
                     'outcome':{'output_digest':codec.raw_digest(output),'execution_digest':codec.raw_digest(_read(root,directory+'/execution.json'))},
                     'evidence':{'thread_id':evidence['thread_id'],'turn_id':evidence['turn_id'],

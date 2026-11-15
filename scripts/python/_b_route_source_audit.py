@@ -578,6 +578,101 @@ def tool_identity(root, runner, expected_model, citation_guidance=None, *, expec
                 for binary in parent.glob(pattern):
                     if binary.is_file():
                         tools[str(binary)] = codec.raw_digest(binary.read_bytes())
+    elif runner.name == "gemini_isolated_model_runner.py":
+        _shutil = importlib.import_module("shutil")
+        def _bind_file(candidate: Path) -> None:
+            resolved = candidate.absolute()
+            for ancestor in reversed((resolved, *resolved.parents)):
+                inventory.no_reparse(ancestor)
+            raw_bytes = resolved.read_bytes()
+            key = str(resolved) if not resolved.is_relative_to(root) else resolved.relative_to(root).as_posix()
+            tools[key] = codec.raw_digest(raw_bytes)
+
+        def _norm_digest(val: str) -> str:
+            return val if val.startswith("sha256:") else ("sha256:" + val)
+
+        for mod_name in ("gemini_isolated_model_runner.py", "_gemini_cli_protocol.py", "_isolated_runner_registry.py"):
+            for base_dir in (runner.parent, here):
+                mod_path = base_dir / mod_name
+                if mod_path.is_file():
+                    _bind_file(mod_path)
+                    break
+        for cfg_root in (root, here.parents[1]):
+            routing_cfg = cfg_root / "docs/workflows/llm-routing.json"
+            if routing_cfg.is_file():
+                _bind_file(routing_cfg)
+                break
+        gemini_desc = inspect_isolated_runner(runner, suppress_bytecode=True)
+        exe_candidate = gemini_desc.get("gemini_executable") or gemini_desc.get("executable_path") or gemini_desc.get("cli_executable")
+        if not exe_candidate:
+            try:
+                gemini_mod = importlib.import_module("gemini_isolated_model_runner")
+                for fn_name in ("find_gemini_executable", "_gemini_executable"):
+                    if hasattr(gemini_mod, fn_name):
+                        exe_candidate = getattr(gemini_mod, fn_name)()
+                        break
+            except Exception:
+                exe_candidate = None
+        if not exe_candidate:
+            exe_candidate = (
+                _shutil.which("agy")
+                or _shutil.which("agy.exe")
+                or _shutil.which("gemini")
+                or _shutil.which("gemini.cmd")
+            )
+        if exe_candidate and Path(exe_candidate).is_file():
+            exe_resolved = Path(exe_candidate).resolve()
+            tools[str(exe_resolved)] = codec.raw_digest(exe_resolved.read_bytes())
+            for parent in list(exe_resolved.parents)[:5]:
+                for rel_glob in (
+                    "@google/gemini-cli/package.json",
+                    "@google/gemini-cli/dist/index.js",
+                    "@google/gemini-cli/bundle/*.js",
+                    "node_modules/@google/gemini-cli/package.json",
+                    "node_modules/@google/gemini-cli/dist/index.js",
+                    "node_modules/@google/gemini-cli/bundle/*.js",
+                ):
+                    for pkg_file in parent.glob(rel_glob):
+                        if pkg_file.is_file():
+                            tools[str(pkg_file.resolve())] = codec.raw_digest(pkg_file.resolve().read_bytes())
+        for desc_key, tool_label in (
+            ("node_sha256", "gemini:node_sha256"),
+            ("gemini_cli_sha256", "gemini:cli_entrypoint_sha256"),
+            ("entrypoint_sha256", "gemini:entrypoint_sha256"),
+            ("bundle_sha256", "gemini:bundle_sha256"),
+            ("system_md_sha256", "gemini:system_md_sha256"),
+            ("gemini_system_md_sha256", "gemini:gemini_system_md_sha256"),
+        ):
+            val = gemini_desc.get(desc_key)
+            if isinstance(val, str) and val:
+                tools[tool_label] = _norm_digest(val)
+        if "gemini:node_sha256" not in tools:
+            node_exe = gemini_desc.get("node_executable") or _shutil.which("node") or _shutil.which("node.exe")
+            if node_exe and Path(node_exe).is_file():
+                tools["gemini:node_sha256"] = codec.raw_digest(Path(node_exe).resolve().read_bytes())
+        if not any(k in tools for k in ("gemini:system_md_sha256", "gemini:gemini_system_md_sha256")):
+            sys_md_env = os.environ.get("GEMINI_SYSTEM_MD", "").strip()
+            if sys_md_env and Path(sys_md_env).is_file():
+                tools["gemini:system_md_sha256"] = codec.raw_digest(Path(sys_md_env).resolve().read_bytes())
+            else:
+                try:
+                    reg_mod = importlib.import_module("_isolated_runner_registry")
+                    proto_mod = importlib.import_module("_gemini_cli_protocol")
+                    spec = reg_mod.resolve_runner_spec("gemini_isolated_model_runner.py", root)
+                    if spec.system_instruction:
+                        sys_md_bytes = proto_mod.build_system_markdown(spec.system_instruction, None)
+                        tools["gemini:system_md_sha256"] = codec.raw_digest(sys_md_bytes)
+                except Exception:
+                    pass
+        thinking_cfg = gemini_desc.get("thinking_config") or gemini_desc.get("reasoning_config")
+        if not thinking_cfg:
+            try:
+                proto_mod = importlib.import_module("_gemini_cli_protocol")
+                effort = gemini_desc.get("requested_reasoning_effort") or "high"
+                thinking_cfg = proto_mod.build_isolated_settings(effort).get("modelConfigs", {})
+            except Exception:
+                thinking_cfg = {"requested_reasoning_effort": gemini_desc.get("requested_reasoning_effort")}
+        tools["gemini:thinking_config"] = canonical_sha(thinking_cfg)
     packages, pending = {}, ["jsonschema", "tiktoken", "openai", "httpx"]
     while pending:
         name = pending.pop()
@@ -599,6 +694,8 @@ def tool_identity(root, runner, expected_model, citation_guidance=None, *, expec
     if expected_reasoning_effort is None and runner.resolve() == Path(__file__).with_name("codex_isolated_model_runner.py").resolve():
         from codex_isolated_model_runner import description
         expected_reasoning_effort = description().get("requested_reasoning_effort")
+    elif expected_reasoning_effort is None and runner.name == "gemini_isolated_model_runner.py":
+        expected_reasoning_effort = inspect_isolated_runner(runner, suppress_bytecode=True).get("requested_reasoning_effort")
     sources.require(expected_reasoning_effort in (None, "low", "high"), "runner.reasoning_effort", "known captured reasoning expectation")
     guidance = checked_guidance(citation_guidance)
     identity = {"rules": RULES, "tools": dict(sorted(tools.items())), "packages": dict(sorted(packages.items())),
@@ -678,6 +775,12 @@ def enter(args):
                     and args.expected_model not in {"default", "environment-default", "auto"}, "arguments", "explicit runner and actual expected-model identity")
     sources.require((args.stage == "audit" and args.accounted) or
                     (args.stage == "verify" and args.audit_ref and not args.accounted), "arguments", "audit needs accounted; verify needs audit-ref")
+    if args.runner in {"auto", "codex", "gemini", "codex-cli", "gemini-cli"}:
+        registry_mod = importlib.import_module("_isolated_runner_registry")
+        runner_alias = {"auto": None, "codex-cli": "codex", "gemini-cli": "gemini"}.get(args.runner, args.runner)
+        resolved_runner = registry_mod.resolve_plane_b_runner(root, runner_alias).resolve()
+        sources.require(resolved_runner.is_relative_to(root), "runner", "repository-local official Plane B runner", str(resolved_runner))
+        args.runner = resolved_runner.relative_to(root).as_posix()
     for key in ("runner", "accounted", "audit_ref", "completed_extraction_ref"):
         if getattr(args, key, None):
             sources.checked_path(root, getattr(args, key))

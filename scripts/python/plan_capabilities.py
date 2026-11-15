@@ -7,6 +7,7 @@ import argparse
 import datetime as dt
 import hashlib
 import json
+import os
 import random
 import re
 import shutil
@@ -2411,9 +2412,42 @@ def _apply_impl(root: Path, *, run_id: str, alignment_override: Path | None) -> 
     return _apply_impl(root, run_id=run_id, alignment_override=alignment_override)
 
 
+def _resolve_cli_runner(raw_runner: str | None, root: Path, *, input_stage: str) -> str:
+    aliases = {"auto": None, "codex": "codex", "gemini": "gemini", "codex-cli": "codex", "gemini-cli": "gemini"}
+    default_codex = str(Path(__file__).resolve().with_name("codex_isolated_model_runner.py"))
+    default_codex_set = {
+        default_codex,
+        "codex_isolated_model_runner.py",
+        "scripts/python/codex_isolated_model_runner.py",
+        str((root / "scripts/python/codex_isolated_model_runner.py").resolve()),
+    }
+    raw_str = str(raw_runner).strip() if raw_runner is not None else None
+    lowered = raw_str.lower() if raw_str is not None else None
+    if lowered in aliases or (
+        input_stage == "3b"
+        and (raw_str is None or raw_str in default_codex_set)
+        and str(os.environ.get("NEWROGUE_PLANE_B_RUNNER") or "").strip()
+    ):
+        from _isolated_runner_registry import resolve_plane_b_runner
+        tool_root = Path(__file__).resolve().parents[2]
+        routing_env = dict(os.environ)
+        if "NEWROGUE_LLM_ROUTING_PATH" not in routing_env and (root / "docs/workflows/llm-routing.json").is_file():
+            routing_env["NEWROGUE_LLM_ROUTING_PATH"] = str((root / "docs/workflows/llm-routing.json").resolve())
+        requested = aliases[lowered] if lowered in aliases else None
+        return str(resolve_plane_b_runner(tool_root, requested, env=routing_env))
+    if input_stage == "3b" and (raw_str is None or raw_str in default_codex_set):
+        return default_codex
+    return raw_str if raw_str else default_codex
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--repo-root", default=".")
+    parser.add_argument(
+        "--allow-paid-api",
+        action="store_true",
+        help="explicitly authorize opt-in paid API backends (openai-api, gemini-api)",
+    )
     sub = parser.add_subparsers(dest="command", required=True)
 
     p = sub.add_parser("prepare")
@@ -2436,10 +2470,11 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--total-budget-sec", type=int, default=13500)
     p.add_argument("--request-limit", type=int, default=96)
 
+    default_runner = str(Path(__file__).resolve().with_name("codex_isolated_model_runner.py"))
     for name in ("generate", "review"):
         p_stage = sub.add_parser(name)
         p_stage.add_argument("--run-id", required=True)
-        p_stage.add_argument("--runner", required=True)
+        p_stage.add_argument("--runner", default=default_runner)
         p_stage.add_argument("--timeout-sec", type=int, default=2700)
 
     p_preview = sub.add_parser("preview-alignment")
@@ -2447,7 +2482,7 @@ def main(argv: list[str] | None = None) -> int:
 
     p_align = sub.add_parser("align")
     p_align.add_argument("--run-id", required=True)
-    p_align.add_argument("--runner", required=True)
+    p_align.add_argument("--runner", default=default_runner)
     p_align.add_argument("--timeout-sec", type=int, default=2700)
 
     p_apply = sub.add_parser("apply")
@@ -2471,10 +2506,30 @@ def main(argv: list[str] | None = None) -> int:
         runtime_parser.add_argument("--input-stage", choices=("legacy", "3b"), default="legacy")
         runtime_parser.add_argument("--prepared-ref")
         runtime_parser.add_argument("--planning-profile")
+    for sub_parser in sub.choices.values():
+        sub_parser.add_argument(
+            "--allow-paid-api",
+            action="store_true",
+            default=argparse.SUPPRESS,
+            help="explicitly authorize opt-in paid API backends (openai-api, gemini-api)",
+        )
 
     args = parser.parse_args(argv)
+    if bool(getattr(args, "allow_paid_api", False)) or (
+        str(os.environ.get("NEWROGUE_ALLOW_PAID_API") or os.environ.get("SC_ALLOW_PAID_API") or "")
+        .strip()
+        .lower()
+        in {"1", "true", "yes"}
+    ):
+        os.environ["NEWROGUE_ALLOW_PAID_API"] = "1"
     root = Path(args.repo_root).absolute()
     try:
+        if hasattr(args, "runner"):
+            args.runner = _resolve_cli_runner(
+                args.runner,
+                root,
+                input_stage=str(getattr(args, "input_stage", "legacy") or "legacy"),
+            )
         from _b_route_planning_runtime import cli_stage
         runtime_result = cli_stage(args, planner="capabilities")
         if runtime_result is not None:
@@ -2487,7 +2542,7 @@ def main(argv: list[str] | None = None) -> int:
                 print(json.dumps(stage_result, ensure_ascii=False, indent=2))
                 return stage_result["exit_code"]
         if args.command == "prepare":
-            from _b_route_planning_input import prepare_from_cli
+            from _b_route_3b_segmented_input import prepare_from_cli
             stage_result = prepare_from_cli(root, args, planner="capabilities")
             if stage_result is not None:
                 print(json.dumps(stage_result, ensure_ascii=False, indent=2))

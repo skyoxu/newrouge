@@ -131,6 +131,9 @@ def model_probe(out: Path, runner: Path | None, timeout: int) -> dict:
         if runner.name == "codex_isolated_model_runner.py":
             from codex_isolated_model_runner import _codex_executable
             _codex_executable()
+        elif runner.name == "gemini_isolated_model_runner.py":
+            from _gemini_cli_protocol import find_gemini_executable
+            find_gemini_executable()
         responses = {}
         for name in ("raw", "lossless"):
             workspace = attempt / name
@@ -159,7 +162,15 @@ def main() -> int:
     if not out.is_relative_to(root / "logs"):
         raise ValueError("Evidence audit output must be under repository logs")
     report = repository_audit(root, out)
-    probe = model_probe(out, Path(args.model_runner) if args.model_runner else None, args.model_timeout_sec)
+    resolved_runner: Path | None = None
+    if args.model_runner:
+        if args.model_runner in {"auto", "codex", "gemini", "codex-cli", "gemini-cli"}:
+            from _isolated_runner_registry import resolve_plane_b_runner
+            alias = {"auto": None, "codex-cli": "codex", "gemini-cli": "gemini"}.get(args.model_runner, args.model_runner)
+            resolved_runner = resolve_plane_b_runner(root, alias)
+        else:
+            resolved_runner = Path(args.model_runner)
+    probe = model_probe(out, resolved_runner, args.model_timeout_sec)
     atomic_json(out / "model-probe-report.json", probe)
     report["model_comprehension"] = {key: probe[key] for key in ("status", "runner_invocations", "scope")}
     report["formal_ready"] = False

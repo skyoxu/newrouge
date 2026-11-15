@@ -231,6 +231,9 @@ def _committed(snapshot):
         snapshot.committed.append((path, value))
 
 
+_VERIFIED_NATIVE_HANDOFF_CACHE = {}
+
+
 @contextmanager
 def capture_completed(root, material, review_ref):
     """Original candidate eligibility; host review is a distinct _run boundary."""
@@ -269,15 +272,90 @@ def capture_completed(root, material, review_ref):
                 snapshot.handoff = deepcopy(snapshot.native_capture['handoff'])
                 snapshot.prepared = deepcopy(snapshot.native_capture['prepared'])
             else:
+                from _b_route_3b_segmented_input import load_prepared as load_3b_prepared
+                from _mvg_capability_recovery import assert_active_chain
                 runtime.validate_input(snapshot.root, run, state)
-                snapshot.handoff = runtime.handoff(snapshot.root, run, state)
-                snapshot.prepared = planning.load_prepared(snapshot.root, snapshot.handoff['original_prepared_ref'])
-            supplied = snapshot.ref(material['handoff_ref'])
-            require(codec.canonical_digest(supplied) == codec.canonical_digest(snapshot.handoff),
-                    'exact current native handoff', material['handoff_ref']['path'])
-            expected_handoff = (run / 'handoff.json').relative_to(snapshot.root).as_posix()
-            require(material['handoff_ref']['path'] == expected_handoff,
-                    expected_handoff, material['handoff_ref']['path'])
+                expected_handoff = (run / 'handoff.json').relative_to(snapshot.root).as_posix()
+                handoff_file = run / 'handoff.json'
+                import zlib
+                handoff_disk_digest = codec.raw_digest(handoff_file.read_bytes()) if handoff_file.is_file() else None
+                cache_key = (
+                    str(snapshot.root.resolve()),
+                    str(run.resolve()),
+                    codec.raw_digest(state_raw),
+                    handoff_disk_digest,
+                )
+                cached_entry = _VERIFIED_NATIVE_HANDOFF_CACHE.get(cache_key)
+                cache_valid = False
+                if cached_entry is not None and len(cached_entry) == 5:
+                    cached_h_z, cached_p_z, observed_pins, cached_h_dig, cached_p_dig = cached_entry
+                    assert_active_chain(snapshot.root, state, run)
+                    pins_match = True
+                    for rel_path, expected_dig in observed_pins.items():
+                        actual_bytes = snapshot.read(rel_path, optional=(expected_dig is None))
+                        actual_dig = codec.raw_digest(actual_bytes) if actual_bytes is not None else None
+                        if actual_dig != expected_dig:
+                            pins_match = False
+                            break
+                    if pins_match:
+                        snapshot.handoff = codec.strict_json_loads(zlib.decompress(cached_h_z))
+                        snapshot.prepared = codec.strict_json_loads(zlib.decompress(cached_p_z))
+                        require(codec.canonical_digest(snapshot.handoff) == cached_h_dig
+                                and codec.canonical_digest(snapshot.prepared) == cached_p_dig,
+                                'unchanged cached handoff and prepared payloads', expected_handoff)
+                        href = material['handoff_ref']
+                        require(type(href) is dict and set(href) == {'path', 'schema_version', 'raw_digest'},
+                                'complete raw-bound reference', href, codec.ReasonCode.INVALID_REFERENCE)
+                        hraw = snapshot.read(href['path'])
+                        require(codec.raw_digest(hraw) == href['raw_digest'], href['raw_digest'], href['path'],
+                                codec.ReasonCode.DIGEST_MISMATCH)
+                        require(href['path'] == expected_handoff, expected_handoff, href['path'])
+                        require(href['schema_version'] == snapshot.handoff.get('schema_version'),
+                                href['schema_version'], href['path'], codec.ReasonCode.SCHEMA_MISMATCH)
+                        require(href['raw_digest'] == handoff_disk_digest, handoff_disk_digest, href['path'],
+                                codec.ReasonCode.DIGEST_MISMATCH)
+                        cache_valid = True
+                if not cache_valid:
+                    snapshot.handoff = runtime.handoff(snapshot.root, run, state)
+                    snapshot.prepared = load_3b_prepared(snapshot.root, snapshot.handoff['original_prepared_ref'])
+                    supplied = snapshot.ref(material['handoff_ref'])
+                    require(codec.canonical_digest(supplied) == codec.canonical_digest(snapshot.handoff),
+                            'exact current native handoff', material['handoff_ref']['path'])
+                    require(material['handoff_ref']['path'] == expected_handoff,
+                            expected_handoff, material['handoff_ref']['path'])
+                    observed_pins = {}
+                    run_rel = run.relative_to(snapshot.root).as_posix()
+                    prep_dir_rel = str(Path(snapshot.handoff['original_prepared_ref']).parent).replace('\\', '/')
+                    snapshot.tree(run_rel)
+                    snapshot.tree(prep_dir_rel)
+                    for dep_rel in snapshot.prepared['inputs']['dependencies']['files']:
+                        snapshot.read(dep_rel, optional=True)
+                    for p, d in snapshot.files.items():
+                        observed_pins[p] = d
+                    _VERIFIED_NATIVE_HANDOFF_CACHE.clear()
+                    _VERIFIED_NATIVE_HANDOFF_CACHE[cache_key] = (
+                        zlib.compress(
+                            json.dumps(
+                                snapshot.handoff,
+                                ensure_ascii=False,
+                                separators=(',', ':'),
+                                allow_nan=False,
+                            ).encode('utf-8'),
+                            level=1,
+                        ),
+                        zlib.compress(
+                            json.dumps(
+                                snapshot.prepared,
+                                ensure_ascii=False,
+                                separators=(',', ':'),
+                                allow_nan=False,
+                            ).encode('utf-8'),
+                            level=1,
+                        ),
+                        observed_pins,
+                        codec.canonical_digest(snapshot.handoff),
+                        codec.canonical_digest(snapshot.prepared),
+                    )
             review = snapshot.ref(review_ref)
             require(review_ref['path'] == state['selected_admission_review']['path'] and
                     codec.canonical_digest(review) == codec.canonical_digest(snapshot.handoff['admission']),
@@ -890,20 +968,11 @@ def _review_preview(root, request, *, seal=False, compensation_delivery=None):
                     'same review context under complete scopes', operation_id, codec.ReasonCode.INPUT_STALE)
             snapshot.verify()
             home = review.location(operation_id)
-            for name, data in (('subject.json', review.raw(subject)), ('w/prompt.txt', review.prompt(subject).encode('utf-8')),
-                               ('w/schema.json', review.raw(review.verdict_schema(subject))),
-                               ('request.txt', review.request_payload(subject).encode('utf-8'))):
+            for name, data in review.adoption_review_artifacts(subject, root=root).items():
                 review.write_once(root, home + '/' + name, data)
             if seal:
                 return {'status': 'reviewed', 'host_review_ref': review.seal(root, operation_id, proof), **FLAGS}
-            return {'status': 'review_prepared', 'operation_id': operation_id, 'subject_ref': home + '/subject.json',
-                    'subject_digest': codec.canonical_digest(subject), 'workspace': home + '/w',
-                    'machine_preservation': review.machine_mode(subject),
-                    'semantic_execution_required': review.machine_mode(subject) is None,
-                    'runner_command': review.runner_command(root, operation_id),
-                    'required_environment': {'NEWROGUE_CODEX_REASONING_EFFORT': 'high'},
-                    'execution_capture_ref': home + '/execution.json',
-                    'model_dispatched': False, **FLAGS}
+            return review.prepared_review_response(root, operation_id, subject, FLAGS)
         with scope_guard(root, frozen['scope_ids'], prepare_under_lease=persist, operation_id=operation_id) as result:
             return result
 

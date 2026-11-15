@@ -724,6 +724,11 @@ def _refresh_capability_knowledge(root: Path, checkout: Path, job: dict) -> dict
 
 def capability_runner_path() -> Path:
     import shutil
+    explicit_plane_b = str(os.environ.get('NEWROGUE_PLANE_B_RUNNER') or '').strip()
+    if explicit_plane_b in {'gemini', 'gemini-cli', 'gemini_isolated_model_runner.py', 'scripts/python/gemini_isolated_model_runner.py'}:
+        from _gemini_cli_protocol import find_gemini_executable
+        find_gemini_executable()
+        return Path(__file__).with_name('gemini_isolated_model_runner.py')
     if not (shutil.which('codex') or shutil.which('codex.cmd') or os.environ.get('CODEX_MANAGED_PACKAGE_ROOT')):
         raise ValueError('Codex CLI is required for Capability planning; authenticate Codex CLI or configure it on PATH')
     return Path(__file__).with_name('codex_isolated_model_runner.py')
@@ -734,21 +739,34 @@ def runner_path() -> Path:
     configured = os.environ.get('SC_KNOWLEDGE_PLANNING_RUNNER')
     if configured:
         return Path(configured).resolve()
+    explicit_plane_b = str(os.environ.get('NEWROGUE_PLANE_B_RUNNER') or '').strip()
+    if explicit_plane_b:
+        from _isolated_runner_registry import resolve_plane_b_runner
+        alias = {'auto': None, 'codex-cli': 'codex', 'gemini-cli': 'gemini'}.get(explicit_plane_b, explicit_plane_b)
+        return resolve_plane_b_runner(Path(__file__).resolve().parents[2], alias)
     import shutil
     if shutil.which('codex') or shutil.which('codex.cmd') or os.environ.get('CODEX_MANAGED_PACKAGE_ROOT'):
         return Path(__file__).with_name('codex_isolated_model_runner.py')
+    if shutil.which('gemini') or shutil.which('gemini.cmd') or os.environ.get('NEWROGUE_GEMINI_BIN'):
+        return Path(__file__).with_name('gemini_isolated_model_runner.py')
     if shutil.which('copilot'):
         return Path(__file__).with_name('copilot_isolated_model_runner.py')
-    if os.environ.get('OPENAI_API_KEY'):
+    paid_api_allowed = (
+        str(os.environ.get('NEWROGUE_ALLOW_PAID_API') or os.environ.get('SC_ALLOW_PAID_API') or '')
+        .strip()
+        .lower()
+        in {'1', 'true', 'yes'}
+    )
+    if os.environ.get('OPENAI_API_KEY') and paid_api_allowed:
         return Path(__file__).with_name('openai_isolated_model_runner.py')
-    raise ValueError('Configure an authenticated Codex/Copilot CLI or explicit OpenAI API runner for planning')
+    raise ValueError('Configure an authenticated Codex/Gemini/Copilot CLI or explicit OpenAI API runner for planning')
 
 
 def mvg_backend() -> str:
     backend = os.environ.get('SC_KNOWLEDGE_MVG_BACKEND')
     if not backend:
         backend = 'codex-cli'
-    if backend not in ('codex-cli', 'openai-api', 'copilot-cli'):
+    if backend not in ('codex-cli', 'gemini-cli', 'openai-api', 'copilot-cli'):
         raise ValueError('Unsupported MVG planning backend')
     return backend
 

@@ -236,6 +236,7 @@ def original_review(snapshot,original, *, profile=profiles.ORIGINAL):
     turns=set(subject['native_turns'])
     if type(evidence.get('turn_id')) is str:turns.add(evidence['turn_id'])
     for node in evidence.get('nodes',[]):threads.add(node['thread_id']);turns.add(node['turn_id'])
+    for seg in evidence.get('segments',[]):threads.add(seg['thread_id']);turns.add(seg['turn_id'])
     return sorted(threads),sorted(turns)
 
 
@@ -344,12 +345,28 @@ def _protocol(root,subject,buffers,schema):
     request=review._runner_frame(text,schema)
     need(buffers['request.txt']==request.encode('utf-8'),'exact full saved wrapper/schema/request')
     execution=codec.strict_json_loads(buffers['execution.json'])
-    need(execution.get('command')==review.runner_command(root,subject['operation_id']),'exact actual unchanged runner command')
+    expected_cmd=review.runner_command(root,subject['operation_id'])
+    actual_cmd=execution.get('command')
+    if actual_cmd!=expected_cmd:
+        from _isolated_runner_registry import OFFICIAL_RUNNER_SCRIPTS
+        from _planning_skill_common import _runner_prefix
+        workspace_dir=review.path(root,review.location(subject['operation_id'])+'/w')
+        allowed_cmds=[[*_runner_prefix(Path(__file__).with_name(name),suppress_bytecode=True),
+            '--workspace',str(workspace_dir),'--prompt-file',str(workspace_dir/'prompt.txt'),
+            '--output',str(workspace_dir/'output.json'),'--timeout-sec',expected_cmd[expected_cmd.index('--timeout-sec')+1],
+            '--output-schema',str(workspace_dir/'schema.json'),'--model-request-budget','1']
+            for name in OFFICIAL_RUNNER_SCRIPTS]
+        need(actual_cmd in allowed_cmds,'exact actual unchanged runner command')
+    recorded_runner=next((Path(t).name for t in (actual_cmd or []) if isinstance(t,str) and Path(t).name in ('codex_isolated_model_runner.py','gemini_isolated_model_runner.py')),'codex_isolated_model_runner.py')
     receipt=receipt_from(execution);output=buffers['w/output.json']
-    validate_execution(review.path(root,review.location(subject['operation_id'])+'/w'),execution,receipt,'auto',output,
+    expected_model=review._governed_gemini_model(root) if recorded_runner=='gemini_isolated_model_runner.py' else 'auto'
+    validate_execution(review.path(root,review.location(subject['operation_id'])+'/w'),execution,receipt,expected_model,output,
         prompt=request,schema=schema,require_runtime=True,expected_reasoning_effort='high')
     evidence=receipt['model_identity_evidence'][0]
-    need(evidence['model_provider']=='openai' and evidence['thread_id'] not in subject['native_threads'],
+    expected_providers={'google','gemini','gemini-cli'} if recorded_runner=='gemini_isolated_model_runner.py' else {'openai'}
+    need(evidence['model_provider'] in expected_providers
+         and evidence['thread_id'] not in subject['native_threads']
+         and evidence['turn_id'] not in subject['native_turns'],
          'official independent qualified high/no-tools review')
     check_verdict(subject,codec.strict_json_loads(output),schema=schema)
     return {'thread_id':evidence['thread_id'],'turn_id':evidence['turn_id'],
@@ -586,7 +603,11 @@ def family_for_snapshot(snapshot, *, profile=profiles.ORIGINAL):
         need(codec.raw_digest(data)==cap_ref['raw_digest'] and value==h._capsule,
              'exact genuine captured qualified source carrier')
         original=h.subject();threads.update(original['native_threads']);turns.update(original['native_turns'])
-        evidence=h.binding()['original_runtime'];threads.add(evidence['thread_id'])
+        evidence=h.binding()['original_runtime']
+        if type(evidence.get('thread_id')) is str:threads.add(evidence['thread_id'])
+        if type(evidence.get('turn_id')) is str:turns.add(evidence['turn_id'])
+        for node in evidence.get('nodes',[]):threads.add(node['thread_id']);turns.add(node['turn_id'])
+        for seg in evidence.get('segments',[]):threads.add(seg['thread_id']);turns.add(seg['turn_id'])
         qualified_family=True
     snapshot.compensation_threads=sorted(threads);snapshot.compensation_turns=sorted(turns)
     snapshot.qualified_family=qualified_family

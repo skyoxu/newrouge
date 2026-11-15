@@ -43,22 +43,30 @@ def validate_execution(workspace, execution, receipt, expected_model, output, *,
         sources.require(runtime_scope and not receipt.get("synthetic"), "receipt.scope", "real replayable runtime configuration")
     if runtime_scope:
         import _codex_app_server as app_server
-        sources.require(receipt.get("evidence_policy") == app_server.POLICY
+        import _gemini_cli_protocol as gemini_protocol
+        runtime_protocols = {
+            (app_server.POLICY, app_server.SOURCE): app_server.replay,
+            (gemini_protocol.POLICY, gemini_protocol.SOURCE): gemini_protocol.replay,
+        }
+        protocol_key = (receipt.get("evidence_policy"), receipt.get("model_identity_source"))
+        replay_fn = runtime_protocols.get(protocol_key)
+        sources.require(replay_fn is not None
             and receipt.get("runtime_identity_verified") is True
             and receipt.get("model_identity_verified") is False
             and receipt.get("provider_identity_verified") is False
             and receipt.get("provider_reported_model") is None
-            and receipt.get("provider_dispatch_count") == "unknown"
-            and receipt.get("model_identity_source") == app_server.SOURCE,
+            and receipt.get("provider_dispatch_count") == "unknown",
             "receipt.scope", "explicit runtime configuration proof; provider model remains unknown")
         evidence = receipt.get("model_identity_evidence")
         sources.require(isinstance(evidence, list) and len(evidence) == 1,
-                        "receipt.evidence", "one complete bound App Server turn")
+                        "receipt.evidence", "one complete bound runtime protocol turn")
         proof = evidence[0]
-        sources.require(isinstance(proof, dict) and isinstance(proof.get("protocol_jsonl_base64"), str),
-                        "receipt.evidence", "complete captured protocol bytes")
-        actual_output, rebuilt = app_server.replay(base64.b64decode(proof["protocol_jsonl_base64"], validate=True),
-                                                   prompt=prompt, schema=schema)
+        sources.require(isinstance(proof, dict) and isinstance(proof.get("protocol_jsonl_base64"), str)
+            and proof.get("evidence_policy") == protocol_key[0]
+            and proof.get("source") == protocol_key[1],
+            "receipt.evidence", "complete captured protocol bytes")
+        actual_output, rebuilt = replay_fn(base64.b64decode(proof["protocol_jsonl_base64"], validate=True),
+                                           prompt=prompt, schema=schema)
         if expected_reasoning_effort is not None:
             sources.require(rebuilt.get("requested_reasoning_effort") == expected_reasoning_effort
                 and rebuilt.get("runtime_reasoning_effort") == expected_reasoning_effort,
@@ -75,8 +83,9 @@ def validate_execution(workspace, execution, receipt, expected_model, output, *,
         and type(receipt.get("runner_invocations")) is int and receipt["runner_invocations"] == 1,
         "receipt", "verified identity in its declared scope, no tools and one completed runner turn")
     automatic = {"auto", "automatic", "codex-cli-default", "environment-default"}
+    forbidden_actual = {"", "environment-default", "default", "auto", "automatic", "codex-cli-default", "gemini-cli-default"}
     actual_model = receipt.get("model")
-    model_matches = (isinstance(actual_model, str) and actual_model not in {"", "environment-default", "default"})
+    model_matches = (isinstance(actual_model, str) and actual_model.casefold() not in forbidden_actual)
     if require_runtime:
         model_matches = model_matches and (expected_model.lower() in automatic
             or expected_model in {actual_model, receipt.get("model_identity")})

@@ -36,7 +36,7 @@ from _planning_skill_common import (
 
 RUN_SCHEMA = "newrouge.mvg-planning-run.v1"
 PROPOSAL_SCHEMA = "newrouge.mvg-planning-proposal.v1"
-SUPPORTED_LLM_BACKENDS = {"codex-cli", "openai-api", "copilot-cli"}
+SUPPORTED_LLM_BACKENDS = {"codex-cli", "gemini-cli", "openai-api", "copilot-cli"}
 DEFAULT_RUN_ROOT = Path("logs/ci/mvg-planning")
 FORMAL_TRACE_ROOT = Path("docs/testing/mvg/planning")
 TASK_VIEWS = (
@@ -4733,10 +4733,13 @@ def _generate(root: Path, *, run_id: str, timeout_sec: int, llm_backend: str, se
 
     runner_names = {
         "codex-cli": "codex_isolated_model_runner.py",
+        "gemini-cli": "gemini_isolated_model_runner.py",
         "openai-api": "openai_isolated_model_runner.py",
         "copilot-cli": "copilot_isolated_model_runner.py",
     }
     configured_runner = os.environ.get("SC_KNOWLEDGE_PLANNING_RUNNER")
+    if not configured_runner and llm_backend not in runner_names:
+        raise ValueError(f"Unsupported MVG isolated-runner backend: {llm_backend}")
     runner = Path(configured_runner).resolve() if configured_runner else Path(__file__).resolve().with_name(runner_names[llm_backend])
     backend_info = inspect_isolated_runner(runner)
 
@@ -7265,9 +7268,45 @@ def _rebind_handoff_impl(
         "chapter6_handoff_ready": True, "runtime_verified": False, "handoff": validated}
 
 
+def _resolve_cli_runner(raw_runner: str | None, root: Path, *, input_stage: str, command: str) -> str:
+    aliases = {"auto": None, "codex": "codex", "gemini": "gemini", "codex-cli": "codex", "gemini-cli": "gemini"}
+    default_codex = str(Path(__file__).resolve().with_name("codex_isolated_model_runner.py"))
+    default_openai = str(Path(__file__).resolve().with_name("openai_isolated_model_runner.py"))
+    default_codex_set = {
+        default_codex,
+        "codex_isolated_model_runner.py",
+        "scripts/python/codex_isolated_model_runner.py",
+        str((root / "scripts/python/codex_isolated_model_runner.py").resolve()),
+    }
+    raw_str = str(raw_runner).strip() if raw_runner is not None else None
+    lowered = raw_str.lower() if raw_str is not None else None
+    if lowered in aliases or (
+        input_stage == "3b"
+        and (raw_str is None or raw_str in default_codex_set)
+        and str(os.environ.get("NEWROGUE_PLANE_B_RUNNER") or "").strip()
+    ):
+        from _isolated_runner_registry import resolve_plane_b_runner
+        tool_root = Path(__file__).resolve().parents[2]
+        routing_env = dict(os.environ)
+        if "NEWROGUE_LLM_ROUTING_PATH" not in routing_env and (root / "docs/workflows/llm-routing.json").is_file():
+            routing_env["NEWROGUE_LLM_ROUTING_PATH"] = str((root / "docs/workflows/llm-routing.json").resolve())
+        requested = aliases[lowered] if lowered in aliases else None
+        return str(resolve_plane_b_runner(tool_root, requested, env=routing_env))
+    if input_stage == "3b" and (raw_str is None or raw_str in default_codex_set):
+        return default_codex
+    if raw_str is None:
+        return default_openai if command == "review" else default_codex
+    return raw_str
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--repo-root", default=".")
+    parser.add_argument(
+        "--allow-paid-api",
+        action="store_true",
+        help="explicitly authorize opt-in paid API backends (openai-api, gemini-api)",
+    )
     sub = parser.add_subparsers(dest="command", required=True)
 
     p_prepare = sub.add_parser("prepare")
@@ -7289,7 +7328,7 @@ def main(argv: list[str] | None = None) -> int:
 
     p_review = sub.add_parser("review")
     p_review.add_argument("--run-id", required=True)
-    p_review.add_argument("--runner", required=True)
+    p_review.add_argument("--runner", default=None)
     p_review.add_argument("--timeout-sec", type=int, default=1800)
 
     for name in ("validate", "status"):
@@ -7335,10 +7374,31 @@ def main(argv: list[str] | None = None) -> int:
         runtime_parser.add_argument("--planning-profile")
     p_generate.add_argument("--runner", default="scripts/python/codex_isolated_model_runner.py")
     sub.choices["validate"].add_argument("--planning-profile")
+    for sub_parser in sub.choices.values():
+        sub_parser.add_argument(
+            "--allow-paid-api",
+            action="store_true",
+            default=argparse.SUPPRESS,
+            help="explicitly authorize opt-in paid API backends (openai-api, gemini-api)",
+        )
 
     args = parser.parse_args(argv)
+    if bool(getattr(args, "allow_paid_api", False)) or (
+        str(os.environ.get("NEWROGUE_ALLOW_PAID_API") or os.environ.get("SC_ALLOW_PAID_API") or "")
+        .strip()
+        .lower()
+        in {"1", "true", "yes"}
+    ):
+        os.environ["NEWROGUE_ALLOW_PAID_API"] = "1"
     root = Path(args.repo_root).absolute()
     try:
+        if hasattr(args, "runner"):
+            args.runner = _resolve_cli_runner(
+                args.runner,
+                root,
+                input_stage=str(getattr(args, "input_stage", "legacy") or "legacy"),
+                command=str(args.command),
+            )
         from _b_route_planning_runtime import cli_stage
         runtime_result = cli_stage(args, planner="mvg")
         if runtime_result is not None:
@@ -7351,7 +7411,7 @@ def main(argv: list[str] | None = None) -> int:
                 print(json.dumps(stage_result, ensure_ascii=False, indent=2))
                 return stage_result["exit_code"]
         if args.command == "prepare":
-            from _b_route_planning_input import prepare_from_cli
+            from _b_route_3b_segmented_input import prepare_from_cli
             stage_result = prepare_from_cli(root, args, planner="mvg")
             if stage_result is not None:
                 print(json.dumps(stage_result, ensure_ascii=False, indent=2))

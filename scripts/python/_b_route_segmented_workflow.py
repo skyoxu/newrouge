@@ -77,10 +77,10 @@ def _safe(root, value):
     # Role rejection precedes even path existence/metadata inspection.
     inventory.canonical_path(value, allow_logs=True)
     parts = value.casefold().split("/")
-    forbidden = {".git", ".codex", ".aws", ".ssh", "sessions", "archived_sessions", "credentials", "auth",
-                 "auth.json", "credentials.json", "credentials.toml", "id_rsa", "id_ed25519"}
+    forbidden = {".git", ".codex", ".gemini", ".aws", ".ssh", "sessions", "archived_sessions", "credentials", "auth",
+                 "auth.json", "oauth_creds.json", "google_accounts.json", "credentials.json", "credentials.toml", "id_rsa", "id_ed25519"}
     _require(not any(p in forbidden or p.startswith(".env") for p in parts)
-             and parts[-1] not in {"auth.json", "credentials.json", "credentials.toml", "id_rsa", "id_ed25519"},
+             and parts[-1] not in {"auth.json", "oauth_creds.json", "google_accounts.json", "credentials.json", "credentials.toml", "id_rsa", "id_ed25519"},
              "reference.sensitive_role")
     path = sources.checked_path(Path(root).resolve(), value)
     inventory.no_reparse(path)
@@ -364,6 +364,12 @@ def policy_identity(root):
              "_planning_apply_journal.py", "_capability_input_integrity.py", "codex_isolated_model_runner.py",
              "openai_isolated_model_runner.py", "_codex_app_server.py", "_b_route_codec.py",
              "_b_route_sources.py", "_b_route_inventory.py")
+    try:
+        import _b_route_segmented_runtime as _seg_rt
+        if _seg_rt._configured_segmented_runner_script() == "gemini_isolated_model_runner.py":
+            names = (*names, "_gemini_cli_protocol.py", "gemini_isolated_model_runner.py", "_isolated_runner_registry.py")
+    except ImportError:
+        pass
     source_root = Path(__file__).resolve().parents[2]
     import _b_route_candidate as business
     return {"protocol": PROTOCOL, "source_root": source_root.as_posix(),
@@ -505,8 +511,15 @@ def validate_paid_binding(root, plan, node, reservation, binding, *, request_sha
              and observed["envelope"]["plan_digest"] == plan["plan_digest"]
              and observed["envelope"]["node_id"] == node["node_id"]
              and observed["envelope"]["phase"] == node["phase"], "paid_binding.original_envelope")
-    runner = _safe(Path(__file__).resolve().parents[2], "scripts/python/codex_isolated_model_runner.py")
     native_runner = reservation["model_identity"].get("runner")
+    runner_script = (
+        "gemini_isolated_model_runner.py"
+        if type(native_runner) is dict
+        and type(native_runner.get("path")) is str
+        and Path(native_runner["path"]).name == "gemini_isolated_model_runner.py"
+        else "codex_isolated_model_runner.py"
+    )
+    runner = _safe(Path(__file__).resolve().parents[2], "scripts/python/" + runner_script)
     _require(type(native_runner) is dict and type(native_runner.get("path")) is str
              and Path(native_runner["path"]) == runner and native_runner.get("raw_digest") == _raw(runner.read_bytes())
              and _same(binding.get("runner_info"), native_runner.get("description")), "paid_binding.original_official_runner")
@@ -946,7 +959,7 @@ def _capture_execution_close(root, request, binding):
     workspace = Path(request["workspace"])
     _require(workspace.resolve().is_relative_to(Path(root).resolve() / "logs/ci"), "execution.owned_workspace")
     output = Path(request["output_path"])
-    pattern = re.compile(re.escape(output.name) + r"\.([0-9a-f]{32})\.app-server\.jsonl")
+    pattern = re.compile(re.escape(output.name) + r"\.([0-9a-f]{32})\.(?:app-server|gemini-stream)\.jsonl")
     paths = list(workspace.iterdir())
     matches = [p for p in paths if pattern.fullmatch(p.name)]
     _require(len(matches) == 1, "execution.exactly_one_protocol")
@@ -1028,7 +1041,13 @@ def replay_verified_result(root, plan, node, reservation, stored):
     _require(execution.get("command_scope") == "original-logical-runner-argv", "resume.logical_command_scope")
     authority.replay_runner_transport(root, execution.get("source_transport"), logical_command=execution["command"])
     from _planning_skill_common import _runner_prefix
-    official = Path(__file__).with_name("codex_isolated_model_runner.py")
+    recorded_runner_path = reservation.get("model_identity", {}).get("runner", {}).get("path", "")
+    official_name = (
+        "gemini_isolated_model_runner.py"
+        if Path(str(recorded_runner_path)).name == "gemini_isolated_model_runner.py"
+        else "codex_isolated_model_runner.py"
+    )
+    official = Path(__file__).with_name(official_name)
     authority.replay_runner_transport(root, stored["runner_description_transport"],
                                      logical_command=[*_runner_prefix(official, suppress_bytecode=True), "--describe"])
     closed = _capture_execution_close(root, observed, stored["binding"])
@@ -1081,7 +1100,7 @@ def _execute_verified(root, *, run_dir, plan):
                 result = replay_verified_result(root, plan, node, previous["reservation"], previous["result"])
             _fresh_turn(root, run_dir, plan, results, result["binding"])
             results[node["node_id"]] = result
-        runner = _safe(Path(__file__).resolve().parents[2], "scripts/python/codex_isolated_model_runner.py")
+        runner = _safe(Path(__file__).resolve().parents[2], "scripts/python/" + authority._configured_segmented_runner_script())
         # Describe is a zero-model original owner call; never a backend fallback.
         with authority.source_only_runner(root, runner) as describe_transport:
             info = inspect_isolated_runner(runner, suppress_bytecode=True)

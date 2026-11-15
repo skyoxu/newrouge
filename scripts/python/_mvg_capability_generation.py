@@ -709,6 +709,24 @@ def preflight_dispatch(runner, *, workspace, prompt_path, output_path, output_sc
             codex.run(args)
         codex._codex_executable()
         return
+    if runner.name == "gemini_isolated_model_runner.py":
+        from _isolated_runner_registry import is_official_isolated_runner_name
+        if not is_official_isolated_runner_name(runner.name):
+            raise ValueError("MVG runner preflight is unsupported")
+        import gemini_isolated_model_runner as gemini_runner
+        args = argparse.Namespace(workspace=str(workspace), prompt_file=str(prompt_path),
+            output=str(output_path), output_schema=str(output_schema) if output_schema else "",
+            max_bytes=DEFAULT_MAX_BYTES, max_input_tokens=configured_input_limit(),
+            timeout_sec=timeout_sec, preflight=True)
+        with contextlib.redirect_stdout(io.StringIO()):
+            rc = gemini_runner.run(args)
+        if rc not in (None, 0):
+            raise ValueError("gemini isolated runner preflight failed")
+        if hasattr(gemini_runner, "find_gemini_executable"):
+            gemini_runner.find_gemini_executable()
+        elif hasattr(gemini_runner, "_gemini_executable"):
+            gemini_runner._gemini_executable()
+        return
     payload = workspace_payload(workspace, prompt_path=prompt_path, output_path=output_path,
                                 max_bytes=DEFAULT_MAX_BYTES)
     if runner.name == "openai_isolated_model_runner.py":

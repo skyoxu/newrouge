@@ -40,6 +40,8 @@
 
 - ADR-0041: B 路线审核修复的宿主资源与元数据恢复边界 — [ADR-0041](../adr/ADR-0041-b-route-review-hardening-resource-and-metadata-boundaries.md)。Accepted 宿主政策，R25 已有定向工程证据；正式 Story 审核另行关闭，默认 B 未激活，原模型预算与历史 producer 资格不变。
 - ADR-0042: Capability/MVG 共用分段协议与有界无损传输 — [ADR-0042](../adr/ADR-0042-shared-segmented-planning-protocol.md)。Accepted 技术合同；opt-in 实现交付、真实资格和默认启用分别准入，不据本索引授予正式采纳或默认 B 启用。
+- ADR-0062: 3B 原生协调器全 6 阶段 70,000 字节 CLI 确定性分段运行时契约 — [ADR-0062](../adr/ADR-0062-3b-deterministic-70k-segmented-runtime.md)。Accepted 技术合同；全 6 阶段每调用 <= 70,000 UTF-8 字节结构化确定性切分与无损重组，历史非分段证据原样保留，不单独授予默认 B 启用。
+- ADR-0063: 双平面多模型路由架构与 Gemini CLI 物理无工具隔离运行器契约 — [ADR-0063](../adr/ADR-0063-multi-model-routing-and-gemini-isolated-runner.md)。Accepted 治理与隔离运行器契约；确立平面 A/B 路由边界、物理无工具 `gemini_isolated_model_runner.py` 沙盒与 `.gemini-stream.jsonl` 冷启动重放，100% 保留 Codex 链路与付费 API `--allow-paid-api` 门禁。
 
 ---
 
