@@ -47,6 +47,7 @@ Context Reset 后先读取本文件，再按当前任务范围选择首要入口
 | Testing/MVG | `docs/testing-framework.md` | `docs/workflows/mvg-integration-acceptance.md`、选定 manifest |
 | Harness/工作流维护 | `docs/workflows/run-protocol.md` | 当前涉及入口脚本、schema、`docs/workflows/local-hard-checks.md` |
 | 显式 plan/decision 工作 | 用户或当前任务绑定的具体文件 | 该文件引用的来源；不按目录时间戳猜测 |
+| Antigravity / Gemini 专属编排规范 | [geminiuse.md](geminiuse.md) | 仅适用于 Antigravity（含 `agy` CLI）与 Gemini 会话；Codex、Claude Code 及其他智能体完全忽略该文件 |
 
 B 路线目标为 3A 来源审计 → 3B 无 Task 正式采纳 → 3C 任务承接 → 4–5 绑定／readiness → 6 单 Task → 适用 7 → Flow／累计收尾。阶段、记录权威及 A 冻结／切 B／退 A／补偿条件见上述 Accepted ADR；治理采纳、实现交付和迁移启用分别准入，不据导航或 Build spec 获批切换默认路径。Story 1.2 的纯治理纳管不豁免后续实施。
 
