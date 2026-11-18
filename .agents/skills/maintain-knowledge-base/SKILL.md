@@ -1,3 +1,8 @@
+---
+name: maintain-knowledge-base
+description: Inspect, validate, rebuild, publish, or recover derived repository knowledge artifacts without altering repository source authority.
+---
+
 # Maintain Knowledge Base
 
 Use this skill only to inspect, validate, rebuild, publish, or recover **derived repository knowledge artifacts**.
