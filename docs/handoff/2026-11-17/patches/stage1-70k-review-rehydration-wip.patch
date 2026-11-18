@@ -1,0 +1,1080 @@
+diff --git a/scripts/python/_b_route_3b_segmented_runtime.py b/scripts/python/_b_route_3b_segmented_runtime.py
+index 094b8c4..1edb40b 100644
+--- a/scripts/python/_b_route_3b_segmented_runtime.py
++++ b/scripts/python/_b_route_3b_segmented_runtime.py
+@@ -410,7 +410,16 @@ def _assert_under_70k(ws_bytes: int, frozen: dict, label: str) -> None:
+         raise ValueError(f"b_route_segmented_token_bound_exceeds_96k:{label}:{ws_bytes + reserved}")
+ 
+ 
+-def _slim_repair_prior_projection(prior: dict, frozen: dict, issue: dict) -> dict:
++def _is_def_item_in_repair_domain(allowed_paths: set, family: str, idx: int) -> bool:
++    return any(
++        len(p) >= 2 and p[:2] == ("definitions", family) and (len(p) == 2 or p[2] == idx)
++        for p in allowed_paths
++    )
++
++
++def _slim_repair_prior_projection(
++    prior: dict, frozen: dict, issue: dict, *, subfield_slim: bool = False
++) -> dict:
+     """Compact prior candidate projection preserving full repair_domain items and digest stubs elsewhere."""
+     import _b_route_planning_runtime as runtime
+ 
+@@ -418,6 +427,13 @@ def _slim_repair_prior_projection(prior: dict, frozen: dict, issue: dict) -> dic
+     allowed_paths = runtime.repair_domain(prior, frozen, issue)
+     content = deepcopy(base_proj["content"])
+     defs = content.get("definitions")
++    keep_base_keys = {
++        "id",
++        "proposed_owner_key",
++        "requirement_ids",
++        "capability_ids",
++        "source_block_ids",
++    }
+     if isinstance(defs, dict):
+         for family in ("flows", "commands", "states"):
+             items = defs.get(family)
+@@ -425,8 +441,29 @@ def _slim_repair_prior_projection(prior: dict, frozen: dict, issue: dict) -> dic
+                 continue
+             slim_items = []
+             for idx, row in enumerate(items):
+-                if ("definitions", family, idx) in allowed_paths or ("definitions", family) in allowed_paths:
+-                    slim_items.append(row)
++                if _is_def_item_in_repair_domain(allowed_paths, family, idx):
++                    if (
++                        subfield_slim
++                        and isinstance(row, dict)
++                        and ("definitions", family) not in allowed_paths
++                        and ("definitions", family, idx) not in allowed_paths
++                    ):
++                        allowed_subfields = {
++                            p[3]
++                            for p in allowed_paths
++                            if len(p) >= 4 and p[:3] == ("definitions", family, idx)
++                        }
++                        slim_row = {}
++                        for k, v in row.items():
++                            if k in keep_base_keys or k in allowed_subfields:
++                                slim_row[k] = v
++                            elif isinstance(v, (dict, list)):
++                                slim_row[k] = {"_subfield_stub_sha256": canonical_sha(v)}
++                            else:
++                                slim_row[k] = v
++                        slim_items.append(slim_row)
++                    else:
++                        slim_items.append(row)
+                 else:
+                     stub = {"id": row.get("id"), f"{family[:-1]}_sha256": canonical_sha(row)}
+                     if "requirement_ids" in row:
+@@ -435,7 +472,77 @@ def _slim_repair_prior_projection(prior: dict, frozen: dict, issue: dict) -> dic
+                         stub["proposed_owner_key"] = row["proposed_owner_key"]
+                     slim_items.append(stub)
+             defs[family] = slim_items
+-    return {**base_proj, "content": content, "slim_repair_projection": True}
++    out = {**base_proj, "content": content, "slim_repair_projection": True}
++    if subfield_slim:
++        out["slim_repair_subfield"] = True
++    return out
++
++
++def _rehydrate_slim_repair_content(content: dict, prior_content: dict) -> dict:
++    """Deterministically rehydrate slim-repair digest and subfield stubs from prior_content."""
++    out = deepcopy(content)
++    if not isinstance(out, dict) or not isinstance(prior_content, dict):
++        return out
++    defs = out.get("definitions")
++    prior_defs = prior_content.get("definitions")
++    if not isinstance(defs, dict) or not isinstance(prior_defs, dict):
++        return out
++    for family in ("flows", "commands", "states"):
++        items = defs.get(family)
++        orig_items = prior_defs.get(family)
++        if not isinstance(items, list) or not isinstance(orig_items, list) or len(items) != len(orig_items):
++            continue
++        sha_key = f"{family[:-1]}_sha256"
++        allowed_stub_keys = {"id", sha_key, "requirement_ids", "proposed_owner_key"}
++        for idx, (row, orig_row) in enumerate(zip(items, orig_items)):
++            if not isinstance(row, dict) or not isinstance(orig_row, dict):
++                continue
++            if (
++                sha_key in row
++                and sha_key not in orig_row
++                and set(row.keys()) <= allowed_stub_keys
++                and row.get("id") == orig_row.get("id")
++                and row.get(sha_key) == canonical_sha(orig_row)
++                and (
++                    "requirement_ids" not in row
++                    or (
++                        "requirement_ids" in orig_row
++                        and row["requirement_ids"] == orig_row["requirement_ids"]
++                    )
++                )
++                and (
++                    "proposed_owner_key" not in row
++                    or (
++                        "proposed_owner_key" in orig_row
++                        and row["proposed_owner_key"] == orig_row["proposed_owner_key"]
++                    )
++                )
++            ):
++                items[idx] = deepcopy(orig_row)
++            else:
++                for k, v in list(row.items()):
++                    if (
++                        k in orig_row
++                        and isinstance(v, dict)
++                        and set(v.keys()) == {"_subfield_stub_sha256"}
++                        and v["_subfield_stub_sha256"] == canonical_sha(orig_row[k])
++                    ):
++                        row[k] = deepcopy(orig_row[k])
++    return out
++
++
++def _rehydrate_draft_chain_content(drafts: list[dict]) -> dict:
++    """Walk synthesis drafts forward and rehydrate slim-repair stubs into full candidate content."""
++    acc = None
++    for d in drafts:
++        if d.get("stage") == "synthesis":
++            if acc is None:
++                acc = deepcopy(d["content"])
++            else:
++                acc = _rehydrate_slim_repair_content(d["content"], acc)
++    if acc is None:
++        return deepcopy(drafts[-1]["content"])
++    return acc
+ 
+ 
+ def _collect_directive_strings(value, out: set[str] | None = None) -> set[str]:
+@@ -456,9 +563,10 @@ def _collect_directive_strings(value, out: set[str] | None = None) -> set[str]:
+ 
+ 
+ def _generation_contract_for_request(root_req: dict) -> tuple[dict, dict]:
+-    if root_req.get("stage") == "batch" or root_req.get("synthesis_role") in (
+-        "rolling_compaction",
+-        "tree_reduce",
++    if (
++        root_req.get("stage") == "batch"
++        or root_req.get("synthesis_role") in ("rolling_compaction", "tree_reduce")
++        or bool(root_req.get("compact_contract_pin"))
+     ):
+         return (
+             {
+@@ -532,10 +640,78 @@ def _build_generation_materials(
+     return sealed, provider_schema, prompt_text, ws_bytes
+ 
+ 
++def _scoped_review_prior(
++    prior_projection: dict | None, issue: dict | None = None, *, level: int = 2
++) -> dict | None:
++    """Compact prior_candidate projection for Stage 5 review at level >= 2."""
++    del issue
++    if prior_projection is None or level <= 0:
++        return prior_projection
++    if level < 2:
++        return prior_projection
++    return {
++        "schema_version": prior_projection["schema_version"],
++        "input_stage": prior_projection["input_stage"],
++        "input_identity": prior_projection["input_identity"],
++        "proposal_sha256": prior_projection["proposal_sha256"],
++        "provenance_summary": deepcopy(prior_projection["provenance_summary"]),
++        "content_sha256": canonical_sha(prior_projection["content"]),
++        "compact_review_prior": True,
++    }
++
++
++def _trim_graph_to_budget(graph: dict, max_bytes: int = 40_000) -> dict:
++    """Deterministically trim graph nodes/edges to fit max_bytes while keeping boundaries/loops/digests."""
++    if _compact_bytes_len(graph) <= max_bytes:
++        return graph
++    orig_nodes = list(graph.get("nodes", []))
++    orig_edges = list(graph.get("edges", []))
++    boundaries = deepcopy(graph.get("boundaries", []))
++    loops = deepcopy(graph.get("loops", []))
++    orig_sha = canonical_sha(graph)
++    total = len(orig_nodes) + len(orig_edges)
++
++    def _build(mid: int) -> dict:
++        if total <= 0:
++            n_cnt, e_cnt = 0, 0
++        else:
++            n_cnt = min(len(orig_nodes), (len(orig_nodes) * mid) // total)
++            e_cnt = min(len(orig_edges), mid - n_cnt)
++        return {
++            "nodes": deepcopy(orig_nodes[:n_cnt]),
++            "edges": deepcopy(orig_edges[:e_cnt]),
++            "boundaries": boundaries,
++            "loops": loops,
++            "nodes_total": len(orig_nodes),
++            "edges_total": len(orig_edges),
++            "graph_sha256": orig_sha,
++            "graph_trimmed": True,
++        }
++
++    lo, hi = 0, total
++    best = _build(0)
++    while lo <= hi:
++        mid = (lo + hi) // 2
++        cand = _build(mid)
++        if _compact_bytes_len(cand) <= max_bytes:
++            best = cand
++            lo = mid + 1
++        else:
++            hi = mid - 1
++    return best
++
++
+ def _scoped_review_proposal(
+-    proposal_proj: dict, seg_obs: list[dict], *, directive: dict | None = None
++    proposal_proj: dict,
++    seg_obs: list[dict],
++    *,
++    directive: dict | None = None,
++    level: int = 1,
++    seg_sources: list[dict] | None = None,
+ ) -> dict:
+-    """Keep full flow bodies for targeted obligations/reopen conflicts and digest stubs elsewhere."""
++    """Keep targeted obligation bodies and digest stubs elsewhere according to projection level."""
++    if level <= 0:
++        return proposal_proj
+     targeted_flow_ids = {
+         ob["target"][1]
+         for ob in seg_obs
+@@ -543,6 +719,19 @@ def _scoped_review_proposal(
+         and len(ob["target"]) >= 2
+         and ob["target"][0] in ("flow", "flow_branch", "flow_part")
+     }
++    targeted_flow_aspects: dict[str, set[str]] = {}
++    for ob in seg_obs:
++        tgt = ob.get("target")
++        if not isinstance(tgt, list) or len(tgt) < 2:
++            continue
++        kind, fid = tgt[0], tgt[1]
++        if kind == "flow" and len(tgt) >= 3:
++            targeted_flow_aspects.setdefault(fid, set()).add(tgt[2])
++        elif kind == "flow_part":
++            targeted_flow_aspects.setdefault(fid, set()).add("parts")
++        elif kind == "flow_branch":
++            targeted_flow_aspects.setdefault(fid, set()).add("branches")
++
+     targeted_req_ids = {
+         ob["target"][1]
+         for ob in seg_obs
+@@ -572,22 +761,148 @@ def _scoped_review_proposal(
+         for fl in flows:
+             fid = fl.get("id")
+             f_reqs = set(fl.get("requirement_ids", []))
+-            if (
+-                fid in targeted_flow_ids
+-                or fid in reopen_matched_flow_ids
+-                or (targeted_req_ids and (f_reqs & targeted_req_ids) and len(flows) <= 8)
+-            ):
+-                scoped_flows.append(fl)
++            if level == 1:
++                if (
++                    fid in targeted_flow_ids
++                    or fid in reopen_matched_flow_ids
++                    or (targeted_req_ids and (f_reqs & targeted_req_ids) and len(flows) <= 8)
++                ):
++                    scoped_flows.append(fl)
++                else:
++                    stub = {
++                        "id": fid,
++                        "requirement_ids": list(fl.get("requirement_ids", [])),
++                        "flow_sha256": canonical_sha(fl),
++                    }
++                    if "proposed_owner_key" in fl:
++                        stub["proposed_owner_key"] = fl["proposed_owner_key"]
++                    scoped_flows.append(stub)
+             else:
+-                stub = {
+-                    "id": fid,
+-                    "requirement_ids": list(fl.get("requirement_ids", [])),
+-                    "flow_sha256": canonical_sha(fl),
+-                }
+-                if "proposed_owner_key" in fl:
+-                    stub["proposed_owner_key"] = fl["proposed_owner_key"]
+-                scoped_flows.append(stub)
++                if fid in targeted_flow_ids or fid in reopen_matched_flow_ids:
++                    fl_orig_sha = canonical_sha(fl)
++                    fl_out = deepcopy(fl)
++                    aspects = targeted_flow_aspects.get(fid, set())
++                    if fid not in reopen_matched_flow_ids:
++                        if "graph" not in aspects and isinstance(fl_out.get("graph"), dict):
++                            g = fl_out["graph"]
++                            fl_out["graph"] = {
++                                "nodes_count": len(g.get("nodes", [])),
++                                "edges_count": len(g.get("edges", [])),
++                                "boundaries": deepcopy(g.get("boundaries", [])),
++                                "loops": deepcopy(g.get("loops", [])),
++                                "graph_sha256": canonical_sha(g),
++                            }
++                        if "graph" in aspects:
++                            if "parts" not in aspects and isinstance(fl_out.get("parts"), list):
++                                fl_out["parts"] = [
++                                    {
++                                        "kind": p.get("kind"),
++                                        "applicability": p.get("applicability"),
++                                        "part_sha256": canonical_sha(p),
++                                    }
++                                    for p in fl_out["parts"]
++                                ]
++                            if "branches" not in aspects and isinstance(fl_out.get("branches"), list):
++                                fl_out["branches"] = [
++                                    {
++                                        "kind": b.get("kind"),
++                                        "applicability": b.get("applicability"),
++                                        "boundary_ids": deepcopy(b.get("boundary_ids", [])),
++                                        "branch_sha256": canonical_sha(b),
++                                    }
++                                    for b in fl_out["branches"]
++                                ]
++                    if level >= 3:
++                        l3_fl = {
++                            "id": fid,
++                            "flow_sha256": fl_orig_sha,
++                        }
++                        if "proposed_owner_key" in fl:
++                            l3_fl["proposed_owner_key"] = fl["proposed_owner_key"]
++                        if "requirement_ids" in fl:
++                            l3_fl["requirement_ids"] = list(fl["requirement_ids"])
++                        for asp in sorted(aspects):
++                            if asp in fl_out:
++                                l3_fl[asp] = fl_out[asp]
++                        if "graph" in aspects and isinstance(l3_fl.get("graph"), dict):
++                            l3_fl["graph"] = _trim_graph_to_budget(l3_fl["graph"], max_bytes=40_000)
++                        fl_out = l3_fl
++                    scoped_flows.append(fl_out)
++                else:
++                    stub = {
++                        "id": fid,
++                        "requirement_ids": list(fl.get("requirement_ids", [])),
++                        "flow_sha256": canonical_sha(fl),
++                    }
++                    for k in (
++                        "proposed_owner_key",
++                        "capability_ids",
++                        "source_block_ids",
++                        "entry_condition",
++                        "observable_result",
++                    ):
++                        if k in fl:
++                            stub[k] = deepcopy(fl[k])
++                    scoped_flows.append(stub)
+         defs["flows"] = scoped_flows
++
++    if level >= 2 and isinstance(content, dict):
++        req_tables = (
++            "requirements",
++            "requirement_verification",
++            "coverage_table",
++            "requirement_route_memberships",
++            "applicability",
++        )
++        source_obs_keys = {
++            ob["target"][1]
++            for ob in seg_obs
++            if isinstance(ob.get("target"), list)
++            and len(ob["target"]) >= 2
++            and ob["target"][0] == "source"
++        }
++        source_block_ids_needed = (
++            {
++                s["block_id"]
++                for s in (seg_sources or [])
++                if s.get("id") in source_obs_keys and isinstance(s.get("block_id"), str)
++            }
++            if source_obs_keys
++            else set()
++        )
++        req_rows = content.get("requirements")
++        source_req_ids = (
++            {
++                r["requirement_id"]
++                for r in req_rows
++                if isinstance(r, dict)
++                and isinstance(r.get("requirement_id"), str)
++                and (set(r.get("source_block_ids", [])) & source_block_ids_needed)
++            }
++            if (source_block_ids_needed and isinstance(req_rows, list))
++            else set()
++        )
++        keep_req_ids = targeted_req_ids if targeted_req_ids else source_req_ids
++        if targeted_req_ids and source_req_ids:
++            keep_req_ids = targeted_req_ids | source_req_ids
++        omitted_digests: dict[str, dict] = {}
++        for sec in req_tables:
++            rows = content.get(sec)
++            if not isinstance(rows, list):
++                continue
++            filtered = [
++                row
++                for row in rows
++                if isinstance(row, dict) and row.get("requirement_id") in keep_req_ids
++            ]
++            if len(filtered) != len(rows):
++                omitted_digests[sec] = {
++                    "total_count": len(rows),
++                    "sha256": canonical_sha(rows),
++                }
++                content[sec] = filtered
++        if omitted_digests:
++            content["omitted_requirement_table_digests"] = omitted_digests
+     return out
+ 
+ 
+@@ -628,7 +943,7 @@ def _plan_review_segments(
+     reserved = int(frozen["inputs"]["contract"]["limits"]["reserved_tokens"])
+ 
+     def build_slice(
+-        start: int, end: int, seg_idx: int, *, use_scoped_proposal: bool = False
++        start: int, end: int, seg_idx: int, *, level: int = 0
+     ) -> tuple[dict, dict, str, int, list[dict], list[dict]]:
+         seg_obs = deepcopy(all_obligations[start:end])
+         needed_src_ids = {sid for ob in seg_obs for sid in ob["source_block_ids"]}
+@@ -644,16 +959,26 @@ def _plan_review_segments(
+             seg_sources=seg_srcs,
+             directive=seg_directive,
+         )
++        use_scoped = level >= 1
+         active_prop = (
+-            _scoped_review_proposal(proposal_proj, seg_obs, directive=seg_directive)
+-            if use_scoped_proposal
++            _scoped_review_proposal(
++                proposal_proj,
++                seg_obs,
++                directive=seg_directive,
++                level=level,
++                seg_sources=seg_srcs,
++            )
++            if use_scoped
+             else proposal_proj
+         )
+-        active_prior = (
+-            _scoped_review_proposal(prior_projection, seg_obs, directive=seg_directive)
+-            if (use_scoped_proposal and prior_projection is not None)
+-            else prior_projection
+-        )
++        if prior_projection is None or level == 0:
++            active_prior = prior_projection
++        elif level == 1:
++            active_prior = _scoped_review_proposal(
++                prior_projection, seg_obs, directive=seg_directive, level=1
++            )
++        else:
++            active_prior = _scoped_review_prior(prior_projection, issue, level=level)
+         root_req = {
+             "schema_version": seg_input.SEGMENTED_REQUEST_SCHEMA,
+             "input_identity": frozen["input_identity"],
+@@ -661,9 +986,11 @@ def _plan_review_segments(
+             "segment_index": seg_idx,
+             "obligation_range": [start, end],
+             "total_obligations": len(all_obligations),
+-            "scoped_proposal_projection": use_scoped_proposal,
+-            "common_header": review_common_hdr if use_scoped_proposal else frozen["transport"]["common_header"],
++            "scoped_proposal_projection": use_scoped,
++            "common_header": review_common_hdr if use_scoped else frozen["transport"]["common_header"],
+         }
++        if level >= 2:
++            root_req["projection_level"] = level
+         materials = {
+             "schema_version": runtime.PROFILE,
+             "phase": "independent_admission",
+@@ -697,41 +1024,44 @@ def _plan_review_segments(
+ 
+     # Fast path: check if entire review fits in a single segment with full proposal
+     full_mat, full_sch, full_prm, full_bytes, full_obs, full_srcs = build_slice(
+-        0, total, 1, use_scoped_proposal=False
++        0, total, 1, level=0
+     )
+-    if full_bytes <= MAX_WORKSPACE_PAYLOAD_BYTES and full_bytes + reserved <= CONTEXT_TOKEN_LIMIT:
++    if _fits_turn_budget(full_bytes, frozen):
+         return [(full_mat, full_sch, full_prm, full_obs, full_srcs)]
+ 
+     segments = []
+     idx = 0
+-    sticky_scoped = False
++    sticky_level = 0
+     eff_limit = min(MAX_WORKSPACE_PAYLOAD_BYTES, CONTEXT_TOKEN_LIMIT - reserved)
+     while idx < total:
+         seg_no = len(segments) + 1
+-        use_scoped = sticky_scoped
++        use_level = min(sticky_level, 2)
+         s_mat, s_sch, s_prm, s_bytes, s_obs, s_srcs = build_slice(
+-            idx, idx + 1, seg_no, use_scoped_proposal=use_scoped
++            idx, idx + 1, seg_no, level=use_level
+         )
+-        if not use_scoped and (
+-            s_bytes > MAX_WORKSPACE_PAYLOAD_BYTES or s_bytes + reserved > CONTEXT_TOKEN_LIMIT
+-        ):
+-            use_scoped = True
+-            sticky_scoped = True
+-            s_mat, s_sch, s_prm, s_bytes, s_obs, s_srcs = build_slice(
+-                idx, idx + 1, seg_no, use_scoped_proposal=True
+-            )
++        if not _fits_turn_budget(s_bytes, frozen):
++            for cand_level in (1, 2, 3):
++                if cand_level <= use_level:
++                    continue
++                use_level = cand_level
++                s_mat, s_sch, s_prm, s_bytes, s_obs, s_srcs = build_slice(
++                    idx, idx + 1, seg_no, level=use_level
++                )
++                if _fits_turn_budget(s_bytes, frozen):
++                    break
++            sticky_level = max(sticky_level, min(use_level, 2))
+         _assert_under_70k(s_bytes, frozen, f"review-seg-{seg_no}-single")
+         best_end = idx + 1
+         best_pack = (s_mat, s_sch, s_prm, s_obs, s_srcs)
+ 
+-        if idx + 1 < total:
++        if idx + 1 < total and use_level < 3:
+             per_ob_est = max(80.0, (full_bytes - s_bytes) / max(1, total - 1))
+             est_more = max(1, int(max(0, eff_limit - s_bytes) / per_ob_est * 0.9))
+             guess = min(total, idx + 1 + est_more)
+             g_mat, g_sch, g_prm, g_bytes, g_obs, g_srcs = build_slice(
+-                idx, guess, seg_no, use_scoped_proposal=use_scoped
++                idx, guess, seg_no, level=use_level
+             )
+-            if g_bytes <= MAX_WORKSPACE_PAYLOAD_BYTES and g_bytes + reserved <= CONTEXT_TOKEN_LIMIT:
++            if _fits_turn_budget(g_bytes, frozen):
+                 best_end = guess
+                 best_pack = (g_mat, g_sch, g_prm, g_obs, g_srcs)
+                 low = guess + 1
+@@ -740,9 +1070,9 @@ def _plan_review_segments(
+                 while guess + step <= total:
+                     probe_end = min(guess + step, total)
+                     c_mat, c_sch, c_prm, c_bytes, c_obs, c_srcs = build_slice(
+-                        idx, probe_end, seg_no, use_scoped_proposal=use_scoped
++                        idx, probe_end, seg_no, level=use_level
+                     )
+-                    if c_bytes <= MAX_WORKSPACE_PAYLOAD_BYTES and c_bytes + reserved <= CONTEXT_TOKEN_LIMIT:
++                    if _fits_turn_budget(c_bytes, frozen):
+                         best_end = probe_end
+                         best_pack = (c_mat, c_sch, c_prm, c_obs, c_srcs)
+                         low = probe_end + 1
+@@ -759,9 +1089,9 @@ def _plan_review_segments(
+             while low <= high:
+                 mid = (low + high) // 2
+                 c_mat, c_sch, c_prm, c_bytes, c_obs, c_srcs = build_slice(
+-                    idx, mid, seg_no, use_scoped_proposal=use_scoped
++                    idx, mid, seg_no, level=use_level
+                 )
+-                if c_bytes <= MAX_WORKSPACE_PAYLOAD_BYTES and c_bytes + reserved <= CONTEXT_TOKEN_LIMIT:
++                if _fits_turn_budget(c_bytes, frozen):
+                     best_end = mid
+                     best_pack = (c_mat, c_sch, c_prm, c_obs, c_srcs)
+                     low = mid + 1
+@@ -1047,6 +1377,43 @@ def generate_segmented_append(
+                         repair_scope=repair_scope,
+                         work=work,
+                     )
++                if not _fits_turn_budget(ws_bytes, frozen):
++                    slim_req = {**slim_req, "compact_contract_pin": True}
++                    sealed, prov_schema, prompt_text, ws_bytes = _build_generation_materials(
++                        state,
++                        frozen,
++                        base_seed=accepted,
++                        slot=slot,
++                        generation_no=generation_no,
++                        execution_no=execution_no,
++                        lineage_id=lineage_id,
++                        context=context,
++                        root_req=slim_req,
++                        prior_projection=slim_prior,
++                        issue=issue,
++                        repair_scope=repair_scope,
++                        work=work,
++                    )
++                if not _fits_turn_budget(ws_bytes, frozen):
++                    slim_req = {**slim_req, "slim_repair_subfield": True}
++                    slim_prior = _slim_repair_prior_projection(
++                        prior, frozen, issue, subfield_slim=True
++                    )
++                    sealed, prov_schema, prompt_text, ws_bytes = _build_generation_materials(
++                        state,
++                        frozen,
++                        base_seed=accepted,
++                        slot=slot,
++                        generation_no=generation_no,
++                        execution_no=execution_no,
++                        lineage_id=lineage_id,
++                        context=context,
++                        root_req=slim_req,
++                        prior_projection=slim_prior,
++                        issue=issue,
++                        repair_scope=repair_scope,
++                        work=work,
++                    )
+                 _assert_under_70k(ws_bytes, frozen, f"repair-{repair_ordinal}")
+             repair_draft, repair_binding = execute_call(
+                 sealed, prov_schema, prompt_text, "repair", call
+@@ -1456,7 +1823,7 @@ def generate_segmented_append(
+                 "draft_chain": drafts,
+                 "final_draft_identity": codec.canonical_digest(drafts[-1]),
+             },
+-            "content": deepcopy(drafts[-1]["content"]),
++            "content": _rehydrate_draft_chain_content(drafts),
+         }
+         last_generation_calls_by_proposal[canonical_sha(proposal)] = list(executions)
+         return {
+@@ -3627,7 +3994,7 @@ def _proposal_from_draft_prefix(frozen: dict, draft_prefix: list[dict]) -> dict:
+             "draft_chain": deepcopy(draft_prefix),
+             "final_draft_identity": codec.canonical_digest(draft_prefix[-1]),
+         },
+-        "content": deepcopy(draft_prefix[-1]["content"]),
++        "content": _rehydrate_draft_chain_content(draft_prefix),
+     }
+ 
+ 
+@@ -3674,7 +4041,7 @@ def _verify_segmented_repair_origin(
+         if type(drafts) is not list or not drafts or len(drafts) > 64:
+             raise ValueError("b_route_repair_origin_draft_limit")
+         planning.validate_draft_chain(frozen, drafts)
+-        if not runtime.same_json(prior_full["content"], drafts[-1]["content"]):
++        if not runtime.same_json(prior_full["content"], _rehydrate_draft_chain_content(drafts)):
+             raise ValueError("b_route_repair_prior_content_changed")
+ 
+         earlier: list[tuple[int, dict, dict]] = []
+@@ -3797,6 +4164,26 @@ def _verify_segmented_repair_origin(
+                 for s_idx, (s_ret, s_data) in enumerate(chain_segs):
+                     if runtime.issue_account_policy(state) is not None:
+                         if prior_frame_full is not None and prior_frame_full["repair_issue"].get("account_policy") is not None:
++                            prior_base_proj = _compact_candidate_projection(prior_frame_full["prior_candidate"])
++                            s_scoped = bool(s_data["root_request"].get("scoped_proposal_projection"))
++                            s_level = int(s_data["root_request"].get("projection_level", 1 if s_scoped else 0))
++                            if not s_scoped:
++                                expected_s_prior = prior_base_proj
++                            elif s_level == 1:
++                                expected_s_prior = _scoped_review_proposal(
++                                    prior_base_proj,
++                                    s_data["obligations"],
++                                    directive=directive if s_idx == 0 else None,
++                                    level=1,
++                                )
++                            else:
++                                expected_s_prior = _scoped_review_prior(
++                                    prior_base_proj,
++                                    prior_frame_full["repair_issue"],
++                                    level=s_level,
++                                )
++                            if not runtime.same_json(s_data.get("prior_candidate"), expected_s_prior):
++                                raise ValueError("b_route_review_issue_account_origin_changed")
+                             runtime.check_review_origin_frame(
+                                 {**s_data, "prior_candidate": prior_frame_full["prior_candidate"]},
+                                 prior_frame_full,
+@@ -4015,8 +4402,17 @@ def segmented_proof_errors(
+                     raise ValueError("b_route_segmented_repair_step_invalid")
+                 prior_full = _proposal_from_draft_prefix(frozen, drafts[:idx])
+                 after_full = _proposal_from_draft_prefix(frozen, drafts[: idx + 1])
++                if not req.get("slim_repair_fallback") and not runtime.same_json(
++                    after_full["content"], draft["content"]
++                ):
++                    raise ValueError("b_route_segmented_unsolicited_repair_stub")
+                 expected_prior_proj = (
+-                    _slim_repair_prior_projection(prior_full, frozen, materials["repair_issue"])
++                    _slim_repair_prior_projection(
++                        prior_full,
++                        frozen,
++                        materials["repair_issue"],
++                        subfield_slim=bool(req.get("slim_repair_subfield")),
++                    )
+                     if req.get("slim_repair_fallback")
+                     else _compact_candidate_projection(prior_full)
+                 )
+@@ -4073,8 +4469,17 @@ def segmented_proof_errors(
+                 first_review_materials = rev_mat
+             seg_directive = directive if seg_idx == 0 else None
+             scoped_flag = bool(rev_mat["root_request"].get("scoped_proposal_projection"))
++            proj_level = int(rev_mat["root_request"].get("projection_level", 1 if scoped_flag else 0))
++            if (not scoped_flag and proj_level != 0) or (scoped_flag and proj_level < 1):
++                raise ValueError("b_route_segmented_review_materials_mismatch")
+             expected_rev_prop = (
+-                _scoped_review_proposal(proposal_proj, rev_mat["obligations"], directive=seg_directive)
++                _scoped_review_proposal(
++                    proposal_proj,
++                    rev_mat["obligations"],
++                    directive=seg_directive,
++                    level=proj_level,
++                    seg_sources=rev_mat["qualified_sources"],
++                )
+                 if scoped_flag
+                 else proposal_proj
+             )
+@@ -4092,11 +4497,16 @@ def segmented_proof_errors(
+                     and last_repair_frame_full["repair_issue"].get("account_policy") is not None
+                 ):
+                     prior_base_proj = _compact_candidate_projection(last_repair_frame_full["prior_candidate"])
+-                    expected_rev_prior = (
+-                        _scoped_review_proposal(prior_base_proj, rev_mat["obligations"], directive=seg_directive)
+-                        if scoped_flag
+-                        else prior_base_proj
+-                    )
++                    if not scoped_flag:
++                        expected_rev_prior = prior_base_proj
++                    elif proj_level == 1:
++                        expected_rev_prior = _scoped_review_proposal(
++                            prior_base_proj, rev_mat["obligations"], directive=seg_directive, level=1
++                        )
++                    else:
++                        expected_rev_prior = _scoped_review_prior(
++                            prior_base_proj, last_repair_frame_full["repair_issue"], level=proj_level
++                        )
+                     if not runtime.same_json(rev_mat.get("prior_candidate"), expected_rev_prior):
+                         raise ValueError("b_route_review_issue_account_origin_changed")
+                     runtime.check_review_origin_frame(
+diff --git a/scripts/python/tests/test_b_route_3b_70k_segmented.py b/scripts/python/tests/test_b_route_3b_70k_segmented.py
+index cd88737..faf9608 100644
+--- a/scripts/python/tests/test_b_route_3b_70k_segmented.py
++++ b/scripts/python/tests/test_b_route_3b_70k_segmented.py
+@@ -223,7 +223,14 @@ def _build_turn_response(
+             # Distinguish rolling_compaction / tree_reduce vs final_synthesis vs repair
+             if has_repair:
+                 stage_label = "stage4_repair"
+-                content_obj = json.loads(json.dumps(template_map.get(slot_name, base_content)))
++                if (
++                    (state_dir / "slim_repair_echo_stubs.flag").exists()
++                    and isinstance(materials.get("prior_candidate"), dict)
++                    and isinstance(materials["prior_candidate"].get("content"), dict)
++                ):
++                    content_obj = json.loads(json.dumps(materials["prior_candidate"]["content"]))
++                else:
++                    content_obj = json.loads(json.dumps(template_map.get(slot_name, base_content)))
+                 allowed_paths = materials.get("repair_scope", {}).get("allowed_content_paths", [])
+                 updated_any = False
+                 for p in allowed_paths:
+@@ -237,6 +244,16 @@ def _build_turn_response(
+                             "Repaired flow rationale explicitly aligned with durable journal J."
+                         )
+                         updated_any = True
++                    elif (
++                        isinstance(p, list)
++                        and len(p) == 5
++                        and p[:2] == ["definitions", "flows"]
++                        and p[3] == "parts"
++                    ):
++                        content_obj["definitions"]["flows"][p[2]]["parts"][p[4]]["rationale"] = (
++                            "Repaired flow part rationale explicitly aligned with durable journal J."
++                        )
++                        updated_any = True
+                 if not updated_any:
+                     for sec in ("requirement_verification", "coverage_table", "applicability"):
+                         for row in content_obj.get(sec, [])[:1]:
+@@ -282,24 +299,40 @@ def _build_turn_response(
+         seg_index = materials["root_request"]["segment_index"]
+ 
+         block_marker = state_dir / "triggered_stage4_repair.flag"
+-        inject_block = (
++        target_kind_file = state_dir / "stage4_block_target_kind.txt"
++        block_idx = -1
++        inject_block = False
++        if (
+             slot_name == "candidate-1"
+             and repair_issue is None
+-            and seg_index == 1
+             and not block_marker.exists()
+             and (state_dir / "enable_stage4_repair.flag").exists()
+-        )
+-        block_idx = -1
+-        if inject_block:
+-            block_marker.write_text("1", encoding="utf-8")
+-            block_idx = next(
+-                (
+-                    i
+-                    for i, ob in enumerate(seg_obs)
+-                    if isinstance(ob.get("target"), list) and ob["target"] and ob["target"][0] == "requirement"
+-                ),
+-                0,
+-            )
++        ):
++            if target_kind_file.exists():
++                want_kind = target_kind_file.read_text(encoding="utf-8").strip()
++                match_idx = next(
++                    (
++                        i
++                        for i, ob in enumerate(seg_obs)
++                        if isinstance(ob.get("target"), list) and ob["target"] and ob["target"][0] == want_kind
++                    ),
++                    None,
++                )
++                if match_idx is not None:
++                    inject_block = True
++                    block_idx = match_idx
++                    block_marker.write_text("1", encoding="utf-8")
++            elif seg_index == 1:
++                inject_block = True
++                block_marker.write_text("1", encoding="utf-8")
++                block_idx = next(
++                    (
++                        i
++                        for i, ob in enumerate(seg_obs)
++                        if isinstance(ob.get("target"), list) and ob["target"] and ob["target"][0] == "requirement"
++                    ),
++                    0,
++                )
+ 
+         checks = []
+         findings = []
+@@ -3508,6 +3541,262 @@ class TrackBSegmented70kTests(unittest.TestCase):
+                 f"Expected repair_origin restored across resumed review segments: {repair_prior_projs}",
+             )
+ 
++    def test_09_slim_repair_stub_rehydration_and_large_flow_review_segmentation(self):
++        """Verify <=70,000-byte multi-level review projection and Stage 4 slim-repair stub rehydration on ~57KB flows."""
++        cctx = self._ensure_compact_70k_fixture()
++        root = cctx["root"]
++        slim_inputs = cctx["slim_inputs"]
++        seam_file = cctx["seam_file"]
++        proof_seam = cctx["proof_seam"]
++        prep = cctx["prep"]
++        frozen = cctx["frozen"]
++
++        import _mvg_capability_recovery as mvg_recovery
++
++        mvg_recovery.clear(root)
++        codex_runner = NEWROUGE_PYTHON / "codex_isolated_model_runner.py"
++
++        large_cand_a = _build_sc25_candidate_content(frozen, variant="A")
++        fl0 = large_cand_a["definitions"]["flows"][0]
++        fid = fl0["id"]
++        f_owner = {"kind": "flow", "definition_id": fid, "proposed_owner_key": fl0["proposed_owner_key"]}
++
++        def _make_chain_graph(step_count: int, pad_len: int = 210) -> dict:
++            chain_ids = ["entry", *[f"step-{i:03d}" for i in range(step_count)], "act", "success"]
++            nodes = [
++                {
++                    "id": nid,
++                    "responsibility": f"Handle {nid} in exclusive resolution (" + ("x" * pad_len) + ").",
++                    "owner": deepcopy(f_owner),
++                    "command_uses": [],
++                    "state_uses": [],
++                }
++                for nid in chain_ids
++            ]
++            edges = [
++                {
++                    "id": f"edge-{i:03d}",
++                    "from": {"flow_id": fid, "node_id": chain_ids[i]},
++                    "to": {"flow_id": fid, "node_id": chain_ids[i + 1]},
++                    "condition": f"{chain_ids[i]}->{chain_ids[i + 1]}",
++                    "responsibility": "Atomic journal transition",
++                    "owner": deepcopy(f_owner),
++                }
++                for i in range(len(chain_ids) - 1)
++            ]
++            return {
++                "nodes": nodes,
++                "edges": edges,
++                "boundaries": deepcopy(fl0["graph"]["boundaries"]),
++                "loops": [],
++            }
++
++        step_n = 95
++        while True:
++            fl0["graph"] = _make_chain_graph(step_n)
++            fl_bytes = seg_runtime._compact_bytes_len(fl0)
++            if fl_bytes < 56_200:
++                step_n += 4
++            elif fl_bytes > 58_200:
++                step_n -= 2
++            else:
++                break
++        self.assertGreaterEqual(fl_bytes, 56_000)
++        self.assertLessEqual(fl_bytes, 58_500)
++
++        repair_flag = self.state_dir / "enable_stage4_repair.flag"
++        echo_flag = self.state_dir / "slim_repair_echo_stubs.flag"
++        kind_file = self.state_dir / "stage4_block_target_kind.txt"
++        trig_flag = self.state_dir / "triggered_stage4_repair.flag"
++
++        templates = {
++            "default": large_cand_a,
++            "candidate-1": large_cand_a,
++            "candidate-2": _build_sc25_candidate_content(frozen, variant="B"),
++            "candidate-3": _build_sc25_candidate_content(frozen, variant="C"),
++        }
++        (self.state_dir / "candidate_templates.json").write_text(
++            json.dumps(templates, ensure_ascii=False), encoding="utf-8"
++        )
++        try:
++            with patch.object(audit, "verify_current_proof", new=proof_seam), patch.object(
++                planning, "rules_identity", new=lambda _r: slim_inputs["dependencies"]["rules"]
++            ), patch.dict(os.environ, {"FAKE_CODEX_SC25_SEAM_INPUTS": str(seam_file)}):
++                # Initialize run state to test _plan_review_segments directly
++                runtime.operate(
++                    root,
++                    planner="mvg",
++                    command="generate",
++                    run_id="r70k9req",
++                    prepared_ref=prep["resume_ref"],
++                    profile="3b-mvg-v1",
++                    runner=codex_runner,
++                    timeout_sec=120,
++                    max_new_dispatches=0,
++                )
++                req_dir = runtime.run_location(root, "mvg", "r70k9req")
++                init_state = json.loads((req_dir / "run.json").read_text(encoding="utf-8"))
++                init_state["runtime_slot"] = "candidate-1"
++                draft_chain = []
++                parent_ids = []
++                for idx, _batch in enumerate(frozen["transport"]["batches"], 1):
++                    b_draft = {
++                        "schema_version": planning.DRAFT,
++                        "input_identity": frozen["input_identity"],
++                        "stage": "batch",
++                        "ordinal": idx,
++                        "parent_draft_identities": list(parent_ids),
++                        "content": {"batch": idx},
++                    }
++                    draft_chain.append(b_draft)
++                    parent_ids.append(codec.canonical_digest(b_draft))
++                sample_draft = {
++                    "schema_version": planning.DRAFT,
++                    "input_identity": frozen["input_identity"],
++                    "stage": "synthesis",
++                    "ordinal": len(draft_chain) + 1,
++                    "parent_draft_identities": list(parent_ids),
++                    "content": deepcopy(large_cand_a),
++                }
++                draft_chain.append(sample_draft)
++                sample_prop = {
++                    "schema_version": runtime.candidate.SCHEMA,
++                    "input_stage": "3b",
++                    "input_identity": frozen["input_identity"],
++                    "provenance": {
++                        "kind": "model_draft",
++                        "declaration": "Complete original model draft chain; execution separately replayed",
++                        "upstream_model_history": "declared_model",
++                        "draft_chain": draft_chain,
++                        "final_draft_identity": codec.canonical_digest(sample_draft),
++                    },
++                    "content": deepcopy(large_cand_a),
++                }
++                self.assertEqual(runtime.admission_machine(root, init_state, sample_prop, check_originals=False), [])
++                all_obs = runtime.obligations(sample_prop, frozen)
++
++                # Sub-test A: _plan_review_segments with and without prior_projection stays strictly <= 70,000 bytes
++                for p_proj, p_issue in (
++                    (None, None),
++                    (
++                        seg_runtime._compact_candidate_projection(sample_prop),
++                        {"path": "semantic-review", "code": "x", "account_policy": "b-route-issue-accounts-v1"},
++                    ),
++                ):
++                    segs = seg_runtime._plan_review_segments(
++                        init_state,
++                        frozen,
++                        base_seed=runtime.seed(init_state, req_dir / "analysis-input"),
++                        proposal=sample_prop,
++                        slot="candidate-1",
++                        generation_no=1,
++                        execution_no=1,
++                        lineage_id="sha256:" + ("a" * 64),
++                        context=1,
++                        prior_projection=p_proj,
++                        issue=p_issue,
++                    )
++                    self.assertGreaterEqual(len(segs), 2)
++                    self.assertEqual(sum(len(s[3]) for s in segs), len(all_obs))
++                    for _mat, sch, prm, _sobs, _ssrcs in segs:
++                        w_bytes = len(
++                            seg_input._runner_wrapper_text(prm, sch, compact_schema_file=True).encode("utf-8")
++                        )
++                        self.assertLessEqual(w_bytes, 70_000)
++
++                # Also verify _trim_graph_to_budget trims >40KB graphs deterministically
++                huge_graph = _make_chain_graph(120, pad_len=260)
++                trimmed_g = seg_runtime._trim_graph_to_budget(huge_graph, max_bytes=40_000)
++                self.assertTrue(trimmed_g.get("graph_trimmed"))
++                self.assertLessEqual(seg_runtime._compact_bytes_len(trimmed_g), 40_000)
++                self.assertEqual(trimmed_g["graph_sha256"], seg_runtime.canonical_sha(huge_graph))
++
++                # Sub-test B: End-to-end slim_repair_fallback stub echoing + rehydration + unmocked proof replay
++                turns_start = len(self._read_logged_turns())
++                repair_flag.write_text("1", encoding="utf-8")
++                echo_flag.write_text("1", encoding="utf-8")
++                kind_file.write_text("requirement", encoding="utf-8")
++                trig_flag.unlink(missing_ok=True)
++
++                gen_res = runtime.operate(
++                    root,
++                    planner="mvg",
++                    command="generate",
++                    run_id="r70k9req",
++                    prepared_ref=prep["resume_ref"],
++                    profile="3b-mvg-v1",
++                    runner=codex_runner,
++                    timeout_sec=120,
++                )
++                self.assertEqual(gen_res["selected"], "winner-chain", gen_res)
++                ver_res = runtime.operate(
++                    root,
++                    planner="mvg",
++                    command="verify-selection",
++                    run_id="r70k9req",
++                    prepared_ref=prep["resume_ref"],
++                    profile="3b-mvg-v1",
++                    runner=codex_runner,
++                    timeout_sec=120,
++                )
++                self.assertEqual(ver_res["status"], "passed", ver_res)
++
++                r_state = json.loads((req_dir / "run.json").read_text(encoding="utf-8"))
++                c1_adm = r_state["capability_selection"]["selected"][0]["admissions"]["candidate-1"]
++                c1_prop = json.loads((req_dir / c1_adm["proposal_path"]).read_text(encoding="utf-8"))
++                c1_proof = json.loads((req_dir / c1_adm["proof_path"]).read_text(encoding="utf-8"))
++                # Raw repair draft preserved flow_sha256 stub, while proposal content rehydrated full 57KB flow!
++                raw_rep_flow = c1_prop["provenance"]["draft_chain"][-1]["content"]["definitions"]["flows"][0]
++                self.assertIn("flow_sha256", raw_rep_flow)
++                self.assertNotIn("graph", raw_rep_flow)
++                rehyd_flow = c1_prop["content"]["definitions"]["flows"][0]
++                self.assertNotIn("flow_sha256", rehyd_flow)
++                self.assertEqual(rehyd_flow, fl0)
++                seg_runtime._PROOF_ERRORS_CACHE.clear()
++                self.assertEqual(seg_runtime.segmented_proof_errors(root, r_state, c1_prop, c1_proof), [])
++
++                # Sub-test C: Flow-part obligation blocked on ~57KB flow itself -> repaired <=70KB & proof passes
++                mvg_recovery.clear(root)
++                trig_flag.unlink(missing_ok=True)
++                kind_file.write_text("flow_part", encoding="utf-8")
++                flw_dir = runtime.run_location(root, "mvg", "r70k9flw")
++                for _ in range(20):
++                    out_f = runtime.operate(
++                        root,
++                        planner="mvg",
++                        command="generate",
++                        run_id="r70k9flw",
++                        prepared_ref=prep["resume_ref"],
++                        profile="3b-mvg-v1",
++                        runner=codex_runner,
++                        timeout_sec=120,
++                        max_new_dispatches=2,
++                    )
++                    f_st = json.loads((flw_dir / "run.json").read_text(encoding="utf-8"))
++                    cur_adms = ((f_st.get("capability_selection") or {}).get("current") or {}).get("admissions") or {}
++                    if "candidate-1" in cur_adms and cur_adms["candidate-1"].get("status") == "admitted":
++                        break
++                    if out_f.get("selected") == "winner-chain":
++                        break
++                f_st = json.loads((flw_dir / "run.json").read_text(encoding="utf-8"))
++                f_adms = (
++                    ((f_st.get("capability_selection") or {}).get("current") or {}).get("admissions")
++                    or f_st["capability_selection"]["selected"][0]["admissions"]
++                )
++                self.assertEqual(f_adms["candidate-1"]["status"], "admitted")
++                f_prop = json.loads((flw_dir / f_adms["candidate-1"]["proposal_path"]).read_text(encoding="utf-8"))
++                f_proof = json.loads((flw_dir / f_adms["candidate-1"]["proof_path"]).read_text(encoding="utf-8"))
++                seg_runtime._PROOF_ERRORS_CACHE.clear()
++                self.assertEqual(seg_runtime.segmented_proof_errors(root, f_st, f_prop, f_proof), [])
++
++                logged_9 = self._read_logged_turns()[turns_start:]
++                self.assertGreater(len(logged_9), 6)
++                for row in logged_9:
++                    self.assertLessEqual(row["utf8_bytes"], 70_000)
++        finally:
++            for fp in (repair_flag, echo_flag, kind_file, trig_flag):
++                fp.unlink(missing_ok=True)
++
+ 
+ if __name__ == "__main__":
+     unittest.main(verbosity=2)
