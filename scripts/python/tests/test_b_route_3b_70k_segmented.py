@@ -223,7 +223,14 @@ def _build_turn_response(
             # Distinguish rolling_compaction / tree_reduce vs final_synthesis vs repair
             if has_repair:
                 stage_label = "stage4_repair"
-                content_obj = json.loads(json.dumps(template_map.get(slot_name, base_content)))
+                if (
+                    (state_dir / "slim_repair_echo_stubs.flag").exists()
+                    and isinstance(materials.get("prior_candidate"), dict)
+                    and isinstance(materials["prior_candidate"].get("content"), dict)
+                ):
+                    content_obj = json.loads(json.dumps(materials["prior_candidate"]["content"]))
+                else:
+                    content_obj = json.loads(json.dumps(template_map.get(slot_name, base_content)))
                 allowed_paths = materials.get("repair_scope", {}).get("allowed_content_paths", [])
                 updated_any = False
                 for p in allowed_paths:
@@ -235,6 +242,16 @@ def _build_turn_response(
                     ):
                         content_obj[p[0]][p[1]]["rationale"] = (
                             "Repaired flow rationale explicitly aligned with durable journal J."
+                        )
+                        updated_any = True
+                    elif (
+                        isinstance(p, list)
+                        and len(p) == 5
+                        and p[:2] == ["definitions", "flows"]
+                        and p[3] == "parts"
+                    ):
+                        content_obj["definitions"]["flows"][p[2]]["parts"][p[4]]["rationale"] = (
+                            "Repaired flow part rationale explicitly aligned with durable journal J."
                         )
                         updated_any = True
                 if not updated_any:
@@ -282,24 +299,40 @@ def _build_turn_response(
         seg_index = materials["root_request"]["segment_index"]
 
         block_marker = state_dir / "triggered_stage4_repair.flag"
-        inject_block = (
+        target_kind_file = state_dir / "stage4_block_target_kind.txt"
+        block_idx = -1
+        inject_block = False
+        if (
             slot_name == "candidate-1"
             and repair_issue is None
-            and seg_index == 1
             and not block_marker.exists()
             and (state_dir / "enable_stage4_repair.flag").exists()
-        )
-        block_idx = -1
-        if inject_block:
-            block_marker.write_text("1", encoding="utf-8")
-            block_idx = next(
-                (
-                    i
-                    for i, ob in enumerate(seg_obs)
-                    if isinstance(ob.get("target"), list) and ob["target"] and ob["target"][0] == "requirement"
-                ),
-                0,
-            )
+        ):
+            if target_kind_file.exists():
+                want_kind = target_kind_file.read_text(encoding="utf-8").strip()
+                match_idx = next(
+                    (
+                        i
+                        for i, ob in enumerate(seg_obs)
+                        if isinstance(ob.get("target"), list) and ob["target"] and ob["target"][0] == want_kind
+                    ),
+                    None,
+                )
+                if match_idx is not None:
+                    inject_block = True
+                    block_idx = match_idx
+                    block_marker.write_text("1", encoding="utf-8")
+            elif seg_index == 1:
+                inject_block = True
+                block_marker.write_text("1", encoding="utf-8")
+                block_idx = next(
+                    (
+                        i
+                        for i, ob in enumerate(seg_obs)
+                        if isinstance(ob.get("target"), list) and ob["target"] and ob["target"][0] == "requirement"
+                    ),
+                    0,
+                )
 
         checks = []
         findings = []
@@ -2550,7 +2583,7 @@ class TrackBSegmented70kTests(unittest.TestCase):
                     root,
                     planner="capabilities",
                     command="generate",
-                    run_id="rcap1",
+                    run_id="c1",
                     prepared_ref=cap_prep["resume_ref"],
                     profile="3b-capabilities-v1",
                     runner=codex_runner,
@@ -2561,7 +2594,7 @@ class TrackBSegmented70kTests(unittest.TestCase):
                     root,
                     planner="capabilities",
                     command="review",
-                    run_id="rcap1",
+                    run_id="c1",
                     prepared_ref=cap_prep["resume_ref"],
                     profile="3b-capabilities-v1",
                     runner=codex_runner,
@@ -2572,14 +2605,14 @@ class TrackBSegmented70kTests(unittest.TestCase):
                     root,
                     planner="capabilities",
                     command="verify-selection",
-                    run_id="rcap1",
+                    run_id="c1",
                     prepared_ref=cap_prep["resume_ref"],
                     profile="3b-capabilities-v1",
                     runner=codex_runner,
                     timeout_sec=120,
                 )
                 self.assertEqual(cap_ver["status"], "passed", cap_ver)
-                cap_handoff = runtime.run_location(root, "capabilities", "rcap1") / "handoff.json"
+                cap_handoff = runtime.run_location(root, "capabilities", "c1") / "handoff.json"
                 self.assertTrue(cap_handoff.is_file())
 
                 for row in self._read_logged_turns()[turns_before:]:
@@ -3507,6 +3540,597 @@ class TrackBSegmented70kTests(unittest.TestCase):
                 repair_prior_projs and all(flag is True for _, _, flag in repair_prior_projs),
                 f"Expected repair_origin restored across resumed review segments: {repair_prior_projs}",
             )
+
+    def _prepare_test09_large_flow_fixture(self) -> dict:
+        """Build the shared ~57KB single-flow candidate fixture and fake-provider templates for test_09a/09b."""
+        cctx = self._ensure_compact_70k_fixture()
+        root = cctx["root"]
+        slim_inputs = cctx["slim_inputs"]
+        seam_file = cctx["seam_file"]
+        proof_seam = cctx["proof_seam"]
+        prep = cctx["prep"]
+        frozen = cctx["frozen"]
+
+        import _mvg_capability_recovery as mvg_recovery
+
+        mvg_recovery.clear(root)
+        codex_runner = NEWROUGE_PYTHON / "codex_isolated_model_runner.py"
+
+        large_cand_a = _build_sc25_candidate_content(frozen, variant="A")
+        fl0 = large_cand_a["definitions"]["flows"][0]
+        fid = fl0["id"]
+        f_owner = {"kind": "flow", "definition_id": fid, "proposed_owner_key": fl0["proposed_owner_key"]}
+
+        def _make_chain_graph(step_count: int, pad_len: int = 210) -> dict:
+            chain_ids = ["entry", *[f"step-{i:03d}" for i in range(step_count)], "act", "success"]
+            nodes = [
+                {
+                    "id": nid,
+                    "responsibility": f"Handle {nid} in exclusive resolution (" + ("x" * pad_len) + ").",
+                    "owner": deepcopy(f_owner),
+                    "command_uses": [],
+                    "state_uses": [],
+                }
+                for nid in chain_ids
+            ]
+            edges = [
+                {
+                    "id": f"edge-{i:03d}",
+                    "from": {"flow_id": fid, "node_id": chain_ids[i]},
+                    "to": {"flow_id": fid, "node_id": chain_ids[i + 1]},
+                    "condition": f"{chain_ids[i]}->{chain_ids[i + 1]}",
+                    "responsibility": "Atomic journal transition",
+                    "owner": deepcopy(f_owner),
+                }
+                for i in range(len(chain_ids) - 1)
+            ]
+            return {
+                "nodes": nodes,
+                "edges": edges,
+                "boundaries": deepcopy(fl0["graph"]["boundaries"]),
+                "loops": [],
+            }
+
+        step_n = 95
+        while True:
+            fl0["graph"] = _make_chain_graph(step_n)
+            fl_bytes = seg_runtime._compact_bytes_len(fl0)
+            if fl_bytes < 56_200:
+                step_n += 4
+            elif fl_bytes > 58_200:
+                step_n -= 2
+            else:
+                break
+        self.assertGreaterEqual(fl_bytes, 56_000)
+        self.assertLessEqual(fl_bytes, 58_500)
+
+        repair_flag = self.state_dir / "enable_stage4_repair.flag"
+        echo_flag = self.state_dir / "slim_repair_echo_stubs.flag"
+        kind_file = self.state_dir / "stage4_block_target_kind.txt"
+        trig_flag = self.state_dir / "triggered_stage4_repair.flag"
+
+        templates = {
+            "default": large_cand_a,
+            "candidate-1": large_cand_a,
+            "candidate-2": _build_sc25_candidate_content(frozen, variant="B"),
+            "candidate-3": _build_sc25_candidate_content(frozen, variant="C"),
+        }
+        (self.state_dir / "candidate_templates.json").write_text(
+            json.dumps(templates, ensure_ascii=False), encoding="utf-8"
+        )
+        return {
+            "root": root,
+            "slim_inputs": slim_inputs,
+            "seam_file": seam_file,
+            "proof_seam": proof_seam,
+            "prep": prep,
+            "frozen": frozen,
+            "mvg_recovery": mvg_recovery,
+            "codex_runner": codex_runner,
+            "large_cand_a": large_cand_a,
+            "fl0": fl0,
+            "make_chain_graph": _make_chain_graph,
+            "repair_flag": repair_flag,
+            "echo_flag": echo_flag,
+            "kind_file": kind_file,
+            "trig_flag": trig_flag,
+        }
+
+    def test_09a_large_flow_review_segmentation_and_slim_repair_rehydration(self):
+        """Verify <=70,000-byte multi-level review segmentation and end-to-end slim-repair stub rehydration."""
+        tmpl_path = self.state_dir / "candidate_templates.json"
+        prior_tmpl = tmpl_path.read_bytes() if tmpl_path.is_file() else None
+        try:
+            fx = self._prepare_test09_large_flow_fixture()
+        except BaseException:
+            self._restore_candidate_templates(tmpl_path, prior_tmpl)
+            raise
+        root = fx["root"]
+        slim_inputs = fx["slim_inputs"]
+        seam_file = fx["seam_file"]
+        proof_seam = fx["proof_seam"]
+        prep = fx["prep"]
+        frozen = fx["frozen"]
+        mvg_recovery = fx["mvg_recovery"]
+        codex_runner = fx["codex_runner"]
+        large_cand_a = fx["large_cand_a"]
+        fl0 = fx["fl0"]
+        _make_chain_graph = fx["make_chain_graph"]
+        repair_flag = fx["repair_flag"]
+        echo_flag = fx["echo_flag"]
+        kind_file = fx["kind_file"]
+        trig_flag = fx["trig_flag"]
+        try:
+            with patch.object(audit, "verify_current_proof", new=proof_seam), patch.object(
+                planning, "rules_identity", new=lambda _r: slim_inputs["dependencies"]["rules"]
+            ), patch.dict(os.environ, {"FAKE_CODEX_SC25_SEAM_INPUTS": str(seam_file)}):
+                # Initialize run state to test _plan_review_segments directly
+                runtime.operate(
+                    root,
+                    planner="mvg",
+                    command="generate",
+                    run_id="r70k9req",
+                    prepared_ref=prep["resume_ref"],
+                    profile="3b-mvg-v1",
+                    runner=codex_runner,
+                    timeout_sec=120,
+                    max_new_dispatches=0,
+                )
+                req_dir = runtime.run_location(root, "mvg", "r70k9req")
+                init_state = json.loads((req_dir / "run.json").read_text(encoding="utf-8"))
+                init_state["runtime_slot"] = "candidate-1"
+                draft_chain = []
+                parent_ids = []
+                for idx, _batch in enumerate(frozen["transport"]["batches"], 1):
+                    b_draft = {
+                        "schema_version": planning.DRAFT,
+                        "input_identity": frozen["input_identity"],
+                        "stage": "batch",
+                        "ordinal": idx,
+                        "parent_draft_identities": list(parent_ids),
+                        "content": {"batch": idx},
+                    }
+                    draft_chain.append(b_draft)
+                    parent_ids.append(codec.canonical_digest(b_draft))
+                sample_draft = {
+                    "schema_version": planning.DRAFT,
+                    "input_identity": frozen["input_identity"],
+                    "stage": "synthesis",
+                    "ordinal": len(draft_chain) + 1,
+                    "parent_draft_identities": list(parent_ids),
+                    "content": deepcopy(large_cand_a),
+                }
+                draft_chain.append(sample_draft)
+                sample_prop = {
+                    "schema_version": runtime.candidate.SCHEMA,
+                    "input_stage": "3b",
+                    "input_identity": frozen["input_identity"],
+                    "provenance": {
+                        "kind": "model_draft",
+                        "declaration": "Complete original model draft chain; execution separately replayed",
+                        "upstream_model_history": "declared_model",
+                        "draft_chain": draft_chain,
+                        "final_draft_identity": codec.canonical_digest(sample_draft),
+                    },
+                    "content": deepcopy(large_cand_a),
+                }
+                self.assertEqual(runtime.admission_machine(root, init_state, sample_prop, check_originals=False), [])
+
+                # Direct unit check: slim projections (item and subfield stubs) round-trip through
+                # deterministic rehydration, while tampered digests are never silently rehydrated.
+                with patch.object(
+                    runtime, "repair_domain", new=lambda _p, _f, _i: {("definitions", "flows", 0, "parts", 0)}
+                ):
+                    sub_proj = seg_runtime._slim_repair_prior_projection(
+                        sample_prop, frozen, {"path": "unit"}, subfield_slim=True
+                    )
+                with patch.object(runtime, "repair_domain", new=lambda _p, _f, _i: set()):
+                    item_proj = seg_runtime._slim_repair_prior_projection(sample_prop, frozen, {"path": "unit"})
+                self.assertTrue(sub_proj.get("slim_repair_subfield"))
+                self.assertEqual(
+                    sub_proj["content"]["definitions"]["flows"][0]["graph"],
+                    {"_subfield_stub_sha256": seg_runtime.canonical_sha(fl0["graph"])},
+                )
+                self.assertEqual(sub_proj["content"]["definitions"]["flows"][0]["parts"], fl0["parts"])
+                item_stub = item_proj["content"]["definitions"]["flows"][0]
+                self.assertEqual(item_stub["flow_sha256"], seg_runtime.canonical_sha(fl0))
+                self.assertNotIn("graph", item_stub)
+                self.assertEqual(
+                    seg_runtime._rehydrate_slim_repair_content(sub_proj["content"], large_cand_a, allow_subfield=True),
+                    large_cand_a,
+                )
+                self.assertEqual(
+                    seg_runtime._rehydrate_slim_repair_content(item_proj["content"], large_cand_a), large_cand_a
+                )
+                # Subfield stubs are never rehydrated unless explicitly allowed.
+                self.assertEqual(
+                    seg_runtime._rehydrate_slim_repair_content(sub_proj["content"], large_cand_a)["definitions"][
+                        "flows"
+                    ][0]["graph"],
+                    {"_subfield_stub_sha256": seg_runtime.canonical_sha(fl0["graph"])},
+                )
+                self.assertFalse(seg_runtime._contains_repair_stub(large_cand_a))
+                self.assertTrue(seg_runtime._contains_repair_stub(sub_proj["content"]))
+                self.assertTrue(seg_runtime._contains_repair_stub(item_proj["content"]))
+                bad_digest = "sha256:" + ("0" * 64)
+                tampered_sub = deepcopy(sub_proj["content"])
+                tampered_sub["definitions"]["flows"][0]["graph"]["_subfield_stub_sha256"] = bad_digest
+                self.assertEqual(
+                    seg_runtime._rehydrate_slim_repair_content(tampered_sub, large_cand_a, allow_subfield=True)[
+                        "definitions"
+                    ]["flows"][0]["graph"],
+                    {"_subfield_stub_sha256": bad_digest},
+                )
+                tampered_item = deepcopy(item_proj["content"])
+                tampered_item["definitions"]["flows"][0]["flow_sha256"] = bad_digest
+                tampered_fl = seg_runtime._rehydrate_slim_repair_content(tampered_item, large_cand_a)[
+                    "definitions"
+                ]["flows"][0]
+                self.assertEqual(tampered_fl["flow_sha256"], bad_digest)
+                self.assertNotIn("graph", tampered_fl)
+                req_fb = {"slim_repair_fallback": True}
+                req_pin = {"slim_repair_fallback": True, "compact_contract_pin": True}
+                req_sub = {**req_pin, "slim_repair_subfield": True}
+                stub_draft = {**deepcopy(sample_draft), "content": deepcopy(item_proj["content"])}
+                sub_draft = {**deepcopy(sample_draft), "content": deepcopy(sub_proj["content"])}
+                with self.assertRaisesRegex(ValueError, "b_route_segmented_unsolicited_repair_stub"):
+                    seg_runtime._expected_repair_draft(stub_draft, large_cand_a, {"stage": "synthesis"})
+                with self.assertRaisesRegex(ValueError, "b_route_segmented_unsolicited_repair_stub"):
+                    seg_runtime._expected_repair_draft(sub_draft, large_cand_a, {"stage": "synthesis"})
+                for flags in (req_fb, req_pin):
+                    self.assertEqual(
+                        seg_runtime._expected_repair_draft(stub_draft, large_cand_a, flags)["content"], large_cand_a
+                    )
+                    # Unsolicited subfield stubs when slim_repair_subfield is False.
+                    with self.assertRaisesRegex(ValueError, "b_route_segmented_unsolicited_repair_stub"):
+                        seg_runtime._expected_repair_draft(sub_draft, large_cand_a, flags)
+                self.assertEqual(
+                    seg_runtime._expected_repair_draft(sub_draft, large_cand_a, req_sub)["content"], large_cand_a
+                )
+                for tampered in (tampered_item, tampered_sub):
+                    with self.assertRaisesRegex(ValueError, "b_route_segmented_unresolved_repair_stub"):
+                        seg_runtime._expected_repair_draft(
+                            {**deepcopy(sample_draft), "content": deepcopy(tampered)}, large_cand_a, req_sub
+                        )
+                with self.assertRaisesRegex(ValueError, "b_route_segmented_unresolved_repair_stub"):
+                    seg_runtime._expected_repair_draft(
+                        {**deepcopy(sample_draft), "content": deepcopy(tampered_item)}, large_cand_a, req_fb
+                    )
+                # Contradictory repair flag lattices are rejected before any rehydration.
+                for bad_flags in (
+                    {"slim_repair_subfield": True},
+                    {"slim_repair_subfield": True, "compact_contract_pin": True},
+                    {"slim_repair_subfield": True, "slim_repair_fallback": True},
+                    {"compact_contract_pin": True},
+                ):
+                    with self.assertRaisesRegex(ValueError, "b_route_segmented_repair_step_invalid"):
+                        seg_runtime._expected_repair_draft(sub_draft, large_cand_a, bad_flags)
+                # Generation request flag lattice on sealed materials.
+                rep_mat = {"repair_issue": {"path": "unit"}}
+                rep_req = {"synthesis_role": "bounded_repair"}
+                seg_runtime._validate_generation_request_flags({**rep_req, **req_sub}, rep_mat)
+                seg_runtime._validate_generation_request_flags(dict(rep_req), rep_mat)
+                for bad_req, bad_mat in (
+                    ({**rep_req, "slim_repair_subfield": True, "slim_repair_fallback": True}, rep_mat),
+                    ({**rep_req, "compact_contract_pin": True}, rep_mat),
+                    ({**rep_req, **req_pin, "compact_contract_pin": False}, rep_mat),
+                    ({**rep_req, **req_pin, "slim_repair_fallback": 1}, rep_mat),
+                    ({**rep_req, **req_pin}, {"repair_issue": None}),
+                    ({"synthesis_role": "final_synthesis", **req_pin}, rep_mat),
+                ):
+                    with self.assertRaisesRegex(ValueError, "b_route_segmented_generation_contract_changed"):
+                        seg_runtime._validate_generation_request_flags(bad_req, bad_mat)
+                # Canonical review projection_level validation.
+                self.assertEqual(seg_runtime._validated_review_projection_level({}), (False, 0))
+                self.assertEqual(
+                    seg_runtime._validated_review_projection_level({"scoped_proposal_projection": True}), (True, 1)
+                )
+                for lvl in (2, 3):
+                    self.assertEqual(
+                        seg_runtime._validated_review_projection_level(
+                            {"scoped_proposal_projection": True, "projection_level": lvl}
+                        ),
+                        (True, lvl),
+                    )
+                for bad_rr in (
+                    {"scoped_proposal_projection": True, "projection_level": 1},
+                    {"scoped_proposal_projection": True, "projection_level": 4},
+                    {"scoped_proposal_projection": True, "projection_level": "2"},
+                    {"scoped_proposal_projection": True, "projection_level": True},
+                    {"scoped_proposal_projection": False, "projection_level": 2},
+                    {"projection_level": 2},
+                    {"scoped_proposal_projection": 1},
+                ):
+                    with self.assertRaisesRegex(ValueError, "b_route_segmented_review_materials_mismatch"):
+                        seg_runtime._validated_review_projection_level(bad_rr)
+
+                # Sub-test A: isolated large single-flow candidate copy (large_cand_a / fl0 stay untouched for
+                # Sub-tests B and C). Long unique node padding defeats wire factoring so that both the level=0
+                # and the level=1 (single flow obligation) review projections exceed 70,000 bytes, forcing
+                # _plan_review_segments to segment and escalate to projection_level 2/3 while every runner
+                # wrapper with and without prior_projection stays strictly <= 70,000 bytes.
+                sub_a_content = deepcopy(large_cand_a)
+                sub_a_fl = sub_a_content["definitions"]["flows"][0]
+                sub_a_step = 8
+                while True:
+                    sub_a_fl["graph"] = _make_chain_graph(sub_a_step, pad_len=720)
+                    sub_a_fl_bytes = seg_runtime._compact_bytes_len(sub_a_fl)
+                    if sub_a_fl_bytes >= 82_500:
+                        break
+                    sub_a_step += 1
+                self.assertNotEqual(sub_a_fl, fl0)
+                self.assertLessEqual(seg_runtime._compact_bytes_len(fl0), 58_500)
+                sub_a_chain = deepcopy(draft_chain[:-1])
+                sub_a_draft = {**deepcopy(sample_draft), "content": deepcopy(sub_a_content)}
+                sub_a_chain.append(sub_a_draft)
+                sub_a_prop = {
+                    **deepcopy(sample_prop),
+                    "provenance": {
+                        **deepcopy(sample_prop["provenance"]),
+                        "draft_chain": sub_a_chain,
+                        "final_draft_identity": codec.canonical_digest(sub_a_draft),
+                    },
+                    "content": deepcopy(sub_a_content),
+                }
+                self.assertEqual(runtime.admission_machine(root, init_state, sub_a_prop, check_originals=False), [])
+                sub_a_obs = runtime.obligations(sub_a_prop, frozen)
+                for p_proj, p_issue in (
+                    (None, None),
+                    (
+                        seg_runtime._compact_candidate_projection(sub_a_prop),
+                        {"path": "semantic-review", "code": "x", "account_policy": "b-route-issue-accounts-v1"},
+                    ),
+                ):
+                    segs = seg_runtime._plan_review_segments(
+                        init_state,
+                        frozen,
+                        base_seed=runtime.seed(init_state, req_dir / "analysis-input"),
+                        proposal=sub_a_prop,
+                        slot="candidate-1",
+                        generation_no=1,
+                        execution_no=1,
+                        lineage_id="sha256:" + ("a" * 64),
+                        context=1,
+                        prior_projection=p_proj,
+                        issue=p_issue,
+                    )
+                    self.assertGreaterEqual(len(segs), 2)
+                    self.assertEqual(sum(len(s[3]) for s in segs), len(sub_a_obs))
+                    seg_levels = []
+                    for s_mat, sch, prm, _sobs, _ssrcs in segs:
+                        w_bytes = len(
+                            seg_input._runner_wrapper_text(prm, sch, compact_schema_file=True).encode("utf-8")
+                        )
+                        self.assertLessEqual(w_bytes, 70_000)
+                        s_req = s_mat["root_request"]
+                        seg_levels.append(
+                            int(s_req.get("projection_level", 1 if s_req.get("scoped_proposal_projection") else 0))
+                        )
+                    self.assertGreaterEqual(max(seg_levels), 2, seg_levels)
+                    self.assertIn(3, seg_levels, seg_levels)
+
+                # Also verify _trim_graph_to_budget trims >40KB graphs deterministically
+                huge_graph = {**_make_chain_graph(120, pad_len=260), "graph_note": "kept"}
+                trimmed_g = seg_runtime._trim_graph_to_budget(huge_graph, max_bytes=40_000)
+                self.assertTrue(trimmed_g.get("graph_trimmed"))
+                self.assertLessEqual(seg_runtime._compact_bytes_len(trimmed_g), 40_000)
+                self.assertEqual(trimmed_g["graph_sha256"], seg_runtime.canonical_sha(huge_graph))
+                self.assertEqual(trimmed_g["graph_note"], "kept")
+                self.assertEqual(trimmed_g["nodes_total"], len(huge_graph["nodes"]))
+                self.assertEqual(trimmed_g["edges_total"], len(huge_graph["edges"]))
+                self.assertTrue(trimmed_g.get("edges_kept_valid"))
+                kept_node_ids = {n["id"] for n in trimmed_g["nodes"]}
+                self.assertGreater(len(trimmed_g["edges"]), 0)
+                for e in trimmed_g["edges"]:
+                    self.assertIn(e["from"]["node_id"], kept_node_ids)
+                    self.assertIn(e["to"]["node_id"], kept_node_ids)
+                with self.assertRaisesRegex(ValueError, "b_route_segmented_graph_trim_insufficient"):
+                    seg_runtime._trim_graph_to_budget(
+                        {**huge_graph, "boundaries": [{"id": "b", "note": "y" * 5_000}]}, max_bytes=2_000
+                    )
+
+                # Sub-test B: End-to-end slim_repair_fallback stub echoing + rehydration + unmocked proof replay
+                turns_start = len(self._read_logged_turns())
+                repair_flag.write_text("1", encoding="utf-8")
+                echo_flag.write_text("1", encoding="utf-8")
+                kind_file.write_text("requirement", encoding="utf-8")
+                trig_flag.unlink(missing_ok=True)
+
+                gen_res = runtime.operate(
+                    root,
+                    planner="mvg",
+                    command="generate",
+                    run_id="r70k9req",
+                    prepared_ref=prep["resume_ref"],
+                    profile="3b-mvg-v1",
+                    runner=codex_runner,
+                    timeout_sec=120,
+                )
+                self.assertEqual(gen_res["selected"], "winner-chain", gen_res)
+                ver_res = runtime.operate(
+                    root,
+                    planner="mvg",
+                    command="verify-selection",
+                    run_id="r70k9req",
+                    prepared_ref=prep["resume_ref"],
+                    profile="3b-mvg-v1",
+                    runner=codex_runner,
+                    timeout_sec=120,
+                )
+                self.assertEqual(ver_res["status"], "passed", ver_res)
+
+                r_state = json.loads((req_dir / "run.json").read_text(encoding="utf-8"))
+                c1_adm = r_state["capability_selection"]["selected"][0]["admissions"]["candidate-1"]
+                c1_prop = json.loads((req_dir / c1_adm["proposal_path"]).read_text(encoding="utf-8"))
+                c1_proof = json.loads((req_dir / c1_adm["proof_path"]).read_text(encoding="utf-8"))
+                # The sealed raw repair carrier output keeps the flow_sha256 stub on disk, while both the
+                # retained draft_chain[-1] and the proposal content carry the rehydrated full 57KB flow.
+                c1_records = c1_proof.get("records") or [c1_proof]
+                raw_path = Path(c1_records[0]["delta"]["generation_calls"][-1]["output_path"])
+                raw_carrier = runtime.decode_generation_carrier(codec.strict_json_loads(raw_path.read_bytes()))
+                raw_rep_flow = raw_carrier["content"]["definitions"]["flows"][0]
+                self.assertIn("flow_sha256", raw_rep_flow)
+                self.assertNotIn("graph", raw_rep_flow)
+                chain_flow = c1_prop["provenance"]["draft_chain"][-1]["content"]["definitions"]["flows"][0]
+                self.assertNotIn("flow_sha256", chain_flow)
+                self.assertEqual(chain_flow, fl0)
+                rehyd_flow = c1_prop["content"]["definitions"]["flows"][0]
+                self.assertNotIn("flow_sha256", rehyd_flow)
+                self.assertEqual(rehyd_flow, fl0)
+                seg_runtime._PROOF_ERRORS_CACHE.clear()
+                self.assertEqual(seg_runtime.segmented_proof_errors(root, r_state, c1_prop, c1_proof), [])
+                logged_9 = self._read_logged_turns()[turns_start:]
+                self.assertGreater(len(logged_9), 6)
+                for row in logged_9:
+                    self.assertLessEqual(row["utf8_bytes"], 70_000)
+        finally:
+            for fp in (repair_flag, echo_flag, kind_file, trig_flag):
+                fp.unlink(missing_ok=True)
+            self._restore_candidate_templates(tmpl_path, prior_tmpl)
+
+    @staticmethod
+    def _restore_candidate_templates(tmpl_path: Path, prior_bytes: bytes | None) -> None:
+        if prior_bytes is None:
+            tmpl_path.unlink(missing_ok=True)
+        else:
+            tmpl_path.write_bytes(prior_bytes)
+
+    def test_09b_large_flow_part_repair_slice_resume_and_proof(self):
+        """Verify a flow_part obligation blocked on a ~85KB flow escalates review/repair projections and is proven."""
+        tmpl_path = self.state_dir / "candidate_templates.json"
+        prior_tmpl = tmpl_path.read_bytes() if tmpl_path.is_file() else None
+        try:
+            fx = self._prepare_test09_large_flow_fixture()
+        except BaseException:
+            self._restore_candidate_templates(tmpl_path, prior_tmpl)
+            raise
+        root = fx["root"]
+        slim_inputs = fx["slim_inputs"]
+        seam_file = fx["seam_file"]
+        proof_seam = fx["proof_seam"]
+        prep = fx["prep"]
+        frozen = fx["frozen"]
+        mvg_recovery = fx["mvg_recovery"]
+        codex_runner = fx["codex_runner"]
+        _make_chain_graph = fx["make_chain_graph"]
+        repair_flag = fx["repair_flag"]
+        echo_flag = fx["echo_flag"]
+        kind_file = fx["kind_file"]
+        trig_flag = fx["trig_flag"]
+        try:
+            # Local ~85KB candidate-1 flow with unique short (<128 chars) per-node and per-edge text so wire
+            # factoring cannot shrink it while encoding work stays cheap: Stage 5 must escalate to
+            # projection_level >= 2 and the Stage 4 flow_part repair must escalate through
+            # slim_repair_fallback + compact_contract_pin + slim_repair_subfield. The unique edge
+            # conditions keep the compact_contract_pin rung (full flow kept) strictly above 70,000 bytes.
+            big_cand = deepcopy(fx["large_cand_a"])
+            big_fl = big_cand["definitions"]["flows"][0]
+            g = _make_chain_graph(110, pad_len=8)
+            for n_idx, node in enumerate(g["nodes"]):
+                h = hashlib.sha256(f"r70k9flw-n-{node['id']}-{n_idx}".encode("utf-8")).hexdigest() * 2
+                node["responsibility"] = f"Handle {node['id']} ({h[:100]})."
+            for e_idx, edge in enumerate(g["edges"]):
+                h = hashlib.sha256(f"r70k9flw-e-{e_idx}".encode("utf-8")).hexdigest() * 2
+                edge["responsibility"] = f"Transition {e_idx} ({h[:100]})."
+                c = hashlib.sha256(f"r70k9flw-c-{e_idx}".encode("utf-8")).hexdigest()
+                edge["condition"] = f"{edge['condition']} ({c[:32]})"
+            big_fl["graph"] = g
+            big_bytes = seg_runtime._compact_bytes_len(big_fl)
+            self.assertGreaterEqual(big_bytes, 83_000)
+            self.assertLessEqual(big_bytes, 88_000)
+            big_graph = deepcopy(big_fl["graph"])
+            templates = json.loads(tmpl_path.read_text(encoding="utf-8"))
+            templates["candidate-1"] = big_cand
+            tmpl_path.write_text(json.dumps(templates, ensure_ascii=False), encoding="utf-8")
+
+            with patch.object(audit, "verify_current_proof", new=proof_seam), patch.object(
+                planning, "rules_identity", new=lambda _r: slim_inputs["dependencies"]["rules"]
+            ), patch.dict(os.environ, {"FAKE_CODEX_SC25_SEAM_INPUTS": str(seam_file)}):
+                turns_start = len(self._read_logged_turns())
+                repair_flag.write_text("1", encoding="utf-8")
+                echo_flag.write_text("1", encoding="utf-8")
+                # Sub-test C: Flow-part obligation blocked on ~85KB flow itself -> repaired <=70KB & proof passes
+                mvg_recovery.clear(root)
+                trig_flag.unlink(missing_ok=True)
+                kind_file.write_text("flow_part", encoding="utf-8")
+                flw_dir = runtime.run_location(root, "mvg", "r70k9flw")
+                for _ in range(20):
+                    out_f = runtime.operate(
+                        root,
+                        planner="mvg",
+                        command="generate",
+                        run_id="r70k9flw",
+                        prepared_ref=prep["resume_ref"],
+                        profile="3b-mvg-v1",
+                        runner=codex_runner,
+                        timeout_sec=120,
+                        max_new_dispatches=2,
+                    )
+                    f_st = json.loads((flw_dir / "run.json").read_text(encoding="utf-8"))
+                    cur_adms = ((f_st.get("capability_selection") or {}).get("current") or {}).get("admissions") or {}
+                    if "candidate-1" in cur_adms and cur_adms["candidate-1"].get("status") == "admitted":
+                        break
+                    if out_f.get("selected") == "winner-chain":
+                        break
+                f_st = json.loads((flw_dir / "run.json").read_text(encoding="utf-8"))
+                f_adms = (
+                    ((f_st.get("capability_selection") or {}).get("current") or {}).get("admissions")
+                    or f_st["capability_selection"]["selected"][0]["admissions"]
+                )
+                self.assertEqual(f_adms["candidate-1"]["status"], "admitted")
+                f_prop = json.loads((flw_dir / f_adms["candidate-1"]["proposal_path"]).read_text(encoding="utf-8"))
+                f_proof = json.loads((flw_dir / f_adms["candidate-1"]["proof_path"]).read_text(encoding="utf-8"))
+                seg_runtime._PROOF_ERRORS_CACHE.clear()
+                self.assertEqual(seg_runtime.segmented_proof_errors(root, f_st, f_prop, f_proof), [])
+
+                f_frozen = runtime.frozen_input(root, f_st)
+                f_record = (f_proof.get("records") or [f_proof])[0]
+                # Gap 2: real sealed Stage 4 repair materials escalated through the full slim lattice.
+                rep_binding = f_record["delta"]["generation_calls"][-1]
+                rep_mat = seg_runtime.verify_segmented_materials(rep_binding, f_st, f_frozen, readonly=True)
+                rep_req = rep_mat["root_request"]
+                self.assertIsNotNone(rep_mat.get("repair_issue"))
+                self.assertEqual(rep_req.get("synthesis_role"), "bounded_repair")
+                self.assertIs(rep_req.get("slim_repair_fallback"), True)
+                self.assertIs(rep_req.get("compact_contract_pin"), True)
+                self.assertIs(rep_req.get("slim_repair_subfield"), True)
+                raw_carrier = runtime.decode_generation_carrier(
+                    codec.strict_json_loads(Path(rep_binding["output_path"]).read_bytes())
+                )
+                raw_flow = raw_carrier["content"]["definitions"]["flows"][0]
+                self.assertEqual(
+                    raw_flow["graph"], {"_subfield_stub_sha256": seg_runtime.canonical_sha(big_graph)}
+                )
+                self.assertEqual(
+                    f_prop["provenance"]["draft_chain"][-1]["content"]["definitions"]["flows"][0]["graph"],
+                    big_graph,
+                )
+                self.assertEqual(f_prop["content"]["definitions"]["flows"][0]["graph"], big_graph)
+                self.assertFalse(seg_runtime._contains_repair_stub(f_prop["content"]))
+
+                # Gap 1: real sealed Stage 5 review materials escalated to projection_level >= 2 and the
+                # post-repair review prior uses the compact _scoped_review_prior projection.
+                rev_levels = []
+                compact_prior_hits = 0
+                for rev_binding in f_record["proof"].get("review_executions") or [f_record["execution"]]:
+                    rev_mat = seg_runtime.verify_segmented_materials(rev_binding, f_st, f_frozen, readonly=True)
+                    _scoped, lvl = seg_runtime._validated_review_projection_level(rev_mat["root_request"])
+                    self.assertEqual(rev_mat["root_request"].get("projection_level", 0) >= 2, lvl >= 2)
+                    rev_levels.append(lvl)
+                    if lvl >= 2 and rev_mat.get("prior_candidate") is not None:
+                        self.assertIs(rev_mat["prior_candidate"].get("compact_review_prior"), True)
+                        compact_prior_hits += 1
+                self.assertGreaterEqual(max(rev_levels), 2, rev_levels)
+                self.assertGreaterEqual(compact_prior_hits, 1, rev_levels)
+
+                logged_9 = self._read_logged_turns()[turns_start:]
+                self.assertGreater(len(logged_9), 6)
+                for row in logged_9:
+                    self.assertLessEqual(row["utf8_bytes"], 70_000)
+        finally:
+            for fp in (repair_flag, echo_flag, kind_file, trig_flag):
+                fp.unlink(missing_ok=True)
+            self._restore_candidate_templates(tmpl_path, prior_tmpl)
 
 
 if __name__ == "__main__":

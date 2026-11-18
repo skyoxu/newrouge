@@ -410,7 +410,16 @@ def _assert_under_70k(ws_bytes: int, frozen: dict, label: str) -> None:
         raise ValueError(f"b_route_segmented_token_bound_exceeds_96k:{label}:{ws_bytes + reserved}")
 
 
-def _slim_repair_prior_projection(prior: dict, frozen: dict, issue: dict) -> dict:
+def _is_def_item_in_repair_domain(allowed_paths: set, family: str, idx: int) -> bool:
+    return any(
+        len(p) >= 2 and p[:2] == ("definitions", family) and (len(p) == 2 or p[2] == idx)
+        for p in allowed_paths
+    )
+
+
+def _slim_repair_prior_projection(
+    prior: dict, frozen: dict, issue: dict, *, subfield_slim: bool = False
+) -> dict:
     """Compact prior candidate projection preserving full repair_domain items and digest stubs elsewhere."""
     import _b_route_planning_runtime as runtime
 
@@ -418,6 +427,13 @@ def _slim_repair_prior_projection(prior: dict, frozen: dict, issue: dict) -> dic
     allowed_paths = runtime.repair_domain(prior, frozen, issue)
     content = deepcopy(base_proj["content"])
     defs = content.get("definitions")
+    keep_base_keys = {
+        "id",
+        "proposed_owner_key",
+        "requirement_ids",
+        "capability_ids",
+        "source_block_ids",
+    }
     if isinstance(defs, dict):
         for family in ("flows", "commands", "states"):
             items = defs.get(family)
@@ -425,8 +441,29 @@ def _slim_repair_prior_projection(prior: dict, frozen: dict, issue: dict) -> dic
                 continue
             slim_items = []
             for idx, row in enumerate(items):
-                if ("definitions", family, idx) in allowed_paths or ("definitions", family) in allowed_paths:
-                    slim_items.append(row)
+                if _is_def_item_in_repair_domain(allowed_paths, family, idx):
+                    if (
+                        subfield_slim
+                        and isinstance(row, dict)
+                        and ("definitions", family) not in allowed_paths
+                        and ("definitions", family, idx) not in allowed_paths
+                    ):
+                        allowed_subfields = {
+                            p[3]
+                            for p in allowed_paths
+                            if len(p) >= 4 and p[:3] == ("definitions", family, idx)
+                        }
+                        slim_row = {}
+                        for k, v in row.items():
+                            if k in keep_base_keys or k in allowed_subfields:
+                                slim_row[k] = v
+                            elif isinstance(v, (dict, list)):
+                                slim_row[k] = {"_subfield_stub_sha256": canonical_sha(v)}
+                            else:
+                                slim_row[k] = v
+                        slim_items.append(slim_row)
+                    else:
+                        slim_items.append(row)
                 else:
                     stub = {"id": row.get("id"), f"{family[:-1]}_sha256": canonical_sha(row)}
                     if "requirement_ids" in row:
@@ -435,7 +472,172 @@ def _slim_repair_prior_projection(prior: dict, frozen: dict, issue: dict) -> dic
                         stub["proposed_owner_key"] = row["proposed_owner_key"]
                     slim_items.append(stub)
             defs[family] = slim_items
-    return {**base_proj, "content": content, "slim_repair_projection": True}
+    out = {**base_proj, "content": content, "slim_repair_projection": True}
+    if subfield_slim:
+        out["slim_repair_subfield"] = True
+    return out
+
+
+def _rehydrate_slim_repair_content(
+    content: dict, prior_content: dict, *, allow_subfield: bool = False
+) -> dict:
+    """Deterministically rehydrate slim-repair digest stubs (and subfield stubs when allowed)."""
+    out = deepcopy(content)
+    if not isinstance(out, dict) or not isinstance(prior_content, dict):
+        return out
+    defs = out.get("definitions")
+    prior_defs = prior_content.get("definitions")
+    if not isinstance(defs, dict) or not isinstance(prior_defs, dict):
+        return out
+    for family in ("flows", "commands", "states"):
+        items = defs.get(family)
+        orig_items = prior_defs.get(family)
+        if not isinstance(items, list) or not isinstance(orig_items, list) or len(items) != len(orig_items):
+            continue
+        sha_key = f"{family[:-1]}_sha256"
+        allowed_stub_keys = {"id", sha_key, "requirement_ids", "proposed_owner_key"}
+        for idx, (row, orig_row) in enumerate(zip(items, orig_items)):
+            if not isinstance(row, dict) or not isinstance(orig_row, dict):
+                continue
+            if (
+                sha_key in row
+                and sha_key not in orig_row
+                and set(row.keys()) <= allowed_stub_keys
+                and row.get("id") == orig_row.get("id")
+                and row.get(sha_key) == canonical_sha(orig_row)
+                and (
+                    "requirement_ids" not in row
+                    or (
+                        "requirement_ids" in orig_row
+                        and row["requirement_ids"] == orig_row["requirement_ids"]
+                    )
+                )
+                and (
+                    "proposed_owner_key" not in row
+                    or (
+                        "proposed_owner_key" in orig_row
+                        and row["proposed_owner_key"] == orig_row["proposed_owner_key"]
+                    )
+                )
+            ):
+                items[idx] = deepcopy(orig_row)
+            elif allow_subfield:
+                for k, v in list(row.items()):
+                    if (
+                        k in orig_row
+                        and isinstance(v, dict)
+                        and set(v.keys()) == {"_subfield_stub_sha256"}
+                        and v["_subfield_stub_sha256"] == canonical_sha(orig_row[k])
+                    ):
+                        row[k] = deepcopy(orig_row[k])
+    return out
+
+
+_REPAIR_ITEM_STUB_KEYS = ("flow_sha256", "command_sha256", "state_sha256")
+
+
+def _contains_subfield_stub(value: object) -> bool:
+    """Return True when any nested dict carries a slim-repair subfield stub key."""
+    stack = [value]
+    while stack:
+        cur = stack.pop()
+        if isinstance(cur, dict):
+            if "_subfield_stub_sha256" in cur:
+                return True
+            stack.extend(cur.values())
+        elif isinstance(cur, list):
+            stack.extend(cur)
+    return False
+
+
+def _contains_repair_stub(content: object) -> bool:
+    """Return True when definitions still hold slim-repair item digests or subfield stubs."""
+    if not isinstance(content, dict):
+        return False
+    defs = content.get("definitions")
+    if not isinstance(defs, dict):
+        return False
+    for family in ("flows", "commands", "states"):
+        items = defs.get(family)
+        if not isinstance(items, list):
+            continue
+        sha_key = f"{family[:-1]}_sha256"
+        for row in items:
+            if isinstance(row, dict) and sha_key in row:
+                return True
+    stack: list = [defs]
+    while stack:
+        cur = stack.pop()
+        if isinstance(cur, dict):
+            if "_subfield_stub_sha256" in cur or any(k in cur for k in _REPAIR_ITEM_STUB_KEYS):
+                return True
+            stack.extend(cur.values())
+        elif isinstance(cur, list):
+            stack.extend(cur)
+    return False
+
+
+def _expected_repair_draft(raw_decoded: dict, prior_content: dict, root_request: dict) -> dict:
+    """Deterministically derive the retained repair draft from the sealed raw decoded carrier.
+
+    The sealed raw output keeps slim-repair stubs; the retained draft carries fully rehydrated
+    content so that draft_chain[-1].content equals the proposal content. Non-slim repairs must
+    never echo stubs, subfield stubs are only resolved when explicitly requested, and any stub
+    left unresolved after rehydration is rejected. The raw_decoded dict is never mutated.
+    """
+    import _b_route_planning_runtime as runtime
+
+    slim_fb = bool(root_request.get("slim_repair_fallback"))
+    slim_sub = bool(root_request.get("slim_repair_subfield"))
+    compact_pin = bool(root_request.get("compact_contract_pin"))
+    if (slim_sub and not (slim_fb and compact_pin)) or (compact_pin and not slim_fb):
+        raise ValueError("b_route_segmented_repair_step_invalid")
+    raw_content = raw_decoded["content"]
+    if not slim_fb:
+        if _contains_repair_stub(raw_content) or not runtime.same_json(
+            _rehydrate_slim_repair_content(raw_content, prior_content, allow_subfield=True),
+            raw_content,
+        ):
+            raise ValueError("b_route_segmented_unsolicited_repair_stub")
+        return raw_decoded
+    if not slim_sub and _contains_subfield_stub(raw_content):
+        raise ValueError("b_route_segmented_unsolicited_repair_stub")
+    rehydrated = _rehydrate_slim_repair_content(raw_content, prior_content, allow_subfield=slim_sub)
+    if _contains_repair_stub(rehydrated):
+        raise ValueError("b_route_segmented_unresolved_repair_stub")
+    return {**raw_decoded, "content": rehydrated}
+
+
+def _validated_review_projection_level(root_req: dict) -> tuple[bool, int]:
+    """Validate the review scoped-projection flag and canonical projection_level."""
+    scoped_val = root_req.get("scoped_proposal_projection", False)
+    if type(scoped_val) is not bool:
+        raise ValueError("b_route_segmented_review_materials_mismatch")
+    if "projection_level" in root_req:
+        lvl = root_req["projection_level"]
+        if not scoped_val or type(lvl) is not int or lvl not in (2, 3):
+            raise ValueError("b_route_segmented_review_materials_mismatch")
+        return True, lvl
+    return scoped_val, 1 if scoped_val else 0
+
+
+def _validate_generation_request_flags(req: dict, materials: dict) -> None:
+    """Enforce the strict slim-repair request flag lattice on sealed generation materials."""
+    flags = ("slim_repair_fallback", "compact_contract_pin", "slim_repair_subfield")
+    for key in flags:
+        if key in req and (type(req[key]) is not bool or req[key] is not True):
+            raise ValueError("b_route_segmented_generation_contract_changed")
+    is_repair = (
+        materials.get("repair_issue") is not None
+        and req.get("synthesis_role") == "bounded_repair"
+    )
+    if "slim_repair_fallback" in req and not is_repair:
+        raise ValueError("b_route_segmented_generation_contract_changed")
+    if "compact_contract_pin" in req and not (is_repair and req.get("slim_repair_fallback") is True):
+        raise ValueError("b_route_segmented_generation_contract_changed")
+    if "slim_repair_subfield" in req and req.get("compact_contract_pin") is not True:
+        raise ValueError("b_route_segmented_generation_contract_changed")
+
 
 
 def _collect_directive_strings(value, out: set[str] | None = None) -> set[str]:
@@ -456,9 +658,10 @@ def _collect_directive_strings(value, out: set[str] | None = None) -> set[str]:
 
 
 def _generation_contract_for_request(root_req: dict) -> tuple[dict, dict]:
-    if root_req.get("stage") == "batch" or root_req.get("synthesis_role") in (
-        "rolling_compaction",
-        "tree_reduce",
+    if (
+        root_req.get("stage") == "batch"
+        or root_req.get("synthesis_role") in ("rolling_compaction", "tree_reduce")
+        or bool(root_req.get("compact_contract_pin"))
     ):
         return (
             {
@@ -532,10 +735,96 @@ def _build_generation_materials(
     return sealed, provider_schema, prompt_text, ws_bytes
 
 
+def _scoped_review_prior(
+    prior_projection: dict | None, issue: dict | None = None, *, level: int = 2
+) -> dict | None:
+    """Compact prior_candidate projection for Stage 5 review at level >= 2."""
+    del issue
+    if prior_projection is None or level <= 0:
+        return prior_projection
+    if level < 2:
+        return prior_projection
+    return {
+        "schema_version": prior_projection["schema_version"],
+        "input_stage": prior_projection["input_stage"],
+        "input_identity": prior_projection["input_identity"],
+        "proposal_sha256": prior_projection["proposal_sha256"],
+        "provenance_summary": deepcopy(prior_projection["provenance_summary"]),
+        "content_sha256": canonical_sha(prior_projection["content"]),
+        "compact_review_prior": True,
+    }
+
+
+def _trim_graph_to_budget(graph: dict, max_bytes: int = 40_000) -> dict:
+    """Deterministically trim graph nodes/edges to fit max_bytes while keeping boundaries/loops/digests."""
+    if _compact_bytes_len(graph) <= max_bytes:
+        return graph
+    orig_nodes = list(graph.get("nodes") or [])
+    orig_edges = list(graph.get("edges") or [])
+    boundaries = deepcopy(graph.get("boundaries", []))
+    loops = deepcopy(graph.get("loops", []))
+    extra = {k: deepcopy(v) for k, v in graph.items() if k not in ("nodes", "edges", "boundaries", "loops")}
+    orig_sha = canonical_sha(graph)
+    total = len(orig_nodes) + len(orig_edges)
+
+    def _edge_endpoint(edge: object, side: str) -> object:
+        if not isinstance(edge, dict):
+            return None
+        end = edge.get(side)
+        return end.get("node_id") if isinstance(end, dict) else None
+
+    def _build(mid: int) -> dict:
+        if total <= 0:
+            n_cnt, e_cnt = 0, 0
+        else:
+            n_cnt = min(len(orig_nodes), (len(orig_nodes) * mid) // total)
+            e_cnt = min(len(orig_edges), mid - n_cnt)
+        kept_nodes = orig_nodes[:n_cnt]
+        kept_ids = {n.get("id") for n in kept_nodes if isinstance(n, dict)}
+        kept_edges = [
+            e
+            for e in orig_edges[:e_cnt]
+            if _edge_endpoint(e, "from") in kept_ids and _edge_endpoint(e, "to") in kept_ids
+        ]
+        return {
+            **extra,
+            "nodes": deepcopy(kept_nodes),
+            "edges": deepcopy(kept_edges),
+            "boundaries": boundaries,
+            "loops": loops,
+            "nodes_total": len(orig_nodes),
+            "edges_total": len(orig_edges),
+            "graph_sha256": orig_sha,
+            "graph_trimmed": True,
+            "edges_kept_valid": True,
+        }
+
+    lo, hi = 0, total
+    best = _build(0)
+    while lo <= hi:
+        mid = (lo + hi) // 2
+        cand = _build(mid)
+        if _compact_bytes_len(cand) <= max_bytes:
+            best = cand
+            lo = mid + 1
+        else:
+            hi = mid - 1
+    if _compact_bytes_len(best) > max_bytes:
+        raise ValueError("b_route_segmented_graph_trim_insufficient")
+    return best
+
+
 def _scoped_review_proposal(
-    proposal_proj: dict, seg_obs: list[dict], *, directive: dict | None = None
+    proposal_proj: dict,
+    seg_obs: list[dict],
+    *,
+    directive: dict | None = None,
+    level: int = 1,
+    seg_sources: list[dict] | None = None,
 ) -> dict:
-    """Keep full flow bodies for targeted obligations/reopen conflicts and digest stubs elsewhere."""
+    """Keep targeted obligation bodies and digest stubs elsewhere according to projection level."""
+    if level <= 0:
+        return proposal_proj
     targeted_flow_ids = {
         ob["target"][1]
         for ob in seg_obs
@@ -543,6 +832,19 @@ def _scoped_review_proposal(
         and len(ob["target"]) >= 2
         and ob["target"][0] in ("flow", "flow_branch", "flow_part")
     }
+    targeted_flow_aspects: dict[str, set[str]] = {}
+    for ob in seg_obs:
+        tgt = ob.get("target")
+        if not isinstance(tgt, list) or len(tgt) < 2:
+            continue
+        kind, fid = tgt[0], tgt[1]
+        if kind == "flow" and len(tgt) >= 3 and isinstance(tgt[2], str):
+            targeted_flow_aspects.setdefault(fid, set()).add(tgt[2])
+        elif kind == "flow_part":
+            targeted_flow_aspects.setdefault(fid, set()).add("parts")
+        elif kind == "flow_branch":
+            targeted_flow_aspects.setdefault(fid, set()).add("branches")
+
     targeted_req_ids = {
         ob["target"][1]
         for ob in seg_obs
@@ -572,22 +874,168 @@ def _scoped_review_proposal(
         for fl in flows:
             fid = fl.get("id")
             f_reqs = set(fl.get("requirement_ids", []))
-            if (
-                fid in targeted_flow_ids
-                or fid in reopen_matched_flow_ids
-                or (targeted_req_ids and (f_reqs & targeted_req_ids) and len(flows) <= 8)
-            ):
-                scoped_flows.append(fl)
+            if level == 1:
+                if (
+                    fid in targeted_flow_ids
+                    or fid in reopen_matched_flow_ids
+                    or (targeted_req_ids and (f_reqs & targeted_req_ids) and len(flows) <= 8)
+                ):
+                    scoped_flows.append(fl)
+                else:
+                    stub = {
+                        "id": fid,
+                        "requirement_ids": list(fl.get("requirement_ids", [])),
+                        "flow_sha256": canonical_sha(fl),
+                    }
+                    if "proposed_owner_key" in fl:
+                        stub["proposed_owner_key"] = fl["proposed_owner_key"]
+                    scoped_flows.append(stub)
             else:
-                stub = {
-                    "id": fid,
-                    "requirement_ids": list(fl.get("requirement_ids", [])),
-                    "flow_sha256": canonical_sha(fl),
-                }
-                if "proposed_owner_key" in fl:
-                    stub["proposed_owner_key"] = fl["proposed_owner_key"]
-                scoped_flows.append(stub)
+                if fid in targeted_flow_ids or fid in reopen_matched_flow_ids:
+                    fl_orig_sha = canonical_sha(fl)
+                    fl_out = deepcopy(fl)
+                    aspects = targeted_flow_aspects.get(fid, set())
+                    if fid not in reopen_matched_flow_ids:
+                        if "graph" not in aspects and isinstance(fl_out.get("graph"), dict):
+                            g = fl_out["graph"]
+                            fl_out["graph"] = {
+                                "nodes_count": len(g.get("nodes", [])),
+                                "edges_count": len(g.get("edges", [])),
+                                "boundaries": deepcopy(g.get("boundaries", [])),
+                                "loops": deepcopy(g.get("loops", [])),
+                                "graph_sha256": canonical_sha(g),
+                            }
+                        if "graph" in aspects:
+                            if "parts" not in aspects and isinstance(fl_out.get("parts"), list):
+                                fl_out["parts"] = [
+                                    {
+                                        "kind": p.get("kind"),
+                                        "applicability": p.get("applicability"),
+                                        "part_sha256": canonical_sha(p),
+                                    }
+                                    for p in fl_out["parts"]
+                                ]
+                            if "branches" not in aspects and isinstance(fl_out.get("branches"), list):
+                                fl_out["branches"] = [
+                                    {
+                                        "kind": b.get("kind"),
+                                        "applicability": b.get("applicability"),
+                                        "boundary_ids": deepcopy(b.get("boundary_ids", [])),
+                                        "branch_sha256": canonical_sha(b),
+                                    }
+                                    for b in fl_out["branches"]
+                                ]
+                    if level >= 3:
+                        whole_flow = not aspects
+                        if whole_flow:
+                            aspects = {
+                                k
+                                for k in fl_out
+                                if k not in ("id", "proposed_owner_key", "requirement_ids")
+                            }
+                        l3_fl = {
+                            "id": fid,
+                            "flow_sha256": fl_orig_sha,
+                        }
+                        if "proposed_owner_key" in fl:
+                            l3_fl["proposed_owner_key"] = fl["proposed_owner_key"]
+                        if "requirement_ids" in fl:
+                            l3_fl["requirement_ids"] = list(fl["requirement_ids"])
+                        for asp in sorted(aspects):
+                            if asp in fl_out:
+                                l3_fl[asp] = fl_out[asp]
+                        if isinstance(l3_fl.get("graph"), dict) and "graph" in aspects:
+                            l3_fl["graph"] = _trim_graph_to_budget(
+                                l3_fl["graph"], max_bytes=32_000 if whole_flow else 40_000
+                            )
+                        fl_out = l3_fl
+                    scoped_flows.append(fl_out)
+                else:
+                    stub = {
+                        "id": fid,
+                        "requirement_ids": list(fl.get("requirement_ids", [])),
+                        "flow_sha256": canonical_sha(fl),
+                    }
+                    for k in (
+                        "proposed_owner_key",
+                        "capability_ids",
+                        "source_block_ids",
+                        "entry_condition",
+                        "observable_result",
+                    ):
+                        if k in fl:
+                            stub[k] = deepcopy(fl[k])
+                    scoped_flows.append(stub)
         defs["flows"] = scoped_flows
+
+    if level >= 2 and isinstance(content, dict):
+        req_tables = (
+            "requirements",
+            "requirement_verification",
+            "coverage_table",
+            "requirement_route_memberships",
+            "applicability",
+        )
+        source_obs_keys = {
+            ob["target"][1]
+            for ob in seg_obs
+            if isinstance(ob.get("target"), list)
+            and len(ob["target"]) >= 2
+            and ob["target"][0] == "source"
+        }
+        source_block_ids_needed = (
+            {
+                s["block_id"]
+                for s in (seg_sources or [])
+                if s.get("id") in source_obs_keys and isinstance(s.get("block_id"), str)
+            }
+            if source_obs_keys
+            else set()
+        )
+        req_rows = content.get("requirements")
+        source_req_ids = (
+            {
+                r["requirement_id"]
+                for r in req_rows
+                if isinstance(r, dict)
+                and isinstance(r.get("requirement_id"), str)
+                and (set(r.get("source_block_ids", [])) & source_block_ids_needed)
+            }
+            if (source_block_ids_needed and isinstance(req_rows, list))
+            else set()
+        )
+        keep_req_ids = targeted_req_ids if targeted_req_ids else source_req_ids
+        if targeted_req_ids and source_req_ids:
+            keep_req_ids = targeted_req_ids | source_req_ids
+        if not keep_req_ids and isinstance(flows, list):
+            keep_req_ids = {
+                rid
+                for fl in flows
+                if isinstance(fl, dict)
+                and (fl.get("id") in targeted_flow_ids or fl.get("id") in reopen_matched_flow_ids)
+                for rid in (fl.get("requirement_ids") or [])
+                if isinstance(rid, str)
+            }
+        omitted_digests: dict[str, dict] = {}
+        for sec in req_tables:
+            rows = content.get(sec)
+            if not isinstance(rows, list):
+                continue
+            filtered = [
+                row
+                for row in rows
+                if not isinstance(row, dict)
+                or "requirement_id" not in row
+                or row.get("requirement_id") in keep_req_ids
+            ]
+            if len(filtered) != len(rows):
+                omitted_digests[sec] = {
+                    "total_count": len(rows),
+                    "sha256": canonical_sha(rows),
+                }
+                content[sec] = filtered
+        if omitted_digests:
+            content["omitted_requirement_table_digests"] = omitted_digests
     return out
 
 
@@ -628,7 +1076,7 @@ def _plan_review_segments(
     reserved = int(frozen["inputs"]["contract"]["limits"]["reserved_tokens"])
 
     def build_slice(
-        start: int, end: int, seg_idx: int, *, use_scoped_proposal: bool = False
+        start: int, end: int, seg_idx: int, *, level: int = 0
     ) -> tuple[dict, dict, str, int, list[dict], list[dict]]:
         seg_obs = deepcopy(all_obligations[start:end])
         needed_src_ids = {sid for ob in seg_obs for sid in ob["source_block_ids"]}
@@ -644,16 +1092,26 @@ def _plan_review_segments(
             seg_sources=seg_srcs,
             directive=seg_directive,
         )
+        use_scoped = level >= 1
         active_prop = (
-            _scoped_review_proposal(proposal_proj, seg_obs, directive=seg_directive)
-            if use_scoped_proposal
+            _scoped_review_proposal(
+                proposal_proj,
+                seg_obs,
+                directive=seg_directive,
+                level=level,
+                seg_sources=seg_srcs,
+            )
+            if use_scoped
             else proposal_proj
         )
-        active_prior = (
-            _scoped_review_proposal(prior_projection, seg_obs, directive=seg_directive)
-            if (use_scoped_proposal and prior_projection is not None)
-            else prior_projection
-        )
+        if prior_projection is None or level == 0:
+            active_prior = prior_projection
+        elif level == 1:
+            active_prior = _scoped_review_proposal(
+                prior_projection, seg_obs, directive=seg_directive, level=1
+            )
+        else:
+            active_prior = _scoped_review_prior(prior_projection, issue, level=level)
         root_req = {
             "schema_version": seg_input.SEGMENTED_REQUEST_SCHEMA,
             "input_identity": frozen["input_identity"],
@@ -661,9 +1119,11 @@ def _plan_review_segments(
             "segment_index": seg_idx,
             "obligation_range": [start, end],
             "total_obligations": len(all_obligations),
-            "scoped_proposal_projection": use_scoped_proposal,
-            "common_header": review_common_hdr if use_scoped_proposal else frozen["transport"]["common_header"],
+            "scoped_proposal_projection": use_scoped,
+            "common_header": review_common_hdr if use_scoped else frozen["transport"]["common_header"],
         }
+        if level >= 2:
+            root_req["projection_level"] = level
         materials = {
             "schema_version": runtime.PROFILE,
             "phase": "independent_admission",
@@ -697,41 +1157,44 @@ def _plan_review_segments(
 
     # Fast path: check if entire review fits in a single segment with full proposal
     full_mat, full_sch, full_prm, full_bytes, full_obs, full_srcs = build_slice(
-        0, total, 1, use_scoped_proposal=False
+        0, total, 1, level=0
     )
-    if full_bytes <= MAX_WORKSPACE_PAYLOAD_BYTES and full_bytes + reserved <= CONTEXT_TOKEN_LIMIT:
+    if _fits_turn_budget(full_bytes, frozen):
         return [(full_mat, full_sch, full_prm, full_obs, full_srcs)]
 
     segments = []
     idx = 0
-    sticky_scoped = False
+    sticky_level = 0
     eff_limit = min(MAX_WORKSPACE_PAYLOAD_BYTES, CONTEXT_TOKEN_LIMIT - reserved)
     while idx < total:
         seg_no = len(segments) + 1
-        use_scoped = sticky_scoped
+        use_level = min(sticky_level, 2)
         s_mat, s_sch, s_prm, s_bytes, s_obs, s_srcs = build_slice(
-            idx, idx + 1, seg_no, use_scoped_proposal=use_scoped
+            idx, idx + 1, seg_no, level=use_level
         )
-        if not use_scoped and (
-            s_bytes > MAX_WORKSPACE_PAYLOAD_BYTES or s_bytes + reserved > CONTEXT_TOKEN_LIMIT
-        ):
-            use_scoped = True
-            sticky_scoped = True
-            s_mat, s_sch, s_prm, s_bytes, s_obs, s_srcs = build_slice(
-                idx, idx + 1, seg_no, use_scoped_proposal=True
-            )
+        if not _fits_turn_budget(s_bytes, frozen):
+            for cand_level in (1, 2, 3):
+                if cand_level <= use_level:
+                    continue
+                use_level = cand_level
+                s_mat, s_sch, s_prm, s_bytes, s_obs, s_srcs = build_slice(
+                    idx, idx + 1, seg_no, level=use_level
+                )
+                if _fits_turn_budget(s_bytes, frozen):
+                    break
+            sticky_level = max(sticky_level, min(use_level, 2))
         _assert_under_70k(s_bytes, frozen, f"review-seg-{seg_no}-single")
         best_end = idx + 1
         best_pack = (s_mat, s_sch, s_prm, s_obs, s_srcs)
 
-        if idx + 1 < total:
+        if idx + 1 < total and use_level < 3:
             per_ob_est = max(80.0, (full_bytes - s_bytes) / max(1, total - 1))
             est_more = max(1, int(max(0, eff_limit - s_bytes) / per_ob_est * 0.9))
             guess = min(total, idx + 1 + est_more)
             g_mat, g_sch, g_prm, g_bytes, g_obs, g_srcs = build_slice(
-                idx, guess, seg_no, use_scoped_proposal=use_scoped
+                idx, guess, seg_no, level=use_level
             )
-            if g_bytes <= MAX_WORKSPACE_PAYLOAD_BYTES and g_bytes + reserved <= CONTEXT_TOKEN_LIMIT:
+            if _fits_turn_budget(g_bytes, frozen):
                 best_end = guess
                 best_pack = (g_mat, g_sch, g_prm, g_obs, g_srcs)
                 low = guess + 1
@@ -740,9 +1203,9 @@ def _plan_review_segments(
                 while guess + step <= total:
                     probe_end = min(guess + step, total)
                     c_mat, c_sch, c_prm, c_bytes, c_obs, c_srcs = build_slice(
-                        idx, probe_end, seg_no, use_scoped_proposal=use_scoped
+                        idx, probe_end, seg_no, level=use_level
                     )
-                    if c_bytes <= MAX_WORKSPACE_PAYLOAD_BYTES and c_bytes + reserved <= CONTEXT_TOKEN_LIMIT:
+                    if _fits_turn_budget(c_bytes, frozen):
                         best_end = probe_end
                         best_pack = (c_mat, c_sch, c_prm, c_obs, c_srcs)
                         low = probe_end + 1
@@ -759,9 +1222,9 @@ def _plan_review_segments(
             while low <= high:
                 mid = (low + high) // 2
                 c_mat, c_sch, c_prm, c_bytes, c_obs, c_srcs = build_slice(
-                    idx, mid, seg_no, use_scoped_proposal=use_scoped
+                    idx, mid, seg_no, level=use_level
                 )
-                if c_bytes <= MAX_WORKSPACE_PAYLOAD_BYTES and c_bytes + reserved <= CONTEXT_TOKEN_LIMIT:
+                if _fits_turn_budget(c_bytes, frozen):
                     best_end = mid
                     best_pack = (c_mat, c_sch, c_prm, c_obs, c_srcs)
                     low = mid + 1
@@ -986,30 +1449,12 @@ def generate_segmented_append(
                 "common_header": frozen["transport"]["common_header"],
                 "parent_draft_identities": parent_ids,
             }
-            with runtime.request_resources() as work:
-                sealed, prov_schema, prompt_text, ws_bytes = _build_generation_materials(
-                    state,
-                    frozen,
-                    base_seed=accepted,
-                    slot=slot,
-                    generation_no=generation_no,
-                    execution_no=execution_no,
-                    lineage_id=lineage_id,
-                    context=context,
-                    root_req=root_req,
-                    prior_projection=prior_proj,
-                    issue=issue,
-                    repair_scope=repair_scope,
-                    work=work,
-                )
-                if not _fits_turn_budget(ws_bytes, frozen):
-                    slim_hdr = {
-                        k: v
-                        for k, v in frozen["transport"]["common_header"].items()
-                        if k in ("input_identity", "contract_ref", "contract", "source_inventory")
-                    }
-                    slim_req = {**root_req, "common_header": slim_hdr}
-                    sealed, prov_schema, prompt_text, ws_bytes = _build_generation_materials(
+            def _build_repair_rung(rung_req: dict, rung_prior: dict):
+                # Each escalation rung is an independent candidate request: it gets its own
+                # bounded request work account (same convention as Stage 1-3 builders), so
+                # rejected oversized rungs never drain the account of the final sealed request.
+                with runtime.request_resources() as work:
+                    return _build_generation_materials(
                         state,
                         frozen,
                         base_seed=accepted,
@@ -1018,38 +1463,47 @@ def generate_segmented_append(
                         execution_no=execution_no,
                         lineage_id=lineage_id,
                         context=context,
-                        root_req=slim_req,
-                        prior_projection=prior_proj,
+                        root_req=rung_req,
+                        prior_projection=rung_prior,
                         issue=issue,
                         repair_scope=repair_scope,
                         work=work,
                     )
-                if not _fits_turn_budget(ws_bytes, frozen):
-                    slim_hdr = {
-                        k: v
-                        for k, v in frozen["transport"]["common_header"].items()
-                        if k in ("input_identity", "contract_ref", "contract", "source_inventory")
-                    }
-                    slim_req = {**root_req, "common_header": slim_hdr, "slim_repair_fallback": True}
-                    slim_prior = _slim_repair_prior_projection(prior, frozen, issue)
-                    sealed, prov_schema, prompt_text, ws_bytes = _build_generation_materials(
-                        state,
-                        frozen,
-                        base_seed=accepted,
-                        slot=slot,
-                        generation_no=generation_no,
-                        execution_no=execution_no,
-                        lineage_id=lineage_id,
-                        context=context,
-                        root_req=slim_req,
-                        prior_projection=slim_prior,
-                        issue=issue,
-                        repair_scope=repair_scope,
-                        work=work,
-                    )
-                _assert_under_70k(ws_bytes, frozen, f"repair-{repair_ordinal}")
-            repair_draft, repair_binding = execute_call(
+
+            sealed, prov_schema, prompt_text, ws_bytes = _build_repair_rung(root_req, prior_proj)
+            if not _fits_turn_budget(ws_bytes, frozen):
+                slim_hdr = {
+                    k: v
+                    for k, v in frozen["transport"]["common_header"].items()
+                    if k in ("input_identity", "contract_ref", "contract", "source_inventory")
+                }
+                slim_req = {**root_req, "common_header": slim_hdr}
+                sealed, prov_schema, prompt_text, ws_bytes = _build_repair_rung(slim_req, prior_proj)
+            if not _fits_turn_budget(ws_bytes, frozen):
+                slim_hdr = {
+                    k: v
+                    for k, v in frozen["transport"]["common_header"].items()
+                    if k in ("input_identity", "contract_ref", "contract", "source_inventory")
+                }
+                slim_req = {**root_req, "common_header": slim_hdr, "slim_repair_fallback": True}
+                slim_prior = _slim_repair_prior_projection(prior, frozen, issue)
+                sealed, prov_schema, prompt_text, ws_bytes = _build_repair_rung(slim_req, slim_prior)
+            if not _fits_turn_budget(ws_bytes, frozen):
+                slim_req = {**slim_req, "compact_contract_pin": True}
+                sealed, prov_schema, prompt_text, ws_bytes = _build_repair_rung(slim_req, slim_prior)
+            if not _fits_turn_budget(ws_bytes, frozen):
+                slim_req = {**slim_req, "slim_repair_subfield": True}
+                slim_prior = _slim_repair_prior_projection(prior, frozen, issue, subfield_slim=True)
+                sealed, prov_schema, prompt_text, ws_bytes = _build_repair_rung(slim_req, slim_prior)
+            _assert_under_70k(ws_bytes, frozen, f"repair-{repair_ordinal}")
+            # execute_call returns the raw decoded carrier both on fresh dispatch and on
+            # slice-resume replay (sealed r.json and canonical-draft.json stay raw), so the
+            # same deterministic rehydration applies on every path.
+            raw_repair_draft, repair_binding = execute_call(
                 sealed, prov_schema, prompt_text, "repair", call
+            )
+            repair_draft = _expected_repair_draft(
+                raw_repair_draft, prior["content"], sealed["root_request"]
             )
             drafts = [*prior_chain, repair_draft]
             planning.validate_draft_chain(frozen, drafts)
@@ -2857,7 +3311,9 @@ def verify_segmented_materials(
             or not runtime.same_json(materials.get("final_content_target"), exp_target)
         ):
             raise ValueError("b_route_segmented_generation_contract_changed")
+        _validate_generation_request_flags(req, materials)
     elif materials["phase"] == "independent_admission":
+        _validated_review_projection_level(materials["root_request"])
         directive = runtime.reopen_directive(state, frozen, materials.get("generation", 1))
         seg_directive = (
             directive
@@ -3705,19 +4161,32 @@ def _verify_segmented_repair_origin(
             _work.spend()
             expected_parents = [codec.canonical_digest(d) for d in drafts[:d_idx]]
             found = []
+            stub_errors: list[str] = []
             for _, retained, data in earlier:
                 _work.spend()
                 if data["phase"] != "generation":
                     continue
                 decoded = _cached_decode_generation_carrier(_verified_call_output(retained, readonly=True))
                 req = data["root_request"]
-                if (
-                    runtime.same_json(decoded, draft)
-                    and req.get("ordinal") == d_idx + 1
-                    and req.get("parent_draft_identities") == expected_parents
-                ):
+                if req.get("ordinal") != d_idx + 1 or req.get("parent_draft_identities") != expected_parents:
+                    continue
+                if data.get("repair_issue") is not None and d_idx >= 1:
+                    try:
+                        decoded = _expected_repair_draft(
+                            decoded,
+                            drafts[d_idx - 1]["content"],
+                            req,
+                        )
+                    except (ValueError, KeyError, TypeError) as exc:
+                        msg = str(exc)
+                        if msg.startswith("b_route_segmented_"):
+                            stub_errors.append(msg)
+                        continue
+                if runtime.same_json(decoded, draft):
                     found.append((retained, data))
             if not found:
+                if stub_errors:
+                    raise ValueError(stub_errors[0])
                 raise ValueError("b_route_repair_prior_not_original_paid_output")
             final_binding, final_materials = found[0]
 
@@ -3797,6 +4266,25 @@ def _verify_segmented_repair_origin(
                 for s_idx, (s_ret, s_data) in enumerate(chain_segs):
                     if runtime.issue_account_policy(state) is not None:
                         if prior_frame_full is not None and prior_frame_full["repair_issue"].get("account_policy") is not None:
+                            prior_base_proj = _compact_candidate_projection(prior_frame_full["prior_candidate"])
+                            s_scoped, s_level = _validated_review_projection_level(s_data["root_request"])
+                            if not s_scoped:
+                                expected_s_prior = prior_base_proj
+                            elif s_level == 1:
+                                expected_s_prior = _scoped_review_proposal(
+                                    prior_base_proj,
+                                    s_data["obligations"],
+                                    directive=directive if s_idx == 0 else None,
+                                    level=1,
+                                )
+                            else:
+                                expected_s_prior = _scoped_review_prior(
+                                    prior_base_proj,
+                                    prior_frame_full["repair_issue"],
+                                    level=s_level,
+                                )
+                            if not runtime.same_json(s_data.get("prior_candidate"), expected_s_prior):
+                                raise ValueError("b_route_review_issue_account_origin_changed")
                             runtime.check_review_origin_frame(
                                 {**s_data, "prior_candidate": prior_frame_full["prior_candidate"]},
                                 prior_frame_full,
@@ -3985,8 +4473,16 @@ def segmented_proof_errors(
 
         for idx, (draft, binding) in enumerate(zip(drafts, generation_calls)):
             materials = verify_segmented_materials(binding, state, frozen, readonly=True)
-            decoded_draft = _cached_decode_generation_carrier(_verified_call_output(binding, readonly=True))
-            if canonical_sha(decoded_draft) != canonical_sha(draft):
+            raw_decoded_draft = _cached_decode_generation_carrier(_verified_call_output(binding, readonly=True))
+            if materials.get("repair_issue") is not None and idx >= 1:
+                expected_draft = _expected_repair_draft(
+                    raw_decoded_draft,
+                    _proposal_from_draft_prefix(frozen, drafts[:idx])["content"],
+                    materials["root_request"],
+                )
+            else:
+                expected_draft = raw_decoded_draft
+            if canonical_sha(expected_draft) != canonical_sha(draft):
                 raise ValueError("b_route_generation_draft_execution_changed")
             req_bytes = len(binding["request_payload"].encode("utf-8"))
             _assert_under_70k(
@@ -4015,8 +4511,17 @@ def segmented_proof_errors(
                     raise ValueError("b_route_segmented_repair_step_invalid")
                 prior_full = _proposal_from_draft_prefix(frozen, drafts[:idx])
                 after_full = _proposal_from_draft_prefix(frozen, drafts[: idx + 1])
+                if not req.get("slim_repair_fallback") and not runtime.same_json(
+                    after_full["content"], draft["content"]
+                ):
+                    raise ValueError("b_route_segmented_unsolicited_repair_stub")
                 expected_prior_proj = (
-                    _slim_repair_prior_projection(prior_full, frozen, materials["repair_issue"])
+                    _slim_repair_prior_projection(
+                        prior_full,
+                        frozen,
+                        materials["repair_issue"],
+                        subfield_slim=bool(req.get("slim_repair_subfield")),
+                    )
                     if req.get("slim_repair_fallback")
                     else _compact_candidate_projection(prior_full)
                 )
@@ -4072,9 +4577,15 @@ def segmented_proof_errors(
             if seg_idx == 0:
                 first_review_materials = rev_mat
             seg_directive = directive if seg_idx == 0 else None
-            scoped_flag = bool(rev_mat["root_request"].get("scoped_proposal_projection"))
+            scoped_flag, proj_level = _validated_review_projection_level(rev_mat["root_request"])
             expected_rev_prop = (
-                _scoped_review_proposal(proposal_proj, rev_mat["obligations"], directive=seg_directive)
+                _scoped_review_proposal(
+                    proposal_proj,
+                    rev_mat["obligations"],
+                    directive=seg_directive,
+                    level=proj_level,
+                    seg_sources=rev_mat["qualified_sources"],
+                )
                 if scoped_flag
                 else proposal_proj
             )
@@ -4092,11 +4603,16 @@ def segmented_proof_errors(
                     and last_repair_frame_full["repair_issue"].get("account_policy") is not None
                 ):
                     prior_base_proj = _compact_candidate_projection(last_repair_frame_full["prior_candidate"])
-                    expected_rev_prior = (
-                        _scoped_review_proposal(prior_base_proj, rev_mat["obligations"], directive=seg_directive)
-                        if scoped_flag
-                        else prior_base_proj
-                    )
+                    if not scoped_flag:
+                        expected_rev_prior = prior_base_proj
+                    elif proj_level == 1:
+                        expected_rev_prior = _scoped_review_proposal(
+                            prior_base_proj, rev_mat["obligations"], directive=seg_directive, level=1
+                        )
+                    else:
+                        expected_rev_prior = _scoped_review_prior(
+                            prior_base_proj, last_repair_frame_full["repair_issue"], level=proj_level
+                        )
                     if not runtime.same_json(rev_mat.get("prior_candidate"), expected_rev_prior):
                         raise ValueError("b_route_review_issue_account_origin_changed")
                     runtime.check_review_origin_frame(
