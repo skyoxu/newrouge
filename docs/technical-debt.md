@@ -42,3 +42,12 @@ This file is updated by scripts/sc/run_review_pipeline.py.
 - B8：既有 Git fsmonitor 风险未证实；需实际配置和可达执行证据，当前不修改主机配置或增加门禁。
 - G2/G3：原 v3 公开渲染与 OP03 成功 binding 构造的维护覆盖限制保留；原机制与公开执行按实际覆盖复用。当前 2.8 历史消费的真实 proof3 验收仍待完成，不能用 15 个 DATA/接口方法替代。
 - 逐项判定、允许范围及证据：当前 spec 的 Review Triage Log 和 Task 的 `logs/ci/2026-11-11/story27-native-step4-Root-01`。以上保留项不新增 2.7 交付前置。
+
+## Epic 1 B 路线审阅保留项（2026-11-19，P2）
+
+- Inventory 与 codec 的路径规范化设计边界：inventory 观测层与 codec 内容身份层各自规范化，统一需跨 Story 1.1/1.3 的合同修订，非本轮引入。
+- 载体文件删除的表示：当前以缺失诊断阻断而非显式删除记录，属跨 Story 载体合同设计，留待后续 Epic 定义。
+- 非 UTF-8 二进制登记来源：当前按 raw bytes 绑定并在文本解码处阻断，二进制来源的正式支持需新合同。
+- 历史带日期 `story-1-*-windows.yml` 分支触发器：持续 Windows 回归已由 `scripts/python/run_gate_bundle.py` 登记五个 B 路线 suite 取代，旧 workflow 清理另行处理。
+- `protection-input.v1.json` 与 `epic1-handoff.v1.json` 中原环境 `logs/ci/2026-11-03..04` 路径：属历史证据引用，按原字节保留，不在本轮重写。
+- 逐项记录见 `_bmad-output/implementation-artifacts/b-route/deferred-work.md`；证据：`logs/ci/2026-11-19/epic1-review/`。

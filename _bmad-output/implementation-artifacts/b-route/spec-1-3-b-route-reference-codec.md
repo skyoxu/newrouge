@@ -99,3 +99,15 @@ context:
 2026-11-03：B1/V1 patch后的最终真实Windows候选27b8a521c3fbce9339b3b91262c87795e45c42bb，run41683158284/job126081834004，54项全部通过、无skip；8CLI正负及12稳定重写全部匹配。根代理核对原始job输出与本地五文件Git blob，原日志SHA256=cb22cfaae1233c82bcb840d78d86825e34f430bbaa78dc00e8c7aad0e5290d89。Linux完整54项51通过/3Win skip和Windows54通过分别陈述；隔离序列化交换mutation按预期失败。三层正式评审已完成，两项medium patch修复验证，无延期，无未解决intent/spec缺口。
 
 按原生Step5置spec done、B范围Sprint本Story review；不改变Task/运行/Epic或默认B状态。用户新增明确授权独立分支提交/推送及按依赖继续全部Story，并要求管理云重置风险；因此保存已批准1.2与1.3为分离Git检查点、普通推送独立实施分支，禁止main/force/PR/merge。原bfe基线已另存backup/b-route-source-bfe6e373-2026-11-03。原生BMAD Core/BMM 6.12.4真实安装，planning_artifacts与implementation_artifacts均显式指向b-route；云恢复不得伪造安装/cache，按官方恢复后继续当前范围。原始失败、诊断、修复和审阅证据全部保留在logs/ci/2026-11-03/b-route-story-1-3-windows-165605Z/及同日关联实施目录。
+
+### Review Findings (2026-11-19)
+
+Epic 1 BMAD 审阅收口；frozen-after-approval 区块未改动。证据：`logs/ci/2026-11-19/epic1-review/`。
+
+- [x] [Review][Patch] `verify_b_route_reference.py` 对缺失或非目录 `--repo-root` 以 `INVALID_ARGUMENT` 结构化拒绝。
+- [x] [Review][Patch] `b-route-reference-verification.md` 同步 CLI 行为说明；`test_b_route_codec.py` 增补回归用例。
+- [x] [Review][Defer] Inventory 与 codec 的路径规范化设计边界：inventory 观测层与 codec 内容身份层各自规范化，统一需跨 Story 1.1/1.3 的合同修订，非本轮引入。
+- [x] [Review][Defer] 载体文件删除的表示：当前以缺失诊断阻断而非显式删除记录，属跨 Story 载体合同设计，留待后续 Epic 定义。
+- [x] [Review][Defer] 非 UTF-8 二进制登记来源：当前按 raw bytes 绑定并在文本解码处阻断，二进制来源的正式支持需新合同。
+- [x] [Review][Defer] 历史带日期 `story-1-*-windows.yml` 分支触发器：持续 Windows 回归已由 `scripts/python/run_gate_bundle.py` 登记五个 B 路线 suite 取代，旧 workflow 清理另行处理。
+- [x] [Review][Defer] `protection-input.v1.json` 与 `epic1-handoff.v1.json` 中原环境 `logs/ci/2026-11-03..04` 路径：属历史证据引用，按原字节保留，不在本轮重写。

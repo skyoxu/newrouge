@@ -5,6 +5,7 @@ sys.dont_write_bytecode = True
 
 import argparse
 import json
+import os
 from pathlib import Path
 
 import _b_route_codec as codec
@@ -39,9 +40,16 @@ def main(argv=None):
                   "authorization": dict(service.protection.AUTHORIZATION)}
         print(json.dumps(result, ensure_ascii=True, allow_nan=False, separators=(",", ":")))
         return 2
-    result = service.preflight(args.root, args.epics, args.protection_input, args.candidate, args.intents)
+    try:
+        result = service.preflight(args.root, args.epics, args.protection_input, args.candidate, args.intents)
+    except Exception as error:  # Unexpected failures still produce one structured report.
+        result = {"ok": False, "diagnostics": [codec.Diagnostic(codec.ReasonCode.IDENTITY_UNPROVABLE,
+                      codec.Stage.BUNDLE, expected="completed preflight report",
+                      actual=type(error).__name__).to_dict()],
+                  "authorization": dict(service.protection.AUTHORIZATION)}
     report_path = None
     result["report_path"] = None
+    temporary = output / "report.json.tmp"
     try:
         # The Story 1.5 guard checks every original ancestor before comparing
         # physical identities; caller and output may use different 8.3 spellings.
@@ -49,9 +57,11 @@ def main(argv=None):
         report_path = relative_output + "/report.json"
         result["report_path"] = report_path
         service.inventory.safe_input(args.root.absolute(), report_path, allow_logs=True)
-        with (output / "report.json").open("x", encoding="utf-8", newline="\n") as stream:
-            json.dump(result, stream, ensure_ascii=True, allow_nan=False, indent=2)
-            stream.write("\n")
+        # Serialize first so a serialization failure never leaves a partial report.
+        payload = json.dumps(result, ensure_ascii=True, allow_nan=False, indent=2) + "\n"
+        with temporary.open("x", encoding="utf-8", newline="\n") as stream:
+            stream.write(payload)
+        os.replace(temporary, output / "report.json")
     except (OSError, ValueError, codec.CodecError) as error:
         result["ok"] = False
         result["diagnostics"].append(error.diagnostic.to_dict() if isinstance(error, codec.CodecError)

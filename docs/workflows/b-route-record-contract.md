@@ -51,7 +51,7 @@ OwnedRef 是绑定外部依据的描述，不是外部记录新权威。source_m
 最小可执行 locator 分派（此段为 owner 格式选择）：
 
 - 文件 owner 无 fragment 时只定位文件；文件 bytes 来自统一 candidate-first byte cache，files 必须与实际解析集合逐路径/raw digest 完全相等，不容漏文件、重复路径或附加文件。
-- verification_record 使用 _mvg_requirement_accounting.source_record_errors:323–364 的原定位语义：从完整 JSON 或 Markdown fenced json 中提取顶层对象/records 数组；#shared 按记录 evidence_id=="shared" 选择，至少存在匹配项。不把这种 fragment 解释成 JSON Pointer/heading。本 Story 只抽取和定位，不调用该函数完整的 status=passed、coverage 或 runtime 检查。
+- verification_record 使用 _mvg_requirement_accounting.source_record_errors:323–364 的原定位语义：从完整 JSON 或 Markdown fenced json 中提取顶层对象/records 数组；#shared 按记录 evidence_id=="shared" 选择，至少存在匹配项；B 记录侧必须提供非空 `#<evidence_id>` fragment，缺失或空 fragment 以 unsupported_locator 拒绝，不按原函数“空 fragment 匹配任意记录”的宽松语义放行。不把这种 fragment 解释成 JSON Pointer/heading。本 Story 只抽取和定位，不调用该函数完整的 status=passed、coverage 或 runtime 检查。
 - implementation_reference 支持原文件及文件 locator；contract 符号显式分派 contract。runtime_acceptance 仅定位其既有文件/记录字节，不运行 runtime_record_errors，不据此判运行通过。
 - 其余文件 locator 可明确支持文件本身、#/... 的 RFC 6901 JSON Pointer（对象精确键、数组索引、~0/~1；无效转义/不存在位置拒绝），以及 #L<n> 或 #L<n>-L<m> 的 UTF-8 原文行范围（1 起始且范围存在）。JSON Pointer 与行范围在对应 owner 分支按此语法识别，不对 native verification_record 改义。
 - 普通 Markdown heading fragment 暂不自动猜 slug/Unicode 标题映射，返回 unsupported_locator；若 root 冻结已有确定的 heading 解析器，再复用其确切规则。不能把未支持 heading 当整个文件已定位而放行，也不能把合法 native #evidence_id 误拒为 heading。

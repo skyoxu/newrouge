@@ -7,6 +7,7 @@ import fnmatch
 import hashlib
 import html
 import json
+import math
 import os
 import re
 import stat
@@ -196,6 +197,7 @@ def git(root: Path, *args: str, optional: bool = False, environment: dict | None
     try:
         proc = subprocess.run(["git", "--no-optional-locks", "--no-replace-objects",
             "-c", "protocol.allow=never", "-c", "core.hooksPath=" + os.devnull,
+            "-c", "core.fsmonitor=false",
             "-c", "commit.gpgSign=false", "-c", "tag.gpgSign=false", "-C", str(root), *args],
             capture_output=True, timeout=30, env=child_env)
     except subprocess.TimeoutExpired as exc:
@@ -272,7 +274,16 @@ def strict_json(raw: bytes) -> Any:
         return output
     def invalid_constant(value: str) -> None:
         raise ValueError(f"Non-JSON numeric constant: {value}")
-    return json.loads(raw.decode("utf-8-sig"), object_pairs_hook=pairs, parse_constant=invalid_constant)
+    def finite_float(value: str) -> float:
+        number = float(value)
+        if not math.isfinite(number):
+            raise ValueError("Non-finite JSON float")
+        return number
+    try:
+        return json.loads(raw.decode("utf-8-sig"), object_pairs_hook=pairs, parse_constant=invalid_constant,
+                          parse_float=finite_float)
+    except RecursionError as exc:
+        raise ValueError("JSON nesting too deep") from exc
 
 
 def frontmatter(raw: bytes) -> dict:
@@ -693,6 +704,9 @@ class Snapshot:
         adrs = []
         for role, path in discovered:
             if path.startswith("docs/adr/ADR-"):
+                if path not in self.cache:
+                    # Unsafe or uncached paths keep their unsafe-input-path diagnostic.
+                    continue
                 raw = self.cache[path]
                 try:
                     text = raw.decode("utf-8-sig") if raw is not None else ""

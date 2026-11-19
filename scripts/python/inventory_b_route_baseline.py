@@ -30,15 +30,17 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     try:
         report = collect_inventory(args.root, args.epics)
+        # Render first so inventory.json never coexists with failure.json.
+        md_text = markdown(report)
         # Exclusive creation preserves any unexpected pre-existing evidence too.
         with (output / "inventory.json").open("x", encoding="utf-8", newline="\n") as stream:
             json.dump(report, stream, ensure_ascii=False, indent=2)
             stream.write("\n")
         with (output / "inventory.md").open("x", encoding="utf-8", newline="\n") as stream:
-            stream.write(markdown(report))
+            stream.write(md_text)
         print(f"INVENTORY {report['status']}: {output}")
         return 0 if report["adoptable"] else 1
-    except (OSError, ValueError, UnicodeError) as exc:
+    except (OSError, ValueError, UnicodeError, KeyError, TypeError, RecursionError) as exc:
         failure = {"status": "invalid", "adoptable": False, "error": str(exc),
                    "diagnostics": [{"code": "git-timeout" if isinstance(exc, GitCommandTimeout) else "inventory-failed",
                                     "severity": "error", "message": str(exc)}]}

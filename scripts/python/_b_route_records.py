@@ -131,8 +131,8 @@ def _validate_schema(value: dict, path: str | None) -> None:
     if codec.SCHEMA_IDENTITY_REGISTRY[schema] is None:
         _fail(codec.ReasonCode.IDENTITY_UNPROVABLE, path=path, stage=codec.Stage.SCHEMA,
               expected="approved record identity adapter", actual=schema)
-    validator = _schema_validator(schema)
     try:
+        validator = _schema_validator(schema)
         error = next(validator.iter_errors(value), None)
     except codec.CodecError:
         raise

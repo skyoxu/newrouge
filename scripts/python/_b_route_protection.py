@@ -504,11 +504,23 @@ def collect_protection(root: Path, epics: str, *, historical_inventory: str | No
     report = codec.strict_json_loads(json.dumps(inventory.collect_inventory(root, epics,
         **({"historical_inventory": historical_inventory} if historical_inventory is not None else {})), ensure_ascii=False))
     diagnostics, raw_files = [], {}
-    rows = _inventory_rows(report)
+    try:
+        rows = _inventory_rows(report)
+    except codec.CodecError as error:
+        # Malformed inventory rows still yield a blocked candidate with diagnostics.
+        diagnostics.append(error.diagnostic.to_dict())
+        rows = {}
+    except (KeyError, TypeError, ValueError) as error:
+        diagnostics.append(_diagnostic(codec.ReasonCode.IDENTITY_UNPROVABLE, None,
+            "valid inventory input rows", type(error).__name__))
+        rows = {}
     try:
         _inventory_identity(report)
     except codec.CodecError as error:
         diagnostics.append(error.diagnostic.to_dict())
+    except (KeyError, TypeError, ValueError) as error:
+        diagnostics.append(_diagnostic(codec.ReasonCode.IDENTITY_UNPROVABLE, None,
+            "valid inventory identity", type(error).__name__))
     for path, row in rows.items():
         try:
             data = _read(root, path)

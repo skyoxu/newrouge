@@ -413,6 +413,16 @@ def directory_link(link, target):
         link.symlink_to(target, target_is_directory=True)
 
 
+def symlink_or_skip(test, link, target, *, directory=False):
+    """Skip only on unprivileged Windows hosts (WinError 1314); privileged hosts run every case."""
+    try:
+        link.symlink_to(target, target_is_directory=directory)
+    except OSError as error:
+        if getattr(error, "winerror", None) == 1314:
+            test.skipTest("host cannot create symlinks")
+        raise
+
+
 class RecordAssertions(unittest.TestCase):
     def assert_valid(self, result, claim="candidate_structure_only"):
         self.assertTrue(result.ok, result.to_dict())
@@ -1173,7 +1183,7 @@ class CandidateBundleTests(RecordAssertions):
                 managed_file.parent.mkdir(parents=True, exist_ok=True)
                 task_file = root / task_path
                 task_file.parent.mkdir(parents=True)
-                task_file.symlink_to(managed_file)
+                symlink_or_skip(self, task_file, managed_file)
                 self.assertTrue(task_file.is_symlink())
                 self.assertFalse(task_file.exists())
                 self.assertTrue(managed_directory.samefile(storage))
@@ -1257,7 +1267,7 @@ class CandidateBundleTests(RecordAssertions):
             directory_link(storage / "external", outside)
             task_file = root / task_path
             task_file.parent.mkdir(parents=True)
-            task_file.symlink_to(internal / "external/missing.json")
+            symlink_or_skip(self, task_file, internal / "external/missing.json")
             self.assertTrue(task_file.is_symlink())
             self.assertFalse(task_file.exists())
             self.assertTrue(task_file.readlink().parent.resolve(strict=True).samefile(outside))
@@ -1284,8 +1294,8 @@ class CandidateBundleTests(RecordAssertions):
                     directory_link(root / "alias", outside / "return-link")
                     locator = "alias/proof.json"
                 else:
-                    (outside / "return-link.json").symlink_to(target)
-                    (root / "alias.json").symlink_to(outside / "return-link.json")
+                    symlink_or_skip(self, outside / "return-link.json", target)
+                    symlink_or_skip(self, root / "alias.json", outside / "return-link.json")
                     locator = "alias.json"
                 self.assertTrue(codec.resolve_reference_path(root, locator).samefile(target))
                 self.assertEqual(codec.read_reference_bytes(root, locator), data)
@@ -1387,10 +1397,10 @@ class CandidateBundleTests(RecordAssertions):
                 root = Path(directory).resolve(strict=True)
                 first = root / "loop-a"
                 if growing:
-                    first.symlink_to("loop-a/child")
+                    symlink_or_skip(self, first, "loop-a/child")
                 else:
-                    first.symlink_to(root / "loop-b")
-                    (root / "loop-b").symlink_to(first)
+                    symlink_or_skip(self, first, root / "loop-b")
+                    symlink_or_skip(self, root / "loop-b", first)
                 output = MatrixFixture().render()
                 output["loop-a/future.json"] = b"future bytes"
                 self.assert_invalid(records.validate_bundle(output, root=root), "path_unprovable")
@@ -1422,7 +1432,7 @@ class CandidateBundleTests(RecordAssertions):
                 root = Path(directory).resolve(strict=True)
                 task_file = root / ".taskmaster/tasks/tasks.json"
                 task_file.parent.mkdir(parents=True)
-                task_file.symlink_to(root / "missing.json")
+                symlink_or_skip(self, task_file, root / "missing.json")
                 original_readlink = os.readlink
                 raw_target = "\\\\?\\C:\\root\\" + component + "\\missing.json"
                 def injected_readlink(path, *args, **kwargs):
@@ -1452,6 +1462,33 @@ class CandidateBundleTests(RecordAssertions):
             "files": [{"path": PREFIX + "commits/operation-1.json", "raw_digest": digest(b"cycle")}],
         }]
         self.assert_invalid(records.validate_bundle(fixture.render()), "digest_cycle")
+
+    def test_previous_plan_ref_rejects_other_entity_same_and_newer_revisions(self):
+        fixture = MatrixFixture()
+        output = fixture.render()
+        base = fixture.reference(plan_path(), output)
+        for entity, revision in (("other", 1), ("p", 2), ("p", 3)):
+            with self.subTest(entity=entity, revision=revision):
+                model = deepcopy(fixture.models[plan_path()])
+                model["lineage"]["previous_plan_ref"] = dict(
+                    base, path=plan_path(entity, revision), entity_id=entity, revision=revision)
+                result = records.validate_record(encoded(model), path=plan_path())
+                self.assertFalse(result.ok, result.to_dict())
+                self.assertEqual(result.diagnostic.reason_code.value, "revision_mismatch", result.to_dict())
+
+    def test_plan_proofs_pointing_at_catalog_or_commits_are_digest_cycles(self):
+        cycle_paths = (CATALOG, PREFIX + "commits/operation-1.json")
+        for field in ("adoption_proof_refs", "native_candidate_ref"):
+            for target in cycle_paths:
+                with self.subTest(field=field, target=target):
+                    fixture = MatrixFixture()
+                    proof = {"owner": "planning_proof", "ref": target,
+                             "files": [{"path": target, "raw_digest": digest(b"cycle")}]}
+                    model = fixture.models[plan_path()]
+                    model[field] = [proof] if field == "adoption_proof_refs" else proof
+                    self.assert_invalid(records.validate_bundle(fixture.render()), "digest_cycle")
+                    record = records.validate_record(encoded(model), path=plan_path())
+                    self.assertEqual(record.diagnostic.reason_code.value, "digest_cycle", record.to_dict())
 
     def test_baseline_reports_its_limit_and_preserves_immutable_bytes(self):
         fixture = MatrixFixture()
@@ -1788,6 +1825,24 @@ class OwnedReferenceTests(RecordAssertions):
             fixture.owned("planning_proof", "evidence/lines.md#heading")]
         self.assert_invalid(records.validate_bundle(fixture.render()), "unsupported_locator")
 
+    def test_reversed_line_range_and_leading_zero_pointer_index_are_rejected(self):
+        fixture = MatrixFixture()
+        fixture.artifacts["evidence/tree.json"] = encoded({"a/b": {"~key": ["first", "second"]}})
+        fixture.artifacts["evidence/lines.md"] = b"# Heading\nSecond line\nThird line\n"
+        for locator in ("evidence/lines.md#L3-L2", "evidence/tree.json#/a~1b/~0key/01"):
+            with self.subTest(locator=locator):
+                fixture.models[plan_path()]["adoption_proof_refs"] = [fixture.owned("planning_proof", locator)]
+                self.assert_invalid(records.validate_bundle(fixture.render()), "unresolved_reference")
+
+    def test_verification_record_requires_nonempty_evidence_fragment(self):
+        for locator in ("evidence/shared.md", "evidence/shared.md#"):
+            with self.subTest(locator=locator):
+                fixture = self.evidence_fixture()
+                model = fixture.models[plan_path()]
+                model["requirement_evidence"][0]["source_ref"] = locator
+                model["evidence_source_refs"] = [fixture.owned("verification_record", locator)]
+                self.assert_invalid(records.validate_bundle(fixture.render()), "unsupported_locator")
+
     def test_external_evidence_candidate_does_not_fall_back_to_disk_fragment(self):
         fixture = self.evidence_fixture()
         output = fixture.render()
@@ -1925,6 +1980,78 @@ class CommandLineReadOnlyTests(RecordAssertions):
             partial_payload = json.loads(partial.stdout)
             self.assertFalse(partial_payload["ok"])
             self.assertEqual(self.tree(root), before)
+        with tempfile.TemporaryDirectory() as directory:
+            # The partial triplet must fail on its own, against an otherwise valid carrier.
+            root = Path(directory)
+            self.write_inputs(root, MatrixFixture().render())
+            self.assertEqual(self.run_cli(root, "bundle", "--input", "carrier.json").returncode, 0)
+            before = self.tree(root)
+            partial = self.run_cli(root, "bundle", "--input", "carrier.json",
+                                   "--task-master", "inputs/0.json")
+            self.assertNotEqual(partial.returncode, 0)
+            partial_payload = json.loads(partial.stdout)
+            self.assertFalse(partial_payload["ok"])
+            self.assertEqual(partial_payload["diagnostic"]["reason_code"], "invalid_argument")
+            self.assertEqual(self.tree(root), before)
+
+    def write_baseline(self, root, bundle):
+        rows = []
+        for index, (logical_path, data) in enumerate(bundle.items()):
+            source = f"baseline-inputs/{index}.json"
+            target = root / source
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(data)
+            rows.append({"path": logical_path, "source_path": source})
+        (root / "baseline.json").write_bytes(encoded({"records": rows}))
+
+    def test_bundle_cli_baseline_reports_monotonicity_and_conflict_without_writes(self):
+        output = MatrixFixture().render()
+        for variant in ("same", "conflict"):
+            with self.subTest(variant=variant), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                self.write_inputs(root, output)
+                baseline = dict(output)
+                if variant == "conflict":
+                    baseline[plan_path()] = output[plan_path()] + b" "
+                self.write_baseline(root, baseline)
+                before = self.tree(root)
+                completed = self.run_cli(root, "bundle", "--input", "carrier.json",
+                                         "--catalog-path", CATALOG, "--baseline", "baseline.json")
+                payload = json.loads(completed.stdout)
+                if variant == "same":
+                    self.assertEqual(completed.returncode, 0, completed.stdout + completed.stderr)
+                    self.assertTrue(payload["ok"], payload)
+                    self.assertTrue(payload["monotonicity_checked"])
+                else:
+                    self.assertNotEqual(completed.returncode, 0)
+                    self.assertFalse(payload["ok"])
+                    self.assertEqual(payload["diagnostic"]["reason_code"], "conflict")
+                self.assertEqual(self.tree(root), before)
+
+    def test_unexpected_internal_errors_are_single_json_diagnostics(self):
+        import validate_b_route_records as cli
+        fixture = MatrixFixture()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.write_inputs(root, fixture.render())
+            for error in (KeyError("missing"), TypeError("bad"), RuntimeError("boom"), OSError("io")):
+                with self.subTest(error=type(error).__name__), \
+                        patch.object(cli, "validate_bundle", side_effect=error), \
+                        patch("sys.stdout", new_callable=__import__("io").StringIO) as stdout:
+                    code = cli.main(["bundle", "--input", "carrier.json", "--repo-root", str(root)])
+                self.assertEqual(code, 1)
+                lines = stdout.getvalue().splitlines()
+                self.assertEqual(len(lines), 1)
+                payload = json.loads(lines[0])
+                self.assertFalse(payload["ok"])
+                self.assertEqual(set(payload["diagnostic"]), DIAGNOSTIC_FIELDS)
+                self.assertEqual(payload["diagnostic"]["actual"], type(error).__name__)
+
+    def test_schema_resource_failure_is_structured_record_failure(self):
+        with patch.object(records, "_schema_validator", side_effect=RuntimeError("resource load")):
+            result = records.validate_record(encoded(MatrixFixture().policy), path=POLICY)
+        self.assertFalse(result.ok)
+        self.assertEqual(result.diagnostic.reason_code.value, "schema_resource_error")
 
     def test_complete_task_join_cli_matches_api_and_rejects_wrong_business_mapping_without_writes(self):
         fixture = MatrixFixture()

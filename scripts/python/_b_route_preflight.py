@@ -178,6 +178,8 @@ def _load_protection(observations, source, epics, diagnostics):
         fail(codec.ReasonCode.UNKNOWN_SCHEMA, source, PROTECTION_VERSION,
              value.get("document_version") if type(value) is dict else type(value).__name__)
     definition = value.get("definition", {})
+    if not isinstance(definition, dict):
+        fail(codec.ReasonCode.INVALID_TYPE, source, "definition object", type(definition).__name__)
     if (definition.get("projection_codec") != codec.PROJECTION_CODEC
             or definition.get("content_codec") != codec.CODEC_VERSION
             or definition.get("mutable_allowlist") != ["Task.status", "Task.subtasks[].status"]):
@@ -202,11 +204,11 @@ def _load_protection(observations, source, epics, diagnostics):
         fail(codec.ReasonCode.MISSING_REQUIRED_FIELD, source, "snapshot and inventory references", None)
     snapshot_path = snapshot_ref["ref"].split("#", 1)[0]
     snapshot, report, original_raw = protection._load_snapshot(observations.root, snapshot_path)
-    parent = snapshot_path.rsplit("/", 1)[0]
-    observations.read(parent + "/inventory.json")
+    parent = snapshot_path.rsplit("/", 1)[0] + "/" if "/" in snapshot_path else ""
+    observations.read(parent + "inventory.json")
     for row in snapshot["raw_files"]:
         if row["exists"]:
-            archived = observations.read(parent + "/" + row["artifact"])
+            archived = observations.read(parent + row["artifact"])
             if codec.raw_digest(archived) != row["raw_digest"]:
                 fail(codec.ReasonCode.DIGEST_MISMATCH, row["path"], row["raw_digest"], codec.raw_digest(archived))
     def archived_read(source):
@@ -236,7 +238,8 @@ def _load_protection(observations, source, epics, diagnostics):
         diagnostics.append(codec.Diagnostic(codec.ReasonCode.IDENTITY_UNPROVABLE, codec.Stage.BUNDLE,
             expected="complete protection capture", actual=report["diagnostics"], resume_ref=snapshot_path).to_dict())
     for row in report["inputs"]:
-        if row["exists"] is False and any(item.get("severity") == "error" and item.get("location", "").split("#", 1)[0] == row["path"] for item in report["diagnostics"]):
+        if row["exists"] is False and any(item.get("severity") == "error" and isinstance(item.get("location"), str)
+                                          and item["location"].split("#", 1)[0] == row["path"] for item in report["diagnostics"]):
             diagnostics.append(codec.Diagnostic(codec.ReasonCode.FILE_NOT_FOUND, codec.Stage.BUNDLE,
                 expected={"path": row["path"], "value": "required historical original"},
                 actual=None, resume_ref=row["path"]).to_dict())

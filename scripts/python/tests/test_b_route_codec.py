@@ -746,6 +746,20 @@ class ResultAndCliTests(CodecFixtures):
                 if expected_kind is None:
                     self.assertIsNone(value["claim"])
 
+    def test_cli_missing_or_file_repo_root_is_invalid_argument_not_target_missing(self):
+        script = self.prepare_cli()
+        self.write("not-a-directory.txt", b"Plain file\n")
+        before = self.snapshot(self.workspace)
+        for mode, flag, path in (("content", "--path", self.path), ("reference", "--reference", "reference.json")):
+            for root in (self.workspace / "missing-root", self.root / "not-a-directory.txt"):
+                with self.subTest(mode=mode, root=root.name):
+                    completed, value = self.run_cli(script, mode, "--repo-root", str(root), flag, path)
+                    self.assertNotEqual(completed.returncode, 0)
+                    self.assertFalse(value["ok"])
+                    self.assertEqual(value["verification_kind"], mode)
+                    self.assertEqual(value["diagnostic"]["reason_code"], "invalid_argument")
+        self.assertEqual(self.snapshot(self.workspace), before)
+
     def test_codec_and_cli_direct_imports_have_no_engine_model_or_database_dependencies(self):
         folder = Path(__file__).resolve().parents[1]
         allowed = {"__future__", "hashlib", "json", "math", "os", "re", "stat", "dataclasses", "enum",

@@ -97,3 +97,14 @@ context:
 2026-11-03：Step3任务与AC1–5已核对；Step4三层评审均返回，无确认缺陷／验证缺口，无延期项。Step5将spec置done，将B范围Sprint的本Story置review；该状态不等于Task、运行、Epic或默认B完成。按用户仍有效的“不提交Git”限制，覆盖Step5默认本地提交动作：本次不git add、不commit，也不push／PR／merge；不是权限失败，不另要求常规确认。没有启动其他Story。T108历史缺失由后续1.5继续审阅，未宣布capture可采纳。
 
 最终定向验证、完整diff、文件哈希和AC对照见`logs/ci/2026-11-03/b-route-story-1-2-build/adoption-and-final-review-20261103T161146Z/final-verification.json`及`README.md`。fast／service tier无可用回读接口，不能宣称已开启；三个原生评审及独立来源审阅均以gpt-6.1-sol／ultra显式派发。
+
+### Review Findings (2026-11-19)
+
+Epic 1 BMAD 审阅收口；frozen-after-approval 区块未改动。证据：`logs/ci/2026-11-19/epic1-review/`。
+
+- [x] [Review][Patch] `run_gate_bundle.py` 登记 inventory/codec/records/protection/preflight 五个 B 路线 suite，作为治理规则的持续 Windows 回归入口；ADR-0040 治理正文无需修改。
+- [x] [Review][Defer] Inventory 与 codec 的路径规范化设计边界：inventory 观测层与 codec 内容身份层各自规范化，统一需跨 Story 1.1/1.3 的合同修订，非本轮引入。
+- [x] [Review][Defer] 载体文件删除的表示：当前以缺失诊断阻断而非显式删除记录，属跨 Story 载体合同设计，留待后续 Epic 定义。
+- [x] [Review][Defer] 非 UTF-8 二进制登记来源：当前按 raw bytes 绑定并在文本解码处阻断，二进制来源的正式支持需新合同。
+- [x] [Review][Defer] 历史带日期 `story-1-*-windows.yml` 分支触发器：持续 Windows 回归已由 `scripts/python/run_gate_bundle.py` 登记五个 B 路线 suite 取代，旧 workflow 清理另行处理。
+- [x] [Review][Defer] `protection-input.v1.json` 与 `epic1-handoff.v1.json` 中原环境 `logs/ci/2026-11-03..04` 路径：属历史证据引用，按原字节保留，不在本轮重写。

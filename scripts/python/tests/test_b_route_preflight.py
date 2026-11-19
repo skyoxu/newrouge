@@ -798,6 +798,16 @@ class PreflightTests(unittest.TestCase):
             self.fixture.set_candidate({source: encode(doc) for source, doc in documents.items()})
             before = self.fixture.bytes()
             report = self.fixture.preview()
+            if field == "evidence_refs":
+                # ADR-0049: evidence_refs are non-blocking historical attachments.
+                self.assertTrue(report["ok"], report["diagnostics"])
+                observed = [row for row in report["observations"] if row["path"] == missing]
+                self.assertTrue(observed, report["observations"])
+                self.assertTrue(all(row["exists"] is False for row in observed))
+                self.assertFalse(any((row.get("resume_ref") or "").startswith(inventory.TRIPLET["back"] + "#/0/" + field)
+                                     for row in report["diagnostics"]))
+                self.assertEqual(before, self.fixture.bytes())
+                continue
             self.assert_failed(report, "file_not_found")
             self.assertTrue(any(row["path"] == missing and not row["exists"] for row in report["observations"]))
             located = [row for row in report["diagnostics"]
@@ -1145,7 +1155,8 @@ class PreflightTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             isolated = Path(temporary) / "source-copy"
             originals = {}
-            for directory in ("scripts/python", "scripts/sc"):
+            # Record schemas are code-coupled offline resources resolved beside the scripts.
+            for directory in ("scripts/python", "scripts/sc", "docs/planning/b-route/schemas"):
                 origin = REPOSITORY / directory
                 target = isolated / directory
                 shutil.copytree(origin, target, ignore=shutil.ignore_patterns("__pycache__", "*.pyc", "tests"))

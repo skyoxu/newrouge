@@ -377,6 +377,49 @@ class ProtectionTests(unittest.TestCase):
         self.assertTrue(removed.report["changes"]["manifests"])
         self.assert_no_authorization(removed.report)
 
+    def test_isolated_coverage_weakening_is_detected_without_flow_or_test_edits(self):
+        baseline = self.archive()
+        variants = (
+            ("required-flow-removed", lambda coverage: coverage.update(required_flow_ids=[])),
+            ("mode-downgraded", lambda coverage: coverage.update(mode="unranked")),
+        )
+        for label, mutate in variants:
+            with self.subTest(case=label):
+                changed = copy.deepcopy(self.fixture.manifest)
+                mutate(changed["coverage"])
+                self.assertEqual(changed["flows"], self.fixture.manifest["flows"])
+                self.assertEqual(changed["tests"], self.fixture.manifest["tests"])
+                self.dump("docs/testing/mvg/fixture.json", changed)
+                compared = self.compare(baseline)
+                self.assertIsNotNone(compared.report["changes"], compared.report["diagnostics"])
+                change = compared.report["changes"]["manifests"][0]
+                self.assertEqual(change["removed_obligations"], [])
+                self.assertEqual(change["weakened_obligations"], [])
+                self.assertIs(change["weakening_detected"], True)
+                self.assertFalse(change["apply_authorized"])
+                self.assert_no_authorization(compared.report)
+
+    def test_task_title_edit_sets_triplet_definition_changed(self):
+        baseline = self.archive()
+        unchanged = self.compare(baseline)
+        self.assertIs(unchanged.report["changes"]["triplet_definition_changed"], False)
+        self.fixture.edit_task("master", lambda rows: rows[0].update(title="Edited title"))
+        compared = self.compare(baseline)
+        self.assertIs(compared.report["changes"]["triplet_definition_changed"], True)
+        self.assertEqual(compared.report["changes"]["task_definitions"]["changed"], [1])
+        self.assert_no_authorization(compared.report)
+
+    def test_malformed_inventory_rows_yield_blocked_candidate_with_diagnostics(self):
+        for error in (KeyError("inputs"), TypeError("rows"), ValueError("rows"),
+                      codec.CodecError(codec.Diagnostic(codec.ReasonCode.INVALID_TYPE))):
+            with self.subTest(error=type(error).__name__):
+                with patch.object(protection, "_inventory_rows", side_effect=error):
+                    capture = self.collect()
+                self.assertFalse(capture.snapshot["capture_complete"])
+                self.assertFalse(capture.snapshot["stable"])
+                self.assert_public_diagnostics(capture.snapshot)
+                self.assert_no_authorization(capture.snapshot)
+
     def test_missing_historical_summary_is_explicit_and_never_formal_protection(self):
         missing = "logs/ci/historical/past-task/summary.json"
         self.fixture.edit_task("back", lambda rows: rows[0]["evidence_refs"].append(missing))
@@ -384,7 +427,7 @@ class ProtectionTests(unittest.TestCase):
         capture = self.collect()
         self.assertEqual(before, self.all_bytes())
         self.assertTrue(capture.snapshot["capture_complete"], capture.snapshot["diagnostics"])
-        self.assertEqual(capture.snapshot["schema_version"], "newrouge.b-route-protection-snapshot.v2")
+        self.assertEqual(capture.snapshot["schema_version"], "newrouge.b-route-protection-snapshot.v3")
         self.assertNotIn(missing, capture.raw_files)
         self.assertIn(missing, json.dumps(capture.snapshot))
         ref = next(r for r in capture.snapshot["tasks"][0]["source_test_history_references"] if r["raw_reference"] == missing)
@@ -1217,6 +1260,22 @@ class ProtectionTests(unittest.TestCase):
                 payload = json.loads(text)
                 self.assert_public_diagnostics(payload)
                 self.assert_no_authorization(payload)
+
+    def test_cli_unexpected_internal_errors_write_failure_evidence(self):
+        for index, error in enumerate((KeyError("k"), TypeError("t"), AttributeError("a"), RuntimeError("r"))):
+            with self.subTest(error=type(error).__name__):
+                run_id = f"unexpected-{index}"
+                with patch.object(protection, "collect_protection", side_effect=error):
+                    code, text = self.run_cli("capture", "--root", str(self.root), "--run-id", run_id,
+                                              "--epics", self.epics)
+                self.assertEqual(code, 1)
+                self.assertEqual(len(text.splitlines()), 1)
+                payload = json.loads(text)
+                self.assertFalse(payload["ok"])
+                self.assert_public_diagnostics(payload)
+                self.assert_no_authorization(payload)
+                failure = json.loads((self.cli_output(run_id) / "failure.json").read_bytes())
+                self.assertEqual(failure, payload)
 
     def test_malformed_current_manifest_compare_keeps_raw_and_snapshot_evidence(self):
         baseline = self.archive()

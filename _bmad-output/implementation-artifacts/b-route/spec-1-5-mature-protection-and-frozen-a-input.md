@@ -110,3 +110,15 @@ Windows预算校准：首轮34保护方法实际171.968秒未超时，但有真�
 2026-11-04：最终候选23e8a9d145637547e3ad2e9b17e92825e4da2596，run41788129017/job126434906893自然success，46保护＋55codec＋93records=194通过、0skip，6CLI预期退出码全部符合；真实Windows短路径／junction／占用方法通过，3437 tracked未变。保护套242.172秒，raw日志133346bytes SHA256=7bc21e3f289959da19b07b53f383146ae78e7bed331bed7bbd9ffdb610c19207。9 Git blob一致，5 Python raw完全一致、4说明／workflow检出raw准确对应CRLF转换，不称9 raw完全一致。Linux46通过0skip；最终588当前原件重验及旧archive完整性通过，complete=false／T108保留。
 
 原生三层8条及补丁复核2条分别裁定，六组全修，无defer／loopback，review_loop_iteration=0。材料独立核对133Task／1415引用／3完整manifest／11OwnedRef一致；正式保护与冻结A资格全false，非启用或游戏验收。完整证据见logs/ci/2026-11-03/b-route-story-1-5-build-201113Z/native-review-closure.json。
+
+### Review Findings (2026-11-19)
+
+Epic 1 BMAD 审阅收口；frozen-after-approval 区块未改动。证据：`logs/ci/2026-11-19/epic1-review/`。
+
+- [x] [Review][Patch] `_b_route_protection.py` 对畸形 inventory 行产出带诊断的阻断候选，而非未处理异常。
+- [x] [Review][Patch] `capture_b_route_protection.py` 扩展异常捕获并仅记录类型名写入 `failure.json`；`b-route-mature-protection.md` 对齐 snapshot v3 并移除过期的 Story 1.5 专用 Windows CI 预算描述（verify-batch2-protection：59 项 OK）。
+- [x] [Review][Defer] Inventory 与 codec 的路径规范化设计边界：inventory 观测层与 codec 内容身份层各自规范化，统一需跨 Story 1.1/1.3 的合同修订，非本轮引入。
+- [x] [Review][Defer] 载体文件删除的表示：当前以缺失诊断阻断而非显式删除记录，属跨 Story 载体合同设计，留待后续 Epic 定义。
+- [x] [Review][Defer] 非 UTF-8 二进制登记来源：当前按 raw bytes 绑定并在文本解码处阻断，二进制来源的正式支持需新合同。
+- [x] [Review][Defer] 历史带日期 `story-1-*-windows.yml` 分支触发器：持续 Windows 回归已由 `scripts/python/run_gate_bundle.py` 登记五个 B 路线 suite 取代，旧 workflow 清理另行处理。
+- [x] [Review][Defer] `protection-input.v1.json` 与 `epic1-handoff.v1.json` 中原环境 `logs/ci/2026-11-03..04` 路径：属历史证据引用，按原字节保留，不在本轮重写。

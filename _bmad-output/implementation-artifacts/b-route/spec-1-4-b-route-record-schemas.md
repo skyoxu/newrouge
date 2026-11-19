@@ -134,3 +134,15 @@ context:
 Step3原始证据目录：`../../../logs/ci/2026-11-03/b-route-story-1-4-build-172705Z/`，最终Windows原始输出、逐方法／逐blob／逐矩阵核验、Linux全套及原失败各自留档，状态不是验收证据。
 
 本地最终原件：[Windows原始日志](../../../logs/ci/2026-11-03/b-route-story-1-4-build-172705Z/windows-run-41705225421/job-126158630262.recovered-k2qfv6fl.log)；[逐方法／逐blob核验JSON](../../../logs/ci/2026-11-03/b-route-story-1-4-build-172705Z/windows-run-41705225421/job-126158630262.recovered-k2qfv6fl.verified.json)。日志仅留本地，不重试曾被拒的公开披露。
+
+### Review Findings (2026-11-19)
+
+Epic 1 BMAD 审阅收口；frozen-after-approval 区块未改动。证据：`logs/ci/2026-11-19/epic1-review/`。
+
+- [x] [Review][Patch] `_b_route_record_owners.py` 拒绝空 `#<evidence_id>` fragment（`UNSUPPORTED_LOCATOR`）及超出已核验合同来源的 binding 路径（`UNRESOLVED_REFERENCE`）。
+- [x] [Review][Patch] `validate_b_route_records.py` 将意外内部异常映射为结构化 record/bundle 失败；`_b_route_records.py` 将 schema validator 构造纳入保护；`test_b_route_records.py` 增补回归用例。
+- [x] [Review][Defer] Inventory 与 codec 的路径规范化设计边界：inventory 观测层与 codec 内容身份层各自规范化，统一需跨 Story 1.1/1.3 的合同修订，非本轮引入。
+- [x] [Review][Defer] 载体文件删除的表示：当前以缺失诊断阻断而非显式删除记录，属跨 Story 载体合同设计，留待后续 Epic 定义。
+- [x] [Review][Defer] 非 UTF-8 二进制登记来源：当前按 raw bytes 绑定并在文本解码处阻断，二进制来源的正式支持需新合同。
+- [x] [Review][Defer] 历史带日期 `story-1-*-windows.yml` 分支触发器：持续 Windows 回归已由 `scripts/python/run_gate_bundle.py` 登记五个 B 路线 suite 取代，旧 workflow 清理另行处理。
+- [x] [Review][Defer] `protection-input.v1.json` 与 `epic1-handoff.v1.json` 中原环境 `logs/ci/2026-11-03..04` 路径：属历史证据引用，按原字节保留，不在本轮重写。

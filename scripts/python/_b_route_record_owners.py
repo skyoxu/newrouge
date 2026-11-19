@@ -90,6 +90,8 @@ def _file_locator(owner: str, ref: str, read_bytes: Callable[[str], bytes]) -> d
     if type(data) is not bytes:
         _error(ReasonCode.INVALID_TYPE, ref, "source bytes", type(data).__name__)
     if owner == "verification_record":
+        if not fragment:
+            _error(ReasonCode.UNSUPPORTED_LOCATOR, ref, "#<evidence_id> fragment", "empty fragment")
         _native_record(data, fragment, ref)
     elif separator:
         if fragment.startswith("/"):
@@ -167,7 +169,12 @@ def resolve_owned_ref(
             _error(ReasonCode.INVALID_UTF8, ref, "UTF-8 contract source", "invalid byte sequence")
         if binding is None:
             _error(ReasonCode.UNRESOLVED_REFERENCE, ref, "native contract declaration", "no matching declaration")
-        actual = {row["path"]: checked[row["path"]] for row in binding["bindings"]}
+        actual = {}
+        for row in binding["bindings"]:
+            bound = row.get("path") if isinstance(row, dict) else None
+            if bound not in checked:
+                _error(ReasonCode.UNRESOLVED_REFERENCE, ref, "binding path within checked contract sources", bound)
+            actual[bound] = checked[bound]
     else:
         actual = _file_locator(owner, ref, read_bytes)
     actual_by_key: dict[str, bytes] = {}

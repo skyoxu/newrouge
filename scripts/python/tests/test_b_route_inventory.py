@@ -351,7 +351,7 @@ class InventoryTests(unittest.TestCase):
         before = self.bytes_before()
         report = self.collect()
         self.assertTrue(report["adoptable"], report["diagnostics"])
-        self.assertEqual(report["schema_version"], "newrouge.b-route-baseline-inventory.v2")
+        self.assertEqual(report["schema_version"], "newrouge.b-route-baseline-inventory.v3")
         row = next(r for r in report["task_and_manifest_references"] if r["raw_reference"] == path)
         self.assertEqual((row["owner_file"], row["json_pointer"], row["task_id"], row["master_id"]),
                          (inventory.TRIPLET["back"], "/0/evidence_refs/1", "BACK-9", 1))
@@ -681,17 +681,86 @@ class InventoryTests(unittest.TestCase):
 
     def test_git_timeout_after_reservation_writes_explicit_failure_evidence(self):
         run = inventory.subprocess.run
+        hits = []
         def timeout_head(command, *args, **kwargs):
-            if command[0] == "git" and command[4:] == ["rev-parse", "HEAD"]:
+            if command[0] == "git" and command[-2:] == ["rev-parse", "HEAD"]:
+                hits.append(command)
                 raise subprocess.TimeoutExpired(command, 30)
             return run(command, *args, **kwargs)
         with patch.object(inventory.subprocess, "run", timeout_head):
             self.assertEqual(self.cli(), 1)
+        self.assertGreaterEqual(len(hits), 1, "The injected Git timeout must fire")
         failure = json.loads((self.output() / "failure.json").read_text(encoding="utf-8"))
         self.assertFalse(failure["adoptable"])
         self.assertEqual(failure["diagnostics"][0]["code"], "git-timeout")
         self.assertIn("timed out after 30 seconds", failure["error"])
         self.assertFalse((self.output() / "inventory.json").exists())
+
+    def test_git_reads_disable_repository_fsmonitor(self):
+        run = inventory.subprocess.run
+        commands = []
+        def record(command, *args, **kwargs):
+            commands.append(command)
+            return run(command, *args, **kwargs)
+        with patch.object(inventory.subprocess, "run", record):
+            inventory.git(self.root, "rev-parse", "HEAD")
+        self.assertIn("core.fsmonitor=false", commands[0])
+
+    def test_unresolved_declared_commit_is_not_adoptable(self):
+        self.head = "deadbeef" * 5
+        self.write_epics()
+        report = self.collect()
+        self.assert_invalid(report, "unresolved-declared-commit")
+        self.assertTrue(any(d["code"] == "unresolved-declared-commit" and d["location"] == self.epics
+                            for d in report["diagnostics"]))
+
+    def test_empty_authority_directory_is_missing_authority_set(self):
+        (self.root / "Game.Core/Contracts/Test.cs").unlink()
+        report = self.collect()
+        self.assert_invalid(report, "missing-authority-set")
+        self.assertTrue(any(d["code"] == "missing-authority-set" and d["location"] == "Game.Core/Contracts/"
+                            for d in report["diagnostics"]))
+
+    def test_retired_source_role_when_present_and_warning_only_when_absent(self):
+        doc = self.load(inventory.SOURCE_SET)
+        doc["retirements"] = [{"path": "docs/retired.md"}]
+        self.dump(inventory.SOURCE_SET, doc)
+        self.write("docs/retired.md", "# Retired source\n")
+        report = self.collect()
+        self.assertTrue(report["adoptable"], report["diagnostics"])
+        row = next(r for r in report["inputs"] if r["path"] == "docs/retired.md")
+        self.assertIn("historical-retired-source", row["roles"])
+        self.assertTrue(row["exists"])
+        (self.root / "docs/retired.md").unlink()
+        report = self.collect()
+        self.assertTrue(report["adoptable"], report["diagnostics"])
+        self.assertFalse(next(r for r in report["inputs"] if r["path"] == "docs/retired.md")["exists"])
+        self.assertTrue(any(d["location"] == "docs/retired.md" and d["code"] == "missing-input"
+                            and d["severity"] == "warning" for d in report["diagnostics"]))
+
+    def test_uncached_discovered_adr_keeps_diagnostic_without_key_error(self):
+        self.write("docs/adr/ADR-0099-unsafe.md", "# ADR\n\n- Status: Accepted\n")
+        target = self.root / "docs/adr/ADR-0099-unsafe.md"
+        original = inventory.no_reparse
+        hits = []
+        def reject(candidate):
+            if candidate == target:
+                hits.append(candidate)
+                raise ValueError("Synthetic ADR reparse point")
+            return original(candidate)
+        with patch.object(inventory, "no_reparse", reject):
+            report = self.collect()
+        self.assertTrue(hits)
+        self.assertFalse(report["adoptable"])
+        self.assertTrue(any(d["code"] == "unsafe-or-unreadable-input" and d["location"] == "docs/adr/ADR-0099-unsafe.md"
+                            for d in report["diagnostics"]))
+
+    def test_strict_json_rejects_non_finite_float_and_deep_nesting(self):
+        with self.assertRaisesRegex(ValueError, "Non-finite JSON float"):
+            inventory.strict_json(b'{"value": 1e999}')
+        self.assertEqual(inventory.strict_json(b'{"value": 1.5}'), {"value": 1.5})
+        with self.assertRaisesRegex(ValueError, "JSON nesting too deep"):
+            inventory.strict_json(b"[" * 200000 + b"]" * 200000)
 
     def test_git_diff_external_and_textconv_drivers_are_executable_but_never_invoked(self):
         self.write("drivers/diff_driver.py", "from pathlib import Path\nimport sys\nPath(sys.argv[1]).write_text('executed', encoding='utf-8')\nprint('converted')\n")

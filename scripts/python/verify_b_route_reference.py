@@ -37,6 +37,9 @@ def main(argv=None):
         reference.add_argument("--reference", required=True, help="Repository-relative POSIX typed-reference JSON path")
         args = parser.parse_args(arguments)
         kind = args.mode
+        if not args.repo_root.is_dir():
+            raise CodecError(Diagnostic(ReasonCode.INVALID_ARGUMENT, expected="existing repository root directory",
+                                        actual="missing or non-directory --repo-root"))
         if kind == "content":
             result = verify_content_file(args.repo_root, args.path)
         else:

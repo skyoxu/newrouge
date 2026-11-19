@@ -121,6 +121,14 @@ def main(argv=None):
     except CodecError as error:
         result = (bundle_failure(error.diagnostic) if mode == "bundle"
                   else record_failure(error.diagnostic, path=record_path))
+    except (OSError, ValueError, KeyError, TypeError, RuntimeError) as error:
+        diagnostic = Diagnostic(
+            ReasonCode.READ_ERROR if isinstance(error, OSError) else ReasonCode.SEMANTIC_ERROR,
+            Stage.BUNDLE if mode == "bundle" else Stage.DECODE,
+            expected="validation without unexpected internal failure", actual=type(error).__name__,
+        )
+        result = (bundle_failure(diagnostic) if mode == "bundle"
+                  else record_failure(diagnostic, path=record_path))
     print(json.dumps(result.to_dict(), ensure_ascii=True, allow_nan=False, separators=(",", ":")))
     return 0 if result.ok else 1
 

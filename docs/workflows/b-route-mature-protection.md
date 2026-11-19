@@ -62,7 +62,7 @@ CLI 输出固定在 `logs/ci/<UTC-date>/b-route-protection/<run-id>/`：
 | 文件 | 内容与身份 |
 | --- | --- |
 | `inventory.json` | 复用 Story 1.1 重新双采的完整派生报告，保留原诊断、引用闭包、累计 manifest 和 Git 观察 |
-| `snapshot.json` | `schema_version=newrouge.b-route-protection-snapshot.v2`；包含内容／投影 codec、唯一状态权威、collection、inventory 身份、raw 索引、三联、逐 Task、累计义务、冻结候选、历史差异、诊断、限制及授权 false |
+| `snapshot.json` | `schema_version=newrouge.b-route-protection-snapshot.v3`；包含内容／投影 codec、唯一状态权威、collection、inventory 身份、raw 索引、三联、逐 Task、累计义务、冻结候选、历史差异、诊断、限制及授权 false |
 | `raw/<sha256-hex>.bin` | 每个实际取得文件的原 bytes，按 raw digest 去重；原路径、角色、长度及归档路径保存在 snapshot 索引中 |
 | `result.json` | CLI 结果及本次目录；不能充当正式采纳证明 |
 | `verification.json`／`comparison.json` | 对应命令的归档核验或只读差异；compare 目录中的 snapshot/raw 始终属于本次当前采集 |
@@ -71,7 +71,7 @@ CLI 输出固定在 `logs/ci/<UTC-date>/b-route-protection/<run-id>/`：
 
 引用中的 `reference_role`／`required` 随原 locator 保留到逐 Task 及冻结候选。归档复核从原 Task／manifest bytes 重建角色与引用，验证缺失附件的 warning 仍在；删除 warning、把当前必需引用改成历史角色或重签派生摘要均不能通过。存在的历史附件继续完整归档，附件消失／出现／后编辑继续进入差异及稳定性核验。缺失附件可以不阻断当前采集，同时继续记录该 Task 的 `historical_evidence_not_proven`，且不授 frozen-A 资格。
 
-当前 reader 只支持 v2 snapshot、v2 inventory 及精确匹配当前 `inventory.rule_identity()` 的完整五项 rules。v1 snapshot／历史 inventory 被明确拒绝为未知 schema；旧、缺失、删改或被替换的 rules 即使换成 v2 标签并重签全部摘要，也拒绝为不受支持规则。规则身份的唯一 owner 同时供采集与复核使用，没有旧规则兼容层；需要当前材料时使用新 run ID 重新采集。旧 snapshot、Task 真相及历史原日志均保留，原有回执不自动获得新语义。
+当前 reader 只支持 `newrouge.b-route-protection-snapshot.v3` snapshot、`newrouge.b-route-baseline-inventory.v3` inventory（在 ADR-0049 的 v2 引用角色合同之上增加 `legacy_manifest_requirement`），以及精确匹配当前 `inventory.rule_identity()` 的完整 rules（九个 Python 实现／CLI 文件 raw 摘要加全部 `schema:*` 资源摘要）。v1 snapshot／历史 inventory 被明确拒绝为未知 schema；旧、缺失、删改或被替换的 rules 即使换成当前版本标签并重签全部摘要，也拒绝为不受支持规则。规则身份的唯一 owner 同时供采集与复核使用，没有旧规则兼容层；需要当前材料时使用新 run ID 重新采集。旧 snapshot、Task 真相及历史原日志均保留，原有回执不自动获得新语义。
 
 规则匹配和原 bytes 重建核对的是归档在当前受支持规则下的语义一致性，不认证 `collection` 事件来源或某个物理新 capture 确已执行。普通 JSON 摘要可重算，也可复制当前 rules；这些字段不是采集来源证书。`verify` 仍只声称归档完整性，不声称工作区 fresh currentness；新采集／compare 和具体操作的当前性门禁继续负责后者。
 
@@ -105,4 +105,4 @@ py -3.12 -B -m unittest discover -s scripts/python/tests -p test_b_route_codec.p
 py -3.12 -B -m unittest discover -s scripts/python/tests -p test_b_route_records.py -v
 ```
 
-Linux 每套预算 180 秒；Windows 保护 suite 240 秒并逐方法记录实测时间，codec／records 各 180 秒，整 job 10 分钟／内部 480 秒不变。CLI 验证覆盖正负参数、重复 run、重采／比较和输入 raw 不变。Linux 结果与真实 Windows 结果分别留证，必需平台项 skip 不算通过。Windows 专项由 root 按 spec 管理独立 test 分支与 10 分钟 job，检出事件 SHA、仅 `contents: read`，只上传合成 fixture 证据；本说明不声明其已执行或通过。内部原始日志留本地，不随文档发布。
+CLI 验证覆盖正负参数、重复 run、重采／比较、意外内部错误写 `failure.json` 和输入 raw 不变。Linux 结果与真实 Windows 结果分别留证，必需平台项 skip 不算通过。不存在 Story 1.5 专用的 Windows CI job；持续 Windows 回归由 `scripts/python/run_gate_bundle.py` 的 `B_ROUTE_RUNTIME_DETERMINISTIC_TESTS`（经 `b-route-runtime-deterministic.yml` 执行）承担，其中包含 inventory、codec、records、protection 与 preflight 五个 Epic 1 测试模块。早期一次性 `story-1-*-windows.yml` 分支触发器仅为历史证据。内部原始日志留本地，不随文档发布。

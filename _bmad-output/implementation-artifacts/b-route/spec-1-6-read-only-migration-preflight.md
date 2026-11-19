@@ -141,3 +141,15 @@ Step4局部patch：三层全部返回后R1-BH1/EC1与R1-BH3、R1-VG1分三组pat
 `python -B -m unittest discover -s scripts/python/tests -p test_b_route_preflight.py -v`，适用既有codec／records／protection回归；Linux定向套各180秒。真实Windows新套1100秒、原生owner默认31项180秒、独立CLI矩阵240秒、内部1500秒／job30分钟，上游未变源码复用其已有Windows实证；专项执行成功、缺输入、未知版本、路径逃逸、状态覆盖、无依据退役、旧pending、零Task八组CLI；关键平台分支不以skip算通过。root另跑实际仓库预检，保存真实受阻结论／原身份和Epic2交接。全部原日志留logs，不重复同候选CI。
 
 回环前Step3实证（不证明新源码）：候选c0498a581ec5c5e56a0c277482505b386d8e9f78/run41795092245/job126457189931自然success，43 Windows方法零skip，三个强制平台方法通过、8独立CLI预期退出码及原bytes守护通过，3442 tracked未变；suite566.453秒、CLI60.375秒，raw73309bytes SHA5ff916b2b3960fbf6197598f55d4957b01dbdc5aff5803a61fc12b5c4619299d。8源码Git blob一致，7Python raw一致、workflow raw准确对应CRLF转换。最终实际预检按此源码重新取证，仍exit1/stabletrue/T108阻断，3440 tracked不变；新消费者矩阵和15交接OwnedRef已核，技术材料审阅完成，独立原生review尚待。本结论不授采纳／冻结A／运行资格。
+
+### Review Findings (2026-11-19)
+
+Epic 1 BMAD 审阅收口；frozen-after-approval 区块未改动。证据：`logs/ci/2026-11-19/epic1-review/`。
+
+- [x] [Review][Patch] `preflight_b_route_migration.py` 对意外异常仍输出单一结构化报告（授权字段保持 false）。
+- [x] [Review][Patch] `report.json` 先序列化再经临时文件 `os.replace` 原子写出，避免部分报告；`test_b_route_preflight.py` 增补回归用例（verify-batch4-preflight：59 项 OK）。
+- [x] [Review][Defer] Inventory 与 codec 的路径规范化设计边界：inventory 观测层与 codec 内容身份层各自规范化，统一需跨 Story 1.1/1.3 的合同修订，非本轮引入。
+- [x] [Review][Defer] 载体文件删除的表示：当前以缺失诊断阻断而非显式删除记录，属跨 Story 载体合同设计，留待后续 Epic 定义。
+- [x] [Review][Defer] 非 UTF-8 二进制登记来源：当前按 raw bytes 绑定并在文本解码处阻断，二进制来源的正式支持需新合同。
+- [x] [Review][Defer] 历史带日期 `story-1-*-windows.yml` 分支触发器：持续 Windows 回归已由 `scripts/python/run_gate_bundle.py` 登记五个 B 路线 suite 取代，旧 workflow 清理另行处理。
+- [x] [Review][Defer] `protection-input.v1.json` 与 `epic1-handoff.v1.json` 中原环境 `logs/ci/2026-11-03..04` 路径：属历史证据引用，按原字节保留，不在本轮重写。

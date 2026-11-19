@@ -158,3 +158,16 @@ Round1重新推导细则（保持冻结意图）：
 当前结果以`logs/ci/2026-11-03/b-route-story-1-1-build/final-verification-20261103T105723Z/summary.json`及同目录原始日志为准：43项通过，两个mutation被杀死；以下21项为首轮历史记录。Windows仍未运行。
 
 实施后执行：`py -3 -m unittest discover -s scripts/python/tests -p test_b_route_inventory.py`，全部通过；Windows运行独立CLI，核对报告、非零退出及无副作用。Linux检查不替代Windows证据。实际Linux验证：21项fixture测试通过；真实仓库双次采集stable且内容身份相同、事件不同；重复目录退出2，缺失epics退出1。3,419个既有文件原字节不变。原始证据见logs/ci/2026-11-03/b-route-story-1-1-build/implementation-verification-1/。原生Windows CLI未运行，当前Linux环境无法提供；不宣称平台验收完成。
+
+### Review Findings (2026-11-19)
+
+Epic 1 BMAD 审阅收口；frozen-after-approval 区块未改动。证据：`logs/ci/2026-11-19/epic1-review/`。
+
+- [x] [Review][Patch] `b-route-baseline-inventory.md` 对齐 v3 inventory schema（`legacy_manifest_requirement`，v2 引用角色语义不变）及九文件 `rule_identity()` 规则集合。
+- [x] [Review][Patch] `inventory_b_route_baseline.py` 先渲染 Markdown 再写出，保证 `inventory.json` 与 `failure.json` 不共存；KeyError/TypeError/RecursionError 归入结构化失败。
+- [x] [Review][Patch] `test_b_route_inventory.py` 补充对应回归用例（verify-batch3-inventory：70 项 OK，skipped=2）。
+- [x] [Review][Defer] Inventory 与 codec 的路径规范化设计边界：inventory 观测层与 codec 内容身份层各自规范化，统一需跨 Story 1.1/1.3 的合同修订，非本轮引入。
+- [x] [Review][Defer] 载体文件删除的表示：当前以缺失诊断阻断而非显式删除记录，属跨 Story 载体合同设计，留待后续 Epic 定义。
+- [x] [Review][Defer] 非 UTF-8 二进制登记来源：当前按 raw bytes 绑定并在文本解码处阻断，二进制来源的正式支持需新合同。
+- [x] [Review][Defer] 历史带日期 `story-1-*-windows.yml` 分支触发器：持续 Windows 回归已由 `scripts/python/run_gate_bundle.py` 登记五个 B 路线 suite 取代，旧 workflow 清理另行处理。
+- [x] [Review][Defer] `protection-input.v1.json` 与 `epic1-handoff.v1.json` 中原环境 `logs/ci/2026-11-03..04` 路径：属历史证据引用，按原字节保留，不在本轮重写。

@@ -52,7 +52,7 @@ raw 模式核对原字节 digest；canonical 模式核对按指定 codec 得到�
 
 路径检查拒绝绝对路径、驱动器路径、UNC、反斜杠、URL、ADS、Windows 设备／别名路径及根逃逸。合法的 `sub/../plan.json` 和可证明目标位于根内的 symlink／junction 允许通过；根外链接拒绝，无法解析或证明 containment 则失败。外部来源仍由既有 source 登记与冻结机制管理。读取失败、非普通文件或已观察的读取漂移也返回公共诊断。读取前后检查不构成针对任意并发外部写者的事务隔离保证。
 
-文件身份检查区分采样来源：路径前后、文件描述符前后均保留 `dev`／`ino`／`size`／`mtime_ns`／`ctime_ns` 的完整比较。真实 Windows CPython 3.12.10 trace 证实，路径 `stat` 的 `ctime_ns` 表示创建时间，而 `fstat` 的同名字段可表示变更时间；Windows 跨来源因此使用 `dev`／`ino`／`size`／`mtime_ns`／明确的 `birthtime_ns`，缺少或无法取得该能力时返回 `path_unprovable`，不猜测或用空值通过。POSIX 跨来源仍保留原五字段检查。重解析路径和最后一次描述符采样在读取句柄仍有效期间完成，以检查末次路径观察期间的漂移；不会全局忽略 `ctime`、放宽时间容差或以重试掩盖变化。修复后的真实 Windows 矩阵仍须重新执行，旧失败／诊断 trace 不作为通过证据。
+文件身份检查区分采样来源：路径前后、文件描述符前后均保留 `dev`／`ino`／`size`／`mtime_ns`／`ctime_ns` 的完整比较。真实 Windows CPython 3.12.10 trace 证实，路径 `stat` 的 `ctime_ns` 表示创建时间，而 `fstat` 的同名字段可表示变更时间；Windows 跨来源因此使用 `dev`／`ino`／`size`／`mtime_ns`／明确的 `birthtime_ns`，缺少或无法取得该能力时返回 `path_unprovable`，不猜测或用空值通过。POSIX 跨来源仍保留原五字段检查。重解析路径和最后一次描述符采样在读取句柄仍有效期间完成，以检查末次路径观察期间的漂移；不会全局忽略 `ctime`、放宽时间容差或以重试掩盖变化。修复后的行为由 Windows 主机上的定向 unittest 持续回归；更早的失败／诊断 trace 仅为历史证据，不作为通过证据。
 
 ## Windows 命令与隔离示例
 
@@ -64,7 +64,7 @@ py -3 -B scripts/python/verify_b_route_reference.py reference --repo-root . --re
 py -3 -B -m unittest discover -s scripts/python/tests -p test_b_route_codec.py -v
 ```
 
-CLI 正常核验时 stdout 为一个英文 JSON 对象，成功退出码为 `0`，失败为非零；参数错误同样使用公共诊断。若参数错误仍可识别 `content`／`reference` 模式，结果保留对应模式；无法识别模式时 `verification_kind`、`claim` 和诊断 `stage` 为 `null`。`--help` 显示英文命令帮助。CLI 只读输入，不创建日志、`__pycache__`、正式规划文件、Task 三联或发布指针，没有写入／发布选项，也不调用 Godot、模型或数据库。日志文件由调用者保存到本轮新建的 `logs/**` 目录。
+CLI 正常核验时 stdout 为一个英文 JSON 对象，成功退出码为 `0`，失败为非零；参数错误同样使用公共诊断。`--repo-root` 不存在或不是目录时返回 `invalid_argument` 并以非零退出，不误报为目标 `file_not_found`。若参数错误仍可识别 `content`／`reference` 模式，结果保留对应模式；无法识别模式时 `verification_kind`、`claim` 和诊断 `stage` 为 `null`。`--help` 显示英文命令帮助。CLI 只读输入，不创建日志、`__pycache__`、正式规划文件、Task 三联或发布指针，没有写入／发布选项，也不调用 Godot、模型或数据库。日志文件由调用者保存到本轮新建的 `logs/**` 目录。
 
 下面的 PowerShell 示例只在一个全新的 logs 目录中准备示例和保存输出。示例 plan 仅用于身份核验，不是完整合法或已采纳的正式 plan。
 
@@ -130,6 +130,6 @@ foreach ($name in @("reference", "reference-raw", "reference-bad")) {
 
 诊断区分解析损坏、错误类型、未知 schema／codec、引用损坏、无法证明身份、未知实体、实际修订／digest 差异、路径问题、读取失败和漂移。错误输出不打印输入正文或异常中的文件内容。完整记录字段、历史 proof、Taskmaster join、正式采纳链和实时 Task 资格仍须由各自 owner 按原合同验证。
 
-本轮 Linux 可验证严格 JSON、canonical 黄金值、Windows 路径词法及 Linux 上的根内／根外 symlink 行为。这些证据不能证明 Windows 实际文件 I/O、junction、大小写行为或文件占用处理。真实 Windows 环境应运行同一定向 unittest 与 CLI 正负例，并分别保存平台信息、实际输出和未运行／跳过原因；未取得这些原始证据前，Windows 平台验收保持未完成。不能以旧 Story 的 Windows 报告或 Linux 模拟代替本 Story 的平台验收。
+Story 1.3 已交付。Linux 可验证严格 JSON、canonical 黄金值、Windows 路径词法及根内／根外 symlink 行为，但不能证明 Windows 实际文件 I/O、junction、大小写行为或文件占用处理；这些由 Windows 主机上的同一定向 unittest 与 CLI 正负例覆盖。持续回归入口为 `scripts/python/run_gate_bundle.py` 的 `B_ROUTE_RUNTIME_DETERMINISTIC_TESTS`（由 `b-route-runtime-deterministic.yml` 在 Windows 执行），其中包含 `scripts.python.tests.test_b_route_codec`。主机无法创建符号链接时相关用例显式跳过并给出原因，不视为通过。
 
-每次定向验证预算为 180 秒，原始 stdout／stderr 和退出码保存在新 logs。核验工作还须对照 spec 矩阵、变更白名单与既有七个 dirty 文件 SHA，确认三联、游戏、旧 proof 和原 canonical 实现的字节未被改写；本说明本身不声称这些检查已经完成。
+定向验证的原始 stdout／stderr 和退出码保存在新 logs。Story 1.4 起六类记录的完整 schema 与关系校验在同一 registry 之上扩展（见[记录只读校验](b-route-record-validation.md)），本入口仍只做 identity-only 核验，不改写三联、游戏、旧 proof 或原 canonical 实现的字节。

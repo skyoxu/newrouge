@@ -26,3 +26,25 @@
 - source_spec: `spec-2-9-completed-planning-reuse.md`
   summary: 闭包外新增实际Requirement分母后的自动完成项重基尚未证明属于当前无关元数据复用合同，不新增交付阻塞。
   evidence: B3为maybe-false/medium；当前完整分母不兼容明确miss/fresh。若扩展，须证明治理闭包、原单项语义和全部验证分母的相容性；不伪称已支持。
+
+## Deferred from: code review of Epic 1 Stories 1.1-1.6 (2026-11-19)
+
+- source_spec: `_bmad-output/implementation-artifacts/b-route/spec-1-1-*.md` .. `spec-1-6-*.md`
+  summary: Inventory 与 codec 的路径规范化设计边界：inventory 观测层与 codec 内容身份层各自规范化，统一需跨 Story 1.1/1.3 的合同修订，非本轮引入。
+  evidence: `logs/ci/2026-11-19/epic1-review/`；既有跨 Story 设计边界，非本轮引入，不新增 Epic 1 交付阻塞。
+
+- source_spec: `_bmad-output/implementation-artifacts/b-route/spec-1-1-*.md` .. `spec-1-6-*.md`
+  summary: 载体文件删除的表示：当前以缺失诊断阻断而非显式删除记录，属跨 Story 载体合同设计，留待后续 Epic 定义。
+  evidence: `logs/ci/2026-11-19/epic1-review/`；既有跨 Story 设计边界，非本轮引入，不新增 Epic 1 交付阻塞。
+
+- source_spec: `_bmad-output/implementation-artifacts/b-route/spec-1-1-*.md` .. `spec-1-6-*.md`
+  summary: 非 UTF-8 二进制登记来源：当前按 raw bytes 绑定并在文本解码处阻断，二进制来源的正式支持需新合同。
+  evidence: `logs/ci/2026-11-19/epic1-review/`；既有跨 Story 设计边界，非本轮引入，不新增 Epic 1 交付阻塞。
+
+- source_spec: `_bmad-output/implementation-artifacts/b-route/spec-1-1-*.md` .. `spec-1-6-*.md`
+  summary: 历史带日期 `story-1-*-windows.yml` 分支触发器：持续 Windows 回归已由 `scripts/python/run_gate_bundle.py` 登记五个 B 路线 suite 取代，旧 workflow 清理另行处理。
+  evidence: `logs/ci/2026-11-19/epic1-review/`；既有跨 Story 设计边界，非本轮引入，不新增 Epic 1 交付阻塞。
+
+- source_spec: `_bmad-output/implementation-artifacts/b-route/spec-1-1-*.md` .. `spec-1-6-*.md`
+  summary: `protection-input.v1.json` 与 `epic1-handoff.v1.json` 中原环境 `logs/ci/2026-11-03..04` 路径：属历史证据引用，按原字节保留，不在本轮重写。
+  evidence: `logs/ci/2026-11-19/epic1-review/`；既有跨 Story 设计边界，非本轮引入，不新增 Epic 1 交付阻塞。

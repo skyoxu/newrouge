@@ -81,13 +81,15 @@ def main(argv: list[str] | None = None) -> int:
         _write(output, "result.json", result)
         print(json.dumps(result, ensure_ascii=False))
         return 0 if result["ok"] else 1
-    except (_ArgumentError, codec.CodecError, OSError, ValueError) as error:
+    except (_ArgumentError, codec.CodecError, OSError, ValueError, KeyError, TypeError, AttributeError,
+            RuntimeError) as error:
         if isinstance(error, codec.CodecError):
             diagnostic = error.diagnostic.to_dict()
         else:
+            message = str(error) if isinstance(error, (_ArgumentError, OSError, ValueError)) else type(error).__name__
             diagnostic = codec.Diagnostic(codec.ReasonCode.INVALID_ARGUMENT if output is None else codec.ReasonCode.IDENTITY_UNPROVABLE,
                 codec.Stage.CONTENT, expected="valid read-only protection command and inputs",
-                actual=str(error)).to_dict()
+                actual=message).to_dict()
         result = {"ok": False, "diagnostics": [diagnostic], "authorization": dict(protection.AUTHORIZATION)}
         if output is not None:
             try:
