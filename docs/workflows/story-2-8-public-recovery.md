@@ -2,7 +2,20 @@
 
 ## 当前固定资源政策
 
-[ADR-0055](../adr/ADR-0055-b-route-fixed-work-policy-calibration.md) 将当前共享 owner 的本地工作政策显式改为 `resource-pipeline.v4`／170M，依据一次完整 DATA 组件实测 166,927,907 向上取整；这是对原已接受 100M 数值的局部 supersede，不是模型预算变化。64MiB／8MiB／nodes／depth、单账户收费、完整语义／D／双 exact 和所有请求容量门保持。原生 prepare 与 Story 2.8 正式验收尚未通过。下方旧阶段的 100M 描述和失败属于保留的历史记录，不重签为新政策证据；2.7 已有正式验收也不替代本 Story 的补偿验收。
+[ADR-0055](../adr/ADR-0055-b-route-fixed-work-policy-calibration.md) 将当前共享 owner 的本地工作政策显式改为 `resource-pipeline.v4`／170M，依据一次完整 DATA 组件实测 166,927,907 向上取整；这是对原已接受 100M 数值的局部 supersede，不是模型预算变化。64MiB／8MiB／nodes／depth、单账户收费、完整语义／D／双 exact 和所有请求容量门保持。Story 2.6 与 Story 2.7 已处于 `done` 状态，不替代本 Story 的独立恢复与补偿验收；下方旧阶段的 100M 失败与历史草稿说明保留为历史证据，不重签为当前政策结论。
+
+## 当前已交付范围与收口状态（2026-11-20）
+
+- **前置状态**：Story 2.6 与 Story 2.7 均已完成（`done`）；Story 2.8 保持原有 AC1–5 与独立验收边界，不据此宣称全局 readiness、runtime 或默认 B 启用。
+- **固定资源政策**：现行工作预算按 [ADR-0055](../adr/ADR-0055-b-route-fixed-work-policy-calibration.md) 为 `resource-pipeline.v4`／`170M`，局部 supersede 历史 `100M` 口径；所有 64MiB／8MiB／1MiB／70k／默认 96k 容量与完整性门禁不变。
+- **已交付交付版本与 CLI 阶段（ADR-0056..0060）**：
+  - 补偿审阅交付版本：`delivery.v3`、`delivery.v4`（multi-view），以及合格历史补偿交付 `newrouge.b-route-qualified-compensation-review-delivery.v1/v2/v3`、`newrouge.b-route-compensation-segmented-delivery.v1` 与 `newrouge.b-route-compensation-review-repair.v1`。
+  - 公共 CLI（`dev_cli.py b-route-adoption` / `b_route_adoption.py`）已支持 `review-segmented-preflight`、`review-segmented-prepare`、`review-segmented-execute`、`review-segmented-resume`、`review-segmented-repair-prepare`、`review-segmented-repair-execute`、`review-segmented-repair-resume` 以及 `recover-inspect`、`recover`。
+  - 独立审阅执行同时兼容官方 Codex 与 Gemini（`NEWROGUE_PLANE_B_RUNNER=gemini`）隔离 runner，并在分段与修复路径中强制跨节点 provider/model 一致性与线程/回合独立性。
+- **真实补偿发布与 Windows AC5 验证**：
+  - `NativeV15Origin03Compensation01` 已通过显式 ADR-0060 修复证明（`proof.v2`）完成公开 `prepare`/`reserve`/`apply`/`verify`/`publish`/`read`（Plan revision 2、Catalog revision 2，原操作已 `resolved_by` 收口，证据见 `logs/ci/2026-11-12/cloud-epic2-recovery-22/REPORT.md`）。
+  - 本机与 Windows CI（`scripts/ci/run_b_route_windows_recovery_checks.py`，4 项 `WindowsRecoveryTests` + `WindowsCompensationTests`）已验证 AC5 进程退出恢复、origins 共享占用拒绝、pending 清理与 resolution（证据见 `logs/ci/2026-11-12/cloud-epic2-recovery-24/REPORT.md`）。
+- **CI 确定性维护门禁**：`scripts/python/run_gate_bundle.py` 的 `B_ROUTE_RUNTIME_DETERMINISTIC_TESTS` 现已完整登记全部 Story 2.8 套件：`test_b_route_commit_recovery`、`test_b_route_compensation`、`test_b_route_published_history`、`test_b_route_qualified_render_retention_v2`、`test_b_route_compensation_partition`、`test_b_route_compensation_segments`、`test_b_route_compensation_segmented_execution`、`test_b_route_compensation_review_repair`、`test_b_route_compensation_multiview_owner`、`test_b_route_compensation_multiview_transport_v2`。
 
 ## 版本化补偿审阅材料
 

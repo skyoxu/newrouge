@@ -55,8 +55,9 @@ def _resume(root,home,derived,canonical_prompt):
     observed,source_pins=review.policy_observations()
     review.require(observed==derived.subject['policy_identity'],'same current segment policy','changed policy')
     state=codec.strict_json_loads(review.path(root,home+'/state.json').read_bytes())
-    review.require(state.get('schema_version')==STATE and state.get('model_dispatched') is False
-        and state.get('completed_model_nodes')==[] and state.get('next_model_node')=='complete-context',
+    review.require(type(state) is dict and state.get('schema_version')==STATE and state.get('model_dispatched') is False
+        and state.get('completed_model_nodes')==[] and state.get('next_model_node')=='complete-context'
+        and 'files' in state,
         'original offline-only segment state','changed segment state')
     refs=state['files']
     review.require(type(refs) is dict and set(refs)=={'packet.json','plan.json','source-pins.json',

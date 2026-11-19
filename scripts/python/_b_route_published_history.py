@@ -298,7 +298,12 @@ def _saved_current_before(root, operation, context):
         actual = commit._digest(commit._read(root,name,optional=True))
         need(actual in permitted.get(name,{codec.raw_digest(raw)}), 'unchanged source or exact owned before/after: ' + name)
     actual_catalog = commit._read(root,records.CATALOG_PATH)
-    if actual_catalog not in (before,commit._decode(intent['catalog_after'])):
+    if intent.get('catalog_after') is not None and commit._publication_proven(root,consumer,intent):
+        after_cat = commit._decode(intent['catalog_after'])
+        if actual_catalog != after_cat:
+            need(commit._catalog_frame(root,consumer,actual_catalog,intent['before_files']) ==
+                 commit._catalog_frame(root,consumer,after_cat,intent['before_files']), 'only unrelated legitimate catalog progress')
+    elif actual_catalog not in (before,commit._decode(intent['catalog_after'])):
         need(commit._catalog_frame(root,consumer,actual_catalog,intent['before_files']) ==
              commit._catalog_frame(root,consumer,before,intent['before_files']), 'only unrelated legitimate catalog progress')
     original_intent = commit.validate_local(root,operation)

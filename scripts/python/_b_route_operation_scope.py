@@ -46,7 +46,10 @@ def _hash(value):
 def _values(values):
     if isinstance(values, (str, bytes)):
         _fail(codec.ReasonCode.INVALID_TYPE, expected='resource sequence', actual=type(values).__name__)
-    return tuple(values)
+    try:
+        return tuple(values)
+    except TypeError:
+        _fail(codec.ReasonCode.INVALID_TYPE, expected='resource sequence', actual=type(values).__name__)
 
 
 def resource_scopes(*, target_paths=(), plan_ids=(), requirement_ids=(), flow_ids=(), task_ids=(),
@@ -238,7 +241,11 @@ def _completed(root, kind, run_id, journal):
     trace = 'docs/testing/mvg/planning/' + run_id + '.json'
     if type(manifest) is not str or result.get('trace_path') != trace:
         return False
-    target, trace_row = targets.get(_path(manifest), {}), targets.get(trace, {})
+    try:
+        manifest_path = _path(manifest)
+    except codec.CodecError:
+        return False
+    target, trace_row = targets.get(manifest_path, {}), targets.get(trace, {})
     trace_payload = trace_row.get('payload')
     digest = result.get('manifest_sha256')
     return (type(digest) is str and _DIGEST.fullmatch(digest) is not None
@@ -373,6 +380,11 @@ def business_guard(root, scope_ids, *, operation_id=None, compensation_frozen=No
     Old managed writers still acquire these exact same business locks.
     """
     root = leases._directory(Path(root).absolute())
+    if operation_id is not None:
+        codec.validate_business_id(operation_id)
+    if review_only and compensation_frozen is not None:
+        _fail(codec.ReasonCode.INVALID_ARGUMENT, operation_id,
+              'compensation_frozen disallowed in review_only guard', 'review_only with compensation_frozen')
     requested = _scopes(scope_ids)
     metadata = _directory(root, STORE + '/locks/metadata')
     directories = {value: _directory(root, STORE + '/locks/scopes/' + _hash(value)) for value in requested}

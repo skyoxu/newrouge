@@ -173,6 +173,35 @@ class FormalRepairDataTests(unittest.TestCase):
         with self.assertRaises(codec.CodecError):self.prepare()
         self.old_unchanged();self.assertEqual(2,len(self.owner.calls))
 
+    def test_historical_codex_nodes_replay_and_repair_executes_under_gemini_and_seals_repair_proof(self):
+        import os
+        from contextlib import nullcontext
+        import _b_route_adoption as adoption
+        import _b_route_compensation as compensation
+        import _b_route_operation_scope as scope
+        with patch.dict(os.environ,{'NEWROGUE_PLANE_B_RUNNER':'gemini'}):
+            self.prepare()
+            result=self.execute()
+            self.assertTrue(result['model_dispatched'])
+            self.assertEqual(3,result['cumulative_logical_calls'])
+            proof,_saved,_=repair.produce_proof(self.root,'DATA-Multi')
+            self.assertEqual(repair.PROOF,proof['schema_version'])
+            self.assertEqual('openai',proof['evidence']['nodes'][0]['runtime_configuration']['provider'])
+            self.assertEqual('google',proof['evidence']['nodes'][1]['runtime_configuration']['provider'])
+            self.assertEqual('gemini-4-carbon-high',proof['evidence']['nodes'][1]['runtime_configuration']['model'])
+            frozen={'scope_ids':['plan:test'],'allocations':{}}
+            sealed_subject={**deepcopy(self.owner.subject),'preview':{**deepcopy(self.owner.subject['preview']),'allocations':{}}}
+            snap=SimpleNamespace(root=self.root,_qualified_history_handles=[],ref=lambda r:None,verify=lambda:None)
+            with patch.object(review,'read_subject',return_value=deepcopy(sealed_subject)), \
+                    patch.object(compensation,'build',return_value=(snap,frozen)), \
+                    patch.object(compensation,'make_subject',return_value=deepcopy(sealed_subject)), \
+                    patch.object(scope,'business_guard',return_value=nullcontext()), \
+                    patch.object(scope,'writer_boundary',return_value=nullcontext()):
+                sealed=adoption.complete_review(self.root,operation_id='DATA-Multi')
+            self.assertEqual('reviewed',sealed['status'])
+            self.assertEqual(repair.PROOF,sealed['host_review_ref']['schema_version'])
+            self.assertEqual(repair.DELIVERY,sealed['review_delivery'])
+
 class RepairCliRouteTests(unittest.TestCase):
     def test_legacy_compatibility_allows_only_truthful_context_graph_accounting(self):
         old=b'class Derived:\n def private_metrics(self):\n  if self.context is not None:\n   graphs.append(self.context.proof)\n  return graphs\n'

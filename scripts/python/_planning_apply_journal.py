@@ -14,8 +14,10 @@ def create_journal(root: Path, path: Path, targets: dict[Path, Any], authority: 
     entries = []
     for target, payload in targets.items():
         raw = json.dumps(payload, ensure_ascii=False, indent=2) + "\n"
-        entries.append({"path": relative(root, target), "before_sha256": file_sha(target) if target.is_file() else None,
-            "before_base64": base64.b64encode(target.read_bytes()).decode() if target.is_file() else None,
+        before_bytes = target.read_bytes() if target.is_file() else None
+        entries.append({"path": relative(root, target),
+            "before_sha256": "sha256:" + hashlib.sha256(before_bytes).hexdigest() if before_bytes is not None else None,
+            "before_base64": base64.b64encode(before_bytes).decode() if before_bytes is not None else None,
             "after_sha256": text_sha(raw), "payload": payload})
         entries[-1]["mutable_json_keys_after_complete"] = (mutable_json_keys or {}).get(target, [])
     journal = {"schema_version": "newrouge.planning-apply-journal.v1", "status": "pending",
@@ -61,11 +63,10 @@ def resume_journal(root: Path, path: Path, writer: Callable) -> dict[str, Any]:
         mutable = row.get("mutable_json_keys_after_complete", [])
         if not isinstance(mutable, list) or any(not isinstance(key, str) for key in mutable):
             raise ValueError("invalid planning journal mutable keys")
-    owned = {row["path"] for row in entries}
     # Validate the entire transaction before replacing any file. Subsequent user
     # changes are never treated as writes made by this transaction.
     for rel, expected in journal["authority_inputs"].items():
-        if rel in owned:
+        if os.path.normcase(str(repo_path(root, rel))) in identities:
             continue
         target = repo_path(root, rel)
         actual = normalized_file_sha(target) if target.is_file() else None
@@ -73,6 +74,8 @@ def resume_journal(root: Path, path: Path, writer: Callable) -> dict[str, Any]:
         if actual != expected and raw_actual != expected:
             raise ValueError(f"planning recovery input drift:{rel}")
     for row in entries:
+        if "payload" not in row or not isinstance(row.get("after_sha256"), str):
+            raise ValueError("invalid planning journal entry payload")
         if text_sha(json.dumps(row["payload"], ensure_ascii=False, indent=2) + "\n") != row["after_sha256"]:
             raise ValueError("planning journal payload identity changed")
         target = repo_path(root, row["path"])
@@ -80,13 +83,17 @@ def resume_journal(root: Path, path: Path, writer: Callable) -> dict[str, Any]:
         allowed = {row["after_sha256"]} if journal["status"] == "complete" else {row["before_sha256"], row["after_sha256"]}
         mutable = row.get("mutable_json_keys_after_complete", [])
         if actual not in allowed and journal["status"] == "complete" and mutable and target.is_file():
-            current = load_json(target, {})
-            expected = dict(row["payload"])
-            for key in mutable:
-                current.pop(key, None)
-                expected.pop(key, None)
-            if canonical_sha(current) == canonical_sha(expected):
-                continue
+            try:
+                current = json.loads(target.read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                current = None
+            if isinstance(current, dict) and isinstance(row["payload"], dict):
+                expected = dict(row["payload"])
+                for key in mutable:
+                    current.pop(key, None)
+                    expected.pop(key, None)
+                if canonical_sha(current) == canonical_sha(expected):
+                    continue
         if actual not in allowed:
             raise ValueError(f"planning recovery target drift:{row['path']}")
     if journal["status"] == "complete":
@@ -316,7 +323,7 @@ def operation_inventory(root):
         if directory.exists():
             for child in sorted(directory.iterdir()):
                 info = _operation_no_reparse(child)
-                if not stat.S_ISDIR(info.st_mode) or not re.fullmatch("[0-9a-f]{64}", child.name):
+                if info is None or not stat.S_ISDIR(info.st_mode) or not re.fullmatch("[0-9a-f]{64}", child.name):
                     _operation_fail(codec.ReasonCode.IDENTITY_UNPROVABLE, "known operation directory key", child.name)
                 contents = list(child.iterdir())
                 names = {item.name for item in contents}
@@ -385,8 +392,8 @@ def _operation_write(root, value, inventory, *, verify=True):
                         operation_id=value["operation_id"], resume_ref=_operation_ref(value["operation_id"]))
     if not verify:
         return value
-    verified = next(item for item in operation_inventory(root) if item["operation_id"] == value["operation_id"])
-    if codec.canonical_digest(verified) != codec.canonical_digest(value):
+    verified = next((item for item in operation_inventory(root) if item["operation_id"] == value["operation_id"]), None)
+    if verified is None or codec.canonical_digest(verified) != codec.canonical_digest(value):
         _operation_fail(codec.ReasonCode.CONFLICT, "unchanged persisted operation", "post-write drift",
                         operation_id=value["operation_id"], resume_ref=_operation_ref(value["operation_id"]))
     return verified
@@ -424,13 +431,14 @@ def prepare_operation(root, *, operation_id, request_raw, frozen):
             return value
     codec.validate_json_value(frozen)
     frozen = codec.strict_json_loads(json.dumps(frozen, ensure_ascii=False))
+    frozen_digest = codec.canonical_digest(frozen)
     version = (COMPENSATION_SCHEMA if request['schema_version'] == COMPENSATION_REQUEST else
                ADOPTION_V2_SCHEMA if request['schema_version'] == ADOPTION_V2_REQUEST else OPERATION_SCHEMA)
     value = {"schema_version": version, "codec_version": codec.CODEC_VERSION,
         "operation_id": operation_id, "state": "prepared",
         "request_raw_base64": base64.b64encode(request_raw).decode("ascii"),
         "request_raw_digest": codec.raw_digest(request_raw), "request_digest": codec.canonical_digest(request),
-        "frozen": frozen, "frozen_digest": codec.canonical_digest(frozen)}
+        "frozen": frozen, "frozen_digest": frozen_digest}
     _operation_validate(root, value)
     return _operation_write(root, value, inventory)
 
@@ -501,19 +509,25 @@ def operation_state_graph(root):
     Never mutate an old operation, index row, marker, budget or native journal.
     Terminal proof does not call active inventory, so cycles cannot recurse.
     """
+    import stat
     import _b_route_codec as codec
     import _b_route_commit as commit
     import _b_route_compensation as compensation
+    def _safe_local_bytes(name):
+        path = _operation_path(root, name)
+        info = _operation_no_reparse(path)
+        if info is None:
+            return None
+        if not stat.S_ISREG(info.st_mode) or info.st_nlink != 1:
+            _operation_fail(codec.ReasonCode.UNSAFE_PATH, "single plain local operation file", name, resume_ref=name)
+        return codec.read_reference_bytes(root, name)
     operations = operation_inventory(root)
-    intents = {row['operation_id']: commit.validate_local(root, row) for row in operations}
     names = {OPERATION_STORE + '/pending.json', 'docs/planning/b-route/catalog.v1.json'}
     for row in operations:
         names.update((_operation_ref(row['operation_id']), *commit._paths(row['operation_id']),
                       'docs/planning/b-route/commits/' + row['operation_id'] + '.json'))
-    local_bytes = {}
-    for name in names:
-        path = _operation_path(root, name)
-        local_bytes[name] = path.read_bytes() if path.exists() else None
+    local_bytes = {name: _safe_local_bytes(name) for name in names}
+    intents = {row['operation_id']: commit.validate_local(root, row) for row in operations}
     graph = {'operations': operations, 'intents': intents, 'terminals': set(), 'resolved_by': {},
              'local_bytes': local_bytes, 'catalog_raw': local_bytes['docs/planning/b-route/catalog.v1.json']}
     claims = {}
@@ -541,7 +555,6 @@ def operation_state_graph(root):
             compensation.prove_resolution(root, by_id[successor], by_id[previous], graph)
             graph['resolved_by'][previous] = successor
     for name, expected in local_bytes.items():
-        path = _operation_path(root, name)
-        if (path.read_bytes() if path.exists() else None) != expected:
+        if _safe_local_bytes(name) != expected:
             _operation_fail(codec.ReasonCode.INPUT_STALE, 'same complete local operation/intent/publication graph', name)
     return graph

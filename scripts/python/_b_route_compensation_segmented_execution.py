@@ -187,7 +187,10 @@ def prepare(root,derived):
             reports.append({'node_id':node['node_id'],'status':'blocked','diagnostic':error.diagnostic.to_dict()})
     derived.recheck()
     need(review.policy_observations()==(policy,pins),'unchanged checked source at plan publication')
-    for name,data in values.items():review.write_once(root,home+'/'+name,data)
+    for name,data in values.items():
+        if name != MARKER:
+            review.write_once(root,home+'/'+name,data)
+    review.write_once(root,home+'/'+MARKER,values[MARKER])
     return {'status':'blocked' if any(r['status']=='blocked' for r in reports) else 'review_segmented_prepared',
         'operation_id':subject['operation_id'],'plan_ref':home+'/'+MARKER,'nodes':reports,
         'model_dispatched':False,'budget_claim':BUDGET_CLAIM,'model_request_budget':None,'host_review_ref':None,
@@ -244,8 +247,9 @@ def _replay(root,subject,plan,packet,node,prefix):
     turns=set(subject['native_turns'])|{r['evidence']['turn_id'] for r in prefix}
     need(_provider_ok(recorded_runners[0],evidence['model_provider']) and evidence['thread_id'] not in threads
          and evidence['turn_id'] not in turns
-         and all(r['evidence']['runtime_configuration']['model']==evidence['model'] for r in prefix),
-         'official high/no-tools thread, turn, and consistent model independent of all ancestors and nodes')
+         and all(r['evidence']['runtime_configuration']['model']==evidence['model']
+                 and r['evidence']['runtime_configuration']['provider']==evidence['model_provider'] for r in prefix),
+         'official high/no-tools thread, turn, provider, and consistent model independent of all ancestors and nodes')
     verdict=codec.strict_json_loads(output);_verdict(verdict,schema,node)
     outcome={'output_digest':codec.raw_digest(output),'execution_digest':codec.raw_digest(_read(root,directory+'/execution.json'))}
     result={'schema_version':DELIVERY,'node_id':node['node_id'],'identity':identity,'admission':admission_ref,
@@ -309,6 +313,9 @@ def execute(root,operation_id, *, publication_only=False,derived=None,model_requ
             base=_read(root,directory+'/base-prompt.txt').decode('utf-8')
             prompt,schema,request,report=_request(subject,packet,plan,node,base,prefix)
             identity=_identity(plan,node,prefix,request,schema,report);key=codec.canonical_digest(identity)
+            active_runner=_official_runner(root=root)
+            need(all(_provider_ok(active_runner.name,r['evidence']['runtime_configuration']['provider']) for r in prefix),
+                 'consistent official runner provider across segmented nodes')
             _write(root,home+'/'+ADMISSION,{'schema_version':DELIVERY+'.call-limit','operation_id':operation_id,
                 'plan_digest':plan['plan_digest'],'model_request_budget':model_request_budget,'claim':BUDGET_CLAIM})
             admission_ref=_ref(root,home+'/'+ADMISSION)
@@ -316,6 +323,7 @@ def execute(root,operation_id, *, publication_only=False,derived=None,model_requ
             for name,data in {'w/prompt.txt':prompt.encode('utf-8'),'w/schema.json':_schema_bytes(schema),
                 'request.txt':request.encode('utf-8'),'measurement.json':review.raw(report)}.items():
                 review.write_once(root,directory+'/'+name,data)
+            need({p.name for p in workspace.iterdir()}=={'prompt.txt','schema.json'},'unchanged complete input files')
             # One fixed node has one permanent consumed intent. Failed/unknown
             # attempts remain occupied and never gain another call by reentry.
             _write(root,directory+'/intent.json',{'schema_version':DELIVERY,'key':key,'identity':identity,'admission':admission_ref})
@@ -325,7 +333,6 @@ def execute(root,operation_id, *, publication_only=False,derived=None,model_requ
                     and _read(root,directory+'/w/schema.json')==_schema_bytes(schema)
                     and {p.name for p in workspace.iterdir()}=={'prompt.txt','schema.json'},'unchanged complete input files')
                 dispatch_attempts+=1
-                active_runner=_official_runner(root=root)
                 run_isolated_model(active_runner,workspace=workspace,
                     prompt_path=workspace/'prompt.txt',output_path=workspace/'output.json',timeout_sec=TIMEOUT,
                     wall_timeout_sec=TIMEOUT+30,output_schema=workspace/'schema.json',model_request_budget=1,
@@ -342,8 +349,9 @@ def execute(root,operation_id, *, publication_only=False,derived=None,model_requ
                 need(_provider_ok(active_runner.name,evidence['model_provider']) and evidence['thread_id'] not in
                     set(subject['native_threads'])|{r['evidence']['thread_id'] for r in prefix}
                     and evidence['turn_id'] not in set(subject['native_turns'])|{r['evidence']['turn_id'] for r in prefix}
-                    and all(r['evidence']['runtime_configuration']['model']==evidence['model'] for r in prefix),
-                    'independent official high/no-tools node thread, turn, and consistent model')
+                    and all(r['evidence']['runtime_configuration']['model']==evidence['model']
+                            and r['evidence']['runtime_configuration']['provider']==evidence['model_provider'] for r in prefix),
+                    'independent official high/no-tools node thread, turn, provider, and consistent model')
                 result={'schema_version':DELIVERY,'node_id':node['node_id'],'identity':identity,'admission':admission_ref,
                     'outcome':{'output_digest':codec.raw_digest(output),'execution_digest':codec.raw_digest(_read(root,directory+'/execution.json'))},
                     'evidence':{'thread_id':evidence['thread_id'],'turn_id':evidence['turn_id'],
@@ -351,10 +359,10 @@ def execute(root,operation_id, *, publication_only=False,derived=None,model_requ
                     'provider':evidence['model_provider'],'reasoning_effort':'high'},'provider_actual_model':'unknown','physical_requests':'unknown'}}
                 _write(root,directory+'/result.json',result)
                 _write(root,directory+'/completed.json',_ref(root,directory+'/result.json'))
-                prefix.append(_replay(root,subject,plan,packet,node,prefix))
             except BaseException as error:
                 _write(root,directory+'/unknown.json',{'schema_version':DELIVERY,'key':key,'error_type':type(error).__name__})
                 raise
+            prefix.append(_replay(root,subject,plan,packet,node,prefix))
         return {'status':'review_segmented_executed','completed_nodes':len(prefix),'model_dispatched':dispatch_attempts>0,
                 'runner_dispatch_attempts':dispatch_attempts,'physical_provider_requests':'unknown',
                 'budget_claim':BUDGET_CLAIM,'host_review_ref':None}

@@ -67,7 +67,8 @@
           ]
         },
         "reason": {
-          "$ref": "newrouge.b-route-adoption-operation.v1#/$defs/String"
+          "$ref": "newrouge.b-route-adoption-operation.v1#/$defs/String",
+          "pattern": "\\S"
         },
         "host_review_ref": {
           "$ref": "newrouge.b-route-adoption-operation.v1#/$defs/Reference"
@@ -199,9 +200,12 @@
             },
             "task_definitions": {
               "type": "object",
-              "additionalProperties": {
-                "$ref": "newrouge.b-route-adoption-operation.v1#/$defs/Digest"
-              }
+              "patternProperties": {
+                "^[0-9]+$": {
+                  "$ref": "newrouge.b-route-adoption-operation.v1#/$defs/Digest"
+                }
+              },
+              "additionalProperties": false
             }
           },
           "required": [

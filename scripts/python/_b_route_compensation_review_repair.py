@@ -134,7 +134,7 @@ def _recorded_node(root,subject,packet,plan,node,prefix,rule,header):
         read(root,directory+'/request.txt')==request.encode() and
         read(root,directory+'/measurement.json')==review.raw(report),'exact original complete request/schema/measurement')
     execution=value(root,directory+'/execution.json');output=read(root,directory+'/w/output.json')
-    need(execution['command']==engine._command(workspace),'original official runner command')
+    need(execution['command']==engine._command(workspace,runner='codex_isolated_model_runner.py',root=root),'original official runner command')
     receipt=receipt_from(execution)
     validate_execution(workspace,execution,receipt,'auto',output,prompt=engine._frame(prompt,schema),schema=schema,
                        require_runtime=True,expected_reasoning_effort='high')
@@ -333,20 +333,23 @@ def _new_result(root,base,s,p,old):
         and read(root,lane+'/request.txt')==request.encode() and read(root,lane+'/measurement.json')==review.raw(report),
         'complete exact repair request/schema/measurement')
     execution=value(root,lane+'/execution.json');output=read(root,lane+'/w/output.json')
-    need(execution['command']==engine._command(workspace),'exact official one-call repair runner')
+    cmd_tokens=execution.get('command') if isinstance(execution.get('command'),list) else []
+    recorded_runners=[Path(t).name for t in cmd_tokens if isinstance(t,str) and Path(t).name in ('codex_isolated_model_runner.py','gemini_isolated_model_runner.py')]
+    need(len(recorded_runners)==1 and execution['command']==engine._command(workspace,runner=recorded_runners[0],root=root),'exact official one-call repair runner')
     receipt=receipt_from(execution)
-    validate_execution(workspace,execution,receipt,'auto',output,prompt=engine._frame(prompt,schema),schema=schema,
+    expected_model=engine._expected_node_model(recorded_runners[0],root)
+    validate_execution(workspace,execution,receipt,expected_model,output,prompt=engine._frame(prompt,schema),schema=schema,
         require_runtime=True,expected_reasoning_effort='high')
     e=receipt['model_identity_evidence'][0]
     previous=[*old['prefix'],{'evidence':old['failed_evidence']}]
-    need(e['model_provider']=='openai' and e['thread_id'] not in set(s['native_threads'])|{r['evidence']['thread_id'] for r in previous}
+    need(engine._provider_ok(recorded_runners[0],e['model_provider']) and e['thread_id'] not in set(s['native_threads'])|{r['evidence']['thread_id'] for r in previous}
         and e['turn_id'] not in set(s['native_turns'])|{r['evidence']['turn_id'] for r in previous},
         'new high/no-tools review independent of candidate and both previous reviews')
     engine._verdict(codec.strict_json_loads(output),schema,p['nodes'][1])
     return {'schema_version':DELIVERY,'identity':identity,'allowance':ref(root,lane+'/allowance.json'),
         'output_digest':codec.raw_digest(output),'execution_digest':codec.raw_digest(read(root,lane+'/execution.json')),
         'evidence':{'thread_id':e['thread_id'],'turn_id':e['turn_id'],'protocol_digest':e['protocol_sha256'],
-            'runtime_configuration':{'model':e['model'],'provider':'openai','reasoning_effort':'high'},
+            'runtime_configuration':{'model':e['model'],'provider':e['model_provider'],'reasoning_effort':'high'},
             'provider_actual_model':'unknown','physical_requests':'unknown'}}
 
 def execute(root,derived,*,model_request_budget=None,authorization_source=None,publication_only=False):
@@ -370,12 +373,14 @@ def execute(root,derived,*,model_request_budget=None,authorization_source=None,p
     write(root,lane+'/allowance.json',allowance)
     for name,data in {'w/prompt.txt':prompt.encode(),'w/schema.json':engine._schema_bytes(schema),
         'request.txt':request.encode(),'measurement.json':review.raw(report)}.items():review.write_once(root,lane+'/'+name,data)
+    workspace=review.path(root,lane+'/w')
+    need({p.name for p in workspace.iterdir()}=={'prompt.txt','schema.json'},'unchanged isolated one-request repair workspace')
     write(root,lane+'/intent.json',{'schema_version':DELIVERY,'identity':identity,'allowance':ref(root,lane+'/allowance.json')})
     try:
-        workspace=review.path(root,lane+'/w')
         need({p.name for p in workspace.iterdir()}=={'prompt.txt','schema.json'},'unchanged isolated one-request repair workspace')
         derived.recheck();_load(root,s['operation_id'])
-        run_isolated_model(Path(__file__).with_name('codex_isolated_model_runner.py'),workspace=workspace,
+        active_runner=engine._official_runner(root=root)
+        run_isolated_model(active_runner,workspace=workspace,
             prompt_path=workspace/'prompt.txt',output_path=workspace/'output.json',timeout_sec=engine.TIMEOUT,
             wall_timeout_sec=engine.TIMEOUT+30,output_schema=workspace/'schema.json',model_request_budget=1,
             execution_log=review.path(root,lane+'/execution.json'),suppress_bytecode=True,reasoning_effort='high')

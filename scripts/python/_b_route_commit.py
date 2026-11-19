@@ -111,7 +111,15 @@ def validate_local(root, envelope):
             raise codec.CodecError(checked.diagnostic)
         catalog = codec.strict_json_loads(catalog_raw)
         old = _decode(value['publication_base'])
-        revision = 1 if old is None else codec.strict_json_loads(old)['revision'] + 1
+        if old is None:
+            revision = 1
+        else:
+            old_checked = records.validate_record(old, path=records.CATALOG_PATH)
+            if not old_checked.ok:
+                raise codec.CodecError(old_checked.diagnostic)
+            old_rev = codec.strict_json_loads(old).get('revision')
+            _require(type(old_rev) is int and old_rev >= 1, 'positive integer publication base revision', intent_ref)
+            revision = old_rev + 1
         _require(catalog['revision'] == revision, 'one catalog revision per publication', intent_ref)
         heads = {row['scope_id']: row for row in catalog['scope_heads']}
         ref = projection.reference(records.BASE + 'commits/' + envelope['operation_id'] + '.json',
@@ -256,8 +264,11 @@ def _catalog_frame(root, envelope, raw, before_files, *, origins_raw=None):
     # retained exact before image; no foreign edit receives this exception.
     if not supplied_origin and origin_ref['path'] in before_files:
         original = _decode(before_files[origin_ref['path']])
-        if original is not None and codec.raw_digest(original) == origin_ref['digest']:
-            origins_raw = original
+        if original is not None:
+            original_digest = (codec.raw_digest(original) if origin_ref['verification_mode'] == 'raw'
+                               else codec.canonical_digest(codec.strict_json_loads(original)))
+            if original_digest == origin_ref['digest']:
+                origins_raw = original
     origins = codec.strict_json_loads(origins_raw)
     identity = codec.TypedReference.from_value(origin_ref)
     checked = records.validate_record(origins_raw, path=origin_ref['path'])
@@ -297,8 +308,12 @@ def _verify_observations(root, envelope, intent, *, published=False, initial=Fal
     subject = review.read_subject(root, envelope['operation_id'])
     reviewed = deepcopy(subject['preview'])
     reviewed['request'] = deepcopy(envelope['frozen']['request'])
-    review_ref = envelope['frozen']['request']['host_review_ref']
+    review_ref = envelope['frozen']['request'].get('host_review_ref')
+    _require(type(review_ref) is dict and type(review_ref.get('path')) is str,
+             'valid host review reference', envelope['operation_id'])
     review_proof = codec.strict_json_loads(_read(root, review_ref['path']))
+    _require(type(review_proof) is dict and type(review_proof.get('files')) is list,
+             'valid host review proof', envelope['operation_id'])
     reviewed['authority_refs'] = sorted([*reviewed['authority_refs'], review_ref,
                                         *review_proof['files']], key=lambda row: row['path'])
     _require(codec.canonical_digest(reviewed) == envelope['frozen_digest'],
@@ -499,7 +514,7 @@ def _initial(root, envelope, snapshot):
     before = {row['path']: _encode(_read(root, row['path'], optional=True)) for row in envelope['frozen']['targets']}
     before[records.CATALOG_PATH] = _encode(_read(root, records.CATALOG_PATH, optional=True))
     if before[records.CATALOG_PATH] is not None:
-        records.published_bundle(root, task_join=_task_join(root))
+        records.published_bundle(root, catalog_raw=_decode(before[records.CATALOG_PATH]), task_join=_task_join(root))
     receipt = _draft(root, envelope, _decode(before[records.CATALOG_PATH]))
     origins_before = None
     if before[records.CATALOG_PATH] is not None:
@@ -592,8 +607,12 @@ def _lineage_proven(root, envelope, intent, current, *, graph=None):
 def terminal_valid(root, envelope, intent=None, *, graph=None):
     """Prove completed publication history, independently of current consumption."""
     intent = validate_local(root, envelope) if intent is None else intent
+    pending_rel = _paths(envelope['operation_id'])[1]
+    pending = (graph['local_bytes'].get(pending_rel)
+               if graph is not None and 'local_bytes' in graph
+               else _read(root, pending_rel, optional=True))
     return (intent is not None and intent['phase'] == 'complete'
-        and _read(root, _paths(envelope['operation_id'])[1], optional=True) is None
+        and pending is None
         and _publication_proven(root, envelope, intent, graph=graph, historical=True))
 
 
@@ -626,7 +645,8 @@ def _original_activity(root, envelope):
     run = run_location(root, material['planner'], material['run_id'])
     state = codec.strict_json_loads(_read(root, (run / 'run.json').relative_to(root).as_posix()))
     store = root / 'logs/ci/mvg-recovery'
-    _require(type(state.get('recovery', {}).get('store')) is str
+    _require(type(state) is dict and type(state.get('recovery')) is dict
+             and type(state['recovery'].get('store')) is str
              and Path(state['recovery']['store']).resolve() == store.resolve(), 'original local recovery owner', material['run_id'])
     with operation_lock(root, state), coordinator_lock(run):
         yield
@@ -645,7 +665,7 @@ def _step(root, envelope, intent, stage):
                  'same catalog throughout current terminal no-op', records.CATALOG_PATH,
                  codec.ReasonCode.INPUT_STALE)
         return _result(envelope, intent, published=True, noop=True)
-    if intent['phase'] == 'complete':
+    if intent['phase'] in ('published', 'complete'):
         _require(stage == 'publish', 'explicit publish to finish pending cleanup', 'pending terminal cleanup', codec.ReasonCode.PENDING)
     if stage == 'publish' and _publication_proven(root, envelope, intent):
         _verify_observations(root, envelope, intent, published=True)
@@ -682,7 +702,9 @@ def _step(root, envelope, intent, stage):
         _require(journal.classify_frozen_target(root, target)['state'] == 'after', 'all exact after images', target['path'])
     candidates = _candidates(root, envelope)
     current_catalog = _read(root, records.CATALOG_PATH, optional=True)
-    already_published = intent['catalog_after'] is not None and current_catalog == _decode(intent['catalog_after'])
+    already_published = (intent['catalog_after'] is not None
+                         and (current_catalog == _decode(intent['catalog_after'])
+                              or _publication_proven(root, envelope, intent)))
     publication_base = _decode(intent['publication_base']) if already_published else current_catalog
     if publication_base is not None:
         candidates[records.CATALOG_PATH] = publication_base
@@ -715,6 +737,8 @@ def _step(root, envelope, intent, stage):
         intent = _save(root, intent, 'publishing')
     _checkpoint('catalog_intent_durable')
     if actual != catalog_raw:
+        _require(intent['phase'] in ('applied', 'verified', 'publishing'),
+                 'unpublished phase before catalog replacement', intent['phase'])
         _verify_observations(root, envelope, intent)
         _require(_read(root, records.CATALOG_PATH, optional=True) == publication_base,
                  'unchanged catalog at publication boundary', records.CATALOG_PATH)
@@ -734,6 +758,7 @@ def _step(root, envelope, intent, stage):
 
 def execute(root, *, operation_id, stage):
     _require(stage in ('apply', 'verify', 'publish'), 'apply|verify|publish', stage, codec.ReasonCode.INVALID_ARGUMENT)
+    journal._operation_key(operation_id)
     root = Path(root).absolute()
     boundary_token = _BOUNDARY.set(None)
     try:
@@ -796,6 +821,7 @@ def inspect_recovery(root, *, operation_id):
     Full saved proof replay runs before short writer leases. Initial admission
     remains execute/apply's responsibility; inspection never fabricates one.
     """
+    journal._operation_key(operation_id)
     root = Path(root).absolute()
     boundary_token = _BOUNDARY.set(None)
     try:
@@ -872,6 +898,7 @@ def inspect_recovery(root, *, operation_id):
 
 def recover(root, *, operation_id):
     """Advance only observed missing steps through the sole commit executor."""
+    journal._operation_key(operation_id)
     try:
         for _ in range(4):
             facts = inspect_recovery(root, operation_id=operation_id)

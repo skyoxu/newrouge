@@ -137,6 +137,42 @@ class SegmentedExecutionDataTests(unittest.TestCase):
         self.assertEqual(review.text({'prompt':request,'output_schema':schema}),archived)
         report=json.loads((workspace.parent/'measurement.json').read_text())
         self.assertEqual(len(archived.encode('utf-8')),report['request_bytes'])
+        runner_name=Path(runner).name
+        if runner_name=='gemini_isolated_model_runner.py':
+            import _gemini_cli_protocol as gemini_protocol
+            gemini_model=getattr(self,'gemini_model','gemini-4-carbon-high')
+            session_id=('ancestor-thread' if self.ancestor_thread else
+                '550e8400-e29b-41d4-a716-44665544000'+str(getattr(self,'reused_thread_number',1) if self.reused_thread else number))
+            prompt_sha=gemini_protocol.digest(request.encode('utf-8'))
+            schema_sha=gemini_protocol.schema_digest(schema)
+            settings_sha=gemini_protocol.digest(gemini_protocol._canonical_bytes(gemini_protocol.build_isolated_settings('high'))+b'\n')
+            launch_cmd=gemini_protocol.gemini_command('/usr/local/bin/gemini',gemini_model)
+            g_rows=[
+                {'direction':'host','event':'gemini_cli_launch','executable':'/usr/local/bin/gemini','command':launch_cmd,
+                 'model':gemini_model,'model_provider':'google','requested_reasoning_effort':'high','runtime_reasoning_effort':'high',
+                 'isolated_settings_sha256':settings_sha,'system_settings_sha256':settings_sha,
+                 'system_md_sha256':'sha256:'+('a'*64),'prompt_sha256':prompt_sha,'schema_sha256':schema_sha,'model_tools':[]},
+                {'direction':'stdout','line':{'type':'init','timestamp':'2026-11-20T00:00:00Z','session_id':session_id,'model':gemini_model}},
+                {'direction':'stdout','line':{'type':'message','timestamp':'2026-11-20T00:00:01Z','role':'user','content':request}},
+                {'direction':'stdout','line':{'type':'message','timestamp':'2026-11-20T00:00:02Z','role':'assistant','content':output,'delta':True}},
+                {'direction':'stdout','line':{'type':'result','timestamp':'2026-11-20T00:00:03Z','status':'success','stats':{'tool_calls':0,'total_tokens':10}}},
+                {'direction':'exit','returncode':0,'stderr_sha256':gemini_protocol.digest(b'')},
+            ]
+            raw_stream=('\n'.join(json.dumps(r,separators=(',',':')) for r in g_rows)+'\n').encode('utf-8')
+            text,evidence=gemini_protocol.replay(raw_stream,prompt=request,schema=schema)
+            receipt={'schema_version':'newrouge.isolated-model-runner-receipt.v1','model':evidence['model'],
+                'model_provider':'google','model_identity':'google/'+evidence['model'],'model_identity_source':gemini_protocol.SOURCE,
+                'model_identity_scope':'runtime_configuration','evidence_policy':gemini_protocol.POLICY,
+                'runtime_identity_verified':True,'model_identity_verified':False,'provider_identity_verified':False,
+                'provider_reported_model':None,'provider_dispatch_count':'unknown','model_identity_evidence':[evidence],
+                'model_tools':[],'request_count_observable':True,'model_request_count':1,'runner_invocations':1,
+                'workspace':workspace.as_posix(),'output_chars':len(text)}
+            stdout=review.text(receipt)+'\n'
+            execution={'command':engine._command(workspace,runner=runner_name,root=self.root),'status':'completed','returncode':0,
+                'runner_dispatch_count':1,'active_elapsed_seconds':0.01,'stdout':stdout,
+                'stdout_base64':base64.b64encode(stdout.encode()).decode()}
+            output_path.write_bytes(text.encode());execution_log.write_bytes(review.raw(execution))
+            return
         rows=protocol(workspace,prompt=request,output=output,schema=schema,provider='openai')
         def rename(v):
             if type(v) is dict:return {k:rename(x) for k,x in v.items()}
@@ -157,10 +193,62 @@ class SegmentedExecutionDataTests(unittest.TestCase):
             'model_tools':[],'request_count_observable':True,'model_request_count':1,'runner_invocations':1,
             'workspace':workspace.as_posix(),'output_chars':len(text)}
         stdout=review.text(receipt)+'\n'
-        execution={'command':engine._command(workspace),'status':'completed','returncode':0,
+        execution={'command':engine._command(workspace,runner=runner_name,root=self.root),'status':'completed','returncode':0,
             'runner_dispatch_count':1,'active_elapsed_seconds':0.01,'stdout':stdout,
             'stdout_base64':base64.b64encode(stdout.encode()).decode()}
         output_path.write_bytes(text.encode());execution_log.write_bytes(review.raw(execution))
+
+    def test_gemini_runner_execution_replay_and_complete_review_seals_segmented_proof(self):
+        import _b_route_adoption as adoption
+        import _b_route_compensation as compensation
+        import _b_route_operation_scope as scope
+        from contextlib import nullcontext
+        with patch.dict(os.environ,{'NEWROGUE_PLANE_B_RUNNER':'gemini'}):
+            self.assertEqual('gemini_isolated_model_runner.py',engine._official_runner(root=self.root).name)
+            self.prepare()
+            result=self.execute(derived=self.derived)
+            self.assertEqual(3,result['completed_nodes'])
+            proof,_saved,_=engine.produce_proof(self.root,'DATA-Multi')
+            self.assertEqual(engine.PROOF,proof['schema_version'])
+            for node_ev in proof['evidence']['nodes']:
+                self.assertEqual('google',node_ev['runtime_configuration']['provider'])
+                self.assertEqual('gemini-4-carbon-high',node_ev['runtime_configuration']['model'])
+            frozen={'scope_ids':['plan:test'],'allocations':{}}
+            sealed_subject={**deepcopy(self.subject),'preview':{**deepcopy(self.subject['preview']),'allocations':{}}}
+            snap=SimpleNamespace(root=self.root,_qualified_history_handles=[],ref=lambda r:None,verify=lambda:None)
+            with patch.object(review,'read_subject',return_value=deepcopy(sealed_subject)), \
+                    patch.object(compensation,'build',return_value=(snap,frozen)), \
+                    patch.object(compensation,'make_subject',return_value=deepcopy(sealed_subject)), \
+                    patch.object(scope,'business_guard',return_value=nullcontext()), \
+                    patch.object(scope,'writer_boundary',return_value=nullcontext()):
+                sealed=adoption.complete_review(self.root,operation_id='DATA-Multi')
+            self.assertEqual('reviewed',sealed['status'])
+            self.assertEqual(engine.PROOF,sealed['host_review_ref']['schema_version'])
+            self.assertEqual(engine.DELIVERY,sealed['review_delivery'])
+
+    def test_cross_node_provider_and_model_mismatch_rejected(self):
+        self.prepare()
+        original=review.write_once
+        def stop_before_node1(root,name,data):
+            if name.endswith('/segmented/nodes/001/w/prompt.txt'):
+                raise OSError('DATA stopped after node 0')
+            return original(root,name,data)
+        with patch.object(review,'write_once',side_effect=stop_before_node1),self.assertRaises(OSError):
+            self.execute(derived=self.derived)
+        self.assertEqual(1,len(self.calls))
+        with patch.dict(os.environ,{'NEWROGUE_PLANE_B_RUNNER':'gemini'}),self.assertRaises(codec.CodecError):
+            self.execute(derived=self.derived)
+        self.assertEqual(1,len(self.calls))
+        self.assertEqual(1,len(self.intents()))
+        # Also verify _replay rejects a cross-node model mismatch in prefix.
+        self.execute(derived=self.derived)
+        home=review.location('DATA-Multi')
+        plan=json.loads((self.root/home/engine.MARKER).read_text())
+        node0=engine._replay(self.root,self.subject,plan,self.packet,plan['nodes'][0],[])
+        tampered=deepcopy(node0)
+        tampered['evidence']['runtime_configuration']['model']='different-model'
+        with self.assertRaises(codec.CodecError):
+            engine._replay(self.root,self.subject,plan,self.packet,plan['nodes'][1],[tampered])
 
     def test_three_nodes_real_replay_proof_and_no_second_dispatch(self):
         self.prepare();result=self.execute(derived=self.derived)

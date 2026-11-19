@@ -62,3 +62,21 @@
 - source_spec: `_bmad-output/implementation-artifacts/b-route/spec-2-6-frozen-adoption-operation.md`
   summary: `origin_profile` v2 扩展负向单测增强。
   evidence: `logs/ci/2026-11-19/epic2-review/`；当前 `origin-prepare` 与默认 profile 路径已覆盖，v2 扩展字段与更多异常组合负向用例列为后续测试增强项。
+
+## Deferred from: code review of Story 2.8 (2026-11-20)
+
+- source_spec: `_bmad-output/implementation-artifacts/b-route/spec-2-8-public-recovery.md`
+  summary: 未发布失败补偿之上的多跳补偿链（multi-hop compensation chains on failed unpublished compensation）。
+  evidence: `logs/ci/2026-11-20/story-2-8-review/`；当前合同约束每个原 claim 仅允许单一受审阅补偿接续，多跳未发布补偿链需新 ADR 与状态机协议，不阻塞 Story 2.8 收口。
+
+- source_spec: `_bmad-output/implementation-artifacts/b-route/spec-2-8-public-recovery.md`
+  summary: 单路径 `task-origins.v1.json` 正式 schema 合约收敛。
+  evidence: `logs/ci/2026-11-20/story-2-8-review/`；当前 `origins` 与六正式 schema 保持 Epic 1/2 兼容性，单路径正式 schema 修订留待后续治理 Story 统一变更。
+
+- source_spec: `_bmad-output/implementation-artifacts/b-route/spec-2-8-public-recovery.md`
+  summary: 分段审阅实时模型派发期间长期持有 `business_guard` 的锁粒度优化。
+  evidence: `logs/ci/2026-11-20/story-2-8-review/`；当前 `business_guard` 仅锁定当前操作业务 scope 而不持有全局 `metadata/WRITER`，无关 scope 可继续推进；将实时模型调用移出业务锁并改为无锁提交重验留待后续并发优化。
+
+- source_spec: `_bmad-output/implementation-artifacts/b-route/spec-2-8-public-recovery.md`
+  summary: 历史 `ADR-0060` 83-pin `LEGACY_POLICY` 修复纪元（`_b_route_compensation_review_repair.py`）。
+  evidence: `logs/ci/2026-11-20/story-2-8-review/`；该 83-pin 与 `LEGACY_POLICY` 刻意锚定已发布的 ADR-0060 历史纪元以保障原始字节复验，不得在无专门纪元退役 ADR 下改动或删除。

@@ -111,6 +111,18 @@ class RecoveryTests(CommitFixture, unittest.TestCase):
         self.assertEqual(before, self.fx.files())
         self.assertEqual(original, journal.read_operation(self.root, operation_id='OP-one'))
 
+    def test_prepared_unreserved_operation_reports_reserve_and_blocks_recover(self):
+        self.fixture()
+        self.addCleanup(self.fx.doCleanups)
+        request = self.relocate_proofs(self.fx.case('one', 'OP-one'))
+        self.fx.prepare(request)
+        facts = commit.inspect_recovery(self.root, operation_id='OP-one')
+        self.assertEqual('untouched', facts['physical_state'])
+        self.assertEqual('reserve', facts['next_stage'])
+        with self.assertRaises(codec.CodecError) as caught:
+            self.resume('OP-one')
+        self.assertEqual(codec.ReasonCode.UNPUBLISHED, caught.exception.diagnostic.reason_code)
+
     def test_verified_source_support_rewrite_or_delete_never_becomes_a_new_boundary_expectation(self):
         for kind in ('source_rewrite', 'source_delete', 'support_rewrite', 'support_delete'):
             for timing in ('before_install', 'after_install', 'aba'):

@@ -101,18 +101,26 @@ def authorize_pending_claims(root, operation_id, frozen, *, pending_operations=(
         return frozenset(allowed)
     # Read-only, under complete business scopes and outside metadata/WRITER.
     # Unknown owned bytes, source drift and unrelated catalog changes still fail.
-    verify_observations(root, current, intent, facts=commit._VerifiedFacts())
+    verify_observations(root, current, intent, facts=commit._VerifiedFacts(),
+                        published=commit._publication_proven(root, current, intent))
     catalog_raw = commit._decode(intent['catalog_before'])
-    require(catalog_raw is not None
+    current_files = subject.get('current_files')
+    require(type(current_files) is dict, 'exact independently reviewed current files', operation_id,
+            codec.ReasonCode.INPUT_STALE)
+    cat_enc = current_files.get(records.CATALOG_PATH)
+    require(type(cat_enc) is str
+            and catalog_raw is not None
             and codec.raw_digest(catalog_raw) == frozen['compensation']['current_catalog_digest']
-            and base64.b64decode(subject['current_files'][records.CATALOG_PATH], validate=True) == catalog_raw,
+            and base64.b64decode(cat_enc, validate=True) == catalog_raw,
             'exact independently reviewed catalog-before anchor', operation_id, codec.ReasonCode.INPUT_STALE)
     candidates = {records.CATALOG_PATH: catalog_raw}
     for target in frozen['targets']:
         before = commit._decode(intent['before_files'][target['path']])
         if before is not None:
-            require(codec.raw_digest(before) == target['before_raw_digest']
-                    and base64.b64decode(subject['current_files'][target['path']], validate=True) == before,
+            enc = current_files.get(target['path'])
+            require(type(enc) is str
+                    and codec.raw_digest(before) == target['before_raw_digest']
+                    and base64.b64decode(enc, validate=True) == before,
                     'reviewed before image only for this exact owned target', target['path'],
                     codec.ReasonCode.INPUT_STALE)
             candidates[target['path']] = before
@@ -222,9 +230,16 @@ def _original_review(snapshot, operation, *, profile=profiles.ORIGINAL):
             'original reviewed frozen effects and authority identities', operation['operation_id'])
     qualified.consider_legacy_authorities(snapshot, subject)
     threads = set(subject['native_threads'])
-    if type(proof.get('evidence')) is dict and type(proof['evidence'].get('thread_id')) is str:
-        threads.add(proof['evidence']['thread_id'])
-    return sorted(threads), list(subject['native_turns'])
+    turns = set(subject['native_turns'])
+    ev = proof.get('evidence')
+    if type(ev) is dict:
+        if type(ev.get('thread_id')) is str:
+            threads.add(ev['thread_id'])
+        if type(ev.get('segments')) is list:
+            for seg in ev['segments']:
+                if type(seg) is dict and type(seg.get('thread_id')) is str:
+                    threads.add(seg['thread_id'])
+    return sorted(threads), sorted(turns)
 
 
 def _formal(snapshot, bundle, ref):
@@ -274,6 +289,7 @@ def build(root, request, *, allocations=None, review_profile=profiles.ORIGINAL):
     """Read actual current formal bytes and derive the whole preview and scope."""
     root = Path(root).absolute()
     journal.validate_operation_request(request)
+    require(is_request(request), REQUEST, request.get('schema_version'))
     inventory = journal.operation_inventory(root)
     original = next((row for row in inventory if row['operation_id'] == request['compensates']['operation_id']), None)
     require(original is not None and relation_for(original) == request['compensates']
@@ -491,7 +507,7 @@ def _persist_review(root, subject, artifacts):
         'subject_digest': codec.canonical_digest(subject), 'workspace': home + '/w',
         'machine_preservation': None, 'semantic_execution_required': True, 'model_dispatched': False,
         'runner_command': review.runner_command(root, operation_id),
-        'required_environment': {'NEWROGUE_CODEX_REASONING_EFFORT': 'high'},
+        'required_environment': review._review_required_environment(root),
         'execution_capture_ref': home + '/execution.json', **FLAGS}
 
     from _b_route_qualified_compensation_dispatch import for_subject
@@ -504,7 +520,15 @@ def _persist_review(root, subject, artifacts):
 
 def _review_preview_body(root, request, *, seal=False, delivery=None, segmented_preflight=False,segmented_action=None,model_request_budget=None):
     from _b_route_operation_scope import business_guard, writer_boundary
+    require(type(request) is dict and type(request.get('operation_id')) is str,
+            'valid compensation review request', type(request).__name__, codec.ReasonCode.INVALID_TYPE)
     require(not seal or delivery is None, 'saved delivery inferred only during review completion', delivery)
+    require(not (segmented_preflight and segmented_action is not None),
+            'mutually exclusive segmented preflight and execution action', segmented_action,
+            codec.ReasonCode.INVALID_ARGUMENT)
+    require(model_request_budget is None or segmented_action == 'execute',
+            'model_request_budget only on segmented execute', model_request_budget,
+            codec.ReasonCode.INVALID_ARGUMENT)
     require(not segmented_preflight or (not seal and delivery==profiles.PUBLISHED.name('delivery')),
             'explicit published-history offline segmented preflight',delivery)
     root = Path(root).absolute()
@@ -603,21 +627,30 @@ def _run_body(root, operation_id, request_raw, *, reserve_only=False):
         snapshot.verify()
         current = journal.operation_inventory(root)
         adoption.validate_operations(current)
+        live_existing = next((row for row in current if row['operation_id'] == operation_id), None)
+        require(not reserve_only or live_existing is not None, 'original prepared compensation', operation_id)
+        if live_existing is not None:
+            require(live_existing['request_digest'] == codec.canonical_digest(request),
+                    'same ID and complete request', operation_id)
+            require(live_existing['frozen'] == frozen, 'unchanged original frozen compensation', operation_id)
         # Do complete inventory/proof checking before acquiring global writer.
         captured = {journal._operation_ref(row['operation_id']): codec.read_reference_bytes(root,
             journal._operation_ref(row['operation_id'])) for row in current}
         index = journal.OPERATION_STORE + '/pending.json'
         index_path = journal._operation_path(root, index)
         index_raw = index_path.read_bytes() if index_path.exists() else None
-        value = ({**existing, 'state': 'reserved' if reserve_only else existing['state']} if existing else
-                 journal.draft_operation(root, request_raw=request_raw, frozen=frozen))
+        if live_existing is not None:
+            new_state = 'reserved' if (reserve_only or live_existing['state'] == 'reserved') else live_existing['state']
+            value = {**live_existing, 'state': new_state}
+        else:
+            value = journal.draft_operation(root, request_raw=request_raw, frozen=frozen)
         def unchanged():
             snapshot.verify()
             require(all(codec.read_reference_bytes(root, name) == raw for name, raw in captured.items())
                     and (index_path.read_bytes() if index_path.exists() else None) == index_raw,
                     'same complete operation/index allocation claim at short boundary', operation_id, codec.ReasonCode.INPUT_STALE)
         with writer_boundary(root, recheck=unchanged):
-            if existing != value:
+            if live_existing != value:
                 journal._operation_write(root, value, current, verify=False)
         require(journal.read_operation(root, operation_id=operation_id) == value,
                 'complete persisted operation/index after short write', operation_id)
@@ -652,8 +685,12 @@ def verify_observations(root, envelope, intent, *, facts, published=False):
             'current compensation rules and original reviewed subject', envelope['operation_id'], codec.ReasonCode.INPUT_STALE)
     expected = deepcopy(subject['preview'])
     expected['request'] = envelope['frozen']['request']
-    proof_ref = expected['request']['host_review_ref']
+    proof_ref = expected['request'].get('host_review_ref')
+    require(type(proof_ref) is dict and type(proof_ref.get('path')) is str,
+            'valid compensation host review reference', envelope['operation_id'])
     proof = codec.strict_json_loads(_read(root, proof_ref['path']))
+    require(type(proof) is dict and type(proof.get('files')) is list,
+            'valid compensation host review proof', envelope['operation_id'])
     expected['authority_refs'] = sorted([*expected['authority_refs'], proof_ref, *proof['files']], key=lambda row: row['path'])
     require(codec.canonical_digest(expected) == envelope['frozen_digest'],
             'exact reviewed compensation and support closure', envelope['operation_id'])
@@ -684,7 +721,7 @@ def verify_observations(root, envelope, intent, *, facts, published=False):
         facts.file(str(root / target['path']), checked['actual_raw_digest'])
     actual_catalog = _read(root, records.CATALOG_PATH)
     expected_catalog = _decode(intent['catalog_after']) if published else _decode(intent['catalog_before'])
-    if actual_catalog not in (_decode(intent['catalog_before']), _decode(intent['catalog_after'])):
+    if actual_catalog != expected_catalog and (published or actual_catalog != _decode(intent['catalog_after'])):
         require(_catalog_frame(root, envelope, actual_catalog, intent['before_files'])
                 == _catalog_frame(root, envelope, expected_catalog, intent['before_files']),
                 'unchanged related formal chain after unrelated publication', records.CATALOG_PATH, codec.ReasonCode.INPUT_STALE)
@@ -738,8 +775,11 @@ def repair_segmented_review(root,*,operation_id,stage,original_source_root=None,
     with action():
         saved=(qualified.read_subject(root,operation_id) if stage!='prepare' else
             codec.strict_json_loads(review.path(root,base+'/subject.json').read_bytes()))
+        require(type(saved) is dict and type(saved.get('request')) is dict
+                and type(saved.get('preview')) is dict and 'allocations' in saved['preview'],
+                'valid saved compensation review subject', operation_id)
         request=saved['request']
-        require(request['operation_id']==operation_id and request['schema_version']==REQUEST and
+        require(request.get('operation_id')==operation_id and request.get('schema_version')==REQUEST and
             'host_review_ref' not in request,'same original unsealed compensation request',operation_id)
         snapshot,frozen=build(root,request,allocations=saved['preview']['allocations'],review_profile=profiles.PUBLISHED)
         with business_guard(root,frozen['scope_ids'],operation_id=operation_id,review_only=True), \

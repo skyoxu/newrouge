@@ -150,14 +150,14 @@ def _execute(args):
         repair_stage=args.stage in ('review-segmented-repair-prepare','review-segmented-repair-execute','review-segmented-repair-resume')
         if args.stage not in ("review-prepare", "review-segmented-preflight", "review-segmented-prepare", "review-segmented-execute", "review-segmented-resume", "review-complete", "prepare", "reserve", "inspect", "apply", "verify", "publish", "read", "recover-inspect", "recover") and not repair_stage:
             raise codec.CodecError(codec.Diagnostic(codec.ReasonCode.INVALID_ARGUMENT,
-                entity_id=args.operation_id, expected="prepare|reserve|inspect", actual=args.stage))
+                entity_id=args.operation_id, expected="origin-prepare|review-prepare|review-segmented-preflight|review-segmented-prepare|review-segmented-execute|review-segmented-resume|review-segmented-repair-prepare|review-segmented-repair-execute|review-segmented-repair-resume|review-complete|prepare|reserve|inspect|apply|verify|publish|read|recover-inspect|recover", actual=args.stage))
         if (args.stage in ("review-prepare", "review-segmented-preflight", "review-segmented-prepare", "prepare")) != (args.request is not None):
             raise codec.CodecError(codec.Diagnostic(codec.ReasonCode.INVALID_ARGUMENT,
                 entity_id=args.operation_id, expected="--request on review-prepare, review-segmented-preflight, review-segmented-prepare or prepare only",
                 actual={"stage": args.stage, "request_supplied": args.request is not None}))
         compensation_delivery = getattr(args, 'compensation_review_delivery', None)
         if args.model_request_budget is not None and args.stage not in ('review-segmented-execute','review-segmented-repair-execute'):
-            raise codec.CodecError(codec.Diagnostic(codec.ReasonCode.INVALID_ARGUMENT,expected='--model-request-budget on review-segmented-execute only',actual=args.stage))
+            raise codec.CodecError(codec.Diagnostic(codec.ReasonCode.INVALID_ARGUMENT,expected='--model-request-budget on review-segmented-execute or review-segmented-repair-execute only',actual=args.stage))
         if (getattr(args,'original_source_root',None) is not None)!=(args.stage=='review-segmented-repair-prepare'):
             raise codec.CodecError(codec.Diagnostic(codec.ReasonCode.INVALID_ARGUMENT,expected='--original-source-root on repair prepare only',actual=args.stage))
         if getattr(args,'review_authorization_source',None) is not None and args.stage!='review-segmented-repair-execute':

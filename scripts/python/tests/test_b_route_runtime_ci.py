@@ -27,6 +27,9 @@ class RuntimeCITests(unittest.TestCase):
     def test_complete_commit_modules_are_selected_once_without_replacing_existing_owners(self):
         selected = selector_names()
         for name in ('commit', 'commit_e1', 'commit_projection', 'commit_images', 'commit_recovery', 'compensation',
+                     'published_history', 'qualified_render_retention_v2',
+                     'compensation_partition', 'compensation_segments', 'compensation_segmented_execution',
+                     'compensation_review_repair', 'compensation_multiview_owner', 'compensation_multiview_transport_v2',
                      'initial_legacy', 'qualified_historical_v3', 'planning_input', 'candidate',
                      'adoption', 'adoption_cli', 'adoption_concurrency', 'adoption_journal',
                      'adoption_projection', 'adoption_r10_capture', 'adoption_r10_reader',
@@ -39,6 +42,37 @@ class RuntimeCITests(unittest.TestCase):
                          'scripts.python.tests.test_mvg_capability_worker',
                          'scripts.python.tests.test_inherited_pipe_cleanup'):
             self.assertIn(selector, selected)
+
+    def test_windows_recovery_ci_runner_enforces_four_controls_windows_only_and_sha_match(self):
+        import importlib.util
+        import json
+        script = ROOT / 'scripts/ci/run_b_route_windows_recovery_checks.py'
+        spec = importlib.util.spec_from_file_location('b_route_windows_recovery_checks_test', script)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        suite = unittest.TestSuite(unittest.defaultTestLoader.loadTestsFromName(name) for name in mod.SELECTORS)
+        self.assertEqual(4, suite.countTestCases())
+        with tempfile.TemporaryDirectory() as temporary:
+            temp_root = Path(temporary)
+            (temp_root / 'scripts/python').mkdir(parents=True)
+            (temp_root / 'scripts/sc').mkdir(parents=True)
+            with patch.object(mod, 'ROOT', temp_root), \
+                    patch.object(mod.subprocess, 'check_output', return_value='deadbeef\n'), \
+                    patch.dict(os.environ, {'GITHUB_SHA': 'deadbeef'}, clear=False), \
+                    patch.object(mod.os, 'name', 'posix'):
+                self.assertEqual(2, mod.main())
+            summary = json.loads((temp_root / 'logs/ci/b-route-deterministic/windows-recovery/summary.json').read_text(encoding='utf-8'))
+            self.assertEqual('blocked', summary['status'])
+            self.assertEqual(0, summary['tests_run'])
+        with tempfile.TemporaryDirectory() as temporary:
+            temp_root = Path(temporary)
+            (temp_root / 'scripts/python').mkdir(parents=True)
+            (temp_root / 'scripts/sc').mkdir(parents=True)
+            with patch.object(mod, 'ROOT', temp_root), \
+                    patch.object(mod.subprocess, 'check_output', return_value='deadbeef\n'), \
+                    patch.dict(os.environ, {'GITHUB_SHA': 'different_sha'}, clear=False), \
+                    self.assertRaises(RuntimeError):
+                mod.main()
 
     def test_dedicated_mode_invokes_only_the_maintained_runtime_gate(self):
         from scripts.python import run_gate_bundle as gates

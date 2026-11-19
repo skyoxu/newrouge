@@ -92,11 +92,13 @@ class AuthStorageDataTests(unittest.TestCase):
     def test_saved_context_and_its_full_buffers_remain_charged(self):
         class Context:
             proof={'complete':'saved proof'}
+            refs=[{'path':'support','raw_digest':'sha256:'+'0'*64}]
+            evidence={'thread_id':'t1'}
             buffers={'support':b'full captured bytes'}
         d=self.derived(context=Context())
         d.freeze_auth()
         metrics,buffers=d.private_metrics()
-        self.assertEqual(len(metrics),2)
+        self.assertEqual(len(metrics),4)
         self.assertEqual(buffers,[len(d.auth_bytes),len(Context.buffers['support'])])
 
     def test_failed_freeze_keeps_original_graph_and_exhausted_account(self):

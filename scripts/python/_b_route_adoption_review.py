@@ -267,15 +267,25 @@ def make_subject(snapshot, request, frozen):
     for ref in request['material']['authority_refs'] + request['material']['lineage_refs']:
         data = snapshot.read(ref['path'])
         require(codec.raw_digest(data) == ref['raw_digest'], ref['raw_digest'], ref['path'])
+        try:
+            decoded_text = data.decode('utf-8', errors='strict')
+        except UnicodeDecodeError:
+            require(False, 'valid UTF-8 authority or lineage text', ref['path'], codec.ReasonCode.INVALID_UTF8)
         authorities.append({'reference': deepcopy(ref), 'raw_base64': base64.b64encode(data).decode('ascii'),
-                            'text': data.decode('utf-8', errors='strict')})
+                            'text': decoded_text})
     before = []
     for target in frozen['targets']:
         data = snapshot.read(target['path'], optional=True)
         require((codec.raw_digest(data) if data is not None else None) == target['before_raw_digest'],
                 target['before_raw_digest'], target['path'], codec.ReasonCode.INPUT_STALE)
+        decoded_before = None
+        if data is not None:
+            try:
+                decoded_before = data.decode('utf-8', errors='strict')
+            except UnicodeDecodeError:
+                require(False, 'valid UTF-8 target before text', target['path'], codec.ReasonCode.INVALID_UTF8)
         before.append({'path': target['path'], 'raw_base64': base64.b64encode(data).decode('ascii') if data is not None else None,
-                       'text': data.decode('utf-8', errors='strict') if data is not None else None})
+                       'text': decoded_before})
     plan_ids = {value['plan_id'] for value in records.values()}
     plan_ids.add(frozen['allocations']['plan_id'])
     catalog = snapshot.catalog
@@ -491,15 +501,21 @@ def path(root, relative):
 def write_once(root, relative, data):
     target = path(root, relative)
     if target.exists():
+        require(target.is_file(), 'plain review artifact file', relative, codec.ReasonCode.UNSAFE_PATH)
         require(target.read_bytes() == data, 'same immutable review artifact', relative, codec.ReasonCode.CONFLICT)
         return
     target.parent.mkdir(parents=True, exist_ok=True)
     target = path(root, relative)
     # A partial write is retained as a conflict; never replace an uncertain artifact.
-    with target.open('xb') as stream:
-        stream.write(data)
-        stream.flush()
-        os.fsync(stream.fileno())
+    try:
+        with target.open('xb') as stream:
+            stream.write(data)
+            stream.flush()
+            os.fsync(stream.fileno())
+    except FileExistsError:
+        target = path(root, relative)
+        require(target.is_file(), 'plain review artifact file', relative, codec.ReasonCode.UNSAFE_PATH)
+        require(target.read_bytes() == data, 'same immutable review artifact', relative, codec.ReasonCode.CONFLICT)
 
 
 def read_subject(root, operation_id):
@@ -533,14 +549,17 @@ def read_subject(root, operation_id):
     if dual:
         require('native_capture' not in value, 'one typed origin capture lane', 'mixed legacy capture')
         fields += ('origin_capsule', 'target_dependencies')
+    shape(value, fields, 'review subject')
+    if dual:
         require(type(value['target_dependencies']) is dict, 'closed target dependency map', 'invalid map')
         for reference in value['target_dependencies']:
             codec.validate_reference_path(reference)
+        require(type(value['origin_capsule']) is dict, 'origin capsule object', type(value['origin_capsule']).__name__,
+                codec.ReasonCode.INVALID_TYPE)
         from _b_route_qualified_origin import verify_capsule, public_subject
-        require(value['origin_capsule']['operation_id'] == operation_id, 'same origin capsule operation', operation_id)
+        require(value['origin_capsule'].get('operation_id') == operation_id, 'same origin capsule operation', operation_id)
         verify_capsule(root, value['origin_capsule'])
         public_subject(value)
-    shape(value, fields, 'review subject')
     require(value['schema_version'] == (ADOPTION_V2_SUBJECT if dual else SUBJECT) and value['operation_id'] == operation_id
             and value['policy_identity'] == policy_identity(), 'current operation-bound review policy', operation_id)
     return value
@@ -1064,7 +1083,7 @@ _SEGMENTED_ADOPTION_PLAN_CACHE = {}
 
 def build_segmented_adoption_plan(subject):
     from _capability_input_integrity import configured_input_limit, measure_request
-    cache_key = (subject.get('operation_id'), codec.canonical_digest(subject))
+    cache_key = (subject.get('operation_id'), codec.canonical_digest(subject), configured_input_limit())
     if cache_key in _SEGMENTED_ADOPTION_PLAN_CACHE:
         return deepcopy(_SEGMENTED_ADOPTION_PLAN_CACHE[cache_key])
     header, units = _decompose_adoption_subject(subject)
@@ -1172,7 +1191,8 @@ def build_segmented_adoption_plan(subject):
         idx = best_end
 
     seg_count = len(batches)
-    require(seg_count >= 1, 'at least one deterministic adoption review segment', seg_count)
+    require(1 <= seg_count <= 999, 'between 1 and 999 deterministic adoption review segments', seg_count,
+            codec.ReasonCode.INVALID_ARGUMENT)
     plan_manifest = {
         'schema_version': SEGMENTED_ADOPTION_PLAN,
         'delivery': SEGMENTED_ADOPTION_DELIVERY,
@@ -2014,24 +2034,27 @@ def produce_proof(root, operation_id):
 
 def seal(root, operation_id, value):
     """Commit the already verified proof under its caller's complete scopes."""
+    require(type(value) is dict and type(value.get('schema_version')) is str,
+            'closed proof object with schema_version', type(value).__name__, codec.ReasonCode.INVALID_TYPE)
     from _b_route_compensation_segmented_execution import PROOFS as SEGMENTED_PROOFS
-    if value.get('schema_version') in SEGMENTED_PROOFS:return _qualified_owner_v2().seal(root,operation_id,value)
-    if value.get('schema_version') in ('newrouge.b-route-qualified-compensation-review-proof.v2', 'newrouge.b-route-qualified-compensation-review-proof.v3'):
+    if value['schema_version'] in SEGMENTED_PROOFS:return _qualified_owner_v2().seal(root,operation_id,value)
+    if value['schema_version'] in ('newrouge.b-route-qualified-compensation-review-proof.v2', 'newrouge.b-route-qualified-compensation-review-proof.v3'):
         return _qualified_owner_v2().seal(root, operation_id, value)
-    if value.get('schema_version') == 'newrouge.b-route-qualified-compensation-review-proof.v1':
+    if value['schema_version'] == 'newrouge.b-route-qualified-compensation-review-proof.v1':
         return _qualified_owner().seal(root, operation_id, value)
-    require(value['operation_id'] == operation_id and value['policy_identity'] == policy_identity(),
-            'same operation and current review policy', operation_id)
     fields = ('schema_version', 'operation_id', 'subject_digest', 'policy_identity', 'mode', 'evidence', 'files')
     require(value['schema_version'] in (PROOF, ADOPTION_V2_PROOF, COMPENSATION_PROOF), 'known proof version', value['schema_version'])
     if value['schema_version'] == COMPENSATION_PROOF:
         fields += ('claim', 'materials_digest', 'roles_digest', 'presentation_digest', 'request_raw_digest')
+    shape(value, fields, 'closed original or materials proof')
+    require(value['operation_id'] == operation_id and value['policy_identity'] == policy_identity(),
+            'same operation and current review policy', operation_id)
+    if value['schema_version'] == COMPENSATION_PROOF:
         require(value['mode'] == MATERIAL_MODE, 'explicit semantic-materials proof claim', value['mode'])
     elif value['schema_version'] == ADOPTION_V2_PROOF:
         require(value['mode'] == 'semantic', 'qualified-origin v2 requires independent semantic execution', value['mode'])
     else:
         require(value['mode'] in ('machine', 'semantic'), 'original v1 review modes', value['mode'])
-    shape(value, fields, 'closed original or materials proof')
     home = location(operation_id)
     write_once(root, home + '/review.json', raw(value))
     return {'path': home + '/review.json', 'schema_version': value['schema_version'], 'raw_digest': codec.raw_digest(raw(value))}
@@ -2039,7 +2062,7 @@ def seal(root, operation_id, value):
 
 def verify_saved(root, request):
     """One action-local acyclic graph; cached proofs still recheck all raw pins."""
-    key = (request['operation_id'], codec.canonical_digest(request))
+    key = (str(Path(root).absolute()), request['operation_id'], codec.canonical_digest(request))
     with _verification_graph() as graph:
         require(key not in graph['active'], 'acyclic original review provenance', request['operation_id'])
         if key in graph['verified']:
@@ -2059,24 +2082,24 @@ def verify_saved(root, request):
 
 
 def _verify_saved(root, request):
-    from _b_route_compensation_segmented_execution import PROOFS as SEGMENTED_PROOFS,verify_saved_private
-    if request.get('host_review_ref',{}).get('schema_version') in SEGMENTED_PROOFS:
-        require(request.get('schema_version')=='newrouge.b-route-compensation-request.v2'
-            and request.get('producer')=='compensation','exact segmented compensation request family',request.get('schema_version'))
-        saved,_derived=verify_saved_private(root,request)
-        return deepcopy(saved.subject),deepcopy(saved.refs)
-    if request.get('host_review_ref', {}).get('schema_version') in ('newrouge.b-route-qualified-compensation-review-proof.v2', 'newrouge.b-route-qualified-compensation-review-proof.v3'):
-        require(request.get('schema_version') == 'newrouge.b-route-compensation-request.v2'
-                and request.get('producer') == 'compensation', 'exact qualified compensation request family', request.get('schema_version'))
-        return _qualified_owner_v2().verify_saved(root, request)
-    if request.get('host_review_ref', {}).get('schema_version') == 'newrouge.b-route-qualified-compensation-review-proof.v1':
-        require(request.get('schema_version') == 'newrouge.b-route-compensation-request.v2'
-                and request.get('producer') == 'compensation', 'exact qualified compensation request family', request.get('schema_version'))
-        return _qualified_owner().verify_saved(root, request)
     ref = request.get('host_review_ref')
     require(type(ref) is dict, 'owned host adoption review reference', 'missing host_review_ref',
             codec.ReasonCode.DEPENDENCY_UNAVAILABLE)
     shape(ref, ('path', 'schema_version', 'raw_digest'), 'host review reference')
+    from _b_route_compensation_segmented_execution import PROOFS as SEGMENTED_PROOFS,verify_saved_private
+    if ref['schema_version'] in SEGMENTED_PROOFS:
+        require(request.get('schema_version')=='newrouge.b-route-compensation-request.v2'
+            and request.get('producer')=='compensation','exact segmented compensation request family',request.get('schema_version'))
+        saved,_derived=verify_saved_private(root,request)
+        return deepcopy(saved.subject),deepcopy(saved.refs)
+    if ref['schema_version'] in ('newrouge.b-route-qualified-compensation-review-proof.v2', 'newrouge.b-route-qualified-compensation-review-proof.v3'):
+        require(request.get('schema_version') == 'newrouge.b-route-compensation-request.v2'
+                and request.get('producer') == 'compensation', 'exact qualified compensation request family', request.get('schema_version'))
+        return _qualified_owner_v2().verify_saved(root, request)
+    if ref['schema_version'] == 'newrouge.b-route-qualified-compensation-review-proof.v1':
+        require(request.get('schema_version') == 'newrouge.b-route-compensation-request.v2'
+                and request.get('producer') == 'compensation', 'exact qualified compensation request family', request.get('schema_version'))
+        return _qualified_owner().verify_saved(root, request)
     home = location(request['operation_id'])
     origin_review = request.get('schema_version') == 'newrouge.b-route-adoption-request.v2'
     permitted = ((ADOPTION_V2_PROOF,) if origin_review else

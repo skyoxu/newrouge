@@ -58,3 +58,11 @@ This file is updated by scripts/sc/run_review_pipeline.py.
 - CI `push` 快速子集与旧 `story-2-1-windows.yml` 后续统一清理：确定性回归已并入 `b-route-runtime-deterministic.yml` 与 `run_gate_bundle.py`，历史 workflow 分支触发器统一清理另行排期。
 - `origin_profile` v2 扩展负向单测增强：当前主路径与基础校验已通过，v2 扩展字段负向边界用例列为后续测试补充。
 - 逐项记录见 `_bmad-output/implementation-artifacts/b-route/deferred-work.md`；证据：`logs/ci/2026-11-19/epic2-review/epic2-verification-summary.json`。
+
+## Story 2.8 审阅保留项（2026-11-20，P2）
+
+- 未发布失败补偿之上的多跳补偿链：当前单 claim 单受审阅补偿接续边界保持，多跳未发布补偿链需新 ADR 与协议设计，留待后续规划。
+- 单路径 `task-origins.v1.json` 正式 schema 合约：保留既有六正式 schema 兼容，后续治理升级时统一收敛。
+- 分段审阅实时派发期间持有 `business_guard`：当前仅锁本操作业务 scope（不含全局 `WRITER`），长派发阶段释放业务锁并重验的并发优化列为后续改进。
+- 历史 `ADR-0060` 83-pin `LEGACY_POLICY` 修复纪元：刻意保留于 `_b_route_compensation_review_repair.py` 以验证历史发布证据，退役前保持只读锁定。
+- 逐项记录见 `_bmad-output/implementation-artifacts/b-route/deferred-work.md`；证据：`logs/ci/2026-11-20/story-2-8-review/`。

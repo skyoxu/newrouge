@@ -2,10 +2,10 @@
 title: 'Story 2.8：共享提交恢复与受审阅补偿'
 type: 'feature'
 created: '2026-11-08'
-status: 'in-progress'
+status: 'done'
 route: 'dispatch'
 baseline_commit: 'db1f4409d538e56eabedd4d1bce5bff9e0f34a1c'
-review_loop_iteration: 0
+review_loop_iteration: 1
 context: []
 ---
 
@@ -72,14 +72,14 @@ after 跳过，完整发布 no-op，receipt 不 hash 自身或最终 catalog，c
 
 ## Tasks & Acceptance
 
-- [ ] `scripts/python/_b_route_commit.py`、`scripts/python/_b_route_operation_scope.py`：依真实目标/receipt/catalog/完整 authority 分类和有界补缺；legacy 返回原 owner，不改旧历史。
-- [ ] `docs/planning/b-route/schemas/compensation-operation.schema.json`、`scripts/python/_b_route_schema_resources.py`、`scripts/python/_planning_apply_journal.py`：严格辅助 request/frozen/envelope 与明确 producer 分派，共用 allocation/index；未知版本/字段/错绑写前拒绝。
-- [ ] `scripts/python/_b_route_compensation.py`、`scripts/python/_b_route_adoption_review.py`、`scripts/python/_b_route_adoption.py`：完整 AC4 的当前正式链派生、独立审阅和新 ID；包含绑定 Task 的合法正例与保留义务。
-- [ ] `scripts/python/_b_route_commit_projection.py`、`scripts/python/_b_route_records.py`：复用六正式 schema/唯一写入，验证新修订的既有语义来源、receipt、catalog-last 和实际读链。
-- [ ] `scripts/python/_planning_apply_journal.py`、`scripts/python/_b_route_operation_scope.py`、`scripts/python/_b_route_commit.py`：精确关联旧 stale pending；仅从新补偿真实 terminal 派生 resolved_by；拒绝环/自补偿/冲突，旧原始历史不改。
-- [ ] `scripts/python/_b_route_operation_scope.py`、`scripts/python/_b_route_commit.py`：同原锁族持业务保护做长检查；原 metadata/WRITER 只保短写和 catalog 边界。旧 writers 不改，相关内容在短边界重验；无关 catalog 推进则离开 writer 重算或明确 stale。
-- [ ] `scripts/python/b_route_adoption.py`、`scripts/python/tests/test_b_route_commit_recovery.py`、`scripts/python/tests/test_b_route_compensation.py`、`scripts/python/tests/fixtures/b_route_commit_process.py`：共享入口及每行 I/O 矩阵正反例，故障重启、占用、原 pending 接续、后编辑/Task done/B 来源保留和实际无关 scope 进展。
-- [ ] `scripts/python/run_gate_bundle.py`、`scripts/python/tests/test_b_route_runtime_ci.py`、`docs/workflows/story-2-8-public-recovery.md`：完整新模块注册一次，保 funding/OSworker selectors，文档如实列明边界；Root 执行实际验证、前置资格与原生 Step4/5。
+- [x] `scripts/python/_b_route_commit.py`、`scripts/python/_b_route_operation_scope.py`：依真实目标/receipt/catalog/完整 authority 分类和有界补缺；legacy 返回原 owner，不改旧历史。
+- [x] `docs/planning/b-route/schemas/compensation-operation.schema.json`、`scripts/python/_b_route_schema_resources.py`、`scripts/python/_planning_apply_journal.py`：严格辅助 request/frozen/envelope 与明确 producer 分派，共用 allocation/index；未知版本/字段/错绑写前拒绝。
+- [x] `scripts/python/_b_route_compensation.py`、`scripts/python/_b_route_adoption_review.py`、`scripts/python/_b_route_adoption.py`：完整 AC4 的当前正式链派生、独立审阅和新 ID；包含绑定 Task 的合法正例与保留义务。
+- [x] `scripts/python/_b_route_commit_projection.py`、`scripts/python/_b_route_records.py`：复用六正式 schema/唯一写入，验证新修订的既有语义来源、receipt、catalog-last 和实际读链。
+- [x] `scripts/python/_planning_apply_journal.py`、`scripts/python/_b_route_operation_scope.py`、`scripts/python/_b_route_commit.py`：精确关联旧 stale pending；仅从新补偿真实 terminal 派生 resolved_by；拒绝环/自补偿/冲突，旧原始历史不改。
+- [x] `scripts/python/_b_route_operation_scope.py`、`scripts/python/_b_route_commit.py`：同原锁族持业务保护做长检查；原 metadata/WRITER 只保短写和 catalog 边界。旧 writers 不改，相关内容在短边界重验；无关 catalog 推进则离开 writer 重算或明确 stale。
+- [x] `scripts/python/b_route_adoption.py`、`scripts/python/tests/test_b_route_commit_recovery.py`、`scripts/python/tests/test_b_route_compensation.py`、`scripts/python/tests/fixtures/b_route_commit_process.py`：共享入口及每行 I/O 矩阵正反例，故障重启、占用、原 pending 接续、后编辑/Task done/B 来源保留和实际无关 scope 进展。
+- [x] `scripts/python/run_gate_bundle.py`、`scripts/python/tests/test_b_route_runtime_ci.py`、`docs/workflows/story-2-8-public-recovery.md`：完整新模块注册一次，保 funding/OSworker selectors，文档如实列明边界；Root 执行实际验证、前置资格与原生 Step4/5。
 
 Given 完整原 authority 和 before/after 有效，When recover，Then 只补合法缺步且保原请求/分配。
 Given 未知后编辑或相关来源/规则损坏，When 恢复/补偿，Then 写前停止并保全部证据。
@@ -125,6 +125,18 @@ Given 故障或竞争，When 恢复及读取，Then 同一正式链完整可读�
 - 2026-11-08：Root 批准递归补偿 review 呈现的最小版本化产品修复；新增 ADR-0050 与上述 Implementation/Design 说明。冻结 Intent 和 AC1–5 原范围逐字保留；未重渲染工作流、未改旧证据，实际容量／最终新源码回归待 Root 独占执行。
 
 ## Review Triage Log
+
+### Review Findings (2026-11-20)
+
+- **已修复（Fixed）**：
+  - 修复 `test_b_route_qualified_render_retention_v2.py` 中 `AuthStorageDataTests` 夹具以对齐 `_SavedInputs`（`proof`/`refs`/`evidence`/`buffers`，4 项 metrics）。
+  - 加固 `_b_route_compensation.py`、`_b_route_published_history.py`、`_planning_apply_journal.py`、`_b_route_commit.py`、`_b_route_operation_scope.py`、`_b_route_adoption_review.py` 的类型/边界/TOCTOU/状态防降级与 `published=True` 下的 `catalog_after` 一致性校验。
+  - 修复 `_b_route_compensation_segmented_execution.py`、`_b_route_compensation_review_repair.py` 与 `_b_route_compensation_segments.py`：`plan.json` 最后落盘、跨节点 provider/model 一致性、写入 `intent.json` 前校验洁净工作区、`completed.json` 与 `unknown.json` 互斥，以及 `NEWROGUE_PLANE_B_RUNNER=gemini` 下历史 Codex 节点复验与新修复节点 Gemini 派发。
+  - 收紧 `compensation-operation.schema.json`（`reason` 非空字符 pattern、`allocations.task_definitions` 数字键 patternProperties + `additionalProperties: false`）与 `b_route_adoption.py` 阶段报错提示。
+  - 将 6 个遗漏的 Story 2.8 补偿套件注册进 `scripts/python/run_gate_bundle.py`，并在 `test_b_route_runtime_ci.py`、`test_b_route_commit_recovery.py`、`test_b_route_compensation_segmented_execution.py` 与 `test_b_route_compensation_review_repair.py` 增补离线回归测试。
+  - 同步更新 `docs/workflows/story-2-8-public-recovery.md`、`sprint-status.yaml`、`deferred-work.md` 与 `docs/technical-debt.md`。
+- **已延期（Deferred，登记至 `deferred-work.md` 与 `docs/technical-debt.md`）**：
+  - 未发布失败补偿之上的多跳补偿链；单路径 `task-origins.v1.json` 正式 schema 收敛；分段审阅实时派发期间 `business_guard` 锁粒度优化；历史 `ADR-0060` 83-pin `LEGACY_POLICY` 修复纪元保持只读锁定。
 
 ## Verification
 
