@@ -1003,3 +1003,11 @@ _mvg_capability_append.run_capability_append 内另有旧首错误差集，会�
 三层正式审核、逐条裁决、三组最小补丁及必要定向验证已完成；六项历史缺陷按原流程登记，原 carried 缺陷不重复登记。Story 实施验收完成，仍不授予正式 B 采纳、readiness 或 Task/Flow 运行资格。当前补丁的实际分母和原29项/更早回归均按其原源码纪元留存，未合称本轮全套通过。
 
 原 R22/MVG 和 R10/Capability 的真实资格由原冻结 producer 与原回执支持，不改签为当前源码；原 qualified.json 中 formal_story_acceptance=false 保持原件不变。本次正式 Story 关闭另存 Root closeout，明确区分原生执行资格与审核后的实施验收。没有新增真实项目模型验收调用，没有释放 unknown，campaign 保持79/290；没有远程推送或 main 合并。
+
+### Review Findings (2026-11-19)
+
+Epic 2 (Stories 2.1-2.7) BMAD 审阅收口；`<frozen-after-approval>` 区块未改动。证据：`logs/ci/2026-11-19/epic2-review/epic2-verification-summary.json`。
+
+- [x] [Review][Verified] `test_01_story25_ast_and_semantic_lock_guard`、`test_b_route_execution_transition`（8/8）、`test_b_route_runtime_ci`（10/10）及 `test_b_route_planning_runtime` 剩余定向类（`RuntimeTests`、`ProtocolBindingTests`、`CheckpointProtocolReplayTests`、`TimeAndDeadlineFixTests`、`CompactWireTests.test_native_compact_capability_coordinator_full_protocol_and_selector`）复验通过；全部 Story 25 受锁生产文件保持零改动。
+- [x] [Review][DocSync] 同步 `docs/workflows/b-route-native-planning-status.md`，补充 `docs/workflows/llm-routing.json` 多模型路由说明。
+- [x] [Review][Defer] Story 25 AST/字节锁保护文件非阻塞历史边界留待专门 source-epoch 过渡升级；CI `push` 快速子集与旧 `story-2-1-windows.yml` 后续统一清理，登记于 `deferred-work.md` 与 `docs/technical-debt.md`。

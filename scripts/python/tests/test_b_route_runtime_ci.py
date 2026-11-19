@@ -27,7 +27,11 @@ class RuntimeCITests(unittest.TestCase):
     def test_complete_commit_modules_are_selected_once_without_replacing_existing_owners(self):
         selected = selector_names()
         for name in ('commit', 'commit_e1', 'commit_projection', 'commit_images', 'commit_recovery', 'compensation',
-                     'initial_legacy', 'qualified_historical_v3'):
+                     'initial_legacy', 'qualified_historical_v3', 'planning_input', 'candidate',
+                     'adoption', 'adoption_cli', 'adoption_concurrency', 'adoption_journal',
+                     'adoption_projection', 'adoption_r10_capture', 'adoption_r10_reader',
+                     'adoption_r19_reader', 'adoption_review', 'operation_leases',
+                     'operation_scope', 'public_context', 'qualified_public_context'):
             selector = 'scripts.python.tests.test_b_route_' + name
             self.assertEqual(1, selected.count(selector))
             self.assertFalse(any(value.startswith(selector + '.') for value in selected))
@@ -84,6 +88,7 @@ class RuntimeCITests(unittest.TestCase):
         self.assertEqual(environment['TIKTOKEN_CACHE_DIR'], 'private-cache')
         self.assertEqual((environment['TEMP'], environment['TMP']), ('private-temp', 'private-temp'))
         self.assertEqual(environment['ADOPTION_TEST_TEMP'], 'private-temp')
+        self.assertEqual(environment['FROZEN_READER_TEST_TEMP'], 'private-temp')
         self.assertEqual(original_call.args[0], ['py', '-3', 'original.py'])
         self.assertNotIn('environment', original_call.kwargs)
 

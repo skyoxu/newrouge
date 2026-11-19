@@ -355,6 +355,13 @@ class AdoptionCompositionTests(unittest.TestCase):
         self.assertEqual(result['task_definitions'],
             adoption.propose_allocations(current, alignment, [])['task_definitions'])
 
+    def assert_no_operation_state(self):
+        store = self.root / journal.OPERATION_STORE
+        self.assertFalse((store / 'operations').exists())
+        self.assertFalse((store / 'index.jsonl').exists())
+        self.assertFalse((store / 'pending.json').exists())
+        self.assertEqual([], journal.operation_inventory(self.root))
+
     def test_native_proof_locator_cannot_be_substituted_by_a_valid_owned_reference(self):
         request = deepcopy(self.request)
         proof = request['material']['target_templates'][0]['after_payload']['native_candidate_ref']
@@ -364,7 +371,7 @@ class AdoptionCompositionTests(unittest.TestCase):
         with self.assertRaises(codec.CodecError) as caught:
             self.prepare(request)
         self.assertEqual(codec.ReasonCode.IDENTITY_UNPROVABLE, caught.exception.diagnostic.reason_code)
-        self.assertFalse((self.root / journal.OPERATION_STORE).exists())
+        self.assert_no_operation_state()
 
     def test_schema_valid_graph_semantic_edit_cannot_replace_admitted_content(self):
         request = deepcopy(self.request)
@@ -373,14 +380,14 @@ class AdoptionCompositionTests(unittest.TestCase):
         with self.assertRaises(codec.CodecError) as caught:
             self.prepare(request)
         self.assertEqual(codec.ReasonCode.IDENTITY_UNPROVABLE, caught.exception.diagnostic.reason_code)
-        self.assertFalse((self.root / journal.OPERATION_STORE).exists())
+        self.assert_no_operation_state()
 
     def test_binding_reservation_requires_its_complete_target(self):
         request = deepcopy(self.request)
         request['material']['identity_alignment']['binding'] = {'mode': 'new'}
         with self.assertRaises(codec.CodecError):
             self.prepare(request)
-        self.assertFalse((self.root / journal.OPERATION_STORE).exists())
+        self.assert_no_operation_state()
 
     def test_new_plan_cannot_freeze_invented_historical_lineage(self):
         request = deepcopy(self.request)
@@ -390,7 +397,7 @@ class AdoptionCompositionTests(unittest.TestCase):
              'current_id': {'$allocation': 'flow:' + flow}, 'rationale': 'Invented historical correspondence'}]
         with self.assertRaises(codec.CodecError):
             self.prepare(request)
-        self.assertFalse((self.root / journal.OPERATION_STORE).exists())
+        self.assert_no_operation_state()
 
     def test_retained_lineage_is_complete_typed_and_matches_explicit_correspondence(self):
         definitions = {'flows': [{'id': 'FLOW-stable'}], 'commands': [{'id': 'CMD-stable'}], 'states': []}
@@ -467,6 +474,105 @@ class AdoptionCompositionTests(unittest.TestCase):
         self.assertEqual('missing host_review_ref', caught.exception.diagnostic.actual)
         self.assertEqual(before, self.files())
         self.assertFalse((self.root / journal.OPERATION_STORE).exists())
+
+    def test_target_path_rejects_format_injection_and_null_allocation(self):
+        allocations = {'plan_id': 'PLAN-1', 'plan_revision': 1, 'binding_revision': None}
+        for bad in (
+            'docs/planning/b-route/plans/{plan_id.__class__}/1.json',
+            'docs/planning/b-route/plans/{plan_id:999}/1.json',
+            'docs/planning/b-route/plans/{plan_id!r}/1.json',
+            'docs/planning/b-route/bindings/{plan_id}/{binding_revision}.json',
+        ):
+            with self.subTest(template=bad), self.assertRaises(codec.CodecError) as caught:
+                adoption._target_path(bad, allocations)
+            self.assertEqual(codec.ReasonCode.INVALID_REFERENCE, caught.exception.diagnostic.reason_code)
+
+    def test_verified_native_handoff_cache_invalidates_on_directory_injection_and_file_tamper(self):
+        import _b_route_3b_segmented_input as seg_input
+        import _b_route_planning_runtime as runtime
+        import _b_route_protection as protection
+        import _mvg_capability_recovery as recovery
+        import _mvg_capability_checkpoint as checkpoint
+
+        run = runtime.run_location(self.root, 'mvg', 'cache1')
+        run.mkdir(parents=True)
+        (self.root / 'logs/ci/mvg-recovery').mkdir(parents=True, exist_ok=True)
+        prep_dir = self.root / 'logs/ci/2026-11-19/b-route-planning-input/cache1/a'
+        prep_dir.mkdir(parents=True)
+        prep_rel = (prep_dir / 'prepared.json').relative_to(self.root).as_posix()
+        (prep_dir / 'prepared.json').write_bytes(encoded({'schema_version': 'prepared.v1'}))
+        dep_rel = 'docs/dep.txt'
+        (self.root / dep_rel).parent.mkdir(parents=True, exist_ok=True)
+        (self.root / dep_rel).write_bytes(b'original-dep\n')
+        admission_rel = 'evidence/admission-cache1.json'
+        admission_payload = {'schema_version': 'synthetic.admission.v1'}
+        (self.root / admission_rel).parent.mkdir(parents=True, exist_ok=True)
+        (self.root / admission_rel).write_bytes(encoded(admission_payload))
+        handoff_payload = {
+            'schema_version': 'synthetic.handoff.v1',
+            'original_prepared_ref': prep_rel,
+            'admission': admission_payload,
+            'proposal': {'content': {}},
+        }
+        handoff_raw = encoded(handoff_payload)
+        (run / 'handoff.json').write_bytes(handoff_raw)
+        handoff_rel = (run / 'handoff.json').relative_to(self.root).as_posix()
+        state = {
+            'schema_version': runtime.RUN,
+            'run_id': 'cache1',
+            'input_stage': '3b',
+            'selection_status': 'selected',
+            'recovery': {'store': str((self.root / 'logs/ci/mvg-recovery').resolve())},
+            'selected_admission_review': {'path': admission_rel},
+            'planning_runtime': {'planner': 'mvg'},
+        }
+        (run / 'run.json').write_bytes(encoded(state))
+        protection_rel = 'evidence/protection-cache1.json'
+        (self.root / protection_rel).write_bytes(encoded({'schema_version': 'synthetic.protection.v1', 'tasks': []}))
+        material = {
+            'planner': 'mvg',
+            'run_id': 'cache1',
+            'handoff_ref': {'path': handoff_rel, 'schema_version': 'synthetic.handoff.v1', 'raw_digest': codec.raw_digest(handoff_raw)},
+            'protection_ref': {'path': protection_rel, 'schema_version': 'synthetic.protection.v1', 'raw_digest': codec.raw_digest((self.root / protection_rel).read_bytes())},
+            'authority_refs': [],
+            'lineage_refs': [],
+        }
+        review_ref = {'path': admission_rel, 'schema_version': 'synthetic.admission.v1', 'raw_digest': codec.raw_digest(encoded(admission_payload))}
+        prepared_obj = {'inputs': {'dependencies': {'files': {dep_rel: codec.raw_digest(b'original-dep\n')}}}}
+
+        @contextmanager
+        def noop_lock(*_args, **_kwargs):
+            yield
+
+        adoption._VERIFIED_NATIVE_HANDOFF_CACHE.clear()
+        self.addCleanup(adoption._VERIFIED_NATIVE_HANDOFF_CACHE.clear)
+        with patch.object(runtime, 'enabled', return_value=True), \
+             patch.object(runtime, 'descriptor', return_value={'planner': 'mvg'}), \
+             patch.object(runtime, 'validate_input', return_value=None), \
+             patch.object(runtime, 'handoff', return_value=deepcopy(handoff_payload)) as handoff_mock, \
+             patch.object(seg_input, 'load_prepared', return_value=deepcopy(prepared_obj)) as prep_mock, \
+             patch.object(recovery, 'operation_lock', side_effect=noop_lock), \
+             patch.object(recovery, 'assert_active_chain', return_value=None), \
+             patch.object(checkpoint, 'coordinator_lock', side_effect=noop_lock), \
+             patch.object(protection, 'verify_protection', return_value={'ok': True, 'capture_complete': True}):
+            with adoption.capture_completed(self.root, material, review_ref):
+                pass
+            self.assertEqual(1, handoff_mock.call_count)
+            self.assertEqual(1, prep_mock.call_count)
+            # Clean cache hit reuses cached payload without recomputing handoff/load_prepared.
+            with adoption.capture_completed(self.root, material, review_ref):
+                pass
+            self.assertEqual(1, handoff_mock.call_count)
+            # Injecting a new file into a tracked directory invalidates the cache.
+            (run / 'injected.txt').write_bytes(b'unreserved\n')
+            with adoption.capture_completed(self.root, material, review_ref):
+                pass
+            self.assertEqual(2, handoff_mock.call_count)
+            # Tampering a tracked dependency file also invalidates the cache.
+            (self.root / dep_rel).write_bytes(b'tampered-dep\n')
+            with adoption.capture_completed(self.root, material, review_ref):
+                pass
+            self.assertEqual(3, handoff_mock.call_count)
 
 
 if __name__ == '__main__':

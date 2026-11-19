@@ -839,6 +839,41 @@ class CandidateTests(unittest.TestCase):
             args.planning_contract=""; args.task_id=["15"]
             with self.assertRaises(ValueError): builder(args)
 
+    def test_segmented_cli_prepare_to_validate_candidate_and_from_cli_mixing_rejected(self):
+        from types import SimpleNamespace
+        self.put("candidate.json", self.value)
+        for module, stage, planner in (
+            (plan_capabilities, "validate-candidate", "capabilities"),
+            (plan_mvg, "validate", "mvg"),
+        ):
+            with patch.object(module, "prepare", side_effect=AssertionError("Legacy prepare forbidden")), \
+                 contextlib.redirect_stdout(io.StringIO()) as prep_out:
+                prep_code = module.main([
+                    "--repo-root", str(self.root), "prepare", "--run-id", f"seg-{planner}",
+                    "--input-stage", "3b", "--planning-contract", "contract.json",
+                ])
+            self.assertEqual(prep_code, 0, prep_out.getvalue())
+            prep_report = json.loads(prep_out.getvalue())
+            seg_ref = prep_report["resume_ref"]
+            with patch.object(module, "_load_run", side_effect=AssertionError("No legacy run")), \
+                 contextlib.redirect_stdout(io.StringIO()) as val_out:
+                val_code = module.main([
+                    "--repo-root", str(self.root), stage, "--run-id", f"seg-val-{planner}",
+                    "--input-stage", "3b", "--prepared-ref", seg_ref, "--candidate", "candidate.json",
+                ])
+            self.assertEqual(val_code, 0, val_out.getvalue())
+            val_report = json.loads(val_out.getvalue())
+            self.assertEqual(val_report["status"], "passed")
+            self.assertEqual(val_report["claim"], "candidate_structure_only")
+            for mixed_kwargs in ({"task_id": ["15"]}, {"planning_contract": "contract.json"}):
+                args = SimpleNamespace(
+                    input_stage="3b", command=stage, prepared_ref=seg_ref,
+                    candidate="candidate.json", repo_root=str(self.root), run_id="mix-check",
+                    **mixed_kwargs,
+                )
+                with self.assertRaises(codec.CodecError):
+                    candidate.from_cli(args, planner=planner)
+
 
 class SchemaAndAlgorithmTests(unittest.TestCase):
     def test_actual_byte_cache_invalidates_even_same_length_and_mtime(self):
@@ -890,7 +925,7 @@ class SchemaAndAlgorithmTests(unittest.TestCase):
             events=0
             def trace(frame,event,arg):
                 nonlocal events
-                if event=="line" and frame.f_code.co_filename==candidate.__file__ and frame.f_code.co_name in {"components","reachable"}:
+                if event=="line" and frame.f_code.co_filename==candidate.components.__code__.co_filename and frame.f_code.co_name in {"components","reachable"}:
                     events+=1
                 return trace
             previous=sys.gettrace()

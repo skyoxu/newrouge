@@ -96,3 +96,11 @@ B1 原子写入 rename 前硬退出残留仍需显式消歧，自动恢复属于
 | G1 | medium | patch：89c09a05 | initial_legacy 现有模块维护选择器遗漏已修复并断言只注册一次；复用原 14 个历史方法，不重新运行已适用方法。 |
 | G2 | medium | defer：历史 v3 维护覆盖限制 | 旧公开 v3 正向渲染接线缺直接维护断言，原 26 方法只按实际覆盖复用。独立 Astra 确认当前默认 2.7 已拒绝 fresh v3，此历史消费属于 2.8，不能倒加为当前 2.7 前置；真实 proof3 仍待完成。 |
 | G3 | medium | defer：历史 OP03 维护覆盖限制 | 原七方法确实执行过，但不能宣称全部验证成功 binding 构造。当前 2.8 历史消费者不重构旧 binding；不移植旧实现或改冻结 R56。当前 15 方法 DATA/接口适配器已注册并通过，但不充当真实恢复验收。 |
+
+### Review Findings (2026-11-19)
+
+Epic 2 (Stories 2.1-2.7) BMAD 审阅收口；`<frozen-after-approval>` 区块未改动。证据：`logs/ci/2026-11-19/epic2-review/epic2-verification-summary.json`。
+
+- [x] [Review][Verified] `test_b_route_commit`、`test_b_route_commit_e1`、`test_b_route_commit_images`、`test_b_route_commit_projection`（41/41 PASS）、`test_b_route_public_context`（11/11）与 `test_b_route_qualified_public_context`（5/5）全部通过。
+- [x] [Review][Verified] Clean-clone 无 `logs/` 正式读取与篡改拒绝复验通过：按 CI `published-clone-input` 的 `catalog.v1.json` 活跃 `scope_heads` `active_ops` 执行正向 `read --context`（exit 0、`formal_adoption=true`）、无日志 `inspect --context`（exit 2、`formal_adoption=false`）与篡改已发布 plan 后 `read --context`（exit 2、`formal_adoption=false`）全部通过。
+- [x] [Review][Defer] 原 2.7 保留项（B1/B8/G2/G3）与 Epic 2 统一延期项继续登记于 `deferred-work.md` 与 `docs/technical-debt.md`。

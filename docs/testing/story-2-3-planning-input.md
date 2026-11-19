@@ -4,7 +4,7 @@
 
 ## 单一 owner 与 CLI
 
-`scripts/python/_b_route_planning_input.py` 是两个 prepare 的唯一 3B 输入 owner。直接脚本在任何旧 Task scope、Chapter 5 readiness、MVG capabilities／manifest 检查之前转入它。`dev_cli.py` 只转发到同一脚本，沿用当前 Python 解释器和绝对脚本路径。
+`scripts/python/_b_route_planning_input.py` 是两个 prepare 的唯一 3B 输入 owner。直接脚本在任何旧 Task scope、Chapter 5 readiness、MVG capabilities／manifest 检查之前转入它。`dev_cli.py` 只转发到同一脚本，沿用当前 Python 解释器和绝对脚本路径。CLI 的 `prepare --input-stage 3b` 经由 `scripts/python/_b_route_3b_segmented_input.py` 包装 `_b_route_planning_input.assemble()`，在不修改底层完整分母与冻结重建合同的前提下，按合同 `limits` 与 70k（单次请求输入上限）／96k（含输出预留上限）硬顶的较小值执行容量收口。
 
 ```powershell
 py -3 scripts/python/plan_capabilities.py --repo-root . prepare --run-id planning-3b --input-stage 3b --planning-contract logs/ci/<date>/planning-contract.json

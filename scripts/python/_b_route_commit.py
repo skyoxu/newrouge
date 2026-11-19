@@ -797,6 +797,7 @@ def inspect_recovery(root, *, operation_id):
     remains execute/apply's responsibility; inspection never fabricates one.
     """
     root = Path(root).absolute()
+    boundary_token = _BOUNDARY.set(None)
     try:
         from _b_route_operation_scope import legacy_recovery_routes
         import _b_route_adoption_review as review
@@ -865,6 +866,8 @@ def inspect_recovery(root, *, operation_id):
         raise
     except (OSError, ValueError, KeyError, TypeError, RuntimeError) as error:
         _fail('complete unchanged recovery evidence', type(error).__name__, resume=_paths(operation_id)[0])
+    finally:
+        _BOUNDARY.reset(boundary_token)
 
 
 def recover(root, *, operation_id):

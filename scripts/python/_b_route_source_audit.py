@@ -477,9 +477,16 @@ def validate_output(request, output):
             sources.require(len({(c["path"], c["block_id"], c["byte_start"], c["byte_end"])
                                  for c in row["citations"]}) >= 2,
                             row["finding_id"], "conflict cites both distinct original locations")
-    candidate_dispositions = {r["block_id"]: r["disposition"] for r in data["candidate"]["block_results"]}
+    block_paths = {b["block_id"]: f["path"] for f in files for b in f["blocks"]}
+    candidate_dispositions = {
+        (r.get("path") or r.get("source_path") or block_paths.get(r["block_id"]), r["block_id"]): r["disposition"]
+        for r in data["candidate"]["block_results"]
+    }
     candidate_dispositions.update({(r["path"], None): r["disposition"] for r in data["candidate"].get("file_results", [])})
-    extraction_dispositions = {r["block_id"]: r["disposition"] for e in data["extractions"] for r in e["coverage"]}
+    extraction_dispositions = {
+        (e["file"]["path"], r["block_id"]): r["disposition"]
+        for e in data["extractions"] for r in e["coverage"]
+    }
     for row in output["disposition_reviews"] + output["obligation_reviews"]:
         sources.require(len(row["finding_ids"]) == len(set(row["finding_ids"])) and set(row["finding_ids"]) <= set(findings),
                         "review.findings", "known unique finding IDs")
@@ -496,7 +503,7 @@ def validate_output(request, output):
         else:
             for citation in row["basis"]:
                 validate_citation(citation, files, allow_empty=True)
-            key = row["block_id"] or (row["path"], None)
+            key = (row["path"], row["block_id"])
             if row["decision"] == "accepted" and any(d.get(key) in {"deferred", "out_of_scope"}
                     for d in (candidate_dispositions, extraction_dispositions)):
                 sources.require(row["basis"], "disposition", "explicit independent review with original-source basis")
@@ -507,7 +514,7 @@ def validate_output(request, output):
         if (row["path"], row["local_id"]) in uncertain:
             sources.require(row["finding_ids"], "obligation.unknown", "retain independently detected uncertainty")
     for row in output["disposition_reviews"]:
-        if extraction_dispositions.get(row["block_id"]) == "unknown":
+        if extraction_dispositions.get((row["path"], row["block_id"])) == "unknown":
             sources.require(row["finding_ids"], "disposition.unknown", "retain independently detected uncertainty")
 
 
@@ -652,8 +659,12 @@ def tool_identity(root, runner, expected_model, citation_guidance=None, *, expec
                 tools["gemini:node_sha256"] = codec.raw_digest(Path(node_exe).resolve().read_bytes())
         if not any(k in tools for k in ("gemini:system_md_sha256", "gemini:gemini_system_md_sha256")):
             sys_md_env = os.environ.get("GEMINI_SYSTEM_MD", "").strip()
-            if sys_md_env and Path(sys_md_env).is_file():
-                tools["gemini:system_md_sha256"] = codec.raw_digest(Path(sys_md_env).resolve().read_bytes())
+            if sys_md_env:
+                sys_md_path = Path(sys_md_env).absolute()
+                for ancestor in reversed((sys_md_path, *sys_md_path.parents)):
+                    inventory.no_reparse(ancestor)
+                sources.require(sys_md_path.is_file(), "GEMINI_SYSTEM_MD", "existing file", sys_md_env)
+                tools["gemini:system_md_sha256"] = codec.raw_digest(sys_md_path.resolve().read_bytes())
             else:
                 try:
                     reg_mod = importlib.import_module("_isolated_runner_registry")
@@ -1028,8 +1039,11 @@ def dispatch(obs, home, output, args, name, request, result, identity):
                 diagnostic = replace(error.diagnostic, reason_code=codec.ReasonCode.SCHEMA_VALIDATION_FAILED)
         execution_file = workspace.parent / "execution.json"
         if not runner_returned and execution_file.is_file():
-            observed = codec.strict_json_loads(execution_file.read_bytes())
-            if observed.get("runner_dispatch_count") == 0 and observed.get("status") == "launch_failed":
+            try:
+                observed = codec.strict_json_loads(execution_file.read_bytes())
+            except (ValueError, OSError, AttributeError):
+                observed = {}
+            if isinstance(observed, dict) and observed.get("runner_dispatch_count") == 0 and observed.get("status") == "launch_failed":
                 result["runner_dispatch_count"] = previous_runner_count
                 result["model_dispatch_count"] = previous_count
         raise AuditStop(category, str(error), diagnostic) from error
@@ -1224,14 +1238,19 @@ def verify_step(obs, prefix, item, expected, identity):
         chunks.extend(["", f"===== FILE: {filename} =====\n{text}\n===== END FILE: {filename} ====="])
     payload = "\n".join(chunks).rstrip() + "\n"
     sources.require(obs.read(base + "/request.txt") == payload.encode("utf-8"), base, "complete original final request")
+    old_request = obs.json(prefix + "/request.json")
     measurement = obs.json(base + "/measurement.json")
+    sources.require(
+        measurement["max_bytes"] == old_request["transport_max_bytes"]
+        and measurement["max_input_tokens"] == old_request["transport_max_input_tokens"],
+        base, "request-bound capacity limits",
+    )
     sources.require(measure_request(payload, max_bytes=measurement["max_bytes"], max_input_tokens=measurement["max_input_tokens"])
                     == measurement, base, "original measured complete request")
     execution, receipt = obs.json(base + "/execution.json"), obs.json(base + "/receipt.json")
     sources.require(bool(receipt.get("synthetic")) == bool(obs.json(prefix + "/runner.json").get("synthetic")),
                     "proof.receipt", "runner evidence class matches captured receipt")
     reservation = obs.json(base + "/reservation.json")
-    old_request = obs.json(prefix + "/request.json")
     runner = sources.checked_path(obs.root, old_request["runner"])
     prefix_command = [sys.executable, "-B", str(runner)] if runner.suffix.casefold() == ".py" else [str(runner)]
     expected_command = [*prefix_command, "--workspace", str(workspace), "--prompt-file", str(workspace / "prompt.txt"),
@@ -1413,7 +1432,7 @@ def execute(args):
             reserve(root, home, args, None)
             code = audit(obs, args, home, output, result)
         obs.verify()
-    except (ValueError, OSError, KeyError, TypeError, AttributeError, UnicodeError, RuntimeError, ImportError, KeyboardInterrupt) as error:
+    except (ValueError, OSError, KeyError, LookupError, TypeError, AttributeError, UnicodeError, RuntimeError, ImportError, KeyboardInterrupt) as error:
         code = 1 if output else 2
         category = error.category if isinstance(error, AuditStop) else "execution" if isinstance(error, (ImportError, KeyboardInterrupt)) else "input" if output else "admission"
         result.update(execution_complete=False, independent_audit=False, planning_eligible=False, termination_reason=category + "_blocked")

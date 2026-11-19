@@ -14,6 +14,11 @@ import unittest
 from unittest.mock import Mock, patch
 import uuid
 
+_SCRIPTS = Path(__file__).resolve().parents[1]
+for _p in (str(_SCRIPTS), str(_SCRIPTS / "tests"), str(_SCRIPTS.parent / "sc")):
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
+
 import _b_route_adoption as adoption
 import _b_route_adoption_review as review
 import _b_route_codec as codec

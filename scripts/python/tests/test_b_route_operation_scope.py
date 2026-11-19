@@ -7,6 +7,7 @@ from pathlib import Path
 import socket
 import subprocess
 import sys
+import tempfile
 import unittest
 from unittest.mock import patch
 import uuid
@@ -22,8 +23,9 @@ from _planning_skill_common import atomic_json, load_json
 
 class OperationScopeTests(unittest.TestCase):
     def setUp(self):
-        self.root = (SCRIPTS.parents[1] / ('sq-' + uuid.uuid4().hex[:8])).resolve()
-        self.root.mkdir()
+        self.temp = tempfile.TemporaryDirectory(prefix='sq-', dir=os.environ.get('BR_TEST_TEMP'))
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name).resolve()
         self.calls = []
         self.inventory = patch.object(scope, '_operation_inventory', return_value=[])
         self.inventory_mock = self.inventory.start()
@@ -243,6 +245,13 @@ class OperationScopeTests(unittest.TestCase):
         with patch.object(scope, '_owner', side_effect=checked):
             with self.guard((), legacy_owner=self.owner('capabilities', 'old')):
                 pass
+
+    def test_business_guard_translates_lock_contention_to_conflict(self):
+        with patch.object(scope.leases, 'operation_leases', side_effect=ValueError('capability_coordinator_busy')):
+            with self.assertRaises(codec.CodecError) as caught:
+                with scope.business_guard(self.root, ('task:1',), operation_id='OP-busy'):
+                    self.fail('Blocked business_guard yielded')
+        self.assertEqual(codec.ReasonCode.CONFLICT, caught.exception.diagnostic.reason_code)
 
 
 def probe(mode, root, scopes):

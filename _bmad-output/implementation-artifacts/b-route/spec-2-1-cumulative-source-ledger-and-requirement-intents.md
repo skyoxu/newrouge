@@ -121,3 +121,10 @@ declaration 是版本化本轮载体，不是第七类正式记录：显式 addi
 - `py -3 -B -m unittest discover -s scripts/python/tests -p test_mvg_evidence_transport.py -v`：原文传输／完整还原默认回归；若复用 seam 未改该模块，可选出确切相关现有控制，不重复无关重型测试。
 - `py -3 scripts/python/dev_cli.py b-route-sources --help` 及直接入口：帮助可用；独立合成根目录 prepare／account、未决／损坏／缺输入／无依据退役／输出冲突／同 event／长对象／零 Task CLI 正负例，核单 JSON、退出码、产物 raw 和原文件不变（包括无 `-B` 的脚本副本）。
 - 对真实现行 source-set 执行只读 prepare，核默认只含当前注册的 GDD，保三份历史退役，不以未审 candidate 宣称完整或 3B ready；原 Task／游戏／manifest 和 Epic1 历史材料 hash 不变。
+
+### Review Findings (2026-11-19)
+
+Epic 2 (Stories 2.1-2.7) BMAD 审阅收口；`<frozen-after-approval>` 区块未改动。证据：`logs/ci/2026-11-19/epic2-review/epic2-verification-summary.json`。
+
+- [x] [Review][Verified] `test_b_route_sources` 回归复验通过（30 PASS + 1 POSIX skip），来源记账、累计声明与零 Task 边界保持完好。
+- [x] [Review][Defer] CI `push` 快速子集与旧 `story-2-1-windows.yml` 工作流后续统一清理，登记于 `deferred-work.md` 与 `docs/technical-debt.md`。

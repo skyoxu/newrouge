@@ -402,19 +402,25 @@ def accountable_candidate(candidate, ledger, unresolved):
     for row in native_candidate.get("block_results", []):
         block_id = row.get("block_id")
         require(block_id in blocks, str(block_id), "known source block")
+        require(row.get("delivery_potential") is None or type(row.get("delivery_potential")) is bool,
+                block_id, "boolean or null delivery_potential", row.get("delivery_potential"))
+        require(row.get("disposition") is None or type(row.get("disposition")) is str,
+                block_id, "string or null disposition", row.get("disposition"))
         disposition = str(row.get("disposition") or "").strip().casefold()
         if disposition == "unresolved" or row.get("delivery_potential") is None:
             unresolved.append({"entity_id": block_id, "reason": "unresolved source disposition"})
             row["delivery_potential"] = True
             row["disposition"] = "unresolved"
-        if not row.get("atoms"):
+        atoms = row.get("atoms")
+        require(atoms is None or isinstance(atoms, list), block_id, "list or null atoms", atoms)
+        if not atoms:
             require(disposition != "atomized", block_id, "atomized blocks require explicit proposals")
             refs = string_list(row.get("source_block_ids"), block_id)
             require(block_id in refs and set(refs) <= set(blocks), block_id, "source-backed disposition")
             if not (type(row.get("reason")) is str and row["reason"].strip()):
                 unresolved.append({"entity_id": block_id, "reason": "missing disposition rationale"})
             row["decision"] = {"reason": row.get("reason"), "source_block_ids": refs}
-        for atom in row.get("atoms", []):
+        for atom in atoms or []:
             proposal_id = atom.get("proposal_id")
             require(type(proposal_id) is str and PROPOSAL.fullmatch(proposal_id), block_id,
                     "proposal: namespace; no formal allocation", proposal_id)
@@ -592,13 +598,18 @@ def admission(args):
     # Search all dates so replaying an event tomorrow cannot duplicate accounting.
     base = checked_path(root, "logs/ci")
     if base.exists():
-        for date in base.iterdir():
+        matches = []
+        for date in sorted(base.iterdir()):
             inventory.no_reparse(date)
             if date.is_dir():
                 relative = f"logs/ci/{date.name}/b-route-sources/{args.run_id}/{args.attempt_id}/{args.stage}"
                 prior = checked_path(root, relative)
                 if prior.exists():
-                    return root, prior, False
+                    matches.append(prior)
+        require(len(matches) <= 1, "event", "at most one persisted event directory across dates",
+                [p.relative_to(root).as_posix() for p in matches])
+        if matches:
+            return root, matches[0], False
     relative = f"logs/ci/{dt.datetime.now(dt.timezone.utc).date().isoformat()}/b-route-sources/{args.run_id}/{args.attempt_id}/{args.stage}"
     output = checked_path(root, relative)
     current = root

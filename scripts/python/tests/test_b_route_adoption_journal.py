@@ -165,7 +165,8 @@ class AdoptionJournalTests(unittest.TestCase):
         self.assert_reject_unchanged(journal.reserve_operation, self.root, operation_id='OP-1')
 
     def test_long_windows_operation_root_rejects_before_creating_store(self):
-        root = self.root / ('long-fixture-' + 'x' * 40)
+        pad = max(40, 195 - len(str(self.root)))
+        root = self.root / ('long-fixture-' + 'x' * pad)
         root.mkdir()
         before = list(root.iterdir())
         with self.assertRaises(codec.CodecError):

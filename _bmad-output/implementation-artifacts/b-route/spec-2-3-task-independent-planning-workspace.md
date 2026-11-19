@@ -110,3 +110,11 @@ context: []
 - 使用任务独立 Python/deps/cache 的 unittest harness 跑新输入矩阵、CLI 及相关 B-route／旧规划回归；网络连接由 harness 阻断，实际调用数为零。报告执行／通过／跳过数与失败原文。
 - 用原始两组 audit04 作只读负向重验；保留源码改变导致的当前身份失效，不宣称旧证据变为当前合格。
 - 检查 Git 变更、独占日志、最终请求／schema／实际草案尺寸记录以及完整 source/object 字节重建；按 native Step4 独立三方审查，处理真实问题后 Step5 本地收口，不 push/merge。
+
+### Review Findings (2026-11-19)
+
+Epic 2 (Stories 2.1-2.7) BMAD 审阅收口；`<frozen-after-approval>` 区块未改动。证据：`logs/ci/2026-11-19/epic2-review/epic2-verification-summary.json`。
+
+- [x] [Review][DocSync] 同步 `docs/testing/story-2-3-planning-input.md`，补充 CLI `prepare --input-stage 3b` 经由 `_b_route_3b_segmented_input.py` 包装 `_b_route_planning_input.assemble()` 并同时遵守合同 `limits` 与 70k/96k 硬顶较小值的说明。
+- [x] [Review][Verified] `test_b_route_planning_input`（35/35）与 `test_01_story25_ast_and_semantic_lock_guard` 复验通过，锁护文件 `_b_route_planning_input.py` 零改动。
+- [x] [Review][Defer] Story 25 AST/字节锁保护文件非阻塞历史边界留待专门 source-epoch 过渡升级，登记于 `deferred-work.md` 与 `docs/technical-debt.md`。

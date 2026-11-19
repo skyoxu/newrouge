@@ -15,7 +15,7 @@ py -3 scripts/python/dev_cli.py plan-mvg --stage generate --run-id <mvg-run> --i
 py -3 scripts/python/dev_cli.py plan-mvg --stage status --run-id <mvg-run> --input-stage 3b --prepared-ref <returned-prepared-ref> --planning-profile 3b-mvg-v1
 ```
 
-Capability 使用其原 `3b-capabilities-v1` profile。实际 profile 以当前 owner 的 `--help` 与冻结输入为准。显式 B 的默认隔离 runner 是官方 Codex；显式指定的 runner 原样传递，由执行 owner 检查合法性。现有 A 的生成 backend 和 review 默认值保留。不得把 Task、manifest、readiness 或 `allow-unready-draft` 当作 3B 的替代入口。
+Capability 使用其原 `3b-capabilities-v1` profile。实际 profile 以当前 owner 的 `--help` 与冻结输入为准。显式 B 的多模型隔离 runner 路由由 `docs/workflows/llm-routing.json` 定义（默认可解析至官方 Codex 或已登记的 Gemini 隔离 runner）；显式指定的 runner 或路由别名原样传递，由执行 owner 检查合法性并绑定工具指纹。现有 A 的生成 backend 和 review 默认值保留。不得把 Task、manifest、readiness 或 `allow-unready-draft` 当作 3B 的替代入口。
 
 `generate` 会执行模型工作，必须已有实际预算与授权。`status` 会检查原 checkpoint，并可能恢复该 checkpoint；它不是完全无副作用的文件浏览。中断后先检查原进程、回执与 journal，保留未知调用占用，不重发未知请求或通过换 ID 清空历史。
 
@@ -35,7 +35,7 @@ py -3 scripts/python/dev_cli.py plan-mvg --stage reopen --run-id <original-mvg-r
 
 ## 从候选到正式 operation
 
-[采纳与 host review owner](b-route-adoption.md)负责 `review-prepare → review-complete → prepare → reserve`，随后原 commit owner 负责 `apply → verify → publish → read`。使用原 request、operation ID 与返回引用。`review-prepare` 只准备材料；它不执行模型、不创建预算。独立 reviewer 必须有真实执行证明，不能以人工布尔值或请求参数代替。
+[采纳与 host review owner](b-route-adoption.md)负责 `origin-prepare`（按需通过 `--origin-profile` 冻结初始采纳 profile）、`review-prepare → review-complete`（或面向已发布历史补偿的分段采纳审阅 `review-segmented-preflight / review-segmented-prepare / review-segmented-execute / review-segmented-resume / review-segmented-repair-*`）以及 `prepare → reserve`，随后原 commit owner 负责 `apply → verify → publish → read`。使用原 request、operation ID 与返回引用。`origin-prepare`、`review-prepare` 与 `review-segmented-preflight/prepare` 只准备材料；它们不执行模型、不创建预算。多模型路由配置见 `docs/workflows/llm-routing.json`。独立 reviewer 必须有真实执行证明，不能以人工布尔值或请求参数代替。
 
 ```powershell
 py -3 scripts/python/dev_cli.py b-route-adoption --root <target-root> --stage inspect --operation-id <original-id> --context

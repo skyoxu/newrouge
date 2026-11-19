@@ -73,8 +73,8 @@ def _scopes(values, *, allow_empty=False):
 def _safe(root, relative):
     """Check existing ancestors before any guarded directory/file access."""
     relative = _path(relative)
+    root = leases._directory(root)
     current = root
-    leases._directory(root)
     for part in relative.split('/'):
         current = current / part
         try:
@@ -274,7 +274,7 @@ def _legacy_pending(root, owner):
         if not directory.exists():
             continue
         leases._directory(directory)
-        for run in directory.iterdir():
+        for run in sorted(directory.iterdir()):
             leases._no_reparse(run)
             if not run.is_dir():
                 continue

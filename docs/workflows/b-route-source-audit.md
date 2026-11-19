@@ -15,6 +15,8 @@
 
 Windows Python 3.12+，使用仓库 B 路线依赖安装合同（`requirements-b-route.txt`）。runner、accounted、audit-ref 都采用精确仓库相对 POSIX 路径；根短路径按既有合同解析为真实根，后代别名、symlink 和 junction 拒绝。attempt-id 不得使用预算目录保留名 `reservations`。显式选择可信本地 runner；其 transitive Python 源码、相关可执行文件、Python 与结果相关依赖版本均绑定到审计 identity。
 
+`--runner` 同时支持逻辑路由别名 `auto|codex|gemini|codex-cli|gemini-cli`（默认按 `docs/workflows/llm-routing.json` 解析，亦可直接传入精确相对路径如 `scripts/python/codex_isolated_model_runner.py` 或 `scripts/python/gemini_isolated_model_runner.py`）。选用 Gemini 隔离 runner 时，`gemini_isolated_model_runner.py` 及其传递 Python 源码、可执行文件与依赖版本同样绑定到审计工具指纹与复用身份；工具源码或路由配置漂移将阻止旧 current proof 复用。当部分 extraction 已完成并落盘、需在不重跑已完成文件的前提下恢复单步提取或进入全局比较时，可显式传入 `--completed-extraction-ref` 指定已校验的既有 extraction 报告（主机按原冻结输入与完整 proof 严格复验，未通过或漂移时 fail closed，不隐式补跑）。
+
 ```powershell
 py -3 scripts/python/dev_cli.py b-route-sources --stage audit --root C:/work/newrouge --run-id reward-audit --scope-id reward --attempt-id audit-01 --accounted logs/ci/<date>/b-route-sources/source-review/account-01/account/report.json --runner scripts/python/codex_isolated_model_runner.py --expected-model <actual-model-identity>
 ```

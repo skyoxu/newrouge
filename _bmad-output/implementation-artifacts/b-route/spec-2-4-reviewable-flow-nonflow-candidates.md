@@ -125,3 +125,10 @@ context: []
 最终主线程 root-review-final-12：291 项实际执行，286 通过，0 failure、5 已在旧基线精确重现的 legacy errors、0 skip。本轮候选 44 项、原六行矩阵覆盖与 14 项旧门禁全部通过；11 份源码/schema 前后原字节哈希相同。主线程原反例重放确认非法输入与缓存篡改拒绝、合法平行边保留、被篡改旧事件不修复。完整证据位于 logs/ci/2026-11-05/b-route-story-2-4-build 与 story24-tests；不得说整套 legacy 测试全绿。
 
 真实合格 3A/3B 阳性准入仍未验证，且未新增项目真实模型请求；上游声明不是执行证明，服务端实际模型及物理请求数仍 unknown。下一步仅原生 Step5 本地状态/提交收口，不推送或合并。
+
+### Review Findings (2026-11-19)
+
+Epic 2 (Stories 2.1-2.7) BMAD 审阅收口；`<frozen-after-approval>` 区块未改动。证据：`logs/ci/2026-11-19/epic2-review/epic2-verification-summary.json`。
+
+- [x] [Review][Verified] `test_b_route_candidate` 回归复验通过（45/45），图结构校验、非 Flow 验证去向与原字节身份约束保持完好。
+- [x] [Review][Defer] Story 25 锁护文件相关非阻塞历史边界及 CI 历史 workflow 清理统一登记于 `deferred-work.md` 与 `docs/technical-debt.md`。

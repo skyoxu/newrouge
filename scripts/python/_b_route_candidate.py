@@ -175,7 +175,7 @@ def check_owners(content, byte_store):
         originals[key] = value
         return value
 
-    refs = unique(content["selected_dependencies"], lambda r: (r["entity_id"], r["revision"]), "selected_dependencies")
+    refs = unique(content["selected_dependencies"], lambda r: r["entity_id"], "selected_dependencies")
     for reference in refs.values():
         ref = codec.TypedReference.from_value(reference)
         value = read_reference(reference)
@@ -262,14 +262,20 @@ def check_relations(content, flows):
 
 def check_identity(value, frozen):
     """One schema/provenance/input boundary, shared by structure and admission."""
+    import _b_route_3b_segmented_input as segmented_input
     schemas.validate(value, SCHEMA, auxiliary=True)
     require(value["input_identity"] == frozen["input_identity"], "input_identity", "exact current prepared identity")
     provenance = value["provenance"]
     if provenance["kind"] == "model_draft":
         chain = provenance["draft_chain"]
         identities = planning.validate_draft_chain(frozen, chain)
-        require(len(chain) > len(frozen["transport"]["batches"]) and chain[-1]["stage"] == "synthesis",
-                "draft_chain", "all original batches followed by final synthesis")
+        batch_count = len(frozen["transport"]["batches"])
+        if segmented_input.is_segmented_frozen(frozen):
+            require(len(chain) > batch_count and chain[-1]["stage"] == "synthesis",
+                    "draft_chain", "all segmented batches followed by final synthesis")
+        else:
+            require(len(chain) > batch_count and chain[-1]["stage"] == "synthesis",
+                    "draft_chain", "all original batches followed by final synthesis")
         require(identities[-1] == provenance["final_draft_identity"]
                 and codec.canonical_digest(chain[-1]["content"]) == codec.canonical_digest(value["content"]),
                 "draft_chain", "exact final original candidate content and identity")
@@ -306,6 +312,7 @@ def rules_identity():
 
 
 def validate(root, *, run_id, prepared_ref, candidate):
+    import _b_route_3b_segmented_input as segmented_input
     root = planning.root_path(root)
     require(type(run_id) is str and sources.ID.fullmatch(run_id), "run_id", "safe explicit invocation ID")
     obs, output = sources.Observations(root), None
@@ -313,7 +320,7 @@ def validate(root, *, run_id, prepared_ref, candidate):
         "status":"blocked","claim":"candidate_structure_only","formal_adoption":False,"readiness":False,
         "runtime_verified":False,"model_dispatch_count":0,"runner_dispatch_count":0,"diagnostics":[]}
     try:
-        frozen = planning.load_prepared(root, prepared_ref)
+        frozen = segmented_input.load_prepared(root, prepared_ref)
         raw = obs.read(candidate)
         value = codec.strict_json_loads(raw)
         rules = rules_identity()
@@ -324,7 +331,7 @@ def validate(root, *, run_id, prepared_ref, candidate):
         store = frozen_bytes(root, prepared_ref, frozen, obs)
         report["facts"] = check(value, frozen, store)
         # Revalidate immediately before publication or immutable read-only reuse.
-        planning.load_prepared(root, prepared_ref)
+        segmented_input.load_prepared(root, prepared_ref)
         require(rules_identity() == rules, "candidate-rules", "unchanged code and schema bytes")
         obs.verify()
         base = f"logs/ci/{dt.datetime.now(dt.timezone.utc).date().isoformat()}/b-route-candidate-check/{run_id}/{report['attempt_id']}"
@@ -347,13 +354,14 @@ def validate(root, *, run_id, prepared_ref, candidate):
         with (output/"candidate.raw.json").open("xb") as stream:
             stream.write(raw)
         report.update(status="passed",output_ref=base,resume_ref=base+"/report.json")
-    except (ValueError,OSError,KeyError,TypeError,RuntimeError,ImportError,UnicodeError) as error:
+    except (ValueError,OSError,KeyError,TypeError,AttributeError,RuntimeError,ImportError,UnicodeError) as error:
         report["diagnostics"].append(error.diagnostic.to_dict() if isinstance(error,codec.CodecError) else
             {"reason_code":"candidate_blocked","actual":str(error)})
         if output is not None:
             return partial_failure(root,run_id,report,error,output)
-        base = f"logs/ci/{dt.datetime.now(dt.timezone.utc).date().isoformat()}/b-route-candidate-check/{run_id}/failures/{uuid.uuid4().hex}"
-        report.update(output_ref=base,resume_ref=base+"/report.json",scope_id=report.get("scope_id","unresolved"),attempt_id=uuid.uuid4().hex)
+        suffix = uuid.uuid4().hex
+        base = f"logs/ci/{dt.datetime.now(dt.timezone.utc).date().isoformat()}/b-route-candidate-check/{run_id}/failures/{suffix}"
+        report.update(output_ref=base,resume_ref=base+"/report.json",scope_id=report.get("scope_id","unresolved"),attempt_id=suffix)
         try:
             output = planning.new_directory(root,base)
         except (ValueError,OSError) as persistence:
@@ -363,12 +371,15 @@ def validate(root, *, run_id, prepared_ref, candidate):
     try:
         sources.write(output/"raw-index.json",sources.archive_observations(obs,output))
         if report["status"] == "passed":
-            planning.load_prepared(root,prepared_ref)
+            segmented_input.load_prepared(root,prepared_ref)
             require(rules_identity() == rules,"candidate-rules","unchanged through publication")
             obs.verify()
         sources.write(output/"report.json",report)
-        artifacts = {p.relative_to(output).as_posix():codec.raw_digest(codec.read_reference_bytes(root,p.relative_to(root).as_posix()))
-                     for p in output.rglob("*") if p.is_file()}
+        artifacts = {}
+        for p in sorted(output.rglob("*")):
+            sources.inventory.no_reparse(p)
+            if p.is_file():
+                artifacts[p.relative_to(output).as_posix()] = codec.raw_digest(codec.read_reference_bytes(root, p.relative_to(root).as_posix()))
         sources.write(output/"event.json",{**report,"artifacts":artifacts})
     except (ValueError,OSError) as error:
         return partial_failure(root,run_id,report,error,output)
@@ -401,4 +412,14 @@ def from_cli(args, *, planner):
         return None
     require(stage == "3b" and args.command == ("validate" if planner == "mvg" else "validate-candidate")
             and prepared and getattr(args,"candidate",None),"input-stage","3b candidate reader with prepared-ref and candidate")
+    mixed = bool(
+        getattr(args, "planning_contract", None)
+        or getattr(args, "task_id", None)
+        or getattr(args, "allow_unready_draft", False)
+        or getattr(args, "capabilities", None)
+        or getattr(args, "manifest", None)
+        or getattr(args, "evidence_ref", None)
+        or getattr(args, "run_invocation_limit", None) is not None
+    )
+    require(not mixed, "arguments", "3b candidate reader rejects legacy or prepare-only parameters")
     return validate(Path(args.repo_root).absolute(),run_id=args.run_id,prepared_ref=prepared,candidate=args.candidate)

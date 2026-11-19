@@ -262,7 +262,7 @@ class AdoptionR19ReaderTests(unittest.TestCase):
         request, state, handoff, run = self.fixture()
         capture = self.capture(request, state, handoff)
         response = SimpleNamespace(returncode=0, stdout=reader.canonical(capture), stderr=b"")
-        with patch.object(reader.subprocess, "run", return_value=response) as child:
+        with patch.object(reader, "_run_reader", return_value=response) as child:
             result = reader.capture_completed(self.root, planner="mvg", run_id="m4", state_raw=(run / "run.json").read_bytes(),
                 expected_handoff_ref=request["expected_handoff_ref"])
         self.assertEqual(capture, result)

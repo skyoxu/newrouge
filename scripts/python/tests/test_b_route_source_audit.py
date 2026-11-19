@@ -1515,6 +1515,81 @@ class SourceAuditTests(SourceAccountingTests):
         self.assertFalse(failed["execution_complete"])
         self.assertFalse(failed["planning_eligible"])
 
+    def test_cross_file_duplicate_block_id_dispositions_do_not_overwrite_each_other(self):
+        raw_a = b"File A uncertain requirement line.\n"
+        raw_b = b"File B normal context line.\n"
+        dig_a, dig_b = codec.raw_digest(raw_a), codec.raw_digest(raw_b)
+        files = [
+            {"path": "docs/a.md", "raw_digest": dig_a, "raw_base64": base64.b64encode(raw_a).decode("ascii"),
+             "text": raw_a.decode("utf-8"),
+             "blocks": [{"block_id": "BLK-SHARED", "line_start": 1, "line_end": 1, "raw_text": raw_a.decode("utf-8")}]},
+            {"path": "docs/b.md", "raw_digest": dig_b, "raw_base64": base64.b64encode(raw_b).decode("ascii"),
+             "text": raw_b.decode("utf-8"),
+             "blocks": [{"block_id": "BLK-SHARED", "line_start": 1, "line_end": 1, "raw_text": raw_b.decode("utf-8")}]},
+        ]
+        cite_a = {"path": "docs/a.md", "raw_digest": dig_a, "block_id": "BLK-SHARED",
+                  "byte_start": 0, "byte_end": len(raw_a), "quote": raw_a.decode("utf-8")}
+        input_id = "sha256:" + "a" * 64
+        base_request = {
+            "phase": "compare",
+            "input_identity": input_id,
+            "payload": {
+                "files": files,
+                "candidate": {
+                    "block_results": [
+                        {"path": "docs/a.md", "block_id": "BLK-SHARED", "disposition": "context"},
+                        {"path": "docs/b.md", "block_id": "BLK-SHARED", "disposition": "context"},
+                    ],
+                    "file_results": [],
+                },
+                "proposals": {"proposals": []},
+                "extractions": [
+                    {"file": {"path": "docs/a.md", "raw_digest": dig_a},
+                     "coverage": [{"block_id": "BLK-SHARED", "disposition": "unknown"}], "obligations": []},
+                    {"file": {"path": "docs/b.md", "raw_digest": dig_b},
+                     "coverage": [{"block_id": "BLK-SHARED", "disposition": "context"}], "obligations": []},
+                ],
+            },
+        }
+        base_output = {
+            "schema_version": audit.SCHEMA + ".compare",
+            "input_identity": input_id,
+            "file_reviews": [
+                {"file": {"path": "docs/a.md", "raw_digest": dig_a}, "reason": "Reviewed file A."},
+                {"file": {"path": "docs/b.md", "raw_digest": dig_b}, "reason": "Reviewed file B."},
+            ],
+            "disposition_reviews": [
+                {"path": "docs/a.md", "block_id": "BLK-SHARED", "decision": "accepted",
+                 "reason": "Accepted without finding.", "basis": [], "finding_ids": []},
+                {"path": "docs/b.md", "block_id": "BLK-SHARED", "decision": "accepted",
+                 "reason": "Context block accepted.", "basis": [], "finding_ids": []},
+            ],
+            "obligation_reviews": [],
+            "findings": [],
+        }
+        with self.assertRaises(codec.CodecError) as ctx:
+            audit.validate_output(base_request, deepcopy(base_output))
+        self.assertEqual(ctx.exception.diagnostic.entity_id, "disposition.unknown")
+
+        with_finding = deepcopy(base_output)
+        with_finding["findings"].append({
+            "finding_id": "F-DUP-1", "input_identity": input_id, "classification": "unknown",
+            "severity": "blocking", "return_owner": "docs-owner", "reason": "Retained unknown block in file A.",
+            "citations": [cite_a], "affected_proposal_ids": [], "unprojected": True,
+        })
+        with_finding["disposition_reviews"][0]["finding_ids"] = ["F-DUP-1"]
+        audit.validate_output(base_request, with_finding)
+
+        deferred_request = deepcopy(base_request)
+        deferred_request["payload"]["extractions"][0]["coverage"][0]["disposition"] = "deferred"
+        with self.assertRaises(codec.CodecError) as ctx2:
+            audit.validate_output(deferred_request, deepcopy(base_output))
+        self.assertEqual(ctx2.exception.diagnostic.entity_id, "disposition")
+
+        with_basis = deepcopy(base_output)
+        with_basis["disposition_reviews"][0]["basis"] = [cite_a]
+        audit.validate_output(deferred_request, with_basis)
+
     @unittest.skipUnless(os.name == "nt", "Requires actual Windows junction and short-path rejection")
     def test_windows_audit_real_junction_and_short_path_rejected(self):
         account, _ = self.accounted()

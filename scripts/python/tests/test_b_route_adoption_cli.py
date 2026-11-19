@@ -126,7 +126,7 @@ class AdoptionCliTests(unittest.TestCase):
 
     def test_invalid_arguments_are_json_and_never_call_service(self):
         fake = service()
-        bad = [[], ['--stage', 'apply', '--operation-id', 'OP-1'],
+        bad = [[], ['--stage', 'invalid-stage', '--operation-id', 'OP-1'],
                ['--stage', 'review-prepare', '--operation-id', 'OP-1'],
                ['--stage', 'review-complete', '--operation-id', 'OP-1', '--request', 'other.json'],
                ['--stage', 'prepare', '--operation-id', 'OP-1'],
@@ -144,6 +144,8 @@ class AdoptionCliTests(unittest.TestCase):
                         self.assertEqual(1, len(value['diagnostics']))
                         self.assertEqual(set(codec.Diagnostic(codec.ReasonCode.OK).to_dict()),
                                          set(value['diagnostics'][0]))
+                        if '--stage' in arguments and 'invalid-stage' in arguments:
+                            self.assertEqual('invalid_argument', value['diagnostics'][0]['reason_code'])
         self.assertTrue(all(getattr(fake, stage).call_count == 0
                             for stage in ('prepare', 'reserve', 'inspect')))
 

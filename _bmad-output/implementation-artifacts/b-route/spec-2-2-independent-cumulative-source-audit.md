@@ -143,3 +143,11 @@ Story2.2的实施审核与受控验收完成，不等于正式规划采纳、默
 - `py -3 -B -m unittest discover -s scripts/python/tests -p test_b_route_source_audit.py -v`：全部当前适用方法运行通过；平台 skip 单列，真实 Windows 方法必须在 Windows 实际 PASS。
 - `py -3 -B -m unittest discover -s scripts/python/tests -p test_b_route_sources.py -v` 加直接改动 helper／runner 的相关已有回归：原合同保持；不运行无关游戏／全量生产任务。
 - 协调器独立 CLI 及实际受控模型：确认全源遗漏、跨来源冲突、无 Task／旧文件保护、容量零 dispatch、失败／复用终态，以及实际模型证明与 synthetic Windows 证明分别成立。时间、调用和账单 unknown 如实记录。
+
+### Review Findings (2026-11-19)
+
+Epic 2 (Stories 2.1-2.7) BMAD 审阅收口；`<frozen-after-approval>` 区块未改动。证据：`logs/ci/2026-11-19/epic2-review/epic2-verification-summary.json`。
+
+- [x] [Review][DocSync] 同步 `docs/workflows/b-route-source-audit.md`，补充 `--runner` 路由别名（`auto|codex|gemini|codex-cli|gemini-cli`）、`gemini_isolated_model_runner.py` 工具指纹绑定与 `--completed-extraction-ref` 单步恢复说明。
+- [x] [Review][Verified] 定向复验 `test_cross_file_duplicate_block_id_dispositions_do_not_overwrite_each_other` 与 `test_windows_audit_real_junction_and_short_path_rejected` 通过。
+- [x] [Review][Defer] Story 25 AST/字节锁保护文件非阻塞历史边界留待专门 source-epoch 过渡升级；CI `push` 快速子集与旧 `story-2-1-windows.yml` 后续统一清理。

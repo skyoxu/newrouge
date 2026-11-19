@@ -18,6 +18,11 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
+_SCRIPTS = Path(__file__).resolve().parents[1]
+for _p in (str(_SCRIPTS), str(_SCRIPTS / "tests"), str(_SCRIPTS.parent / "sc")):
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
+
 import _b_route_planning_runtime as runtime
 import _b_route_planning_input as planning
 import _b_route_codec as codec
@@ -562,6 +567,10 @@ class RuntimeTests(unittest.TestCase):
             seed_value=runtime.seed(state, run / "analysis-input"), batch=1, delivery=delivery)
         payload.update(content_contract=runtime.generation_schemas(), final_content_target=runtime.generation_target(),
             runtime_identity=state["runtime_identity"], run_id=state["run_id"], slot="candidate-1", generation=1, execution=1)
+        if runtime.issue_account_policy(state) is not None:
+            payload["issue_account_policy"] = runtime.issue_account_policy(state)
+        if state.get("b_route_input_compact_policy") is not None:
+            payload["input_compact_policy"] = state["b_route_input_compact_policy"]
         payload["lineage_identity"] = runtime.lineage_identity(state, payload["accepted_seed"], "candidate-1", 1)
         payload["actual_output_schema"] = runtime.generation_schema(self.frozen, payload["root_request"], delivery=delivery)
         payload.update(prior_candidate=deepcopy(self.value), repair_issue=issue,
@@ -1625,6 +1634,10 @@ class CompleteWireTests(unittest.TestCase):
             drafts=[draft], delivery=runtime.wire.SCHEMA)
         payload.update(content_contract=runtime.generation_schemas(), final_content_target=runtime.generation_target(),
             runtime_identity=state["runtime_identity"], run_id=state["run_id"], slot="candidate-1", generation=1, execution=1)
+        if runtime.issue_account_policy(state) is not None:
+            payload["issue_account_policy"] = runtime.issue_account_policy(state)
+        if state.get("b_route_input_compact_policy") is not None:
+            payload["input_compact_policy"] = state["b_route_input_compact_policy"]
         payload["lineage_identity"] = runtime.lineage_identity(state, payload["accepted_seed"], "candidate-1", 1)
         schema = runtime.generation_schema(self.frozen, payload["root_request"], delivery=runtime.wire.SCHEMA)
         payload["actual_output_schema"] = schema
@@ -1847,6 +1860,10 @@ class CompactWireTests(unittest.TestCase):
             seed_value=runtime.seed(state, self.run / "analysis-input"), drafts=[draft], delivery=delivery)
         payload.update(content_contract=runtime.generation_schemas(), final_content_target=runtime.generation_target(),
             runtime_identity=state["runtime_identity"], run_id=state["run_id"], slot="candidate-1", generation=1, execution=1)
+        if runtime.issue_account_policy(state) is not None:
+            payload["issue_account_policy"] = runtime.issue_account_policy(state)
+        if state.get("b_route_input_compact_policy") is not None:
+            payload["input_compact_policy"] = state["b_route_input_compact_policy"]
         payload["lineage_identity"] = runtime.lineage_identity(state, payload["accepted_seed"], "candidate-1", 1)
         schema = runtime.generation_schema(self.frozen, payload["root_request"], delivery=delivery)
         payload["actual_output_schema"] = schema

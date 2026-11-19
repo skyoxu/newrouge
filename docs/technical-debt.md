@@ -51,3 +51,10 @@ This file is updated by scripts/sc/run_review_pipeline.py.
 - 历史带日期 `story-1-*-windows.yml` 分支触发器：持续 Windows 回归已由 `scripts/python/run_gate_bundle.py` 登记五个 B 路线 suite 取代，旧 workflow 清理另行处理。
 - `protection-input.v1.json` 与 `epic1-handoff.v1.json` 中原环境 `logs/ci/2026-11-03..04` 路径：属历史证据引用，按原字节保留，不在本轮重写。
 - 逐项记录见 `_bmad-output/implementation-artifacts/b-route/deferred-work.md`；证据：`logs/ci/2026-11-19/epic1-review/`。
+
+## Epic 2 Stories 2.1-2.7 (2026-11-19)
+
+- Story 25 AST/字节锁保护文件非阻塞历史边界：`_b_route_planning_input.py`、`_b_route_planning_runtime.py`、`_b_route_execution_transition.py`、`_b_route_issue_accounts.py`、`_planning_skill_common.py`、`_codex_app_server.py`、`_mvg_worker_lifetime.py`、`_b_route_frozen_native_reader.py` 受 `test_01_story25_ast_and_semantic_lock_guard` 锁护，历史非阻塞边界留待专门 source-epoch 过渡升级。
+- CI `push` 快速子集与旧 `story-2-1-windows.yml` 后续统一清理：确定性回归已并入 `b-route-runtime-deterministic.yml` 与 `run_gate_bundle.py`，历史 workflow 分支触发器统一清理另行排期。
+- `origin_profile` v2 扩展负向单测增强：当前主路径与基础校验已通过，v2 扩展字段负向边界用例列为后续测试补充。
+- 逐项记录见 `_bmad-output/implementation-artifacts/b-route/deferred-work.md`；证据：`logs/ci/2026-11-19/epic2-review/epic2-verification-summary.json`。

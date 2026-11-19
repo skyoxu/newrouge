@@ -16,10 +16,10 @@ py -3 scripts/python/b_route_adoption.py --root . --stage reserve --operation-id
 py -3 scripts/python/dev_cli.py b-route-adoption --root . --stage inspect --operation-id OP-1
 ```
 
-Only review-prepare, review-segmented-preflight and prepare accept --request. The candidate admission remains
+Only `origin-prepare`, `review-prepare`, `review-segmented-preflight`, `review-segmented-prepare`, and `prepare` accept `--request` (with `origin-prepare` also accepting `--origin-profile` to freeze the declared origin profile/routing metadata before host review). The candidate admission remains
 review_ref. Attach the returned distinct host_review_ref to the final request;
 there is no caller-approved boolean or environment bypass. Both direct/dev_cli
-entries and parser dispatch use the same service. All block results use the
+entries and parser dispatch use the same service. Multi-model runner routing (Codex/Gemini) is resolved from `docs/workflows/llm-routing.json` and bound into the review policy/tool identity. All block results use the
 single codec diagnostic (reason_code, stage, entity_id, expected, actual,
 resume_ref) and exit 2. New review artifacts are auxiliary logs, not a seventh
 formal record/schema identity or a separate planning database.
@@ -65,10 +65,10 @@ to review-prepare and the explicit offline review-segmented-preflight described 
 
 The deterministic CLI derives current published-history materials, freezes a
 separate plan/input archive under logs/ci/b-route-compensation-segments, and
-checks each full node request against70000 input/96000 input-plus-reserve/1MiB.
-The existing compensation output reserve is2000. Repeating the command with
+checks each full node request against 70000 input / 96000 input-plus-reserve / 1MiB.
+The existing compensation output reserve is 2000. Repeating the command with
 unchanged actual inputs verifies and reuses its offline archive; it does not
-retry a model or a business operation. A capacity block returns exit2 with the
+retry a model or a business operation. A capacity block returns exit 2 with the
 measurement and next-node reference retained. This stage does not return a
 host_review_ref or runner command and never dispatches/reserves/applies.
 
@@ -310,7 +310,7 @@ entire lifetime. Supply it only after applicable real authorization and cumulati
 budget/unknown accounting are established. There is no default; it is not a
 funding grant, old campaign balance or new pool. It must cover the complete finite
 plan, is saved once, and cannot be reset or increased on reentry. Every intent,
-including failed/unknown, occupies its fixed slot. Each runner still gets budget1.
+including failed/unknown, occupies its fixed slot. Each runner still gets budget 1.
 
 Without that parameter, execute verifies completed nodes then returns
 `authorization_required` before the first new intent/call. `review-segmented-resume`
@@ -329,8 +329,8 @@ For the known published-history two-closure family, the same public CLI supports
 `review-segmented-repair-resume`. Prepare requires `--original-source-root` with
 the exact original public source DATA; it never executes that source. Execute
 requires `--model-request-budget 1` and `--review-authorization-source` recording
-the actual operator authorization. The existing original limit2 and both calls
-remain occupied; the separate one-call repair makes the cumulative bound3.
+the actual operator authorization. The existing original limit 2 and both calls
+remain occupied; the separate one-call repair makes the cumulative bound 3.
 This is not a funding grant or automatic retry. A second repair is unsupported.
 
 Only complete official original protocols with an approved business prefix and

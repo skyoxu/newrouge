@@ -246,7 +246,7 @@ class AdoptionR10ReaderTests(unittest.TestCase):
     def test_parent_uses_closed_isolated_child_and_refuses_malformed_or_failed_output(self):
         capture = self.capture()
         response = SimpleNamespace(returncode=0, stdout=raw(capture), stderr=b'')
-        with patch.object(reader.subprocess, 'run', return_value=response) as invoke:
+        with patch.object(reader, '_run_reader', return_value=response) as invoke:
             result = reader.capture_completed(self.root, planner='capabilities', run_id='synthetic',
                 state_raw=(self.run / 'run.json').read_bytes(), expected_handoff_ref=self.request['expected_handoff_ref'])
             self.assertEqual(capture, result)
@@ -258,7 +258,7 @@ class AdoptionR10ReaderTests(unittest.TestCase):
             self.assertNotIn('shell', kwargs)
         for response in (SimpleNamespace(returncode=1, stdout=b'', stderr=b'explicit synthetic refusal'),
                          SimpleNamespace(returncode=0, stdout=b'{"approved":true}', stderr=b'')):
-            with patch.object(reader.subprocess, 'run', return_value=response), self.assertRaises(ValueError):
+            with patch.object(reader, '_run_reader', return_value=response), self.assertRaises(ValueError):
                 reader.capture_completed(self.root, planner='capabilities', run_id='synthetic',
                     state_raw=(self.run / 'run.json').read_bytes(), expected_handoff_ref=self.request['expected_handoff_ref'])
 

@@ -113,7 +113,7 @@ projections and native/bootstrap authorization belong to their owning adapters.
         codec.validate_reference_path(name)
         _require(name.casefold() not in seen, 'distinct target paths', name)
         seen.add(name.casefold())
-        _require(name not in (path, records.CATALOG_PATH) and
+        _require(name.casefold() not in (path.casefold(), records.CATALOG_PATH.casefold()) and
                  not name.casefold().startswith((records.BASE + 'commits/').casefold()),
                  'ordinary targets excluding receipt/catalog', name, codec.ReasonCode.DIGEST_CYCLE)
         _require(target['verification_mode'] == 'immutable_bytes',

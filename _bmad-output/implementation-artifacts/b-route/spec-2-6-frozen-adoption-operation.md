@@ -79,3 +79,11 @@ formal acceptance are pending; no commit is authorized before root review.
 以已完成原生审核的 Story2.5 本地提交 `f216480fcf181f228aab8ddaaca9bbfe401d6023` 为基线，按冻结46文件清单移植 R39 最终2.6与引用角色修复。保留 B40 的 candidate/runtime/common/appserver/CI，不以旧分支覆盖共享实现；ADR索引保留原条目并增加0049。原R39组件27项及其他历史回归只按原源码纪元引用，不能算作R41通过。
 
 Task108历史调试附件缺失保留引用、null摘要和明确告警，不单独阻塞无关操作；当前实际必需输入仍失败关闭，原Task三图不改。R41还需实际整合验证、新保护采集/验证、新声明/subject/host proof，再依次执行公开准备和预留。原R22/R10 producer、13次MVG调用、79/290及unknown全部保持；新增真实项目模型调用0。正式采纳、发布、readiness、运行及默认B未开启，未推送或合并main，未启用Fast或1.5倍速。
+
+### Review Findings (2026-11-19)
+
+Epic 2 (Stories 2.1-2.7) BMAD 审阅收口；`<frozen-after-approval>` 区块未改动。证据：`logs/ci/2026-11-19/epic2-review/epic2-verification-summary.json`。
+
+- [x] [Review][Patch] 修正 `scripts/python/_b_route_operation_scope.py` 第 244 行对 MVG 历史 `apply-journal.json` / `apply-summary.json` 顶层 `run_id` 字段的误判，恢复以 `trace_path` 绑定 `run_id` 的原合同；`test_b_route_operation_scope`（15/15）、`test_b_route_operation_leases`（11/11）与 `test_b_route_adoption*`（106/106）全部通过。
+- [x] [Review][DocSync] 同步 `docs/workflows/b-route-adoption.md` 与 `docs/workflows/b-route-native-planning-status.md`，补充 `origin-prepare` / `--origin-profile`、分段采纳审阅（`review-segmented-*`）与 `docs/workflows/llm-routing.json` 多模型路由说明，并修正数字粘连笔误。
+- [x] [Review][Defer] `origin_profile` v2 扩展负向单测增强与 Story 25 锁护文件历史边界均登记于 `deferred-work.md` 与 `docs/technical-debt.md`。

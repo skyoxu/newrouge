@@ -48,3 +48,17 @@
 - source_spec: `_bmad-output/implementation-artifacts/b-route/spec-1-1-*.md` .. `spec-1-6-*.md`
   summary: `protection-input.v1.json` 与 `epic1-handoff.v1.json` 中原环境 `logs/ci/2026-11-03..04` 路径：属历史证据引用，按原字节保留，不在本轮重写。
   evidence: `logs/ci/2026-11-19/epic1-review/`；既有跨 Story 设计边界，非本轮引入，不新增 Epic 1 交付阻塞。
+
+## Deferred from: code review of Epic 2 Stories 2.1-2.7 (2026-11-19)
+
+- source_spec: `_bmad-output/implementation-artifacts/b-route/spec-2-1-*.md` .. `spec-2-7-*.md`
+  summary: Story 25 AST/字节锁保护文件（`_b_route_planning_input.py`、`_b_route_planning_runtime.py`、`_b_route_execution_transition.py`、`_b_route_issue_accounts.py`、`_planning_skill_common.py`、`_codex_app_server.py`、`_mvg_worker_lifetime.py`、`_b_route_frozen_native_reader.py`）中的非阻塞历史边界留待专门 source-epoch 过渡升级处理。
+  evidence: `logs/ci/2026-11-19/epic2-review/epic2-verification-summary.json`；受 `test_01_story25_ast_and_semantic_lock_guard` 锁护，本轮严禁改动锁护文件，不新增 Epic 2 交付阻塞。
+
+- source_spec: `_bmad-output/implementation-artifacts/b-route/spec-2-1-*.md` .. `spec-2-7-*.md`
+  summary: CI `push` 快速子集与旧 `story-2-1-windows.yml` 工作流后续统一清理。
+  evidence: `.github/workflows/b-route-runtime-deterministic.yml` 与 `logs/ci/2026-11-19/epic2-review/`；当前确定性回归已由 `run_gate_bundle.py` 与 `b-route-runtime-deterministic.yml` 覆盖，历史分支触发器清理另行排期。
+
+- source_spec: `_bmad-output/implementation-artifacts/b-route/spec-2-6-frozen-adoption-operation.md`
+  summary: `origin_profile` v2 扩展负向单测增强。
+  evidence: `logs/ci/2026-11-19/epic2-review/`；当前 `origin-prepare` 与默认 profile 路径已覆盖，v2 扩展字段与更多异常组合负向用例列为后续测试增强项。

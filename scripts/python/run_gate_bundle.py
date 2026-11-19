@@ -138,6 +138,21 @@ B_ROUTE_RUNTIME_DETERMINISTIC_TESTS = (
     "scripts.python.tests.test_codex_app_server_stdio",
     "scripts.python.tests.test_b_route_gemini_isolated_runner",
     "scripts.python.tests.test_b_route_3b_70k_segmented",
+    "scripts.python.tests.test_b_route_planning_input",
+    "scripts.python.tests.test_b_route_candidate",
+    "scripts.python.tests.test_b_route_adoption",
+    "scripts.python.tests.test_b_route_adoption_cli",
+    "scripts.python.tests.test_b_route_adoption_concurrency",
+    "scripts.python.tests.test_b_route_adoption_journal",
+    "scripts.python.tests.test_b_route_adoption_projection",
+    "scripts.python.tests.test_b_route_adoption_r10_capture",
+    "scripts.python.tests.test_b_route_adoption_r10_reader",
+    "scripts.python.tests.test_b_route_adoption_r19_reader",
+    "scripts.python.tests.test_b_route_adoption_review",
+    "scripts.python.tests.test_b_route_operation_leases",
+    "scripts.python.tests.test_b_route_operation_scope",
+    "scripts.python.tests.test_b_route_public_context",
+    "scripts.python.tests.test_b_route_qualified_public_context",
     "scripts.python.tests.test_inherited_pipe_cleanup",
     "scripts.python.tests.test_planning_main_audit_fixes.PlanningMainAuditFixesTests.test_interrupted_runner_terminates_and_reaps_real_child",
 )
@@ -650,6 +665,7 @@ def _run_group(
                 environment["TEMP"] = environment["BR_TEST_TEMP"]
                 environment["TMP"] = environment["BR_TEST_TEMP"]
                 environment["ADOPTION_TEST_TEMP"] = environment["BR_TEST_TEMP"]
+                environment["FROZEN_READER_TEST_TEMP"] = environment["BR_TEST_TEMP"]
             rc, output = _run_command(cmd, log_path, environment=environment)
         else:
             rc, output = _run_command(cmd, log_path)

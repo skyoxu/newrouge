@@ -662,6 +662,23 @@ class PlanningInputTests(unittest.TestCase):
             self.assertEqual(code, 0, output.getvalue())
             self.assertEqual(json.loads(output.getvalue())["input_stage"], "3b")
 
+    def test_segmented_cli_prepare_honors_tighter_contract_max_bytes_limit(self):
+        tight = deepcopy(self.contract)
+        tight["limits"]["max_bytes"] = 500
+        self.put("tight-contract.json", tight)
+        with patch.object(plan_capabilities, "prepare", side_effect=AssertionError("Legacy prepare forbidden")), \
+             contextlib.redirect_stdout(io.StringIO()) as output:
+            code = plan_capabilities.main([
+                "--repo-root", str(self.root), "prepare", "--run-id", "tight-cap",
+                "--input-stage", "3b", "--planning-contract", "tight-contract.json",
+            ])
+        self.assertEqual(code, 1, output.getvalue())
+        blocked = json.loads(output.getvalue())
+        self.assertEqual(blocked["status"], "blocked")
+        self.assertEqual(blocked["reason_code"], "capacity_exceeded")
+        self.assertEqual(blocked["diagnostics"][0]["reason_code"], "capacity_exceeded")
+        self.assertTrue((self.root / blocked["resume_ref"]).is_file())
+
     def test_3b_rejects_task_and_legacy_manifest_gates(self):
         for module in (plan_capabilities, plan_mvg):
             for mixed in (["--task-id", "15"], ["--allow-unready-draft"]):

@@ -175,6 +175,7 @@ class Snapshot:
             root = safe_path(self.root, name)
             actual = []
             if root.exists():
+                require(root.is_dir(), 'directory', name, codec.ReasonCode.INPUT_STALE)
                 for path in sorted(root.rglob('*')):
                     require(not path.is_symlink() and not (getattr(path.lstat(), 'st_file_attributes', 0) & 0x400),
                             'plain proof path', str(path), codec.ReasonCode.UNSAFE_PATH)
@@ -264,6 +265,7 @@ def capture_completed(root, material, review_ref):
             'original project-local recovery namespace', recovery, codec.ReasonCode.UNSAFE_PATH)
     with operation_lock(snapshot.root, state):
         with coordinator_lock(run):
+            expected_handoff = (run / 'handoff.json').relative_to(snapshot.root).as_posix()
             if state['schema_version'] == runtime.CONTINUATION_RUN:
                 with _frozen_native_reader() as reader:
                     snapshot.native_capture = reader.capture_completed(snapshot.root, planner=material['planner'],
@@ -275,8 +277,7 @@ def capture_completed(root, material, review_ref):
                 from _b_route_3b_segmented_input import load_prepared as load_3b_prepared
                 from _mvg_capability_recovery import assert_active_chain
                 runtime.validate_input(snapshot.root, run, state)
-                expected_handoff = (run / 'handoff.json').relative_to(snapshot.root).as_posix()
-                handoff_file = run / 'handoff.json'
+                handoff_file = safe_path(snapshot.root, expected_handoff)
                 import zlib
                 handoff_disk_digest = codec.raw_digest(handoff_file.read_bytes()) if handoff_file.is_file() else None
                 cache_key = (
@@ -287,42 +288,55 @@ def capture_completed(root, material, review_ref):
                 )
                 cached_entry = _VERIFIED_NATIVE_HANDOFF_CACHE.get(cache_key)
                 cache_valid = False
-                if cached_entry is not None and len(cached_entry) == 5:
-                    cached_h_z, cached_p_z, observed_pins, cached_h_dig, cached_p_dig = cached_entry
+                if cached_entry is not None and len(cached_entry) == 6:
+                    cached_h_z, cached_p_z, observed_pins, cached_dirs, cached_h_dig, cached_p_dig = cached_entry
                     assert_active_chain(snapshot.root, state, run)
                     pins_match = True
-                    for rel_path, expected_dig in observed_pins.items():
-                        actual_bytes = snapshot.read(rel_path, optional=(expected_dig is None))
-                        actual_dig = codec.raw_digest(actual_bytes) if actual_bytes is not None else None
-                        if actual_dig != expected_dig:
+                    for dir_rel, expected_members in cached_dirs.items():
+                        dir_path = safe_path(snapshot.root, dir_rel)
+                        actual_members = []
+                        if dir_path.exists():
+                            if not dir_path.is_dir():
+                                pins_match = False
+                                break
+                            for member in sorted(dir_path.rglob('*')):
+                                require(not member.is_symlink() and not (getattr(member.lstat(), 'st_file_attributes', 0) & 0x400),
+                                        'plain proof path', str(member), codec.ReasonCode.UNSAFE_PATH)
+                                if member.is_file():
+                                    actual_members.append(member.relative_to(snapshot.root).as_posix())
+                        if tuple(actual_members) != expected_members:
                             pins_match = False
                             break
                     if pins_match:
-                        snapshot.handoff = codec.strict_json_loads(zlib.decompress(cached_h_z))
-                        snapshot.prepared = codec.strict_json_loads(zlib.decompress(cached_p_z))
-                        require(codec.canonical_digest(snapshot.handoff) == cached_h_dig
-                                and codec.canonical_digest(snapshot.prepared) == cached_p_dig,
+                        for rel_path, expected_dig in observed_pins.items():
+                            pin_path = safe_path(snapshot.root, rel_path)
+                            if expected_dig is None:
+                                if pin_path.exists():
+                                    pins_match = False
+                                    break
+                            else:
+                                if not pin_path.is_file():
+                                    pins_match = False
+                                    break
+                                if codec.raw_digest(pin_path.read_bytes()) != expected_dig:
+                                    pins_match = False
+                                    break
+                    if pins_match:
+                        cached_handoff = codec.strict_json_loads(zlib.decompress(cached_h_z))
+                        cached_prepared = codec.strict_json_loads(zlib.decompress(cached_p_z))
+                        require(codec.canonical_digest(cached_handoff) == cached_h_dig
+                                and codec.canonical_digest(cached_prepared) == cached_p_dig,
                                 'unchanged cached handoff and prepared payloads', expected_handoff)
-                        href = material['handoff_ref']
-                        require(type(href) is dict and set(href) == {'path', 'schema_version', 'raw_digest'},
-                                'complete raw-bound reference', href, codec.ReasonCode.INVALID_REFERENCE)
-                        hraw = snapshot.read(href['path'])
-                        require(codec.raw_digest(hraw) == href['raw_digest'], href['raw_digest'], href['path'],
-                                codec.ReasonCode.DIGEST_MISMATCH)
-                        require(href['path'] == expected_handoff, expected_handoff, href['path'])
-                        require(href['schema_version'] == snapshot.handoff.get('schema_version'),
-                                href['schema_version'], href['path'], codec.ReasonCode.SCHEMA_MISMATCH)
-                        require(href['raw_digest'] == handoff_disk_digest, handoff_disk_digest, href['path'],
-                                codec.ReasonCode.DIGEST_MISMATCH)
+                        for rel_path, expected_dig in observed_pins.items():
+                            snapshot.files[rel_path] = expected_dig
+                        for dir_rel, expected_members in cached_dirs.items():
+                            snapshot.directories[dir_rel] = list(expected_members)
+                        snapshot.handoff = cached_handoff
+                        snapshot.prepared = cached_prepared
                         cache_valid = True
                 if not cache_valid:
                     snapshot.handoff = runtime.handoff(snapshot.root, run, state)
                     snapshot.prepared = load_3b_prepared(snapshot.root, snapshot.handoff['original_prepared_ref'])
-                    supplied = snapshot.ref(material['handoff_ref'])
-                    require(codec.canonical_digest(supplied) == codec.canonical_digest(snapshot.handoff),
-                            'exact current native handoff', material['handoff_ref']['path'])
-                    require(material['handoff_ref']['path'] == expected_handoff,
-                            expected_handoff, material['handoff_ref']['path'])
                     observed_pins = {}
                     run_rel = run.relative_to(snapshot.root).as_posix()
                     prep_dir_rel = str(Path(snapshot.handoff['original_prepared_ref']).parent).replace('\\', '/')
@@ -332,6 +346,7 @@ def capture_completed(root, material, review_ref):
                         snapshot.read(dep_rel, optional=True)
                     for p, d in snapshot.files.items():
                         observed_pins[p] = d
+                    cached_dirs = {k: tuple(v) for k, v in snapshot.directories.items()}
                     _VERIFIED_NATIVE_HANDOFF_CACHE.clear()
                     _VERIFIED_NATIVE_HANDOFF_CACHE[cache_key] = (
                         zlib.compress(
@@ -353,9 +368,15 @@ def capture_completed(root, material, review_ref):
                             level=1,
                         ),
                         observed_pins,
+                        cached_dirs,
                         codec.canonical_digest(snapshot.handoff),
                         codec.canonical_digest(snapshot.prepared),
                     )
+            supplied = snapshot.ref(material['handoff_ref'])
+            require(codec.canonical_digest(supplied) == codec.canonical_digest(snapshot.handoff),
+                    'exact current native handoff', material['handoff_ref']['path'])
+            require(material['handoff_ref']['path'] == expected_handoff,
+                    expected_handoff, material['handoff_ref']['path'])
             review = snapshot.ref(review_ref)
             require(review_ref['path'] == state['selected_admission_review']['path'] and
                     codec.canonical_digest(review) == codec.canonical_digest(snapshot.handoff['admission']),
@@ -490,7 +511,7 @@ def propose_allocations(snapshot, alignment, operations, existing=None):
     else:
         _shape(plan, ('mode', 'plan_ref'), 'plan')
         prior = snapshot.ref(plan['plan_ref'])
-        require(prior.get('schema_version') == PLAN and plan['plan_ref']['path'] in _current_plan_refs(snapshot),
+        require(isinstance(prior, dict) and prior.get('schema_version') == PLAN and plan['plan_ref']['path'] in _current_plan_refs(snapshot),
                 'currently published plan lineage', plan['plan_ref']['path'], codec.ReasonCode.UNPUBLISHED)
         require(plan['plan_ref']['path'] in snapshot.prepared['inputs']['dependencies']['files'],
                 'prior plan in independently reviewed prepared input', plan['plan_ref']['path'])
@@ -521,7 +542,7 @@ def propose_allocations(snapshot, alignment, operations, existing=None):
                 require(row['mode'] == 'reuse', 'allocate or explicit reuse', row['mode'])
                 value = codec.validate_business_id(row['stable_id'])
                 evidence = snapshot.ref(row['evidence_ref'])
-                if evidence.get('schema_version') == PLAN:
+                if isinstance(evidence, dict) and evidence.get('schema_version') == PLAN:
                     require(row['evidence_ref']['path'] in _current_plan_refs(snapshot) and value in _ids(evidence, kind),
                             'currently published aligned definition', value)
                     if kind == 'flows':
@@ -542,7 +563,7 @@ def propose_allocations(snapshot, alignment, operations, existing=None):
         if binding['mode'] == 'revise':
             _shape(binding, ('mode', 'binding_ref'), 'binding')
             previous = snapshot.ref(binding['binding_ref'])
-            require(previous.get('schema_version') == BINDING and previous['plan_ref']['entity_id'] == plan_id,
+            require(isinstance(previous, dict) and previous.get('schema_version') == BINDING and previous['plan_ref']['entity_id'] == plan_id,
                     'binding lineage for same plan', binding)
             current_bindings = {ref['path'] for head in (snapshot.catalog or {}).get('scope_heads', [])
                                 for ref in head['binding_refs']}
@@ -658,7 +679,8 @@ def _target_path(template, allocations):
         # Parse before formatting: reject attribute/index access, conversions and
         # format widths before they can raise or allocate attacker-sized output.
         for _literal, field, specification, conversion in string.Formatter().parse(template):
-            require(field is None or field in allowed and not specification and conversion is None,
+            require(field is None or (field in allowed and allocations[field] is not None
+                    and not specification and conversion is None),
                     'simple known allocation field', field, codec.ReasonCode.INVALID_REFERENCE)
         return template.format_map({key: allocations[key] for key in allowed})
     except (KeyError, ValueError, TypeError):
@@ -743,6 +765,11 @@ def build_frozen(snapshot, request, allocations):
         if payload['schema_version'] == PLAN:
             derived_plan_ref = adopted_plan_ref(targets[-1])
     targets = [indexed_targets[index] for index in range(len(templates))]
+    seen_target_paths = set()
+    for row in targets:
+        folded = row['path'].casefold()
+        require(folded not in seen_target_paths, 'distinct target paths', row['path'], codec.ReasonCode.CONFLICT)
+        seen_target_paths.add(folded)
     require(plan_targets == 1, 'one exact adopted plan projection', plan_targets)
     validate_binding_targets(allocations, targets)
     if 'origin_profile' in request['material']:
@@ -757,7 +784,7 @@ def build_frozen(snapshot, request, allocations):
                 ref = row['evidence_ref']
                 explicit_paths.add(ref['path'])
                 value = snapshot.ref(ref)
-                if value.get('schema_version') == PLAN:
+                if isinstance(value, dict) and value.get('schema_version') == PLAN:
                     plan_ids.add(value['plan_id'])
     for key in ('plan_ref', 'binding_ref'):
         for alignment in (request['material']['identity_alignment']['plan'],

@@ -851,16 +851,18 @@ def _estimate_batch_workspace_bytes(
     )
     exact_req_bytes = len(req_json.encode("utf-8"))
     reserved_tokens = int(inputs["contract"]["limits"]["reserved_tokens"])
+    eff_max_bytes = min(MAX_WORKSPACE_PAYLOAD_BYTES, int(inputs["contract"]["limits"]["max_bytes"]))
+    eff_token_limit = min(CONTEXT_TOKEN_LIMIT, int(inputs["contract"]["limits"]["max_input_tokens"]))
     effective_bytes = max(ws_bytes, exact_req_bytes)
     token_upper_bound = effective_bytes + reserved_tokens
     report = {
         "workspace_payload_utf8_bytes": ws_bytes,
         "request_bytes_upper_bound": effective_bytes,
-        "max_workspace_payload_bytes": MAX_WORKSPACE_PAYLOAD_BYTES,
+        "max_workspace_payload_bytes": eff_max_bytes,
         "utf8_byte_upper_bound": effective_bytes,
         "reserved_tokens": reserved_tokens,
         "token_plus_reserved_upper_bound": token_upper_bound,
-        "context_token_limit": CONTEXT_TOKEN_LIMIT,
+        "context_token_limit": eff_token_limit,
     }
     return effective_bytes, report
 
@@ -895,6 +897,9 @@ def plan_segmented_batches(inputs: dict) -> dict:
         ),
     }
 
+    eff_max_bytes = min(MAX_WORKSPACE_PAYLOAD_BYTES, int(inputs["contract"]["limits"]["max_bytes"]))
+    eff_token_limit = min(CONTEXT_TOKEN_LIMIT, int(inputs["contract"]["limits"]["max_input_tokens"]))
+
     unit_raw_sizes = [
         len(json.dumps(u, ensure_ascii=False, separators=(",", ":"), allow_nan=False).encode("utf-8"))
         for u in units
@@ -907,7 +912,7 @@ def plan_segmented_batches(inputs: dict) -> dict:
         include_rolling_reserve=True,
         schema_cache=schema_cache,
     )
-    avail_compressed = max(2048, MAX_WORKSPACE_PAYLOAD_BYTES - base_bytes)
+    avail_compressed = max(1, eff_max_bytes - base_bytes)
     est_ratio = 3.8
 
     batches: list[dict] = []
@@ -931,10 +936,10 @@ def plan_segmented_batches(inputs: dict) -> dict:
             schema_cache=schema_cache,
         )
         g_fits = (
-            g_bytes <= MAX_WORKSPACE_PAYLOAD_BYTES
-            and g_report["token_plus_reserved_upper_bound"] <= CONTEXT_TOKEN_LIMIT
+            g_bytes <= eff_max_bytes
+            and g_report["token_plus_reserved_upper_bound"] <= eff_token_limit
         )
-        if g_fits and (guess == total_units or g_bytes >= MAX_WORKSPACE_PAYLOAD_BYTES - 2800):
+        if g_fits and (guess == total_units or g_bytes >= eff_max_bytes - 2800):
             best_end = guess
             best_report = g_report
             best_bytes = g_bytes
@@ -947,8 +952,10 @@ def plan_segmented_batches(inputs: dict) -> dict:
                 high = total_units
             else:
                 if guess == idx + 1:
-                    raise ValueError(
-                        f"b_route_segmented_atomic_unit_exceeds_70k:unit={units[idx]['unit_kind']}:bytes={g_bytes}"
+                    raise planning.CapacityBlocked(
+                        f"b_route_segmented_atomic_unit_exceeds_70k:unit={units[idx]['unit_kind']}:bytes={g_bytes}:limit={eff_max_bytes}",
+                        None,
+                        g_report,
                     )
                 single_bytes, single_report = _estimate_batch_workspace_bytes(
                     inputs,
@@ -959,11 +966,13 @@ def plan_segmented_batches(inputs: dict) -> dict:
                     schema_cache=schema_cache,
                 )
                 if (
-                    single_bytes > MAX_WORKSPACE_PAYLOAD_BYTES
-                    or single_report["token_plus_reserved_upper_bound"] > CONTEXT_TOKEN_LIMIT
+                    single_bytes > eff_max_bytes
+                    or single_report["token_plus_reserved_upper_bound"] > eff_token_limit
                 ):
-                    raise ValueError(
-                        f"b_route_segmented_atomic_unit_exceeds_70k:unit={units[idx]['unit_kind']}:bytes={single_bytes}"
+                    raise planning.CapacityBlocked(
+                        f"b_route_segmented_atomic_unit_exceeds_70k:unit={units[idx]['unit_kind']}:bytes={single_bytes}:limit={eff_max_bytes}",
+                        None,
+                        single_report,
                     )
                 best_end = idx + 1
                 best_report = single_report
@@ -982,14 +991,14 @@ def plan_segmented_batches(inputs: dict) -> dict:
                     schema_cache=schema_cache,
                 )
                 if (
-                    cand_bytes <= MAX_WORKSPACE_PAYLOAD_BYTES
-                    and cand_report["token_plus_reserved_upper_bound"] <= CONTEXT_TOKEN_LIMIT
+                    cand_bytes <= eff_max_bytes
+                    and cand_report["token_plus_reserved_upper_bound"] <= eff_token_limit
                 ):
                     best_end = mid
                     best_report = cand_report
                     best_bytes = cand_bytes
                     low = mid + 1
-                    if best_bytes >= MAX_WORKSPACE_PAYLOAD_BYTES - 2200:
+                    if best_bytes >= eff_max_bytes - 2200:
                         break
                 else:
                     high = mid - 1
@@ -1020,8 +1029,8 @@ def plan_segmented_batches(inputs: dict) -> dict:
 
     result = {
         "schema_version": SEGMENTED_TRANSPORT_SCHEMA,
-        "max_workspace_payload_bytes": MAX_WORKSPACE_PAYLOAD_BYTES,
-        "context_token_limit": CONTEXT_TOKEN_LIMIT,
+        "max_workspace_payload_bytes": eff_max_bytes,
+        "context_token_limit": eff_token_limit,
         "common_header": common_header,
         "batches": batches,
         "host_frames": host_frames,
@@ -1094,20 +1103,22 @@ def validate_segmented_frozen(frozen: dict) -> dict:
         "transport.batches",
         "nonempty 1-indexed contiguous segment batches",
     )
+    eff_max_bytes = min(MAX_WORKSPACE_PAYLOAD_BYTES, int(inputs["contract"]["limits"]["max_bytes"]))
+    eff_token_limit = min(CONTEXT_TOKEN_LIMIT, int(inputs["contract"]["limits"]["max_input_tokens"]))
     for batch in batches:
         report = batch.get("input_report", {})
-        ws_bytes = report.get("workspace_payload_utf8_bytes", MAX_WORKSPACE_PAYLOAD_BYTES + 1)
-        upper_bytes = report.get("utf8_byte_upper_bound", MAX_WORKSPACE_PAYLOAD_BYTES + 1)
-        token_bound = report.get("token_plus_reserved_upper_bound", CONTEXT_TOKEN_LIMIT + 1)
+        ws_bytes = report.get("workspace_payload_utf8_bytes", eff_max_bytes + 1)
+        upper_bytes = report.get("utf8_byte_upper_bound", eff_max_bytes + 1)
+        token_bound = report.get("token_plus_reserved_upper_bound", eff_token_limit + 1)
         sources.require(
             type(ws_bytes) is int
-            and ws_bytes <= MAX_WORKSPACE_PAYLOAD_BYTES
+            and ws_bytes <= eff_max_bytes
             and type(upper_bytes) is int
-            and upper_bytes <= MAX_WORKSPACE_PAYLOAD_BYTES
+            and upper_bytes <= eff_max_bytes
             and type(token_bound) is int
-            and token_bound <= CONTEXT_TOKEN_LIMIT,
+            and token_bound <= eff_token_limit,
             f"batch-{batch['ordinal']}",
-            "<= 70,000 workspace_payload and request UTF-8 bytes and <= 96,000 token upper bound",
+            "<= effective max workspace_payload and request UTF-8 bytes and <= effective token upper bound",
         )
     reconstructed = reconstruct_inputs(
         transport["common_header"], batches, transport["host_frames"]
@@ -1142,13 +1153,15 @@ def _verify_segmented_transport_reports(inputs: dict, transport: dict) -> bool:
         or recon.get("batch_count") != len(transport.get("batches", []))
     ):
         return False
+    eff_max_bytes = min(MAX_WORKSPACE_PAYLOAD_BYTES, int(inputs["contract"]["limits"]["max_bytes"]))
+    eff_token_limit = min(CONTEXT_TOKEN_LIMIT, int(inputs["contract"]["limits"]["max_input_tokens"]))
     for batch in transport.get("batches", []):
         rep = batch.get("input_report")
         if not isinstance(rep, dict):
             return False
         if (
-            int(rep.get("workspace_payload_utf8_bytes", MAX_WORKSPACE_PAYLOAD_BYTES + 1)) > MAX_WORKSPACE_PAYLOAD_BYTES
-            or int(rep.get("token_plus_reserved_upper_bound", CONTEXT_TOKEN_LIMIT + 1)) > CONTEXT_TOKEN_LIMIT
+            int(rep.get("workspace_payload_utf8_bytes", eff_max_bytes + 1)) > eff_max_bytes
+            or int(rep.get("token_plus_reserved_upper_bound", eff_token_limit + 1)) > eff_token_limit
             or int(rep.get("rolling_reserve_bytes", -1)) != ROLLING_STATE_RESERVE_BYTES
         ):
             return False
@@ -1492,16 +1505,17 @@ def prepare(root, *, run_id: str, planning_contract: str) -> dict:
                 attempt_id=suffix,
             )
         report["resume_ref"] = output.relative_to(root).as_posix() + "/report.json"
+        is_capacity = isinstance(error, planning.CapacityBlocked) or any(
+            x in str(error)
+            for x in ("runner_input_too_large", "runner_context_budget_exceeded", "exceeds_70k")
+        )
+        if is_capacity:
+            report["reason_code"] = "capacity_exceeded"
         diagnostic = (
             error.diagnostic.to_dict()
             if isinstance(error, codec.CodecError)
             else {
-                "reason_code": "budget_exhausted"
-                if any(
-                    x in str(error)
-                    for x in ("runner_input_too_large", "runner_context_budget_exceeded", "exceeds_70k")
-                )
-                else "input_stale",
+                "reason_code": "capacity_exceeded" if is_capacity else "input_stale",
                 "stage": "content",
                 "entity_id": planning_contract,
                 "expected": "complete current planning input",

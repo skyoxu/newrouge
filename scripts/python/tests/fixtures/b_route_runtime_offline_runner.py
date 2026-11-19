@@ -10,7 +10,8 @@ from pathlib import Path
 
 DESCRIPTION = {"schema_version": "newrouge.isolated-model-runner.v1", "filesystem_scope": "prompt_only",
     "fresh_session_per_invocation": True, "can_read_outside_workspace": False,
-    "model": "offline-3b-synthetic-fixture", "model_tools": []}
+    "model": "offline-3b-synthetic-fixture", "model_tools": [],
+    "requested_reasoning_effort": "high"}
 
 
 def main():
