@@ -19,14 +19,14 @@
    - 父 Agent **严禁**直接修改业务、测试或规范文件，**严禁**直接运行构建与测试套件，也严禁执行全仓无过滤大扫描。
 
 ### 1.2 Subagent 模型选择与禁令（平面 A 工程子代理）
-1. **默认主力模型：`gemini-4-hydrogen-high`（允许用户显式会话级覆盖）**
-   - 所有常规工程 Subagent **默认使用 `gemini-4-hydrogen-high`**，通过 Windows 本机 `PATH` 中的 `agy`（或 `%LOCALAPPDATA%\agy\bin\agy.exe`）独立无头进程派发。
+1. **默认主力模型：`gemini-4-neon-high`（允许用户显式会话级覆盖）**
+   - 所有常规工程 Subagent **默认使用 `gemini-4-neon-high`**，通过 Windows 本机 `PATH` 中的 `agy`（或 `%LOCALAPPDATA%\agy\bin\agy.exe`）独立无头进程派发。
    - **会话级模型覆盖**：仅当用户在当前会话中显式指定时（例如用户指定使用 Opus 配额时的 `claude-opus-5-5-medium`），可在该会话范围内以用户指定档位替换默认模型；未经用户显式指定不得自行切换。
    - 标准无头非阻塞调用模板固定为：
      ```powershell
      agy --model <model> --dangerously-skip-permissions --disable-slash-commands --output-format stream-json --print "<prompt>"
      ```
-     其中 `<model>` 默认为 `gemini-4-hydrogen-high`；`--print` 为带参标志，必须紧邻 `"<prompt>"` 置于命令末尾；**严禁传入 `--continue` 或 `--conversation`**。外层必须由 `py -3 -B` 子进程控制器将原始 `stream-json` 完整落盘至 `logs/subagents/<task-id>.stream.jsonl`，仅解析提取 `event=="result"` 中的 `result.response` 回传父上下文。
+     其中 `<model>` 默认为 `gemini-4-neon-high`；`--print` 为带参标志，必须紧邻 `"<prompt>"` 置于命令末尾；**严禁传入 `--continue` 或 `--conversation`**。外层必须由 `py -3 -B` 子进程控制器将原始 `stream-json` 完整落盘至 `logs/subagents/<task-id>.stream.jsonl`，仅解析提取 `event=="result"` 中的 `result.response` 回传父上下文。
    - 适用范围：环境初始化与工具链搭建（Stage 0）、定向代码/日志调研、有明确规格或补丁线索的代码与单测实现、按模块运行单测与常规报错修复、文档同步与 UTF-8/EOL/字节码门禁检查（不包含 Git 写操作）。
 2. **永久禁用 `Argon`（全链路硬红线）**
    - **任何时候、任何角色永远禁止使用 `Gemini 4 Argon`（`gemini-4-argon*`）**。
