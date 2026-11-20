@@ -94,7 +94,10 @@ def _committed_projection(state):
 def recover_commit_outcome(run_dir, state, *, verify):
     """Resolve uncertainty using a freshly loaded run and full chain verification."""
     path = run_dir / "checkpoint-commit-outcome.json"
-    outcome = load_json(path, None)
+    try:
+        outcome = load_json(path, None)
+    except (OSError, ValueError, UnicodeError) as exc:
+        raise CheckpointCommitOutcomeUnknown("checkpoint_commit_outcome_unknown:invalid_recovery_evidence") from exc
     if outcome is None:
         return
     if (not isinstance(outcome, dict) or outcome.get("schema_version") != OUTCOME_SCHEMA
@@ -103,6 +106,10 @@ def recover_commit_outcome(run_dir, state, *, verify):
         raise CheckpointCommitOutcomeUnknown("checkpoint_commit_outcome_unknown:invalid_recovery_evidence")
     if outcome["status"] == "resolved":
         return
+    if (not isinstance(outcome.get("proposed"), dict)
+            or not isinstance(outcome.get("prior"), dict)
+            or outcome["proposed"].get("checkpoint_head") != outcome.get("attempted_checkpoint")):
+        raise CheckpointCommitOutcomeUnknown("checkpoint_commit_outcome_unknown:invalid_recovery_evidence")
     projection = _committed_projection(state)
     if projection == outcome.get("proposed"):
         recovered = "committed"
@@ -229,7 +236,9 @@ def _committed_replay(run_dir, state, payload):
     production = (state.get("checkpoint_strategy") is not None
         or state.get("generation_strategy") is not None
         or (run_dir / "analysis-input/analysis-index.json").exists()
-        or tuple(part.casefold() for part in run_dir.resolve().parent.parts[-3:]) == ("logs", "ci", "mvg-planning"))
+        or (run_dir / "analysis-input/b-route-prepared.json").exists()
+        or tuple(part.casefold() for part in run_dir.resolve().parent.parts[-3:])
+            in {("logs", "ci", "mvg-planning"), ("logs", "ci", "capability-planning")})
     if production:
         # Production runs have one fixed public location. Synthetic helper tests
         # deliberately omit this protocol and exercise bundle validation only.

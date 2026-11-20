@@ -41,7 +41,7 @@ def _flows(proposal, projection=None):
         return []
     if proposal.get("schema_version") == "newrouge.b-route-planning-candidate.v1":
         return proposal["content"]["definitions"]["flows"]
-    return proposal["manifest_candidate"].get("flows", [])
+    return proposal.get("manifest_candidate", {}).get("flows", [])
 
 
 def _step_flows(step, projection=None):
@@ -124,7 +124,7 @@ def _source(run_dir, reference, state=None):
         from _b_route_codec import raw_digest
         inputs = load_json(b_prepared)["inputs"]
         allowed = ref in inputs["closure"]["source_paths"]
-        declared_document = None
+        declared_documents = []
         for family in ("constraints", "contexts"):
             declarations = [row for row in inputs["contract"][family] if row["path"] == ref]
             if not declarations:
@@ -139,7 +139,8 @@ def _source(run_dir, reference, state=None):
                 # Present, explicitly declared documents are full applicable
                 # planning inputs in the existing contract, outside 3A closure.
                 # No arbitrary evidence path acquires a new source owner.
-                allowed, declared_document = True, document
+                allowed = True
+                declared_documents.append(document)
         rows = [row for row in inputs["evidence"] if row["path"] == ref and allowed]
         if len(rows) != 1:
             raise ValueError("global_conflict_source_not_frozen:" + ref)
@@ -147,13 +148,15 @@ def _source(run_dir, reference, state=None):
         raw = text.encode("utf-8")
         if raw_digest(raw) != rows[0]["sha256"] or rows[0]["sha256"] != reference["sha256"]:
             raise ValueError("global_conflict_source_not_frozen:" + ref)
-        if declared_document is not None and (
-                base64.b64decode(declared_document["raw_base64"], validate=True) != raw
-                or declared_document["raw_digest"] != reference["sha256"]):
-            raise ValueError("global_conflict_source_not_frozen:" + ref)
+        for declared_document in declared_documents:
+            if (not isinstance(declared_document.get("raw_base64"), str)
+                    or base64.b64decode(declared_document["raw_base64"], validate=True) != raw
+                    or declared_document.get("raw_digest") != reference["sha256"]):
+                raise ValueError("global_conflict_source_not_frozen:" + ref)
         citations = reference.get("citations")
         if (not isinstance(citations, list) or not citations
                 or any(not isinstance(row, dict) or set(row) != {"line", "text"}
+                       or type(row.get("line")) is not int or row["line"] < 1
                        or not isinstance(row["text"], str) for row in citations)):
             raise ValueError("global_conflict_citations_missing:" + ref)
         resolved = resolve_citations({"text": text}, {"citations": [row["line"] for row in citations]})
@@ -174,6 +177,7 @@ def _source(run_dir, reference, state=None):
     citations = reference.get("citations")
     if (not isinstance(citations, list) or not citations
             or any(not isinstance(row, dict) or set(row) != {"line", "text"}
+                   or type(row.get("line")) is not int or row["line"] < 1
                    or not isinstance(row["text"], str) for row in citations)):
         raise ValueError("global_conflict_citations_missing:" + ref)
     resolved = resolve_citations({"text": text}, {"citations": [row["line"] for row in citations]})
@@ -362,6 +366,11 @@ def _reopen_resolutions(run_dir, state):
                 checks.append({"capability_id": cid, "reason": "replacement_not_selected"})
                 continue
             step = selected[index]
+            if (step.get("kind") == "adoption"
+                    or not isinstance(step.get("record", {}).get("proof"), dict)
+                    or "review" not in step["record"]["proof"]):
+                checks.append({"capability_id": cid, "reason": "replacement_resolution_missing"})
+                continue
             bound = step["record"]["proof"]
             context = bound.get("reopen_context")
             required = {issue["id"] for issue in plan["conflicts"]
@@ -446,14 +455,21 @@ def verified_audit(root, run_dir, state, path=None, digest=None, *, prefix=None,
         conflicts = validate_report(run_dir, state, scopes, proposal, report, projection=projection)
     if conflicts != receipt.get("hard_conflicts"):
         raise ValueError("global_audit_conflicts_changed")
-    if proposal.get("schema_version") == "newrouge.b-route-planning-candidate.v1" and (
-            receipt.get("planned_obligations") != projection["planned_obligations"] or receipt.get("runtime_verified") is not False):
+    if receipt.get("runtime_verified") is not False:
+        raise ValueError("global_audit_planned_obligations_changed")
+    if (proposal.get("schema_version") == "newrouge.b-route-planning-candidate.v1"
+            and receipt.get("planned_obligations") != projection["planned_obligations"]):
         raise ValueError("global_audit_planned_obligations_changed")
     resolved, unresolved = _reopen_resolutions(run_dir, state)
-    if unresolved or receipt.get("resolved_reopened_conflicts") != resolved:
+    recorded_unresolved = [
+        row for row in receipt.get("evidence_gaps", [])
+        if isinstance(row, dict) and row.get("code") == "unresolved_reopened_conflicts"
+    ]
+    expected_unresolved = [{"code": "unresolved_reopened_conflicts", **row} for row in unresolved]
+    if receipt.get("resolved_reopened_conflicts") != resolved or recorded_unresolved != expected_unresolved:
         raise ValueError("global_audit_reopen_resolutions_changed")
     source_gaps = any(row.get("disposition") == "source_gap" for row in _verification(proposal))
-    blocked = bool(conflicts or source_gaps or len(records) != len(scopes) or receipt.get("evidence_gaps"))
+    blocked = bool(conflicts or source_gaps or unresolved or len(records) != len(scopes) or receipt.get("evidence_gaps"))
     if (receipt.get("status") != ("blocked" if blocked else "passed")
             or receipt.get("complete_chain") is not (len(records) == len(scopes))):
         raise ValueError("global_audit_verdict_changed")
@@ -567,7 +583,7 @@ def _reopen_projection(run_dir, state, plan, plan_path, plan_sha256, proposal):
         "sha256": file_sha(archive_path), "plan": {"path": plan_path, "sha256": plan_sha256},
         "replacement_order": plan["replacement_order"], "generation": plan["next_generation"]})
     inherited, boundaries = {}, {}
-    for context in pending.get("reopen_contexts", {}).values():
+    for _, context in sorted(pending.get("reopen_contexts", {}).items(), key=lambda kv: int(kv[0])):
         for issue in context["conflicts"]:
             inherited[issue["id"]] = issue
         boundaries.update(context["resolution_boundaries"])
@@ -687,8 +703,14 @@ def operate(root, *, run_id, operation, **kwargs):
     with operation_lock(root, raw), coordinator_lock(run_dir):
         try:
             raw = load_json(run_path, {})
+            if (raw.get("run_id") != run_id or b_enabled(raw) != is_b
+                    or (not is_b and raw.get("schema_version") != pm.RUN_SCHEMA)
+                    or (is_b and run_location(root, descriptor(raw)["planner"], run_id) != run_dir)):
+                raise ValueError("reopen_run_identity_invalid")
             if raw.get("recovery"):
                 assert_epoch(root, raw)
+            if (run_dir / "checkpoint-commit-outcome.json").is_file():
+                recover_commit_outcome(run_dir, raw, verify=lambda: verified_prefix(root, run_dir, raw))
             if operation == "reopen" and _transaction_path(run_dir, kwargs["plan_path"], kwargs["plan_sha256"]).is_file():
                 return execute_reopen(root, run_dir, raw, **kwargs)
             if is_b:

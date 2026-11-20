@@ -26,7 +26,7 @@ formal record/schema identity or a separate planning database.
 
 ## Explicit same-context observation
 
-Append `--context` to either existing `inspect` or `read` command. It is rejected
+Append `--context` to either existing `inspect` or `read` command (`inspect/read --context`). It is rejected
 on every writing stage. Default outputs remain unchanged. `inspect --context`
 keeps the original operation ID, state, scope/allocation IDs, request/frozen
 digests and exact owner resume_ref; an original blocked diagnostic stays blocked.
@@ -113,11 +113,14 @@ subset. Classification is recomputed by the verifier, never trusted from a flag.
 
 For other operations review-prepare writes immutable subject.json, w/prompt.txt,
 w/schema.json and request.txt under logs/ci/b-route-adoption-reviews/<operation
-SHA256>. It describes an official Codex runner command and required OS execution
-capture, but DOES NOT execute it or create a new budget. Existing governed
-campaign/dispatch authority must separately authorize any actual invocation.
+SHA256>. It describes the routed isolated runner command (`codex_isolated_model_runner.py`
+or `gemini_isolated_model_runner.py` per `docs/workflows/llm-routing.json` and ADR-0063)
+and required OS execution capture, but DOES NOT execute it or create a new budget. Existing
+governed campaign/dispatch authority must separately authorize any actual invocation.
 The command description includes required_environment with
-NEWROGUE_CODEX_REASONING_EFFORT=high for the separately governed process; this
+`NEWROGUE_CODEX_REASONING_EFFORT=high` (for `codex_isolated_model_runner.py`) or
+`NEWROGUE_GEMINI_REASONING_EFFORT=high` (for `gemini_isolated_model_runner.py`) for the
+separately governed process; this
 owner does not modify global settings. The retained v15 unknown fence remains
 in force; do not dispatch or retry it.
 
@@ -250,7 +253,10 @@ prerequisites and authorized the exact new review invocation under its current
 budget, it can use `_planning_skill_common.run_isolated_model` with the returned
 owned workspace, prompt/schema/output paths, timeout_sec=1800,
 wall_timeout_sec=1800, model_request_budget=1, execution_log=execution_capture_ref
-and suppress_bytecode=True, using the repository codex_isolated_model_runner.py.
+and suppress_bytecode=True, using the routed repository isolated runner
+(`codex_isolated_model_runner.py` with `NEWROGUE_CODEX_REASONING_EFFORT=high` or
+`gemini_isolated_model_runner.py` with `NEWROGUE_GEMINI_REASONING_EFFORT=high`, per
+`docs/workflows/llm-routing.json` and ADR-0063).
 The required high setting is per-process. This is the existing capture adapter;
 no new executor, automatic retry or budget is added by the review owner. Its
 captured command exactly matches runner_command. This document does not authorize

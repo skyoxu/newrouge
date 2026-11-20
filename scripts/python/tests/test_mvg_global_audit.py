@@ -387,6 +387,7 @@ class GlobalAuditTests(unittest.TestCase):
                             if mutation == "source-gap" else []}
                 receipt = {"schema_version": global_audit.AUDIT_SCHEMA, "binding": {}, "conflict_report": None,
                     "hard_conflicts": [], "resolved_reopened_conflicts": [], "evidence_gaps": [],
+                    "runtime_verified": False,
                     "status": "blocked" if mutation == "verdict" else "passed", "complete_chain": mutation != "completion"}
                 with patch.object(selection, "verified_prefix", return_value=([{}], proposal, [{}])), \
                      patch.object(global_audit, "chain_identity", return_value={}), \

@@ -7045,6 +7045,9 @@ def apply(root: Path, *, run_id: str, confirm: bool) -> dict[str, Any]:
 def _apply_impl(root: Path, *, run_id: str) -> dict[str, Any]:
     run_path, state = _load_run(root, run_id)
     _require_unblocked_selection(state)
+    if state.get("recovery"):
+        from _mvg_capability_recovery import assert_epoch
+        assert_epoch(root, state)
     run_dir = run_path.parent
     from _planning_apply_journal import create_journal, resume_journal
     journal_path = run_dir / "apply-journal.json"

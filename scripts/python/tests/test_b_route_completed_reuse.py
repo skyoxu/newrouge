@@ -150,6 +150,19 @@ class CompleteInputBindingTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "complete_input_row_not_unique:2"):
                     reuse.binding(self.prepared, scope)
 
+    def test_duplicate_evidence_path_byte_ambiguity_raises(self):
+        scope = self.freeze({"capabilities": [self.row]})
+        envelope = load_json(self.prepared / "b-route-prepared.json")
+        other_text = json.dumps({"capabilities": [{"capability_id": "CAP-other"}]}).encode("utf-8")
+        envelope["inputs"]["evidence"].append({
+            "path": "source.json",
+            "text": other_text.decode("utf-8"),
+            "sha256": codec.raw_digest(other_text),
+        })
+        atomic_json(self.prepared / "b-route-prepared.json", envelope)
+        with self.assertRaisesRegex(ValueError, "b_route_recovery_original_bytes_ambiguous:source.json"):
+            reuse.binding(self.prepared, scope)
+
 
 class CompletedCoordinatorTests(unittest.TestCase):
     create = fixtures.RuntimeTests.create
@@ -543,14 +556,68 @@ class FollowupFrozenOwnerTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "source_not_frozen"):
             audit._source(run, locator, state)
 
+    def test_replay_delta_rejects_incompatible_current_source_locator(self):
+        run, state = self.create()
+        scope = runtime.scopes(state, run / "analysis-input")[0]
+        base = runtime.seed(state, run / "analysis-input")
+        altered_current = deepcopy(load_json(run / "analysis-input/b-route-prepared.json"))
+        altered_current["inputs"]["global_proof"]["manifest"]["source_revision"] = "incompatible-revision"
+        with patch.object(runtime, "frozen_input", return_value=altered_current), self.assertRaisesRegex(
+            ValueError, "b_route_recovery_current_source_locator_incompatible"
+        ):
+            reuse.replay_delta(
+                self.root,
+                state,
+                run / "analysis-input",
+                base,
+                {"candidate": deepcopy(self.value), "generation_calls": 1, "lineage": "candidate-1"},
+                scope,
+            )
+
+    def test_flow_scoped_3b_register_committed_and_try_adopt_fallback_to_fresh(self):
+        self.contract["scope"] = {"scope_id": "scope", "kind": "flow", "ids": ["FLOW"]}
+        self.prepare("flow-only")
+        run, state = self.create(run_id="flow-scope-run")
+        scope = runtime.scopes(state, run / "analysis-input")[0]
+        base = runtime.seed(state, run / "analysis-input")
+        recovery.bind_epoch(self.root, state)
+        state["checkpoint_strategy"] = recovery.CHECKPOINT_STRATEGY
+        receipt_rel = "selection-receipt.json"
+        atomic_json(run / receipt_rel, {"status": "selected"})
+        step = {
+            "selected_candidate": "candidate-1",
+            "input_identity": {"base_sha256": canonical_sha(base)},
+            "proposal_sha256": canonical_sha(self.value),
+            "receipt_path": receipt_rel,
+            "receipt_sha256": file_sha(run / receipt_rel),
+            "admissions": {"candidate-1": {"proof_sha256": "sha256:" + "1" * 64, "proposal_sha256": canonical_sha(self.value)}},
+            "record": {"scope": scope, "delta": {"candidate": deepcopy(self.value)}},
+        }
+        import _mvg_capability_checkpoint as ckpt
+        state["capability_selection"] = {
+            "order": [scope["capability_id"]],
+            "selected": [],
+            "checkpoint_head": None,
+            "accepted_sha256": canonical_sha(base),
+        }
+        pointer = ckpt.prepare_checkpoint(run, state, scope["capability_id"], 0, base, self.value, step)
+        state["capability_selection"]["selected"] = [{**step, "checkpoint": pointer}]
+        state["capability_selection"]["checkpoint_head"] = pointer
+        state["capability_selection"]["accepted_sha256"] = canonical_sha(self.value)
+        atomic_json(run / "run.json", state)
+        recovery.register_committed(self.root, run, state)
+        reg_note = load_json(run / "recovery-lookups/scope-1-registration.json")
+        self.assertEqual("not_registered", reg_note["status"])
+        self.assertEqual([], recovery.registry(self.root, state)["entries"])
+        self.assertFalse((run / "completed-recovery").exists())
+        self.assertIsNone(recovery.try_adopt(self.root, run, state, scope, 0, base))
+        lookup_note = load_json(run / "recovery-lookups/scope-1.json")
+        self.assertEqual("generate_fresh", lookup_note["status"])
+
 import _b_route_candidate as candidate
 import _b_route_planning_input as planning
 import test_b_route_candidate as audit_candidate_fixtures
 import test_b_route_records as audit_record_fixtures
-
-# Draft only. Append after the existing classes and before unittest.main()
-# in test_b_route_completed_reuse.py. Existing imports are reused.
-# Not executed; pure projection controls are not coordinator/native evidence.
 
 
 class ExplicitContextFormatTests(unittest.TestCase):

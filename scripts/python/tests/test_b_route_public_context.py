@@ -262,6 +262,53 @@ class PublicContextTests(unittest.TestCase):
         self.assertEqual(0, code)
         self.assertEqual('retained_operation', result['context']['kind'])
 
+    def test_inspect_context_rejects_operation_id_mismatch_and_handles_minimal_blocked_payload(self):
+        mismatched = operation()
+        mismatched['operation_id'] = 'OP-OTHER'
+        with installed(modules(inspected=mismatched)):
+            code, result = captured(cli.main, ['--stage', 'inspect', '--operation-id', 'OP-1', '--context'])
+        self.assertEqual(2, code)
+        self.assertNotIn('context', result)
+        self.assertEqual(codec.ReasonCode.CONFLICT.value, result['diagnostics'][0]['reason_code'])
+
+        minimal_blocked = {
+            'status': 'blocked',
+            'operation_id': 'OP-1',
+            'state': None,
+            'scope_ids': None,
+            'resume_ref': 'logs/ci/original/operation.json',
+            'diagnostics': [codec.Diagnostic(codec.ReasonCode.FILE_NOT_FOUND,
+                expected='prepared operation', actual='missing').to_dict()],
+            **cli.FLAGS,
+        }
+        with installed(modules(inspected=minimal_blocked)):
+            code, result = captured(cli.main, ['--stage', 'inspect', '--operation-id', 'OP-1', '--context'])
+        self.assertEqual(2, code)
+        self.assertEqual('retained_operation', result['context']['kind'])
+        self.assertEqual('OP-1', result['context']['operation_id'])
+        self.assertEqual('unsupported', result['context']['completed_unit_reuse'])
+
+    def test_real_prepared_operation_inspect_context_integration(self):
+        import shutil
+        from test_b_route_adoption import AdoptionCompositionTests
+        fixture = AdoptionCompositionTests()
+        fixture.setUp()
+        self.addCleanup(shutil.rmtree, fixture.root, True)
+        prepared = fixture.prepare()
+        before = fixture.files()
+        code, result = captured(cli.main, [
+            '--root', str(fixture.root), '--stage', 'inspect',
+            '--operation-id', 'OP-one', '--context',
+        ])
+        self.assertEqual(0, code)
+        self.assertEqual('inspected', result['status'])
+        self.assertEqual('retained_operation', result['context']['kind'])
+        self.assertEqual('OP-one', result['context']['operation_id'])
+        self.assertEqual(prepared['resume_ref'], result['context']['resume_ref'])
+        self.assertEqual(prepared['allocations'], result['context']['allocations'])
+        self.assertEqual('unsupported', result['context']['completed_unit_reuse'])
+        self.assertEqual(before, fixture.files())
+
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)

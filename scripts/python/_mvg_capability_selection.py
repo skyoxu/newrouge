@@ -156,7 +156,7 @@ def candidate_artifacts(root, run_dir, state, scopes, index, accepted, prefix, a
     if admission.get("status") != "admitted":
         raise ValueError("capability_selection_candidate_not_admitted")
     label = str(admission.get("candidate") or "")
-    if label not in {"candidate-1", "candidate-2", "candidate-3"}:
+    if label not in set(candidate_labels(state)):
         raise ValueError("capability_selection_candidate_label_invalid")
     workspace = repo_path(run_dir, admission["workspace"])
     attempt = admission.get("generation", 1)
@@ -177,10 +177,13 @@ def candidate_artifacts(root, run_dir, state, scopes, index, accepted, prefix, a
         raise ValueError("capability_selection_candidate_workspace_changed")
     proposal, proof, execution = (load_json(path, {}) for path in (proposal_path, proof_path, execution_path))
     from _mvg_global_audit import reopen_context
-    if proof.get("records", [{}])[-1].get("proof", {}).get("reopen_context") != reopen_context(state, scopes[index], attempt):
+    records_list = proof.get("records")
+    if not isinstance(records_list, list) or not records_list:
+        raise ValueError("capability_selection_candidate_prefix_changed")
+    if records_list[-1].get("proof", {}).get("reopen_context") != reopen_context(state, scopes[index], attempt):
         raise ValueError("capability_selection_candidate_reopen_context_changed")
-    if (proof.get("records", [])[:-1] != prefix or proof.get("scopes") != scopes[:index + 1]
-            or proof.get("records", [{}])[-1].get("base_sha256") != canonical_sha(accepted)):
+    if (records_list[:-1] != prefix or proof.get("scopes") != scopes[:index + 1]
+            or records_list[-1].get("base_sha256") != canonical_sha(accepted)):
         raise ValueError("capability_selection_candidate_prefix_changed")
     errors = pm.candidate_admission_errors(root, state, proposal, proof,
         append_requirement_ids=set(scopes[index]["cumulative_requirement_ids"]), check_originals=check_originals)
@@ -447,7 +450,8 @@ def verified_prefix(root, run_dir, state, *, verify_history=True, recover_counte
             raise ValueError("capability_selection_current_input_changed")
         for attempt in current.get("selection_attempts", []):
             if attempt.get("status") == "completed":
-                _selected_step(root, run_dir, state, scopes, len(selected), accepted, records, attempt)
+                _selected_step(root, run_dir, state, scopes, len(selected), accepted, records, attempt,
+                    check_originals=check_originals)
     return scopes, accepted, records
 
 
@@ -487,7 +491,8 @@ def verify_published_chain(root, run_dir, state, *, verified=None, proposal=None
     """Require the selected prefix and published proof to describe one chain."""
     import plan_mvg as pm
     from _mvg_planning_review import review_execution_errors
-    scopes, accepted, records = verified if verified is not None else verified_prefix(root, run_dir, state)
+    scopes, accepted, records = verified if verified is not None else verified_prefix(
+        root, run_dir, state, check_originals=check_originals)
     published = load_json(run_dir / "proposal.json", {}) if proposal is None else proposal
     if len(records) != len(scopes) or published != accepted:
         raise ValueError("capability_selection_published_proposal_changed")
@@ -770,7 +775,7 @@ def _generate_selected_capabilities(
                 register_committed(root, run_dir, state)
                 continue
             for label in candidate_labels(state):
-                existing = scope_workspace(run_dir, label, index, generation(state))
+                existing = scope_workspace(run_dir, label, index, generation(state), current.get("execution", 1))
                 if (existing / "analysis-input").exists():
                     pm._validate_input_freshness(root, existing, state)
             results = []
@@ -942,6 +947,39 @@ def _generate_selected_capabilities(
                                 proposal_sha256=admission["proposal_sha256"])
                     except RunBudgetExhausted:
                         raise
+                    except SlicePauseRequested:
+                        admission = {
+                            "candidate": label,
+                            "status": "paused",
+                            "lineage": f"{label}-r{generation(state)}",
+                            "generation": generation(state),
+                            "execution": current.get("execution", 1),
+                            "workspace": workspace.relative_to(run_dir).as_posix(),
+                            "errors": [],
+                            "append_terminal": False,
+                            "retryable": True,
+                            "total_invocations": sum(row.get("candidate") == label and
+                                row.get("capability_id") == scope["capability_id"] and
+                                row.get("generation", 1) == generation(state) and
+                                row.get("execution", 1) == current.get("execution", 1) for row in ledger.get("calls", [])),
+                        }
+                        current["admissions"][label] = admission
+                        state["candidate_admissions"][label] = deepcopy(admission)
+                        state.update(phase="paused-between-slices", selection_status="pending")
+                        state.pop("selection_block_reason", None)
+                        persist()
+                        return {
+                            "run_id": state["run_id"],
+                            "status": "paused",
+                            "phase": "paused-between-slices",
+                            "selection_status": "pending",
+                            "paused_at": "candidate",
+                            "candidate": label,
+                            "capability_id": scope["capability_id"],
+                            "scope_index": index,
+                            "total_invocations": ledger["total_invocations"],
+                            "new_dispatches": slice_dispatches[0],
+                        }
                     except (OSError, RuntimeError, ValueError, KeyError, TypeError) as exc:
                         admission = {"candidate": label, "status": "execution-failed", "lineage": f"{label}-r{generation(state)}",
                             "generation": generation(state),

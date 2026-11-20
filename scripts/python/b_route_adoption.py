@@ -85,15 +85,25 @@ def _context_view(args, value, *, receipt=None, receipt_ref=None):
         "reuse_reason": "Completed-unit reuse belongs to the native planner coordinator; operation context only presents retained references",
         "native_resume_performed": False, "default_B_activated": False}
     if receipt is None:
-        if value["operation_id"] != args.operation_id:
+        if value.get("operation_id") is not None and value["operation_id"] != args.operation_id:
             raise codec.CodecError(codec.Diagnostic(codec.ReasonCode.CONFLICT,
                 entity_id=args.operation_id, expected="same original operation",
                 actual=value["operation_id"], resume_ref=value.get("resume_ref")))
-        context = {"kind": "retained_operation", "operation_id": value["operation_id"],
-            "resume_ref": value["resume_ref"], "state": value["state"],
-            "scope_ids": value["scope_ids"], "allocations": value["allocations"],
-            "request_digest": value["request_digest"], "frozen_digest": value["frozen_digest"],
-            "eligibility": "not granted; original reserve/current-proof gates remain required"}
+        if value.get("status") == "blocked":
+            context = {"kind": "retained_operation", "operation_id": value.get("operation_id"),
+                "resume_ref": value.get("resume_ref"), "state": value.get("state"),
+                "scope_ids": value.get("scope_ids"),
+                "eligibility": "not granted; original reserve/current-proof gates remain required"}
+        else:
+            if value["operation_id"] != args.operation_id:
+                raise codec.CodecError(codec.Diagnostic(codec.ReasonCode.CONFLICT,
+                    entity_id=args.operation_id, expected="same original operation",
+                    actual=value["operation_id"], resume_ref=value.get("resume_ref")))
+            context = {"kind": "retained_operation", "operation_id": value["operation_id"],
+                "resume_ref": value["resume_ref"], "state": value["state"],
+                "scope_ids": value["scope_ids"], "allocations": value["allocations"],
+                "request_digest": value["request_digest"], "frozen_digest": value["frozen_digest"],
+                "eligibility": "not granted; original reserve/current-proof gates remain required"}
     else:
         if sorted(value["scope_ids"]) != sorted(receipt["scopes"]):
             raise codec.CodecError(codec.Diagnostic(codec.ReasonCode.CONFLICT,
@@ -194,7 +204,7 @@ def _execute(args):
             if not checked.ok:
                 raise codec.CodecError(checked.diagnostic)
             receipt = codec.strict_json_loads(raw)
-            if context_requested and receipt['operation_id'] != args.operation_id:
+            if receipt['operation_id'] != args.operation_id:
                 raise codec.CodecError(codec.Diagnostic(codec.ReasonCode.CONFLICT,
                     entity_id=args.operation_id, expected="receipt for original operation ID",
                     actual=receipt['operation_id'], resume_ref=path))

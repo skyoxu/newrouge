@@ -14,7 +14,9 @@ ADOPTION = "newrouge.mvg-capability-adoption.v1"
 
 
 def capability_hash(capability):
-    if not isinstance(capability, dict) or not isinstance(capability.get("capability_id"), str):
+    if (not isinstance(capability, dict)
+            or not isinstance(capability.get("capability_id"), str)
+            or not capability["capability_id"].strip()):
         raise ValueError("recovery_capability_object_invalid")
     return canonical_sha(capability)
 
@@ -41,8 +43,18 @@ def bind_epoch(root, state):
     store.mkdir(parents=True, exist_ok=True)
     with coordinator_lock(store):
         value = registry(root, state)
-        requested_epoch = os.environ.get("SC_MVG_RECOVERY_EPOCH")
-        initial_epoch = int(requested_epoch) if requested_epoch is not None else value["epoch"]
+        raw_epoch = (os.environ.get("SC_MVG_RECOVERY_EPOCH") or "").strip()
+        if raw_epoch:
+            try:
+                initial_epoch = int(raw_epoch)
+            except ValueError as exc:
+                raise ValueError("recovery_epoch_invalid") from exc
+            if initial_epoch < 0:
+                raise ValueError("recovery_epoch_invalid")
+        else:
+            initial_epoch = value["epoch"]
+        if "recovery" in state and raw_epoch and state["recovery"].get("epoch") != initial_epoch:
+            raise ValueError("mvg_recovery_epoch_invalidated")
         state.setdefault("recovery", {"store": str(store), "epoch": initial_epoch})
         assert_epoch(root, state, value=value)
         if not (store / "registry.json").is_file():
@@ -73,7 +85,14 @@ def assert_active_chain(root, state, run_dir):
         if transaction_id in value["revoked"]:
             raise ValueError("recovery_source_revoked")
         if step.get("kind") == "adoption":
-            receipt = load_json(repo_path(run_dir, step["receipt_path"]))
+            rpath = repo_path(run_dir, str(step.get("receipt_path") or ""))
+            if (not rpath.is_relative_to(run_dir.resolve()) or not rpath.is_file()
+                    or file_sha(rpath) != step.get("receipt_sha256")):
+                raise ValueError("adoption_receipt_changed")
+            receipt = load_json(rpath, {})
+            if (not isinstance(receipt, dict) or not isinstance(receipt.get("source"), dict)
+                    or receipt["source"].get("transaction_id") != (step.get("adoption") or {}).get("source_transaction_id")):
+                raise ValueError("adoption_identity_changed")
             _eligible(root, state, receipt["source"])
 
 
@@ -104,10 +123,10 @@ def _source_pointer(run_dir, state, step):
         "transaction_id": step["checkpoint"]["transaction_id"]}
 
 
-def _dependency(prepared, scope, base, proposal):
+def _dependency(prepared, scope, base, proposal, *, root=None):
     if scope.get("unit_kind") == "governed_planning_closure":
         from _b_route_completed_reuse import dependency
-        return dependency(prepared, scope, base, proposal)
+        return dependency(prepared, scope, base, proposal, root=root)
     from _mvg_capability_generation import complete_scope_context, review_projection
     context = complete_scope_context(prepared, scope, base, proposal)
     # Global catalogs/revision/readiness identities are provenance, not the
@@ -142,8 +161,12 @@ def _dependency(prepared, scope, base, proposal):
 
     # The dependency key must include baseline context that can affect a
     # shared handoff even when projection did not select that flow for review.
-    flow_ids |= expand_shared_flows(base)
-    flow_ids |= expand_shared_flows(proposal)
+    while True:
+        prev_flows, prev_reqs = set(flow_ids), set(affected_requirements)
+        flow_ids |= expand_shared_flows(base)
+        flow_ids |= expand_shared_flows(proposal)
+        if flow_ids == prev_flows and affected_requirements == prev_reqs:
+            break
 
     def boundaries(value):
         flows = [row for row in value["manifest_candidate"].get("flows", []) if row["id"] in flow_ids]
@@ -194,12 +217,15 @@ def register_committed(root, run_dir, state):
                 ancestry.append(token)
                 continue
             ancestry.append(token)
-            if token in value["revoked"] or any(item.get("transaction_id") == token for item in value["entries"]):
+            if (token in value["revoked"] or set(ancestry) & set(value["revoked"])
+                    or any(item.get("transaction_id") == token for item in value["entries"])):
                 continue
             payload = load_checkpoint(run_dir, step["checkpoint"])
             scope = step["record"]["scope"]
             try:
                 capability = _scope_capability(run_dir / "analysis-input", scope)
+                dep_sha = canonical_sha(_dependency(run_dir / "analysis-input", scope,
+                    payload["accepted_seed"], payload["accepted"], root=root))
             except ValueError as exc:
                 if scope.get("unit_kind") != "governed_planning_closure":
                     raise
@@ -227,8 +253,7 @@ def register_committed(root, run_dir, state):
                 **_source_pointer(run_dir, state, step), "order_index": index,
                 "checkpoint": deepcopy(step["checkpoint"]), "ancestry": deepcopy(ancestry),
                 "state_path": target.relative_to(run_dir).as_posix(), "state_sha256": file_sha(target),
-                "dependency_sha256": canonical_sha(_dependency(run_dir / "analysis-input", scope,
-                    payload["accepted_seed"], payload["accepted"]))}
+                "dependency_sha256": dep_sha}
             value["entries"].append(entry)
         atomic_json(store / "registry.json", value)
 
@@ -256,7 +281,9 @@ def _eligible(root, state, entry, *, historical=False):
     value = registry(root, state)
     if not historical:
         assert_epoch(root, state, value=value)
-        if entry.get("epoch") != value["epoch"] or set(entry.get("ancestry", [])) & set(value["revoked"]):
+        if (entry.get("epoch") != value["epoch"]
+                or entry.get("transaction_id") in value["revoked"]
+                or set(entry.get("ancestry", [])) & set(value["revoked"])):
             raise ValueError("recovery_source_revoked")
         if entry not in value["entries"]:
             raise ValueError("recovery_registry_entry_changed")
@@ -291,7 +318,11 @@ def verify_source(root, state, entry, *, historical=False):
             raise ValueError("recovery_source_run_id_mismatch")
     elif source.parent != (root / "logs/ci/mvg-planning").resolve():
         raise ValueError("recovery_source_run_id_mismatch")
-    pointer = original["capability_selection"]["selected"][entry["order_index"]]["checkpoint"]
+    order_idx = entry.get("order_index")
+    original_selected = original.get("capability_selection", {}).get("selected", [])
+    if type(order_idx) is not int or not 0 <= order_idx < len(original_selected):
+        raise ValueError("recovery_source_checkpoint_changed")
+    pointer = original_selected[order_idx]["checkpoint"]
     if pointer != entry["checkpoint"] or pointer["transaction_id"] != entry["transaction_id"]:
         raise ValueError("recovery_source_checkpoint_changed")
     disk = disk_state
@@ -303,11 +334,13 @@ def verify_source(root, state, entry, *, historical=False):
     scopes, _, _ = verified_prefix(original_root, source, original,
         check_originals=False, recover_counters=False)
     payload = load_checkpoint(source, pointer)
-    scope = scopes[entry["order_index"]]
+    if order_idx >= len(scopes):
+        raise ValueError("recovery_source_checkpoint_changed")
+    scope = scopes[order_idx]
     if capability_hash(_scope_capability(source / "analysis-input", scope)) != entry["capability_sha256"]:
         raise ValueError("recovery_source_capability_changed")
     if canonical_sha(_dependency(source / "analysis-input", scope, payload["accepted_seed"],
-            payload["accepted"])) != entry["dependency_sha256"]:
+            payload["accepted"], root=original_root)) != entry["dependency_sha256"]:
         raise ValueError("recovery_source_dependencies_changed")
     return payload, scope
 
@@ -330,7 +363,7 @@ def replay(root, run_dir, state, scope, base, entry, *, historical=False):
         proposal = merge_append(base, payload["delta"], scope)
         if preservation_errors(base, proposal):
             raise ValueError("recovery_delta_mutates_accepted_state")
-    if canonical_sha(_dependency(run_dir / "analysis-input", scope, base, proposal)) != entry["dependency_sha256"]:
+    if canonical_sha(_dependency(run_dir / "analysis-input", scope, base, proposal, root=root)) != entry["dependency_sha256"]:
         raise ValueError("recovery_current_dependencies_incompatible")
     errors = pm.candidate_admission_errors(root, state, proposal,
         append_requirement_ids=set(scope["cumulative_requirement_ids"]), check_originals=not historical)
@@ -375,6 +408,8 @@ def try_adopt(root, run_dir, state, scope, index, base):
                 "adoption": {**record["adoption"], "source_transaction_id": entry["transaction_id"]}}
             return proposal, record, step
         except (OSError, ValueError, RuntimeError, KeyError, TypeError, IndexError) as exc:
+            if str(exc) == "mvg_recovery_epoch_invalidated":
+                raise
             failures.append({"source_transaction_id": entry.get("transaction_id"), "reason": str(exc)})
     atomic_json(run_dir / "recovery-lookups" / f"scope-{index + 1}.json", {
         "capability_sha256": digest, "epoch": value["epoch"], "failures": failures, "status": "generate_fresh"})
@@ -389,7 +424,7 @@ def verify_adoption_record(root, state, prepared, scope, base, proposal, record,
     run_dir = (run_location(root, descriptor(state)["planner"], state["run_id"]) if enabled(state)
         else root / "logs/ci/mvg-planning" / state["run_id"])
     path = repo_path(run_dir, pointer["path"])
-    if not path.is_relative_to(run_dir.resolve()) or file_sha(path) != pointer["sha256"]:
+    if not path.is_relative_to(run_dir.resolve()) or not path.is_file() or file_sha(path) != pointer["sha256"]:
         raise ValueError("adoption_receipt_changed")
     receipt = load_json(path)
     if (receipt.get("schema_version") != ADOPTION or receipt.get("run_id") != state["run_id"]
@@ -438,7 +473,7 @@ def progress(root, run_dir, state):
         check_originals=False, recover_counters=False)
     selected = state["capability_selection"]["selected"]
     current = state["capability_selection"].get("current") or {}
-    projection = {"epoch": state["recovery"]["epoch"], "run_id": state["run_id"],
+    projection = {"epoch": (state.get("recovery") or {}).get("epoch"), "run_id": state["run_id"],
         "completed": len(records), "total": len(scopes), "current": current.get("capability_id"),
         "status": "partial_planning", "runtime_verified": False,
         "items": [{"capability_id": scopes[i]["capability_id"],

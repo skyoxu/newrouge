@@ -36,6 +36,7 @@ on:
       - 'scripts/python/tests/test_codex_app_server_stdio.py'
       - 'scripts/python/tests/test_inherited_pipe_cleanup.py'
       - 'scripts/python/tests/test_mvg_capability_worker.py'
+      - 'scripts/python/tests/test_mvg_*.py'
       - 'scripts/python/tests/test_codex_isolated_model_runner.py'
       - 'scripts/python/tests/test_capability_input_integrity.py'
       - 'scripts/python/tests/test_planning_main_audit_fixes.py'

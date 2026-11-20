@@ -12,10 +12,13 @@ Capability 与 MVG 使用同一个显式 3B 输入合同，分别保留原 plann
 py -3 scripts/python/dev_cli.py plan-capabilities --stage prepare --run-id <cap-run> --input-stage 3b --planning-contract <contract.json>
 py -3 scripts/python/dev_cli.py plan-mvg --stage prepare --run-id <mvg-run> --input-stage 3b --planning-contract <contract.json>
 py -3 scripts/python/dev_cli.py plan-mvg --stage generate --run-id <mvg-run> --input-stage 3b --prepared-ref <returned-prepared-ref> --planning-profile 3b-mvg-v1
+py -3 scripts/python/dev_cli.py plan-mvg --stage verify-selection --run-id <mvg-run> --input-stage 3b --prepared-ref <returned-prepared-ref> --planning-profile 3b-mvg-v1
+py -3 scripts/python/dev_cli.py plan-mvg --stage review --run-id <mvg-run> --input-stage 3b --prepared-ref <returned-prepared-ref> --planning-profile 3b-mvg-v1
+py -3 scripts/python/dev_cli.py plan-mvg --stage validate --run-id <mvg-run> --input-stage 3b --prepared-ref <returned-prepared-ref> --planning-profile 3b-mvg-v1
 py -3 scripts/python/dev_cli.py plan-mvg --stage status --run-id <mvg-run> --input-stage 3b --prepared-ref <returned-prepared-ref> --planning-profile 3b-mvg-v1
 ```
 
-Capability 使用其原 `3b-capabilities-v1` profile。实际 profile 以当前 owner 的 `--help` 与冻结输入为准。显式 B 的多模型隔离 runner 路由由 `docs/workflows/llm-routing.json` 定义（默认可解析至官方 Codex 或已登记的 Gemini 隔离 runner）；显式指定的 runner 或路由别名原样传递，由执行 owner 检查合法性并绑定工具指纹。现有 A 的生成 backend 和 review 默认值保留。不得把 Task、manifest、readiness 或 `allow-unready-draft` 当作 3B 的替代入口。
+Capability 使用其原 `3b-capabilities-v1` profile。实际 profile 以当前 owner 的 `--help` 与冻结输入为准。启用 ADR-0062 的 `<= 70,000` UTF-8 字节分段执行时，`generate` 可按需传入有界切片参数 `--max-new-dispatches` 与 `--pause-after-sec`。显式 B 的多模型隔离 runner 路由由 `docs/workflows/llm-routing.json` 定义（默认可解析至官方 Codex 或已登记的 Gemini 隔离 runner）；显式指定的 runner 或路由别名原样传递，由执行 owner 检查合法性并绑定工具指纹。现有 A 的生成 backend 和 review 默认值保留。不得把 Task、manifest、readiness 或 `allow-unready-draft` 当作 3B 的替代入口。
 
 `generate` 会执行模型工作，必须已有实际预算与授权。`status` 会检查原 checkpoint，并可能恢复该 checkpoint；它不是完全无副作用的文件浏览。中断后先检查原进程、回执与 journal，保留未知调用占用，不重发未知请求或通过换 ID 清空历史。
 
@@ -23,7 +26,7 @@ Capability 使用其原 `3b-capabilities-v1` profile。实际 profile 以当前 
 
 候选独立准入、候选选择、全局审计与正式发布各有证据。一个合法 selected/handoff 或已发布前缀都不能单独证明全局规划完成。完成判断需共同核对原生语义准入、全局义务/依赖与冲突审计，以及正式 committed reader；缺少任一项时明确记录尚缺证据。
 
-MVG 的原全局审计按原运行 ID 路由，**不附加** `--input-stage 3b`、prepared-ref 或 execution profile：
+显式 3B 的 `generate` 在完成选择后**不会**自动执行全局 `audit`，操作者必须显式调用下述 `plan-mvg --stage audit`。MVG 的原全局审计按原运行 ID 路由，**不附加** `--input-stage 3b`、prepared-ref 或 execution profile：
 
 ```powershell
 py -3 scripts/python/dev_cli.py plan-mvg --stage audit --run-id <original-mvg-run>
@@ -46,8 +49,11 @@ py -3 scripts/python/dev_cli.py b-route-adoption --root <target-root> --stage re
 
 ## 三类恢复分别处理
 
-1. 原生候选/代次恢复：原 planner 与其 checkpoint、dispatch、receipt owner；completed-unit reuse 仍由原 coordinator 校验。不能用 operation context 替代。
-2. 已持久化 operation 中断：先 `b-route-adoption --root <target-root> --stage recover-inspect --operation-id <original-id>`，按实际 `next_stage`、`target_states` 和 `resume_ref` 决定原 `recover`。不先重做 apply 或更换 ID。
-3. 已正式定义的补偿：沿用原 lineage、authority 和 compensation request；`read` 返回 successor 时定位该原 successor，不伪装为旧 receipt。本文不创建新补偿权限。
+不同恢复路线严格分离，互不替代，也不得将任一恢复许可泛化到其他路线（对齐 Story 2.9 AC-5）：
+
+1. 原生完成项复用（`_mvg_capability_recovery` / `_b_route_completed_reuse`）：仅基于原已提交 `run.json` 单 Capability checkpoint 进行对象键、历史 proof 与当前相关依赖/delta 校验；绝不复用未完成候选，也绝不能通过 `b-route-adoption --context` 替代或触发。
+2. Capability `--resume-evidence`：Capability runner 的显式恢复参数，严格绑定精确准备输入、历史 batch 与 receipt（见 `test_capability_input_integrity.py`）；绝不泛化为新 MVG 执行复用未完成候选的资格。
+3. 已持久化 operation journal 恢复（Story 2.8）：先执行 `b-route-adoption --root <target-root> --stage recover-inspect --operation-id <original-id>`，按实际 `next_stage`、`target_states` 和 `resume_ref` 决定原 `recover`，不先重做 apply 或更换 ID。
+4. 正式补偿（`b-route-adoption`）：沿用原 lineage、authority 和 compensation request；`read` 返回 successor 时定位该原 successor，不伪装为旧 receipt。本文不创建新补偿权限。
 
 错误保持原 owner 的实际输出：adoption/commit 使用结构化 diagnostic 与 resume_ref；原 planner 可能只返回 status/reason。不得补写成功回执。逻辑调用次数不等于物理请求数；官方返回的运行时模型/high 配置可记录，但服务端实际模型、实际推理与实际费用未知时必须保留未知。

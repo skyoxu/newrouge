@@ -40,6 +40,12 @@ class RuntimeCITests(unittest.TestCase):
             self.assertFalse(any(value.startswith(selector + '.') for value in selected))
         for selector in ('scripts.python.tests.test_b_route_recovery_funding',
                          'scripts.python.tests.test_mvg_capability_worker',
+                         'scripts.python.tests.test_mvg_capability_recovery',
+                         'scripts.python.tests.test_mvg_recovery_fixthrough',
+                         'scripts.python.tests.test_mvg_global_audit.GlobalAuditTests.test_public_cli_and_builder_preserve_exact_run_artifact_and_hash',
+                         'scripts.python.tests.test_mvg_global_audit.GlobalAuditTests.test_unresolved_resolution_cannot_become_admitted',
+                         'scripts.python.tests.test_mvg_global_audit.GlobalAuditTests.test_audit_recomputes_completion_and_source_gap_verdict',
+                         'scripts.python.tests.test_mvg_global_audit_boundaries',
                          'scripts.python.tests.test_inherited_pipe_cleanup'):
             self.assertIn(selector, selected)
 

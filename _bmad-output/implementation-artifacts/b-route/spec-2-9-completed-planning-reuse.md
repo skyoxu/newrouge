@@ -2,11 +2,11 @@
 title: 'Story 2.9：已提交完成规划复用与 epoch/reopen 撤销'
 type: 'feature'
 created: '2026-11-10'
-status: 'in-review'
+status: 'in-progress'
 baseline_commit: '3896a650dcf6ceaa0cad2c5ee3bc9bc0020e0914'
 original_candidate_baseline_commit: 'dacd713984f91deed4ad80826d22459b819ffc06'
 route: 'dispatch'
-review_loop_iteration: 0
+review_loop_iteration: 1
 context:
   - '{project-root}/AGENTS.md'
   - '{project-root}/docs/adr/ADR-0039-mvg-completed-capability-recovery.md'
@@ -88,11 +88,11 @@ Refs: FR-5；FR-13（规划成果复用部分）；FR-16；NFR-E-3；NFR-E-4；N
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `scripts/python/_b_route_planning_runtime.py`；必要时其无写权限 helper `scripts/python/_b_route_completed_reuse.py`：从单 target 冻结合同和完整原文行/locator 推导键与相关依赖，接原 B delta/当前重放。
-- [ ] `scripts/python/_mvg_capability_recovery.py`：在原 committed 登记、历史来源复验、当前 replay/adoption 入口局部分派 B；保原 receipt/不可变 snapshot/事务与撤销。
-- [ ] `scripts/python/_mvg_capability_selection.py` 与 runtime：完成真实 adoption selected/proof/execution/handoff 组合，保原 commit_checkpoint/assert_epoch 及 fresh 路径。
-- [ ] `scripts/python/_mvg_capability_recovery.py`、`scripts/python/_mvg_global_audit.py`、`scripts/python/plan_mvg.py`：检查 adoption 是否经过原 active-chain；仅修实际遗漏，不新建状态机或全局门禁。
-- [ ] `scripts/python/tests/test_b_route_completed_reuse.py` 及实际受影响旧测试：单项正向、损坏/相关漂移、真无关元信息、未提交排除、epoch/reopen/后继、下游失败及三类恢复入口。新增测试模块才注册一次 `scripts/python/run_gate_bundle.py` selector。
+- [x] `scripts/python/_b_route_planning_runtime.py`；必要时其无写权限 helper `scripts/python/_b_route_completed_reuse.py`：从单 target 冻结合同和完整原文行/locator 推导键与相关依赖，接原 B delta/当前重放。
+- [x] `scripts/python/_mvg_capability_recovery.py`：在原 committed 登记、历史来源复验、当前 replay/adoption 入口局部分派 B；保原 receipt/不可变 snapshot/事务与撤销。
+- [x] `scripts/python/_mvg_capability_selection.py` 与 runtime：完成真实 adoption selected/proof/execution/handoff 组合，保原 commit_checkpoint/assert_epoch 及 fresh 路径。
+- [x] `scripts/python/_mvg_capability_recovery.py`、`scripts/python/_mvg_global_audit.py`、`scripts/python/plan_mvg.py`：检查 adoption 是否经过原 active-chain；仅修实际遗漏，不新建状态机或全局门禁。
+- [x] `scripts/python/tests/test_b_route_completed_reuse.py` 及实际受影响旧测试：单项正向、损坏/相关漂移、真无关元信息、未提交排除、epoch/reopen/后继、下游失败及三类恢复入口。新增测试模块才注册一次 `scripts/python/run_gate_bundle.py` selector。
 - [ ] `docs/workflows/mvg-integration-acceptance.md`、本 spec、`sprint-status.yaml`：同步真实已交付边界、复用原因/原证据/实际成本/unknown；原生 Step4/5 后才宣告完成。
 
 **Acceptance Criteria:** 原始 AC1–5 在冻结块中逐字保留；上列任务与矩阵不替代或增加原系统验收。
@@ -205,3 +205,9 @@ The user stopped all new business/model/test execution to hand over to another A
 The genuine source audit completed both official phases before the Linux adapter, public0/2 occupied. Its full protocol and121 original tool identities are preserved. Formal3B prepare actually exited1 at the278315-byte common-core UTF8 upper-bound probe+2000>96000 before native/model dispatch. The necessary narrow Linux initial-publication adapter was independently assessed and10 focused controls passed before the stop. It changes transitive tool identity, so the old eligible audit is historical; no changed-source audit, native call, committed single-Capability item or new registry entry exists. User chose to keep current network settings: no official encoding table fetched, no accurate token count or offline transport fix claimed.
 
 Previous real compensation/read/clone and four Windows synthetic-upstream controls remain valid within their original scope, not whole-Epic acceptance. Source-audit2 and compensation original2+added1 occupancy/failures/unknowns are unchanged. No more execution is authorized until the user resumes; preserve original Story2.8 AC1–5,2.9 AC1–5 and2.10 AC1–6/prerequisites. No Fast/API/main/Aliyun/S2/full-suite or unknown replay. The four unrelated initial EOL-status paths remain excluded.
+
+## 2026-11-20 Offline BMAD Review Fix-Through & Pre-Online Freeze
+
+- Prerequisite closure: Story 2.8 is `done` (`2bc52f8c`); prerequisites 2.3, 2.5, 2.7, and 2.8 are all satisfied.
+- Offline BMAD 4-layer review fix-through (`review_loop_iteration: 1`): all offline code, test, and documentation/skill hygiene fixes are applied and recorded under `logs/ci/2026-11-20/story-2-9-2-10-review/`. `<frozen-after-approval>` AC-1..AC-5 remain byte-identical.
+- Remaining gate before transitioning Story 2.9 from `in-progress` to `done`: real online Windows Plane-B execution (`3A audit` -> single-Capability `3B generate` -> cross-run reuse / related-drift rejection / explicit `audit` -> `reopen-plan` -> `reopen` / `clear` epoch advancement) authorized by the user; synthetic fixtures never substitute for real online model execution evidence.

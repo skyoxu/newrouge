@@ -51,13 +51,19 @@ class QualifiedPublicContextTests(unittest.TestCase):
                 self.assertFalse(parsed.context)
 
     def test_context_rejects_all_mutating_and_origin_routes_before_service_import(self):
-        for stage in ('origin-prepare', 'review-prepare', 'review-complete', 'prepare',
-                      'reserve', 'apply', 'verify', 'publish', 'recover-inspect', 'recover'):
+        for stage in ('origin-prepare', 'review-prepare', 'review-segmented-preflight',
+                      'review-segmented-prepare', 'review-segmented-execute',
+                      'review-segmented-resume', 'review-segmented-repair-prepare',
+                      'review-segmented-repair-execute', 'review-segmented-repair-resume',
+                      'review-complete', 'prepare', 'reserve', 'apply', 'verify',
+                      'publish', 'recover-inspect', 'recover'):
             with self.subTest(stage=stage):
                 arguments = ['--stage', stage, '--operation-id', 'OP-1', '--context']
-                if stage in ('review-prepare', 'prepare'):
-                    arguments += ['--request', 'logs/ci/request.json',
-                                  '--compensation-review-delivery',
+                if stage in ('review-prepare', 'review-segmented-preflight',
+                             'review-segmented-prepare', 'prepare'):
+                    arguments += ['--request', 'logs/ci/request.json']
+                if stage in ('review-prepare', 'review-segmented-preflight'):
+                    arguments += ['--compensation-review-delivery',
                                   'newrouge.b-route-qualified-compensation-review-delivery.v1']
                 if stage == 'origin-prepare':
                     arguments += ['--origin-profile', 'original-finite-profile']

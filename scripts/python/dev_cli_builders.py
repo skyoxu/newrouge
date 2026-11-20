@@ -713,6 +713,11 @@ def build_plan_capabilities_cmd(args) -> list[str]:
         if args.runner:
             cmd += ["--runner", _resolve_cli_plane_b_runner(args.runner, args.repo_root)]
         cmd += ["--timeout-sec", str(args.timeout_sec)]
+        if args.stage == "generate":
+            if getattr(args, "max_new_dispatches", None) is not None:
+                cmd += ["--max-new-dispatches", str(args.max_new_dispatches)]
+            if getattr(args, "pause_after_sec", None) is not None:
+                cmd += ["--pause-after-sec", str(args.pause_after_sec)]
     elif args.stage == "apply":
         if args.alignment_override:
             cmd += ["--alignment-override", args.alignment_override]
@@ -740,26 +745,30 @@ def _planning_stage_arguments(args):
         return
     if stage != "3b":
         raise ValueError("unsupported input stage")
+    if (getattr(args, "task_id", []) or getattr(args, "allow_unready_draft", False)
+            or getattr(args, "capabilities", "") or getattr(args, "manifest", "")
+            or getattr(args, "evidence_ref", []) or getattr(args, "run_invocation_limit", None) is not None
+            or getattr(args, "model_batch_char_budget", None) is not None
+            or getattr(args, "source_manifest", "logs/ci/task-generation/source-manifest.v1.json") != "logs/ci/task-generation/source-manifest.v1.json"
+            or getattr(args, "ledger", "logs/ci/task-generation/source-blocks.v1.json") != "logs/ci/task-generation/source-blocks.v1.json"
+            or getattr(args, "semantics", "logs/ci/task-generation/semantic-requirements.v1.json") != "logs/ci/task-generation/semantic-requirements.v1.json"):
+        raise ValueError("3b rejects legacy Task/readiness/manifest/evidence gates")
     if args.stage == "prepare":
         if not contract or prepared or profile:
             raise ValueError("3b prepare requires --planning-contract only")
         return
-    if (getattr(args,"task_id",[]) or getattr(args,"allow_unready_draft",False)
-            or getattr(args,"capabilities","") or getattr(args,"manifest","")
-            or getattr(args,"evidence_ref",[]) or getattr(args,"run_invocation_limit",None) is not None
-            or getattr(args,"source_manifest","logs/ci/task-generation/source-manifest.v1.json") != "logs/ci/task-generation/source-manifest.v1.json"
-            or getattr(args,"ledger","logs/ci/task-generation/source-blocks.v1.json") != "logs/ci/task-generation/source-blocks.v1.json"
-            or getattr(args,"semantics","logs/ci/task-generation/semantic-requirements.v1.json") != "logs/ci/task-generation/semantic-requirements.v1.json"):
-        raise ValueError("3b rejects legacy Task/readiness/manifest/evidence gates")
     if reading:
         if not prepared or profile:
             raise ValueError("3b candidate validation requires prepared-ref, candidate and no execution profile")
     elif runtime:
         from _b_route_planning_runtime import PROFILES
-        expected = "capabilities" if getattr(args, "command", "") == "plan-capabilities" else "mvg"
-        # dev_cli uses command names; direct builder fixtures may omit it.
+        cmd_name = getattr(args, "cmd", "") or getattr(args, "command", "")
         if not prepared or profile not in PROFILES:
             raise ValueError("3b execution requires --prepared-ref and known --planning-profile")
+        if cmd_name in {"plan-capabilities", "plan-mvg"} and PROFILES[profile][0] != (
+            "capabilities" if cmd_name == "plan-capabilities" else "mvg"
+        ):
+            raise ValueError("3b planning profile does not match selected planner command")
     else:
         raise ValueError("3b stage is not a planning execution or inspection stage")
 
@@ -815,6 +824,10 @@ def build_plan_mvg_cmd(args) -> list[str]:
         cmd += ["--timeout-sec", str(args.timeout_sec), "--llm-backend", args.llm_backend]
         if getattr(args, "input_stage", "legacy") == "3b":
             cmd += ["--runner", runner]
+        if getattr(args, "max_new_dispatches", None) is not None:
+            cmd += ["--max-new-dispatches", str(args.max_new_dispatches)]
+        if getattr(args, "pause_after_sec", None) is not None:
+            cmd += ["--pause-after-sec", str(args.pause_after_sec)]
     elif args.stage == "review":
         cmd += ["--timeout-sec", str(args.timeout_sec), "--runner", runner]
     elif args.stage == "apply" and args.confirm:

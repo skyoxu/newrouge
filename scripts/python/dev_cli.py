@@ -616,7 +616,7 @@ def build_parser() -> argparse.ArgumentParser:
     from _b_route_sources import register_arguments as register_sources_arguments
     register_sources_arguments(sources_parser)
 
-    adoption_parser = sub.add_parser("b-route-adoption", help="Explicit adoption review/prepare/commit/read; optional read context, no default B activation")
+    adoption_parser = sub.add_parser("b-route-adoption", help="Explicit adoption review/prepare/commit/read; optional inspect/read context, no default B activation")
     from b_route_adoption import register_arguments as register_adoption_arguments
     register_adoption_arguments(adoption_parser)
 
@@ -833,7 +833,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_cap = sub.add_parser(
         "plan-capabilities",
-        help="run post-Chapter-5 Capability prepare/generate/review/alignment/apply stages",
+        help="plan Capabilities from post-Chapter-5 readiness or an explicit task-free 3B contract",
     )
     p_cap.add_argument("--stage", required=True, choices=[
         "prepare", "generate", "review", "preview-alignment", "align",
@@ -858,10 +858,13 @@ def build_parser() -> argparse.ArgumentParser:
     p_cap.add_argument("--synthesis-budget-sec", type=int, default=1200)
     p_cap.add_argument("--total-budget-sec", type=int, default=13500)
     p_cap.add_argument("--request-limit", type=int, default=96)
-    p_cap.add_argument("--runner", default=str(Path(__file__).resolve().with_name("codex_isolated_model_runner.py")))
+    p_cap.add_argument("--runner", default=str(Path(__file__).resolve().with_name("codex_isolated_model_runner.py")),
+        help="isolated runner; defaults to Codex (or configured Plane B alias for explicit 3B)")
     p_cap.add_argument("--allow-paid-api", action="store_true",
         help="explicitly authorize opt-in paid API backends (openai-api, gemini-api)")
     p_cap.add_argument("--timeout-sec", type=int, default=2700)
+    p_cap.add_argument("--max-new-dispatches", type=int, default=None)
+    p_cap.add_argument("--pause-after-sec", type=float, default=None)
     p_cap.add_argument("--alignment-override", default="")
     p_cap.add_argument("--candidate", default="")
     p_cap.add_argument("--confirm", action="store_true")
@@ -891,6 +894,8 @@ def build_parser() -> argparse.ArgumentParser:
     p_mvg_plan.add_argument("--allow-unready-draft", action="store_true")
     p_mvg_plan.add_argument("--run-invocation-limit", type=int, default=None)
     p_mvg_plan.add_argument("--timeout-sec", type=int, default=1800)
+    p_mvg_plan.add_argument("--max-new-dispatches", type=int, default=None)
+    p_mvg_plan.add_argument("--pause-after-sec", type=float, default=None)
     p_mvg_plan.add_argument("--llm-backend", default="codex-cli")
     p_mvg_plan.add_argument("--allow-paid-api", action="store_true",
         help="explicitly authorize opt-in paid API backends (openai-api, gemini-api)")

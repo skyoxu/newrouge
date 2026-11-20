@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import base64
 from copy import deepcopy
+from pathlib import Path
 
 import _b_route_codec as codec
 import _b_route_candidate as candidate
@@ -15,7 +16,10 @@ from _planning_skill_common import canonical_sha, load_json
 
 
 def frozen(prepared):
-    return load_json(prepared / "b-route-prepared.json")
+    value = load_json(prepared / "b-route-prepared.json", None)
+    if not isinstance(value, dict):
+        raise ValueError("b_route_recovery_prepared_missing")
+    return value
 
 
 def _documents(inputs):
@@ -26,10 +30,14 @@ def _documents(inputs):
         raw = row["text"].encode("utf-8")
         if codec.raw_digest(raw) != row["sha256"]:
             raise ValueError("b_route_recovery_original_bytes_changed:" + row["path"])
+        if row["path"] in documents and documents[row["path"]][0] != raw:
+            raise ValueError("b_route_recovery_original_bytes_ambiguous:" + row["path"])
         documents[row["path"]] = (raw, None)
     for row in inputs["contexts"]:
         if "raw_base64" not in row:
             continue
+        if not isinstance(row["raw_base64"], str):
+            raise ValueError("b_route_recovery_original_bytes_changed:" + row["path"])
         raw = base64.b64decode(row["raw_base64"], validate=True)
         if codec.raw_digest(raw) != row["raw_digest"]:
             raise ValueError("b_route_recovery_original_bytes_changed:" + row["path"])
@@ -58,7 +66,8 @@ def binding(prepared, scope):
     target = inputs["contract"]["scope"]
     if (scope.get("unit_kind") != "governed_planning_closure" or scope.get("scope") != target
             or scope.get("closure") != inputs["closure"] or target["kind"] != "capability"
-            or len(target["ids"]) != 1):
+            or len(target["ids"]) != 1
+            or not isinstance(target["ids"][0], str) or not target["ids"][0].strip()):
         raise ValueError("b_route_recovery_requires_single_capability_target")
     matches = []
     formats = {row["path"]: row["format"] for row in inputs["contexts"]}
@@ -142,7 +151,7 @@ def _capability_container(container, bound, closure, content):
     return kept if fields is None else {**fields, "capabilities": kept}
 
 
-def dependency(prepared, scope, base, proposal):
+def dependency(prepared, scope, base, proposal, *, root=None):
     envelope = frozen(prepared)
     inputs = envelope["inputs"]
     bound = binding(prepared, scope)
@@ -155,8 +164,8 @@ def dependency(prepared, scope, base, proposal):
     blocks = candidate.unique(proof["ledger"]["blocks"], lambda row: row["block_id"], "source_blocks")
     # Selected PlanRefs keep their own source namespace. They are never
     # mistaken for proposals owned by today's native manifest/ledger.
-    root = prepared.resolve().parents[4]
-    store = candidate.frozen_bytes(root, envelope["resume_ref"], envelope, candidate.sources.Observations(root))
+    resolved_root = Path(root).resolve() if root is not None else prepared.resolve().parents[4]
+    store = candidate.frozen_bytes(resolved_root, envelope["resume_ref"], envelope, candidate.sources.Observations(resolved_root))
     _owners, _resolve, plans = candidate.check_owners(content, store)
     inherited = {}
     for plan in plans:
@@ -182,9 +191,19 @@ def dependency(prepared, scope, base, proposal):
         elif path in source_paths or kind not in {"capability", "task", None}:
             documents[path] = _semantic_document(raw, structured=
                 formats.get(path, "json" if path.lower().endswith(".json") else "text") == "json")
-    constraints = [{key: deepcopy(row[key]) for key in ("path", "format")}
-                   | {"value": _semantic_document(base64.b64decode(row["raw_base64"], validate=True), structured=row["format"] == "json")}
-                   for row in inputs["constraints"]]
+    constraints = []
+    for row in inputs["constraints"]:
+        entry = {key: deepcopy(row[key]) for key in ("path", "format")}
+        if "raw_base64" not in row:
+            entry["absence"] = deepcopy(row.get("absence"))
+        else:
+            if not isinstance(row["raw_base64"], str):
+                raise ValueError("b_route_recovery_original_bytes_changed:" + row["path"])
+            raw = base64.b64decode(row["raw_base64"], validate=True)
+            if codec.raw_digest(raw) != row["raw_digest"]:
+                raise ValueError("b_route_recovery_original_bytes_changed:" + row["path"])
+            entry["value"] = _semantic_document(raw, structured=row["format"] == "json")
+        constraints.append(entry)
     # Typed references and OwnedRefs retain their full definitions and exact
     # bytes. Do not let the context kind hide a referenced Task/catalog file.
     references = []
@@ -194,6 +213,7 @@ def dependency(prepared, scope, base, proposal):
                 references.append(deepcopy(row))
         elif set(row) == {"path", "schema_version", "entity_id", "revision", "digest", "verification_mode", "codec_version"}:
             references.append(deepcopy(row))
+    references.sort(key=canonical_sha)
     return {"capability": bound["capability"], "closure": {key: deepcopy(closure[key])
         for key in ("mode", "reason", "source_paths", "entities")}, "sources": documents,
         "requirements": deepcopy(content["requirements"]), "source_meanings": meanings,

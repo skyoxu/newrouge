@@ -216,6 +216,67 @@ class PlanningDevCliTests(unittest.TestCase):
         self.assertIn("Game.Core.Tests/Tasks/ExistingTests.cs", cmd)
         self.assertIn("docs/contracts/extra.md", cmd)
 
+    def test_mvg_audit_and_reopen_stages_build_and_require_hash_pairs(self) -> None:
+        args = dev_cli.build_parser().parse_args([
+            "plan-mvg", "--stage", "audit", "--run-id", "a1",
+            "--conflict-report", "logs/r.json", "--conflict-report-sha256", "sha256:abc",
+        ])
+        cmd = build_plan_mvg_cmd(args)
+        self.assertIn("audit", cmd)
+        self.assertEqual("logs/r.json", cmd[cmd.index("--conflict-report") + 1])
+        self.assertEqual("sha256:abc", cmd[cmd.index("--conflict-report-sha256") + 1])
+
+        plain_audit = dev_cli.build_parser().parse_args(["plan-mvg", "--stage", "audit", "--run-id", "a1"])
+        plain_cmd = build_plan_mvg_cmd(plain_audit)
+        self.assertIn("audit", plain_cmd)
+        self.assertNotIn("--conflict-report", plain_cmd)
+
+        for stage, ok_flags, bad_flags in (
+            ("audit", ["--conflict-report", "logs/r.json", "--conflict-report-sha256", "sha256:r"], ["--conflict-report", "logs/r.json"]),
+            ("reopen-plan", ["--audit", "global-audits/a.json", "--audit-sha256", "sha256:a"], ["--audit", "global-audits/a.json"]),
+            ("reopen", ["--plan", "reopen-plans/p.json", "--plan-sha256", "sha256:p"], []),
+        ):
+            with self.subTest(stage=stage):
+                ok_args = dev_cli.build_parser().parse_args(["plan-mvg", "--stage", stage, "--run-id", "a1", *ok_flags])
+                ok_cmd = build_plan_mvg_cmd(ok_args)
+                self.assertIn(stage, ok_cmd)
+                bad_args = dev_cli.build_parser().parse_args(["plan-mvg", "--stage", stage, "--run-id", "a1", *bad_flags])
+                with self.assertRaisesRegex(ValueError, "artifact and SHA-256 pair"):
+                    build_plan_mvg_cmd(bad_args)
+
+    def test_slice_pause_flags_forward_on_generate_and_3b_guards_reject_mismatches(self) -> None:
+        for command, builder, profile in (
+            ("plan-capabilities", build_plan_capabilities_cmd, "3b-capabilities-v1"),
+            ("plan-mvg", build_plan_mvg_cmd, "3b-mvg-v1"),
+        ):
+            with self.subTest(command=command):
+                args = dev_cli.build_parser().parse_args([
+                    command, "--stage", "generate", "--run-id", "slice-1",
+                    "--input-stage", "3b", "--prepared-ref", "logs/prepared.json",
+                    "--planning-profile", profile,
+                    "--max-new-dispatches", "2", "--pause-after-sec", "12.5",
+                ])
+                cmd = builder(args)
+                self.assertEqual("2", cmd[cmd.index("--max-new-dispatches") + 1])
+                self.assertEqual("12.5", cmd[cmd.index("--pause-after-sec") + 1])
+
+                wrong_profile = "3b-mvg-v1" if command == "plan-capabilities" else "3b-capabilities-v1"
+                bad_profile = dev_cli.build_parser().parse_args([
+                    command, "--stage", "generate", "--run-id", "slice-1",
+                    "--input-stage", "3b", "--prepared-ref", "logs/prepared.json",
+                    "--planning-profile", wrong_profile,
+                ])
+                with self.assertRaisesRegex(ValueError, "profile does not match"):
+                    builder(bad_profile)
+
+                bad_prepare = dev_cli.build_parser().parse_args([
+                    command, "--stage", "prepare", "--run-id", "r3b",
+                    "--input-stage", "3b", "--planning-contract", "contracts/p.json",
+                    "--task-id", "7",
+                ])
+                with self.assertRaisesRegex(ValueError, "rejects legacy"):
+                    builder(bad_prepare)
+
 
 if __name__ == "__main__":
     unittest.main()

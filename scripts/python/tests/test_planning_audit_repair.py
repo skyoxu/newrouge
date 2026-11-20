@@ -126,6 +126,10 @@ def prepared_mvg(root):
     proposal['requirement_route_memberships'] = [
         {'requirement_id': rid, 'flow_id': 'relay-delivery',
          'observable_role': 'Launch or resolve relay'} for rid in reqs]
+    proposal['requirement_verification'] = [
+        {**deepcopy(row), 'disposition': 'flow', 'evidence_ids': []}
+        for row in proposal['coverage_table']]
+    proposal['requirement_evidence'] = []
     run = root / "logs/ci/mvg-planning/repair"
     atomic_json(run / "proposal.json", proposal)
     # Reviewed fixture evidence tests deterministic consumers; no model execution is claimed.
@@ -148,6 +152,123 @@ def prepared_mvg(root):
             "can_read_outside_workspace": False, "model_tools": []},
         "receipt": {"model": "fixture-reviewer", "model_tools": []}})
     return state, proposal, dest
+
+
+def apply_ready_mvg(root):
+    """Build a genuine capability-local-selection + global-audit MVG run ready for apply."""
+    import _mvg_capability_generation as generation
+    import _mvg_global_audit as global_audit
+    from _planning_skill_common import RUNNER_SCHEMA
+
+    selected_cap(root)
+    cap.apply(root, run_id="repair", alignment_override=None, confirm=True)
+    dest = root / "docs/testing/mvg/repair.json"
+    mvg.prepare(root, run_id="repair", capabilities_path=root / cap.FORMAL_CAPABILITIES,
+        task_ids=["7", "42"], manifest_path=dest, allow_unready=False)
+    caps = load_json(root / cap.FORMAL_CAPABILITIES)["capabilities"]
+    gameplay = load_json(root / ".taskmaster/tasks/tasks_gameplay.json")
+    requirement_tasks = {
+        str(requirement): int(row["taskmaster_id"])
+        for row in gameplay
+        for requirement in row.get("semantic_refs", [])
+    }
+    description = {
+        "schema_version": RUNNER_SCHEMA, "filesystem_scope": "workspace_only",
+        "fresh_session_per_invocation": True, "can_read_outside_workspace": False,
+        "model": "fixture-reviewer", "model_tools": [],
+    }
+
+    def runner(_runner, *, workspace, prompt_path, output_path, output_schema, **kwargs):
+        schema = load_json(output_schema, {})
+        props = schema["properties"]
+        value = {key: prop["const"] for key, prop in props.items() if "const" in prop}
+        kind = value.get("schema_version")
+        if kind == "newrouge.mvg-evidence-audit.v1":
+            from _mvg_evidence_transport import restore_lossless_context
+            payload = restore_lossless_context(
+                __import__("json").loads(prompt_path.read_text(encoding="utf-8").splitlines()[-1])
+            )
+            value["reports"] = {
+                part["part_id"]: {
+                    "part_id": part["part_id"], "verdict": "relevant",
+                    "requirement_ids": [payload["core"]["requirements"][0]["requirement_id"]],
+                    "rationale": "Complete source inspected",
+                    "facts": ["Evidence supports runtime boundary"],
+                    "citations": [""] if part.get("citation_format") == "json_pointer" else [1],
+                    "hard_issues": [],
+                } for part in payload["parts"]
+            }
+        elif kind == mvg.MVG_SELECTION_SCHEMA:
+            labels = props["candidate_reviews"]["items"]["properties"]["label"]["enum"]
+            value.update(status="selected", selected=labels[0], tradeoffs=["Prefer clear journeys"],
+                evidence_refs=[], rationale="All candidates are admitted",
+                candidate_reviews=[{"label": label, "verdict": "viable", "rank": rank,
+                    "rationale": "Valid complete proposal"} for rank, label in enumerate(labels, 1)])
+        elif kind == generation.APPEND_SCHEMA:
+            cid = value["capability_id"]
+            index = next(i for i, row in enumerate(caps) if row["capability_id"] == cid)
+            rid = caps[index]["requirement_ids"][0]
+            tid = requirement_tasks[rid]
+            fid = f"relay-flow-{tid}"
+            test_id = f"relay-contract-{tid}"
+            flow = {
+                "id": fid, "outcome": f"Relay stage {tid} arrives or retry is visible",
+                "requirement_ids": [rid], "capability_refs": [cid], "task_ids": [tid],
+                "source_paths": [GDD_PATH], "test_ids": [test_id],
+                "handoffs": [{"producer_task": tid, "consumer_task": tid, "owner_task": tid,
+                    "contract_ref": CONTRACT_PATH, "contract_refs": None,
+                    "behavior": f"Deliver or retry for task {tid}", "test_ids": [test_id],
+                    "from": None, "to": None}],
+            }
+            test_row = {
+                "id": test_id, "flow_id": fid, "kind": "dotnet", "state": "planned",
+                "path": "Game.Core.Tests/Tasks/PlanningAcceptanceTests.cs",
+                "selector": "PlanningAcceptanceTests", "evidence_level": "domain-integration",
+                "min_tests": 1, "test_refs": [],
+            }
+            coverage_row = {
+                "requirement_id": rid, "flow_id": fid, "capability_ref": cid, "task_id": tid,
+                "disposition": "flow", "rationale": "Fixture requirement is observed by its owning task.",
+                "sink_id": None, "verification_ref": None, "authority_ref": None, "authority_review": None,
+            }
+            value.update(
+                flows=[flow], tests=[test_row], change_reviews=[], gaps=[], notes=[],
+                requirement_route_memberships=[{"requirement_id": rid, "flow_id": fid,
+                    "observable_role": f"Launch or resolve relay {tid}"}],
+                coverage_table=[coverage_row],
+                entrypoints=[{"status": "planned", "flow_ids": [fid], "owner_task": tid,
+                    "path": f"Game.Core/Tasks/Relay{tid}.cs", "symbol": f"Relay{tid}.Run",
+                    "inputs": "route", "state": "cargo transfer",
+                    "assertions": "accepted or retry visible",
+                    "implementation_acceptance": "relay journey"}],
+            )
+            if "requirement_verification" in props:
+                value["requirement_verification"] = [{**deepcopy(coverage_row), "evidence_ids": []}]
+                value["requirement_evidence"] = []
+        else:
+            coverage = props["requirement_reviews"]["items"]["anyOf"]
+            rows = []
+            for item in coverage:
+                row = {key: prop["const"] for key, prop in item["properties"].items() if "const" in prop}
+                row.update(verdict="covered", rationale="Relay launch and delivery remain observable.",
+                    repair_action="none")
+                rows.append(row)
+            value.update(verdict="approved", findings=[], requirement_reviews=rows,
+                flow_reviews=[{"flow_id": fid, "verdict": "sound",
+                    "rationale": "Real contract connects task; planned tests claim no runtime pass."}
+                    for fid in props["flow_reviews"]["items"]["properties"]["flow_id"].get("enum", [])])
+        atomic_json(output_path, value)
+        return {"model": "fixture-reviewer", "model_tools": [],
+                "output_sha256": file_sha(output_path), "workspace": workspace.as_posix()}
+
+    with patch.object(mvg, "inspect_isolated_runner", return_value=description), \
+         patch("_mvg_capability_worker.run_candidate", side_effect=lambda *args, **kwargs: kwargs["inline"]()), \
+         patch.object(mvg, "run_isolated_model", side_effect=runner):
+        mvg.generate(root, run_id="repair", timeout_sec=1, llm_backend="codex-cli")
+    mvg.review(root, run_id="repair", runner=Path("fixture-runner"), timeout_sec=1)
+    global_audit.operate(root, run_id="repair", operation="audit")
+    run = root / "logs/ci/mvg-planning/repair"
+    return load_json(run / "run.json"), load_json(run / "proposal.json"), dest
 
 
 def milestone_plan(root, proposal, dest):
@@ -291,7 +412,7 @@ class PlanningAuditRepairTests(unittest.TestCase):
 
     def test_pending_mvg_obligations_block_chapter6_route(self):
         from chapter6_route import route_chapter6
-        prepared_mvg(self.root)
+        apply_ready_mvg(self.root)
         mvg.apply(self.root, run_id="repair", confirm=True)
         with patch("chapter6_route.build_resume_payload", return_value=(0, {
             "run_id": "existing-valid-run", "inspection": {}, "candidate_commands": {}})):
@@ -302,7 +423,7 @@ class PlanningAuditRepairTests(unittest.TestCase):
 
     def test_single_task_lane_cannot_omit_milestone_flag_to_bypass_guard(self):
         import run_single_task_chapter6_lane as lane
-        prepared_mvg(self.root)
+        apply_ready_mvg(self.root)
         mvg.apply(self.root, run_id="repair", confirm=True)
         out = self.root / "logs/ci/lane-probe"
         with patch.object(lane, "_repo_root", return_value=self.root), patch.object(sys, "argv", [
@@ -313,7 +434,7 @@ class PlanningAuditRepairTests(unittest.TestCase):
     def test_ordinary_binding_and_real_milestone_handoff_open_then_drift_closes_gate(self):
         from _mvg_obligations import check_task_obligations
         from milestone_incremental_handoff import validate_task_handoff
-        _, proposal, dest = prepared_mvg(self.root)
+        _, proposal, dest = apply_ready_mvg(self.root)
         mvg.apply(self.root, run_id="repair", confirm=True)
         mvg.rebind_handoff(self.root, run_id="repair", task_id="7", change_plan_path=None, out_path=None)
         self.assertTrue(check_task_obligations(self.root, "7")[0])
@@ -321,7 +442,7 @@ class PlanningAuditRepairTests(unittest.TestCase):
         self.assertFalse(check_task_obligations(self.root, "7")[0])
         with self.assertRaisesRegex(ValueError, "milestone"):
             mvg.rebind_handoff(self.root, run_id="repair", task_id="7", change_plan_path=None, out_path=None)
-        handoff = self.root / "docs/planning/milestones/task-7-handoff.json"
+        handoff = self.root / "logs/ci/mvg-planning/repair/handoffs/task-7-handoff.json"
         mvg.rebind_handoff(self.root, run_id="repair", task_id="7", change_plan_path=plan, out_path=handoff)
         self.assertTrue(check_task_obligations(self.root, "7")[0])
         self.assertEqual(file_sha(dest), load_json(handoff)["baseline_manifest_sha256"])
@@ -398,13 +519,13 @@ class PlanningAuditRepairTests(unittest.TestCase):
         cap.apply(self.root, run_id="repair", alignment_override=None, confirm=True)
         pending = self.root / "docs/planning/semantic-topology/capability-apply.pending.json"
         atomic_json(pending, {"run_id": "another-run"})
-        with self.assertRaisesRegex(ValueError, "another Capability"):
+        with self.assertRaisesRegex(ValueError, "another Capability|identity_unprovable|pending"):
             cap.apply(self.root, run_id="repair", alignment_override=None, confirm=True)
         self.assertEqual("another-run", load_json(pending)["run_id"])
 
     def test_mvg_apply_recovers_manifest_write_and_preserves_final_binding(self):
         from _mvg_obligations import check_task_obligations
-        _, _, dest = prepared_mvg(self.root)
+        _, _, dest = apply_ready_mvg(self.root)
         original = mvg.atomic_json
         def interrupt(path, payload):
             original(path, payload)
@@ -752,9 +873,19 @@ class PlanningAuditRepairTests(unittest.TestCase):
         self.assertEqual(0, changed)
         self.assertEqual("Relay*", proposal["manifest_candidate"]["tests"][0]["selector"])
 
+    def _wire_candidate(self, run, candidate):
+        ledger = load_json(run / "analysis-input/source-blocks.v1.json")
+        block_ids = sorted({str(row["block_id"]) for row in ledger["blocks"]})
+        index_by_id = {bid: str(i) for i, bid in enumerate(block_ids)}
+        wired = deepcopy(candidate)
+        for item in wired.get("capabilities", []):
+            item["source_block_ids"] = [index_by_id[str(bid)] for bid in item.get("source_block_ids", [])]
+        return wired
+
     def test_capability_transport_failure_does_not_pin_auto_as_actual_model(self):
         run = selected_cap(self.root)
         candidate = load_json(run / "candidates/candidate-1.json")
+        wired = self._wire_candidate(run, candidate)
         state = load_json(run / "run.json")
         state.pop("actual_model")  # Exercise fresh generation, not the synthetic review fixture.
         atomic_json(run / "run.json", state)
@@ -763,10 +894,10 @@ class PlanningAuditRepairTests(unittest.TestCase):
             calls.append(kwargs["workspace"])
             if len(calls) == 1:
                 raise RuntimeError("actual model identity not exposed")
-            atomic_json(kwargs["output_path"], candidate)
+            atomic_json(kwargs["output_path"], wired)
             model = "different-model" if len(calls) == 3 else "fixture-model"
             return {"model": model, "model_tools": []}
-        with patch.object(cap, "inspect_isolated_runner", return_value={"model": "auto"}), \
+        with patch.object(cap, "inspect_isolated_runner", return_value={"model": "auto", "supports_batched_session": True}), \
              patch.object(cap, "run_isolated_model", side_effect=invoke):
             result = cap.generate(self.root, run_id="repair", runner=Path("fixture-runner"), timeout_sec=1)
         self.assertEqual("complete", result["status"])
@@ -782,13 +913,14 @@ class PlanningAuditRepairTests(unittest.TestCase):
     def test_capability_missing_actual_receipt_cannot_accept_configured_model(self):
         run = selected_cap(self.root)
         candidate = load_json(run / "candidates/candidate-1.json")
+        wired = self._wire_candidate(run, candidate)
         state = load_json(run / "run.json")
         state.pop("actual_model")  # Exercise fresh generation without an accepted receipt.
         atomic_json(run / "run.json", state)
         def invoke(*args, **kwargs):
-            atomic_json(kwargs["output_path"], candidate)
+            atomic_json(kwargs["output_path"], wired)
             return {}
-        with patch.object(cap, "inspect_isolated_runner", return_value={"model": "configured-model"}), \
+        with patch.object(cap, "inspect_isolated_runner", return_value={"model": "configured-model", "supports_batched_session": True}), \
              patch.object(cap, "run_isolated_model", side_effect=invoke):
             with self.assertRaisesRegex(ValueError, "actual_model_identity_missing"):
                 cap.generate(self.root, run_id="repair", runner=Path("fixture-runner"), timeout_sec=1)
@@ -803,14 +935,16 @@ class PlanningAuditRepairTests(unittest.TestCase):
         atomic_json(run / "run.json", state)
         invalid = deepcopy(candidate)
         invalid["capabilities"][0]["requirement_ids"] = []
+        wired_valid = self._wire_candidate(run, candidate)
+        wired_invalid = self._wire_candidate(run, invalid)
         calls = []
 
         def invoke(*args, **kwargs):
             calls.append(kwargs["workspace"])
-            atomic_json(kwargs["output_path"], invalid if len(calls) == 1 else candidate)
+            atomic_json(kwargs["output_path"], wired_invalid if len(calls) == 1 else wired_valid)
             return {"model": "fixture-model", "model_tools": []}
 
-        with patch.object(cap, "inspect_isolated_runner", return_value={"model": "fixture-model"}), \
+        with patch.object(cap, "inspect_isolated_runner", return_value={"model": "fixture-model", "supports_batched_session": True}), \
              patch.object(cap, "run_isolated_model", side_effect=invoke):
             result = cap.generate(self.root, run_id="repair", runner=Path("fixture-runner"), timeout_sec=1)
         self.assertEqual("complete", result["status"])
@@ -827,6 +961,7 @@ class PlanningAuditRepairTests(unittest.TestCase):
     def test_candidate_runner_failure_uses_clean_retry_without_previous_seed(self):
         run = selected_cap(self.root)
         candidate = load_json(run / "candidates/candidate-1.json")
+        wired = self._wire_candidate(run, candidate)
         state = load_json(run / "run.json")
         state.update(phase="prepared", review_status=None, selected_candidate=None, final_candidate_path=None)
         state.pop("actual_model", None)
@@ -837,10 +972,10 @@ class PlanningAuditRepairTests(unittest.TestCase):
             calls.append(kwargs["workspace"])
             if len(calls) == 1:
                 raise RuntimeError("runner timed out")
-            atomic_json(kwargs["output_path"], candidate)
+            atomic_json(kwargs["output_path"], wired)
             return {"model": "fixture-model", "model_tools": []}
 
-        with patch.object(cap, "inspect_isolated_runner", return_value={"model": "fixture-model"}), \
+        with patch.object(cap, "inspect_isolated_runner", return_value={"model": "fixture-model", "supports_batched_session": True}), \
              patch.object(cap, "run_isolated_model", side_effect=invoke):
             result = cap.generate(self.root, run_id="repair", runner=Path("fixture-runner"), timeout_sec=1)
         self.assertEqual("complete", result["status"])

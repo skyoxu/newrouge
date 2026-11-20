@@ -247,6 +247,7 @@ Why this is stable:
 - candidates are bound to one blinded analysis identity
 - the review is a separate anonymous A/B/C run
 - apply is restricted to derived Capability surfaces and capability-only Chapter 5 rebinds
+- for explicit task-free B-route planning alongside post-Chapter-5 A usage, pass `--input-stage 3b --planning-contract <contract.json>` (and `--planning-profile 3b-capabilities-v1` on downstream stages); see [b-route-native-planning-status.md](b-route-native-planning-status.md)
 
 Owning Skill: `.agents/skills/plan-capabilities/SKILL.md`.
 
@@ -266,6 +267,7 @@ Why this is stable:
 - both Chapter 6 entrypoints consume the durable trace and require current final obligation bindings; the lane automatically consumes its bound milestone handoff even when the optional flag is omitted
 - ordinary tasks use `--stage rebind-handoff --task-id <id>` to bind current readiness and resolve applicability without creating a fake milestone handoff
 - for a task that is actually owned by a milestone change plan, use `--stage rebind-handoff --task-id <id> --change-plan <path> --handoff-out <path>`; this reuses the existing milestone handoff contract instead of inventing a planning-owned handoff
+- for explicit task-free B-route planning alongside post-Chapter-5 A usage, pass `--input-stage 3b --planning-contract <contract.json>` (and `--planning-profile 3b-mvg-v1` on `generate`, `verify-selection`, `review`, `validate`, and `status`; invoke `--stage audit` explicitly without `--input-stage 3b`); see [b-route-native-planning-status.md](b-route-native-planning-status.md)
 
 Owning Skill: `.agents/skills/plan-mvg/SKILL.md`.
 

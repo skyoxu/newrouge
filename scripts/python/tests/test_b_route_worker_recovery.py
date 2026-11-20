@@ -28,6 +28,9 @@ class WorkerRecoveryTests(unittest.TestCase):
         sandbox.mkdir(parents=True)
         (sandbox / "prompt.txt").write_text("offline fixture", encoding="utf-8")
         request = {"workspace": sandbox.relative_to(run).as_posix(), "output_path": (sandbox / "r.json").relative_to(run).as_posix(),
+            "prompt_path": (sandbox / "prompt.txt").relative_to(run).as_posix(),
+            "schema_path": (sandbox / "schema.json").relative_to(run).as_posix(),
+            "execution_binding_path": (sandbox / "binding.json").relative_to(run).as_posix(),
             "input_files": {"prompt.txt": file_sha(sandbox / "prompt.txt")}}
         request["request_sha256"] = canonical_sha(request)
         row = {"number": 1, "run_id": state["run_id"], "reservation_id": state["run_id"] + ":dispatch:1",

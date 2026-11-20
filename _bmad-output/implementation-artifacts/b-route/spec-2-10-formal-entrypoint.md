@@ -5,7 +5,7 @@ created: '2026-11-11'
 status: 'in-progress'
 baseline_commit: '50923dc290885cb414f0a722276731c0fc53514d'
 source_repository: 'r64'
-review_loop_iteration: 0
+review_loop_iteration: 1
 ---
 
 # Intent
@@ -123,3 +123,9 @@ The user stopped all new business/model/test execution to hand over to another A
 The genuine source audit completed both official phases before the Linux adapter, public0/2 occupied. Its full protocol and121 original tool identities are preserved. Formal3B prepare actually exited1 at the278315-byte common-core UTF8 upper-bound probe+2000>96000 before native/model dispatch. The necessary narrow Linux initial-publication adapter was independently assessed and10 focused controls passed before the stop. It changes transitive tool identity, so the old eligible audit is historical; no changed-source audit, native call, committed single-Capability item or new registry entry exists. User chose to keep current network settings: no official encoding table fetched, no accurate token count or offline transport fix claimed.
 
 Previous real compensation/read/clone and four Windows synthetic-upstream controls remain valid within their original scope, not whole-Epic acceptance. Source-audit2 and compensation original2+added1 occupancy/failures/unknowns are unchanged. No more execution is authorized until the user resumes; preserve original Story2.8 AC1–5,2.9 AC1–5 and2.10 AC1–6/prerequisites. No Fast/API/main/Aliyun/S2/full-suite or unknown replay. The four unrelated initial EOL-status paths remain excluded.
+
+## 2026-11-20 Offline BMAD Review Fix-Through & Pre-Online Freeze
+
+- Prerequisite closure: Story 2.8 is `done` (`2bc52f8c`); Story 2.9 remains `in-progress` pending its online Windows Plane-B execution checkpoint.
+- Offline BMAD 4-layer review fix-through (`review_loop_iteration: 1`): CLI, context-observation, and workflow/skill documentation hygiene fixes (`dev_cli.py`, `dev_cli_builders.py`, `b_route_adoption.py`, `docs/workflows/mvg-integration-acceptance.md`, `docs/workflows/b-route-native-planning-status.md`, `docs/workflows/b-route-adoption.md`, `docs/workflows/stable-public-entrypoints.md`, `.agents/skills/plan-mvg/SKILL.md`) are applied and tracked under `logs/ci/2026-11-20/story-2-9-2-10-review/`.
+- Remaining gate before transitioning Story 2.10 from `in-progress` to `done`: Story 2.9 online Windows Plane-B closure plus real online Windows Plane-B zero-Task adoption chain and fresh cross-session `b-route-adoption --stage inspect|read --context` verification under user authorization; Story 2.10 stays `in-progress`.
