@@ -96,6 +96,52 @@ def _authoritative_core_summary(frozen: dict) -> dict:
     }
 
 
+def _slim_authoritative_projections(frozen: dict) -> dict:
+    """Compact authoritative source-identity pins and verbatim requirements for Stage 3 synthesis."""
+    inputs = frozen["inputs"]
+    gp = inputs["global_proof"]
+    deps = inputs["dependencies"]["files"]
+    manifest_path = next(
+        (
+            k
+            for k in sorted(deps)
+            if any(tok in Path(k).name.lower() for tok in ("source-manifest", "source_manifest"))
+        ),
+        None,
+    )
+    ledger_path = next(
+        (
+            k
+            for k in sorted(deps)
+            if any(
+                tok in Path(k).name.lower()
+                for tok in ("source-blocks", "source-ledger", "source_blocks", "source_ledger")
+            )
+        ),
+        None,
+    )
+    return {
+        "source_identity_pins": {
+            "manifest_path": manifest_path,
+            "manifest_raw_digest": deps.get(manifest_path) if manifest_path else None,
+            "ledger_path": ledger_path,
+            "ledger_raw_digest": deps.get(ledger_path) if ledger_path else None,
+            "source_revision": gp["manifest"]["source_revision"],
+            "source_manifest_digest": gp["manifest"]["manifest_sha256"],
+        },
+        "verbatim_requirements": [
+            {
+                "requirement_id": row["proposal_id"],
+                "source_block_ids": deepcopy(row["source_block_ids"]),
+                "acceptance_intent": row["acceptance_intent"],
+                "non_task_sinks": deepcopy(row["non_task_sinks"]),
+                "prior_requirement_ids": deepcopy(row["prior_requirement_ids"]),
+            }
+            for row in gp["proposals"]["proposals"]
+        ],
+    }
+
+
 def _compact_candidate_projection(proposal: dict) -> dict:
     """Project candidate without intermediate draft_chain blobs while binding digests."""
     prov = proposal["provenance"]
@@ -1616,6 +1662,7 @@ def generate_segmented_append(
                 for w in window_terminals
             ]
             auth_core = _authoritative_core_summary(frozen)
+            slim_proj = _slim_authoritative_projections(frozen)
 
             def _shard_value_chunks(key: str, val, max_chunk_bytes: int) -> list[dict]:
                 if isinstance(val, list) and len(val) > 1:
@@ -1704,7 +1751,7 @@ def generate_segmented_append(
             def make_synth_call(
                 win_items: list[dict],
                 role: str,
-                include_auth_core: bool,
+                auth_mode: bool | str,
                 *,
                 target_compact_bytes: int | None = None,
             ):
@@ -1740,8 +1787,12 @@ def generate_segmented_append(
                             "entity/boundary/handoff/obligation IDs; drop verbose scenario transcripts and duplicate prose."
                         ),
                     }
-                if include_auth_core:
+                if auth_mode is True or auth_mode == "full":
                     req["authoritative_core"] = auth_core
+                elif auth_mode == "slim":
+                    req["authoritative_projections"] = slim_proj
+                elif auth_mode not in (False, "none"):
+                    raise ValueError(f"b_route_segmented_unknown_auth_mode:{auth_mode}")
                 with runtime.request_resources() as work:
                     return _build_generation_materials(
                         state,
@@ -1757,12 +1808,10 @@ def generate_segmented_append(
                     )
 
             def _try_final_synthesis(win_items: list[dict]):
-                cand_all = make_synth_call(win_items, "final_synthesis", True)
-                if _fits_turn_budget(cand_all[3], frozen):
-                    return cand_all
-                cand_no_core = make_synth_call(win_items, "final_synthesis", False)
-                if _fits_turn_budget(cand_no_core[3], frozen):
-                    return cand_no_core
+                for mode in ("full", "slim", False):
+                    cand = make_synth_call(win_items, "final_synthesis", mode)
+                    if _fits_turn_budget(cand[3], frozen):
+                        return cand
                 return None
 
             empty_final_bytes = make_synth_call([], "final_synthesis", False)[3]
@@ -1884,13 +1933,12 @@ def generate_segmented_append(
             if ready_final is not None:
                 final_sealed, final_sch, final_prm, final_bytes = ready_final
             else:
-                final_sealed, final_sch, final_prm, final_bytes = make_synth_call(
-                    active_windows, "final_synthesis", True
-                )
-                if not _fits_turn_budget(final_bytes, frozen):
+                for mode in ("full", "slim", False):
                     final_sealed, final_sch, final_prm, final_bytes = make_synth_call(
-                        active_windows, "final_synthesis", False
+                        active_windows, "final_synthesis", mode
                     )
+                    if _fits_turn_budget(final_bytes, frozen):
+                        break
             _assert_under_70k(final_bytes, frozen, f"final-synthesis-{len(drafts) + 1}")
             synth_draft, synth_binding = execute_call(
                 final_sealed, final_sch, final_prm, "generate", call
@@ -2042,7 +2090,7 @@ def generate_segmented_append(
         seed=base,
         identity=state["runtime_identity"],
         propose=propose,
-        machine=lambda scope, accepted, proposal: runtime.admission_machine(root, state, proposal),
+        machine=lambda scope, accepted, proposal: _segmented_append_machine(root, state, proposal),
         semantic=semantic,
         final_machine=lambda proposal: runtime.admission_machine(root, state, proposal),
         before_call=before_call,
@@ -2056,7 +2104,9 @@ def generate_segmented_append(
         replacement=replacement,
         fail_execution_closed=True,
         repairability=(
-            lambda before, issue: runtime.repair_is_local(before, frozen, issue, root=root, state=state)
+            lambda before, issue: _segmented_append_repairability(
+                before, frozen, issue, root=root, state=state
+            )
         )
         if runtime.issue_account_policy(state) is not None
         else None,
@@ -3174,6 +3224,40 @@ def cached_admission_machine(
     result = runtime.machine(root, state, proposal, check_originals=False)
     _bounded_put(_ADMISSION_MACHINE_CACHE, key, deepcopy(result), 32)
     return result
+
+
+def _segmented_append_machine(root: Path, state: dict, proposal: dict) -> list[dict]:
+    """Convert candidate CodecError into a machine issue so run_capability_append can replace cleanly."""
+    import _b_route_planning_runtime as runtime
+
+    try:
+        return runtime.admission_machine(root, state, proposal)
+    except codec.CodecError as exc:
+        diagnostic = exc.diagnostic
+        identity = {
+            "reason": diagnostic.reason_code.value,
+            "entity": diagnostic.entity_id,
+            "expected": diagnostic.expected,
+        }
+        return [
+            {
+                "code": "b_route_machine:" + canonical_sha(identity),
+                "path": "candidate:" + str(diagnostic.entity_id or "content"),
+                "detail": diagnostic.to_dict(),
+            }
+        ]
+
+
+def _segmented_append_repairability(
+    before: dict, frozen: dict, issue: dict, *, root: Path, state: dict
+) -> bool:
+    """Return False on CodecError so immutable-projection or schema failures trigger fresh slot replacement."""
+    import _b_route_planning_runtime as runtime
+
+    try:
+        return bool(runtime.repair_is_local(before, frozen, issue, root=root, state=state))
+    except codec.CodecError:
+        return False
 
 
 def _cached_decode_generation_carrier(raw_value: dict) -> dict:

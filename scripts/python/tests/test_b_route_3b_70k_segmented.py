@@ -4272,6 +4272,314 @@ class SegmentedInputDependencyPriorityTests(unittest.TestCase):
         )
         self.assertEqual(codec.canonical_digest(reconstructed), codec.canonical_digest(inputs))
 
+    def test_slim_authoritative_projections_and_verify_segmented_materials(self):
+        """Verify _slim_authoritative_projections preserves verbatim pins/requirements and passes verify_segmented_materials."""
+        manifest_path = "logs/ci/2026-11-21/b-route-sources/r2/prepare-01/prepare/source-manifest.json"
+        ledger_path = "logs/ci/2026-11-21/b-route-sources/r2/prepare-01/prepare/source-blocks.json"
+        manifest_digest = "sha256:" + "1" * 64
+        ledger_digest = "sha256:" + "2" * 64
+        proposals = [
+            {
+                "proposal_id": "proposal:exclusive-resolution-v15-1",
+                "source_block_ids": ["blk-001", "blk-002"],
+                "acceptance_intent": "Commit(R) and Cancel(R) are mutually exclusive in durable journal J.",
+                "non_task_sinks": ["sink:journal-invariant"],
+                "prior_requirement_ids": [],
+            },
+            {
+                "proposal_id": "proposal:exclusive-resolution-v15-2",
+                "source_block_ids": ["blk-003"],
+                "acceptance_intent": "Restore UI state idempotently from journal J without duplicate reward grant.",
+                "non_task_sinks": [],
+                "prior_requirement_ids": ["REQ-PRIOR-01"],
+            },
+        ]
+        # Inflate non-projection authority fields so full authoritative_core exceeds 70,000 bytes
+        large_constraint = "Constraint line " + ("x" * 72_000)
+        frozen_inputs = {
+            "schema_version": planning.PREPARED,
+            "input_stage": "3b",
+            "rules_version": planning.RULES,
+            "codec_version": codec.CODEC_VERSION,
+            "contract_ref": "docs/planning/contracts/mvg-contract.json",
+            "contract": {
+                "scope": {"scope_id": "mvg-v15", "kind": "all", "ids": []},
+                "limits": {"max_bytes": 70_000, "max_input_tokens": 96_000, "reserved_tokens": 1_000},
+            },
+            "delivery": {"output_schema": planning.output_schema()},
+            "closure": {"mode": "all", "source_paths": ["docs/gdd/sample.md"]},
+            "constraints": [
+                {
+                    "path": "docs/architecture/base/constraints.md",
+                    "format": "text",
+                    "raw_digest": "sha256:" + "3" * 64,
+                    "text": large_constraint,
+                }
+            ],
+            "contexts": [],
+            "evidence": [],
+            "source_inventory": [{"path": "docs/gdd/sample.md", "raw_digest": "sha256:" + "4" * 64, "byte_count": 42}],
+            "global_proof": {
+                "audit_ref": "logs/ci/2026-11-21/b-route-source-audit/r2/audit-01/audit-report.json",
+                "manifest": {"source_revision": "rev-v15", "manifest_sha256": "sha256:" + "5" * 64},
+                "report": {"status": "verified"},
+                "unresolved": [],
+                "ledger": {"schema_version": "v1", "blocks": [{"block_id": "blk-001", "text": "b1"}]},
+                "proposals": {"proposals": proposals},
+                "accounting": {"source_accounting": []},
+            },
+            "dependencies": {
+                "files": {
+                    "logs/ci/2026-11-21/b-route-source-audit/r2/audit-01/steps/step-000.json": "sha256:" + "a" * 64,
+                    manifest_path: manifest_digest,
+                    ledger_path: ledger_digest,
+                },
+                "globs": [],
+                "rules": {"version": "1"},
+            },
+        }
+        frozen = {
+            "input_identity": "sha256:" + "9" * 64,
+            "inputs": frozen_inputs,
+            "transport": {
+                "common_header": {
+                    "input_identity": "sha256:" + "9" * 64,
+                    "contract_ref": frozen_inputs["contract_ref"],
+                    "source_inventory": frozen_inputs["source_inventory"],
+                },
+                "batches": [],
+                "host_frames": {},
+            },
+        }
+
+        full_core = seg_runtime._authoritative_core_summary(frozen)
+        self.assertGreater(seg_runtime._compact_bytes_len(full_core), 70_000)
+
+        slim_proj = seg_runtime._slim_authoritative_projections(frozen)
+        self.assertLess(seg_runtime._compact_bytes_len(slim_proj), 10_000)
+        self.assertEqual(
+            slim_proj["source_identity_pins"],
+            {
+                "manifest_path": manifest_path,
+                "manifest_raw_digest": manifest_digest,
+                "ledger_path": ledger_path,
+                "ledger_raw_digest": ledger_digest,
+                "source_revision": "rev-v15",
+                "source_manifest_digest": "sha256:" + "5" * 64,
+            },
+        )
+        self.assertEqual(
+            slim_proj["verbatim_requirements"],
+            [
+                {
+                    "requirement_id": row["proposal_id"],
+                    "source_block_ids": row["source_block_ids"],
+                    "acceptance_intent": row["acceptance_intent"],
+                    "non_task_sinks": row["non_task_sinks"],
+                    "prior_requirement_ids": row["prior_requirement_ids"],
+                }
+                for row in proposals
+            ],
+        )
+
+        # Also verify underscore source_manifest / source_ledger naming variant
+        frozen_alt = deepcopy(frozen)
+        alt_manifest = "logs/ci/source_manifest.json"
+        alt_ledger = "logs/ci/source_ledger.json"
+        frozen_alt["inputs"]["dependencies"]["files"] = {
+            alt_manifest: manifest_digest,
+            alt_ledger: ledger_digest,
+        }
+        slim_alt = seg_runtime._slim_authoritative_projections(frozen_alt)
+        self.assertEqual(slim_alt["source_identity_pins"]["manifest_path"], alt_manifest)
+        self.assertEqual(slim_alt["source_identity_pins"]["ledger_path"], alt_ledger)
+
+        # Verify sealed final_synthesis materials with root_request["authoritative_projections"] pass verify_segmented_materials
+        from _b_route_issue_accounts import POLICY as account_policy
+
+        desc = {
+            "schema_version": runtime.PROFILE,
+            "profile": "3b-mvg-v1",
+            "planner": "mvg",
+            "prepared_ref": "logs/ci/unit-slim-proj/b-route-prepared.json",
+            "input_identity": frozen["input_identity"],
+            "frozen_sha256": runtime.canonical_sha(frozen),
+            "rules": runtime.rules_identity(),
+            "limits": runtime.profile_limits("3b-mvg-v1"),
+            "wire_delivery": runtime.wire.CURRENT_SCHEMA,
+        }
+        state = {
+            "schema_version": runtime.RUN,
+            "run_id": "unit-slim-proj",
+            "input_stage": "3b",
+            "planning_runtime": desc,
+            "runtime_identity": runtime.canonical_sha(desc),
+            "analysis_identity_sha256": frozen["input_identity"],
+            "b_route_segmented_runtime_policy": seg_runtime.SEGMENTED_RUNTIME_POLICY,
+            "b_route_input_compact_policy": seg_runtime.compact.CURRENT_SCHEMA,
+            "b_route_issue_account_policy": account_policy,
+            "b_route_output_schema_policy": runtime.PROVIDER_SCHEMA_POLICY,
+            "b_route_machine_business_policy": runtime.MACHINE_BUSINESS_POLICY,
+        }
+        base_seed = {
+            "schema_version": "newrouge.b-route-read-only-seed.v1",
+            "input_identity": frozen["input_identity"],
+            "contexts": [],
+            "formal_adoption": False,
+        }
+        root_req = {
+            "schema_version": seg_input.SEGMENTED_REQUEST_SCHEMA,
+            "input_identity": frozen["input_identity"],
+            "stage": "synthesis",
+            "synthesis_role": "final_synthesis",
+            "ordinal": 2,
+            "common_header": frozen["transport"]["common_header"],
+            "window_drafts": [{"ordinal": 1, "identity": "sha256:" + "d" * 64, "content": {"summary": "ok"}}],
+            "parent_draft_identities": ["sha256:" + "d" * 64],
+            "authoritative_projections": slim_proj,
+        }
+        with runtime.request_resources() as work:
+            sealed, prov_schema, prompt_text, ws_bytes = seg_runtime._build_generation_materials(
+                state,
+                frozen,
+                base_seed=base_seed,
+                slot="candidate-2",
+                generation_no=1,
+                execution_no=1,
+                lineage_id="sha256:" + "e" * 64,
+                context=1,
+                root_req=root_req,
+                work=work,
+            )
+        self.assertLessEqual(ws_bytes, 70_000)
+        self.assertEqual(sealed["root_request"]["authoritative_projections"], slim_proj)
+        self.assertNotIn("authoritative_core", sealed["root_request"])
+
+        with tempfile.TemporaryDirectory(prefix="tbslim", dir=_temp_dir_base()) as tmp:
+            p_path = Path(tmp) / "prompt.txt"
+            s_path = Path(tmp) / "output-schema.json"
+            p_path.write_text(prompt_text, encoding="utf-8", newline="\n")
+            s_path.write_text(json.dumps(prov_schema, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+            seg_runtime._VERIFIED_MATERIALS_CACHE.clear()
+            verified = seg_runtime.verify_segmented_materials(
+                {"prompt_path": str(p_path), "schema_path": str(s_path)}, state, frozen
+            )
+        self.assertEqual(verified["root_request"]["authoritative_projections"], slim_proj)
+        self.assertEqual(verified["materials_identity"], sealed["materials_identity"])
+
+    def test_segmented_append_machine_and_repairability_trigger_clean_replacement(self):
+        """Verify CodecError from admission_machine/repair_is_local triggers slot replacement instead of aborting."""
+        from _mvg_capability_append import issue_key, run_capability_append
+
+        root = NEWROUGE_ROOT
+        state = {"runtime_identity": "sha256:" + "f" * 64}
+        frozen = {"input_identity": "sha256:" + "8" * 64}
+        cases = [
+            (
+                codec.Diagnostic(
+                    codec.ReasonCode.SEMANTIC_ERROR,
+                    codec.Stage.CONTENT,
+                    "proposal:exclusive-resolution-v15-2",
+                    "preserved original acceptance_intent",
+                    "drifted acceptance_intent",
+                ),
+                "candidate:proposal:exclusive-resolution-v15-2",
+            ),
+            (
+                codec.Diagnostic(
+                    codec.ReasonCode.SCHEMA_VALIDATION_FAILED,
+                    codec.Stage.SCHEMA,
+                    None,
+                    "valid candidate schema",
+                    "missing required property",
+                ),
+                "candidate:content",
+            ),
+        ]
+
+        for diag, expected_path in cases:
+            expected_identity = {
+                "reason": diag.reason_code.value,
+                "entity": diag.entity_id,
+                "expected": diag.expected,
+            }
+            expected_code = "b_route_machine:" + seg_runtime.canonical_sha(expected_identity)
+
+            # Direct unit check on _segmented_append_machine and _segmented_append_repairability
+            def _raise_codec(*_a, **_kw):
+                raise codec.CodecError(diag)
+
+            with patch.object(runtime, "admission_machine", side_effect=_raise_codec):
+                issues = seg_runtime._segmented_append_machine(root, state, {"content": {}})
+            self.assertEqual(
+                issues,
+                [{"code": expected_code, "path": expected_path, "detail": diag.to_dict()}],
+            )
+            with patch.object(runtime, "repair_is_local", side_effect=_raise_codec):
+                self.assertIs(
+                    seg_runtime._segmented_append_repairability(
+                        {"content": {}}, frozen, issues[0], root=root, state=state
+                    ),
+                    False,
+                )
+
+            # End-to-end run_capability_append check: fail_execution_closed=True must replace (context=2), not fail closed
+            replacement_calls: list[tuple[int, str]] = []
+            propose_contexts: list[int] = []
+            scope = {"capability_id": "cap-v15"}
+            seed = {"schema_version": "newrouge.b-route-read-only-seed.v1", "items": []}
+
+            def _propose(_scope, _accepted, _prior, _issue, context, call):
+                propose_contexts.append(context)
+                call("generate", {"attempt": context})
+                return {"candidate": {"version": context}, "generation_calls": [], "lineage": {"context": context}}
+
+            def _fake_admission_machine(_root, _state, proposal):
+                if proposal["version"] == 1:
+                    raise codec.CodecError(diag)
+                return []
+
+            def _fake_repair_is_local(before, _frozen, _issue, *, root=None, state=None):
+                if before["version"] == 1:
+                    raise codec.CodecError(diag)
+                return True
+
+            def _replacement(*, context, issue):
+                replacement_calls.append((context, issue))
+                return {"approved_context": context, "issue": issue}
+
+            with tempfile.TemporaryDirectory(prefix="tbapp", dir=_temp_dir_base()) as tmp, patch.object(
+                runtime, "admission_machine", side_effect=_fake_admission_machine
+            ), patch.object(runtime, "repair_is_local", side_effect=_fake_repair_is_local):
+                res = run_capability_append(
+                    Path(tmp) / "capability-append",
+                    scopes=[scope],
+                    seed=seed,
+                    identity="sha256:" + "7" * 64,
+                    propose=_propose,
+                    machine=lambda _s, _a, proposal: seg_runtime._segmented_append_machine(root, state, proposal),
+                    semantic=lambda _s, _a, _p, _c, _ctx: {
+                        "issues": [],
+                        "proof": {"verdict": "approved"},
+                        "execution": {"status": "completed"},
+                    },
+                    final_machine=lambda proposal: runtime.admission_machine(root, state, proposal),
+                    merge=lambda _acc, delta, _sc=None: deepcopy(delta["candidate"]),
+                    preserve=lambda _acc, _prop: [],
+                    replacement=_replacement,
+                    fail_execution_closed=True,
+                    repairability=lambda before, issue: seg_runtime._segmented_append_repairability(
+                        before, frozen, issue, root=root, state=state
+                    ),
+                )
+
+            self.assertEqual(res["status"], "admitted", res)
+            self.assertEqual(propose_contexts, [1, 2])
+            self.assertEqual(replacement_calls, [(2, issue_key(issues[0]))])
+            self.assertEqual(len(res["restarts"]), 1)
+            self.assertEqual(res["restarts"][0]["reason"], "unrepairable_business_issue")
+            self.assertEqual(res["accepted"], {"version": 2})
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
