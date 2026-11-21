@@ -751,6 +751,22 @@ def _split_oversized_unit(unit, *, max_raw_bytes=22000):
     return [deepcopy(unit)]
 
 
+def _build_adopted_req_projection(subject):
+    nc = subject['native_content']
+    allocations = subject['preview']['allocations']
+    return [
+        {
+            'candidate_id': r['requirement_id'],
+            'allocated_id': allocations['requirements'].get(r['requirement_id']),
+            'source_block_ids': deepcopy(r.get('source_block_ids')),
+            'acceptance_intent': r.get('acceptance_intent'),
+            'non_task_sinks': deepcopy(r.get('non_task_sinks')),
+        }
+        for r in nc.get('requirements', [])
+        if isinstance(r, dict) and 'requirement_id' in r
+    ]
+
+
 def _decompose_adoption_subject(subject):
     from _b_route_3b_segmented_input import decompose_inputs
     req = subject['request']
@@ -822,17 +838,7 @@ def _decompose_adoption_subject(subject):
         },
     }
     nc = subject['native_content']
-    adopted_req_projection = [
-        {
-            'candidate_id': r['requirement_id'],
-            'allocated_id': allocations['requirements'].get(r['requirement_id']),
-            'source_block_ids': deepcopy(r.get('source_block_ids')),
-            'acceptance_intent': r.get('acceptance_intent'),
-            'non_task_sinks': deepcopy(r.get('non_task_sinks')),
-        }
-        for r in nc.get('requirements', [])
-        if isinstance(r, dict) and 'requirement_id' in r
-    ]
+    adopted_req_projection = _build_adopted_req_projection(subject)
     adopted_req_summary_inline = len(text(adopted_req_projection).encode('utf-8')) <= 6000
     header = {
         'schema_version': SEGMENTED_ADOPTION_HEADER,
@@ -1257,12 +1263,14 @@ def _decompose_adoption_subject(subject):
         check_ids = list(unit.get('check_ids', []))
         fallback_check_id = unit['fallback_check_id']
         unit_group = unit['group']
-        base_unit = {k: v for k, v in unit.items() if k not in ('check_ids', 'fallback_check_id', 'group')}
+        owner_unit_id = unit['unit_id']
+        base_unit = {k: v for k, v in unit.items() if k not in ('check_ids', 'fallback_check_id', 'group', 'owner_unit_id')}
         split_parts = _split_oversized_unit(base_unit, max_raw_bytes=22000)
         for part_idx, part in enumerate(split_parts):
             part['check_ids'] = check_ids if part_idx == len(split_parts) - 1 else []
             part['fallback_check_id'] = fallback_check_id
             part['group'] = unit_group
+            part['owner_unit_id'] = owner_unit_id
             units.append(part)
     return header, units
 
@@ -1345,6 +1353,18 @@ def build_segmented_adoption_plan(subject):
     target_budget = SEGMENTED_MAX_TURN_BYTES - 1800
     max_checks_per_seg = 40
 
+    adopted_req_projection = _build_adopted_req_projection(subject)
+    group_d_ctx_payload = (
+        {
+            'adopted_req_projection': adopted_req_projection,
+            'adopted_req_projection_digest': codec.canonical_digest(adopted_req_projection),
+        }
+        if adopted_req_projection and len(text(adopted_req_projection).encode('utf-8')) <= 16000
+        else None
+    )
+    group_d_ctx_raw_bytes = len(text(group_d_ctx_payload).encode('utf-8')) if group_d_ctx_payload is not None else 0
+    strip_keys = ('check_ids', 'fallback_check_id', 'group', 'owner_unit_id')
+
     batches = []
     idx = 0
     total_units = len(units)
@@ -1361,10 +1381,27 @@ def build_segmented_adoption_plan(subject):
             merged.add(fb if fb in all_obligations_set else all_obligations[0])
         return merged
 
-    def _probe_frame_bytes(end_idx, batch_ord):
-        slice_u = units[idx:end_idx]
-        seg_c = sorted(_checks_for(idx, end_idx))
-        clean_u = [{k: v for k, v in u.items() if k not in ('check_ids', 'fallback_check_id', 'group')} for u in slice_u]
+    def _clean_span_units(start_i, end_i, batch_ord):
+        slice_u = units[start_i:end_i]
+        clean_u = [{k: v for k, v in u.items() if k not in strip_keys} for u in slice_u]
+        if (
+            group_d_ctx_payload is not None
+            and slice_u
+            and slice_u[0].get('group') == 'D'
+            and not any(u['unit_id'].startswith('prepared:common_header') for u in slice_u)
+        ):
+            ctx_unit = {
+                'unit_id': f'prepared:adopted_req_context:b{batch_ord:03d}',
+                'section': 'prepared.adopted_req_projection',
+                'key': 'adopted_req_projection',
+                'payload': deepcopy(group_d_ctx_payload),
+            }
+            clean_u = [ctx_unit, *clean_u]
+        return clean_u
+
+    def _probe_span_bytes(start_i, end_i, batch_ord):
+        seg_c = sorted(_checks_for(start_i, end_i))
+        clean_u = _clean_span_units(start_i, end_i, batch_ord)
         env = {
             'delivery': SEGMENTED_ADOPTION_DELIVERY,
             'segment_id': '000',
@@ -1387,7 +1424,14 @@ def build_segmented_adoption_plan(subject):
             group_end += 1
         best_end = idx + 1
         cur_checks = set(unit_check_sets[idx])
-        est_raw = header_raw_bytes + unit_raw_bytes[idx]
+        extra_ctx_raw = (
+            group_d_ctx_raw_bytes
+            if group_d_ctx_payload is not None
+            and cur_group == 'D'
+            and not units[idx]['unit_id'].startswith('prepared:common_header')
+            else 0
+        )
+        est_raw = header_raw_bytes + extra_ctx_raw + unit_raw_bytes[idx]
         scan = idx + 1
         while scan < group_end:
             cand_checks = cur_checks | unit_check_sets[scan]
@@ -1400,14 +1444,14 @@ def build_segmented_adoption_plan(subject):
             cur_checks = cand_checks
             scan += 1
         batch_ord = len(batches) + 1
-        if _probe_frame_bytes(scan, batch_ord) <= target_budget:
+        if _probe_span_bytes(idx, scan, batch_ord) <= target_budget:
             best_end = scan
             step = 1
             while best_end + step <= group_end:
                 cand_end = best_end + step
                 if len(_checks_for(idx, cand_end)) > max_checks_per_seg:
                     break
-                if _probe_frame_bytes(cand_end, batch_ord) <= target_budget:
+                if _probe_span_bytes(idx, cand_end, batch_ord) <= target_budget:
                     best_end = cand_end
                     step *= 2
                 else:
@@ -1416,7 +1460,7 @@ def build_segmented_adoption_plan(subject):
             hi = min(group_end, best_end + step - 1)
             while lo <= hi:
                 mid = (lo + hi) // 2
-                if len(_checks_for(idx, mid)) <= max_checks_per_seg and _probe_frame_bytes(mid, batch_ord) <= target_budget:
+                if len(_checks_for(idx, mid)) <= max_checks_per_seg and _probe_span_bytes(idx, mid, batch_ord) <= target_budget:
                     best_end = mid
                     lo = mid + 1
                 else:
@@ -1425,14 +1469,31 @@ def build_segmented_adoption_plan(subject):
             lo, hi = idx + 1, scan - 1
             while lo <= hi:
                 mid = (lo + hi) // 2
-                if _probe_frame_bytes(mid, batch_ord) <= target_budget:
+                if _probe_span_bytes(idx, mid, batch_ord) <= target_budget:
                     best_end = mid
                     lo = mid + 1
                 else:
                     hi = mid - 1
-        slice_units = units[idx:best_end]
+        if (
+            best_end < group_end
+            and units[best_end - 1].get('owner_unit_id') is not None
+            and units[best_end - 1].get('owner_unit_id') == units[best_end].get('owner_unit_id')
+        ):
+            owner_id = units[best_end]['owner_unit_id']
+            owner_start = best_end - 1
+            while owner_start > idx and units[owner_start - 1].get('owner_unit_id') == owner_id:
+                owner_start -= 1
+            owner_end = best_end + 1
+            while owner_end < group_end and units[owner_end].get('owner_unit_id') == owner_id:
+                owner_end += 1
+            if (
+                owner_start > idx
+                and len(_checks_for(owner_start, owner_end)) <= max_checks_per_seg
+                and _probe_span_bytes(owner_start, owner_end, batch_ord + 1) <= target_budget
+            ):
+                best_end = owner_start
         seg_checks = sorted(_checks_for(idx, best_end))
-        clean_units = [{k: v for k, v in u.items() if k not in ('check_ids', 'fallback_check_id', 'group')} for u in slice_units]
+        clean_units = _clean_span_units(idx, best_end, batch_ord)
         batches.append((clean_units, seg_checks))
         idx = best_end
 
