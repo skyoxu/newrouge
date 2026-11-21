@@ -4809,6 +4809,385 @@ class SegmentedInputDependencyPriorityTests(unittest.TestCase):
                 self.assertEqual(len(res.get("rejected_repairs", [])), 1)
                 self.assertEqual(res["rejected_repairs"][0]["errors"], ["repair_new_machine_issue"])
 
+    def test_segmented_adoption_plan_real_repo_protection_and_scoped_checks(self):
+        """Verify multi-MB protection/.bin pins stay <=10 scoped segments without cross-segment check bleed."""
+        auth_text = "# ADR-0040 Governance Authority\nZero-task Stage 3B adoption rules.\n"
+        auth_b64 = base64.b64encode(auth_text.encode("utf-8")).decode("ascii")
+        auth_digest = codec.raw_digest(auth_text.encode("utf-8"))
+        auth_ref = {
+            "path": "docs/adr/ADR-0040-b-route-stages-authority-and-activation.md",
+            "schema_version": "raw.bytes.v1",
+            "raw_digest": auth_digest,
+        }
+        reqs_cand = [
+            {
+                "requirement_id": f"proposal:scale-req-{i}",
+                "source_block_ids": [f"blk-{i:03d}"],
+                "acceptance_intent": f"Governed invariant {i} holds deterministically.",
+                "prior_requirement_ids": [],
+                "non_task_sinks": [],
+            }
+            for i in range(1, 5)
+        ]
+        alloc_reqs = {r["requirement_id"]: f"REQ-ALLOC-{idx}" for idx, r in enumerate(reqs_cand, 1)}
+        flow_cid = "FLOW-SCALE-MAIN"
+        flow_alloc = "flow-alloc-main"
+        native_flow = {
+            "id": flow_cid,
+            "proposed_owner_key": "scale-owner",
+            "requirement_ids": [r["requirement_id"] for r in reqs_cand],
+            "capability_ids": ["cap-scale"],
+            "source_block_ids": [f"blk-{i:03d}" for i in range(1, 5)],
+            "entry_condition": "Start state initialized.",
+            "observable_result": "Deterministic journal outcome recorded.",
+        }
+        target_plan_payload = {
+            "schema_version": codec.PLAN_SCHEMA,
+            "plan_id": "plan-scale-01",
+            "revision": 1,
+            "requirements": [
+                {**deepcopy(r), "requirement_id": alloc_reqs[r["requirement_id"]]}
+                for r in reqs_cand
+            ],
+            "definitions": {
+                "flows": [{**deepcopy(native_flow), "id": flow_alloc}],
+                "commands": [],
+                "states": [],
+            },
+        }
+        target_policy_payload = {"schema_version": "newrouge.b-route-policy.v1", "policy_id": "policy-scale"}
+        target_origins_payload = {"schema_version": "newrouge.b-route-origins.v1", "origins_id": "origins-scale", "tasks": []}
+        targets = [
+            {
+                "path": "docs/planning/b-route/plans/plan-scale-01/1.json",
+                "schema_version": codec.PLAN_SCHEMA,
+                "before_raw_digest": None,
+                "after_payload": target_plan_payload,
+                "verification_mode": "immutable_bytes",
+            },
+            {
+                "path": POLICY,
+                "schema_version": "newrouge.b-route-policy.v1",
+                "before_raw_digest": None,
+                "after_payload": target_policy_payload,
+                "verification_mode": "immutable_bytes",
+            },
+            {
+                "path": ORIGINS,
+                "schema_version": "newrouge.b-route-origins.v1",
+                "before_raw_digest": None,
+                "after_payload": target_origins_payload,
+                "verification_mode": "immutable_bytes",
+            },
+        ]
+        target_templates = [
+            {
+                "path_template": "docs/planning/b-route/plans/{plan_id}/{plan_revision}.json",
+                "schema_version": codec.PLAN_SCHEMA,
+                "before_raw_digest": None,
+                "after_payload": deepcopy(target_plan_payload),
+                "verification_mode": "immutable_bytes",
+            },
+            {
+                "path_template": POLICY,
+                "schema_version": "newrouge.b-route-policy.v1",
+                "before_raw_digest": None,
+                "after_payload": deepcopy(target_policy_payload),
+                "verification_mode": "immutable_bytes",
+            },
+            {
+                "path_template": ORIGINS,
+                "schema_version": "newrouge.b-route-origins.v1",
+                "before_raw_digest": None,
+                "after_payload": deepcopy(target_origins_payload),
+                "verification_mode": "immutable_bytes",
+            },
+        ]
+        # Inflate preview.authority_refs (~330 KB) and dependencies.files (~140 KB) with .bin pins
+        big_preview_auth_refs = [
+            {
+                "path": f"logs/ci/2026-11-21/archive/blob-{i:04d}.bin",
+                "schema_version": "raw.bytes.v1",
+                "raw_digest": f"sha256:{i:064x}",
+            }
+            for i in range(1, 2201)
+        ]
+        dep_files = {
+            "docs/planning/contracts/mvg.json": "sha256:" + "1" * 64,
+            "logs/ci/2026-11-21/source-manifest.json": "sha256:" + "2" * 64,
+            "logs/ci/2026-11-21/source-blocks.json": "sha256:" + "3" * 64,
+        }
+        for i in range(1, 901):
+            dep_files[f"logs/ci/2026-11-21/audit/raw/pin-{i:04d}.bin"] = f"sha256:{i + 5000:064x}"
+        # Inflate subject["protection"] to > 2.5 MB with 135 unjoined legacy tasks and archive blobs
+        unjoined_tasks = [
+            {
+                "task_id": i,
+                "definition": {"id": i, "title": f"Legacy Task {i}", "details": f"Legacy body {i} " + ("L" * 10000)},
+                "definition_digest": f"sha256:{i + 10000:064x}",
+                "state": {"status": "done"},
+                "state_digest": f"sha256:{i + 20000:064x}",
+                "locators": [f".taskmaster/tasks/tasks.json#{i}"],
+                "source_test_history_references": [],
+            }
+            for i in range(1, 136)
+        ]
+        big_protection = {
+            "schema_version": "newrouge.b-route-protection-snapshot.v1",
+            "snapshot_digest": "sha256:" + "9" * 64,
+            "status_authority": "legacy_taskmaster",
+            "stable": True,
+            "capture_complete": True,
+            "authorization": {"mode": "frozen_a_read_only"},
+            "legacy_manifest_requirement": {"required": True},
+            "inventory": {"files": [f"legacy/file-{i:04d}.bin" for i in range(1200)]},
+            "raw_files": {f"legacy/raw-{i:04d}.bin": f"sha256:{i + 30000:064x}" for i in range(1200)},
+            "triplet": {"master_raw": "M" * 400_000, "back_raw": "B" * 200_000},
+            "tasks": unjoined_tasks,
+            "cumulative": [{"manifest": "docs/testing/mvg/mvg-v1.json", "preserved_flows": ["FLOW-LEGACY-1"]}],
+            "frozen_a": {
+                "task_set": "1..135",
+                "candidate_count": 135,
+                "classification_authorized": False,
+                "candidates": [{"task_id": i, "blob": "C" * 2000} for i in range(1, 136)],
+            },
+            "verification_limits": [{"limit": "offline_replay_only"}],
+            "diagnostics": [],
+        }
+        # Populate prepared.inputs so Group D spans dedicated prepared.* segments
+        prep_blocks = [
+            {"block_id": f"blk-{i:03d}", "text": f"Source block {i:03d}: " + ("S" * 4200)}
+            for i in range(1, 20)
+        ]
+        prepared_inputs = {
+            "schema_version": planning.PREPARED,
+            "input_stage": "3b",
+            "rules_version": planning.RULES,
+            "codec_version": codec.CODEC_VERSION,
+            "contract_ref": "docs/planning/contracts/mvg.json",
+            "contract": {"scope": {"scope_id": "mvg-scale", "kind": "all", "ids": []}},
+            "delivery": {"output_schema": {}},
+            "closure": {"mode": "all", "source_paths": ["docs/gdd/scale.md"]},
+            "constraints": [],
+            "contexts": [],
+            "evidence": [],
+            "raw_proof_inventory": [],
+            "source_inventory": [{"path": "docs/gdd/scale.md", "raw_digest": "sha256:" + "4" * 64}],
+            "global_proof": {
+                "audit_ref": "logs/ci/2026-11-21/audit-report.json",
+                "report": {"status": "verified"},
+                "identity": {"audit_sha256": "5" * 64, "tools": {"python": "3.12"}},
+                "comparison": {"findings": []},
+                "extractions": [],
+                "steps": [],
+                "ledger": {"schema_version": "v1", "blocks": prep_blocks},
+                "manifest": {"source_revision": "rev-scale", "manifest_sha256": "6" * 64},
+                "accounting": {"source_accounting": []},
+                "proposals": {
+                    "proposals": [
+                        {
+                            "proposal_id": r["requirement_id"],
+                            "source_block_ids": r["source_block_ids"],
+                            "acceptance_intent": r["acceptance_intent"],
+                            "non_task_sinks": [],
+                            "prior_requirement_ids": [],
+                        }
+                        for r in reqs_cand
+                    ]
+                },
+                "candidate": {"file_results": []},
+                "unresolved": [],
+            },
+            "dependencies": {"files": dep_files, "globs": [], "rules": {"version": "1"}},
+        }
+        subject = {
+            "schema_version": adoption_review.SUBJECT,
+            "operation_id": "OP-scale-prot-test",
+            "policy_identity": adoption_review.policy_identity(),
+            "request": {
+                "schema_version": "newrouge.b-route-adoption-request.v1",
+                "operation_id": "OP-scale-prot-test",
+                "review_ref": {"path": "logs/ci/admission.json", "schema_version": "v1", "raw_digest": "sha256:" + "7" * 64},
+                "material": {
+                    "planner": "mvg",
+                    "run_id": "run-scale-01",
+                    "handoff_ref": {"path": "logs/ci/handoff.json", "schema_version": "v1", "raw_digest": "sha256:" + "8" * 64},
+                    "protection_ref": {"path": "logs/ci/protection.json", "schema_version": "v1", "raw_digest": "sha256:" + "9" * 64},
+                    "authority_refs": [auth_ref],
+                    "lineage_refs": [],
+                    "identity_alignment": {
+                        "plan": {"mode": "new", "rationale": "Initial plan"},
+                        "binding": {"mode": "none"},
+                        "tasks": [],
+                        "requirements": [
+                            {"candidate_id": r["requirement_id"], "mode": "allocate", "rationale": "Allocate requirement"}
+                            for r in reqs_cand
+                        ],
+                        "flows": [{"candidate_id": flow_cid, "mode": "allocate", "rationale": "Allocate flow"}],
+                    },
+                    "target_templates": target_templates,
+                },
+            },
+            "preview": {
+                "allocations": {
+                    "plan_id": "plan-scale-01",
+                    "plan_revision": 1,
+                    "binding_revision": None,
+                    "requirements": alloc_reqs,
+                    "flows": {flow_cid: flow_alloc},
+                    "task_definitions": {},
+                },
+                "scope_ids": ["plan:plan-scale-01"],
+                "authority_refs": big_preview_auth_refs,
+                "targets": targets,
+            },
+            "native_content": {
+                "source_identity": {"source_revision": "rev-scale", "source_manifest_digest": "6" * 64},
+                "requirements": reqs_cand,
+                "definitions": {"flows": [native_flow], "commands": [], "states": []},
+                "logical_references": [],
+                "requirement_verification": [],
+                "requirement_route_memberships": [],
+                "requirement_evidence": [],
+                "evidence_source_refs": [],
+                "coverage_table": [],
+                "applicability": [],
+            },
+            "prepared": {
+                "schema_version": "newrouge.b-route-prepared-input.v1",
+                "input_stage": "3b",
+                "input_identity": "sha256:" + "a" * 64,
+                "inputs": prepared_inputs,
+            },
+            "protection": big_protection,
+            "related_records": {},
+            "task_definitions": {},
+            "authority_files": [{"reference": auth_ref, "raw_base64": auth_b64, "text": auth_text}],
+            "target_before_files": [
+                {"path": t["path"], "raw_base64": None, "text": None}
+                for t in targets
+            ],
+            "affected_catalog": None,
+            "native_threads": ["thr-native-01"],
+            "native_turns": ["turn-native-01"],
+        }
+
+        self.assertGreater(len(adoption_review.text(subject).encode("utf-8")), 2_500_000)
+        original_subject_digest = codec.canonical_digest(subject)
+        plan = adoption_review.build_segmented_adoption_plan(subject)
+        self.assertEqual(plan["plan_record"]["subject_digest"], original_subject_digest)
+
+        seg_count = plan["plan_record"]["segment_count"]
+        self.assertGreaterEqual(seg_count, 1)
+        self.assertLessEqual(seg_count, 10, f"Expected <=10 segments for multi-MB protection subject, got {seg_count}")
+
+        covered = set()
+        saw_prepared_only_seg = False
+        saw_target_seg = False
+        for seg in plan["segments"]:
+            self.assertLessEqual(len(seg["request_bytes"]), 70_000)
+            self.assertGreaterEqual(len(seg["required_checks"]), 1)
+            covered.update(seg["required_checks"])
+
+            env = json.loads(seg["prompt_bytes"].decode("utf-8").split("\n", 1)[1])
+            sections = env["segment_sections"]
+            self.assertEqual(sections, sorted({u["section"] for u in env["units"]}))
+            self.assertIn("protection_summary", env["header"])
+            self.assertEqual(env["header"]["protection_summary"]["protected_task_count"], 135)
+            self.assertIn("governance_state_summary", env["header"])
+            self.assertIn("targets_overview", env["header"])
+            self.assertIsNone(env["header"]["preview_authority_refs"])
+            # Verify schema descriptions for verdict & findings
+            self.assertIn("blocked iff", seg["schema"]["properties"]["verdict"].get("description", ""))
+            self.assertIn("verbatim", seg["schema"]["properties"]["findings"].get("description", ""))
+
+            if sections and all(s.startswith("prepared.") for s in sections):
+                saw_prepared_only_seg = True
+                self.assertNotIn("target_before_after", seg["required_checks"])
+                self.assertNotIn("existing_task_join", seg["required_checks"])
+
+            target_units = [u for u in env["units"] if u["unit_id"].startswith("target:")]
+            if target_units:
+                saw_target_seg = True
+                for tu in target_units:
+                    self.assertIn("before_file", tu["payload"])
+                    self.assertTrue(tu["payload"]["before_file"]["prior_file_absent"])
+
+        self.assertTrue(saw_prepared_only_seg, "Expected at least one prepared.*-only segment")
+        self.assertTrue(saw_target_seg, "Expected at least one target:* segment")
+        self.assertEqual(covered, set(adoption_review.obligations(subject)))
+
+        # Verify _verify_segmented_adoption_semantic normalizes summarized blocked findings to SEMANTIC_ERROR
+        # while keeping fail-closed accounting rejection for empty/approved mismatches.
+        import _planning_execution_binding as exec_binding
+
+        seg0 = plan["segments"][0]
+        sid0 = seg0["segment_id"]
+        home_rel = adoption_review.location(subject["operation_id"])
+        with tempfile.TemporaryDirectory(prefix="tb6b", dir=_temp_dir_base()) as tmp:
+            tmp_root = Path(tmp)
+            for rel_name, content_bytes in adoption_review.adoption_review_artifacts(subject, root=tmp_root).items():
+                dst = tmp_root / home_rel / rel_name
+                dst.parent.mkdir(parents=True, exist_ok=True)
+                dst.write_bytes(content_bytes)
+            cmd0 = adoption_review._build_runner_command_for_workspace(
+                tmp_root / home_rel / f"s/{sid0}/w",
+                "codex_isolated_model_runner.py",
+                prompt_name="p.txt",
+                output_name="o.json",
+                schema_name="s.json",
+            )
+            (tmp_root / home_rel / f"s/{sid0}/exec.json").write_bytes(encoded({"command": cmd0}))
+            fake_receipt = {
+                "model_identity_evidence": [
+                    {
+                        "model": "gpt-6.2-astra",
+                        "model_provider": "openai",
+                        "thread_id": "thr-seg-001",
+                        "turn_id": "turn-seg-001",
+                        "protocol_sha256": "sha256:" + "f" * 64,
+                    }
+                ]
+            }
+            exact_blk_rat = "Exact detailed rationale explaining genuine semantic conflict in segment 001."
+
+            def _write_seg0_verdict(verdict_str: str, findings_list: list[str], block_first: bool) -> None:
+                checks_rows = []
+                for idx_c, cid in enumerate(seg0["required_checks"]):
+                    if block_first and idx_c == 0:
+                        checks_rows.append({"id": cid, "verdict": "blocked", "rationale": exact_blk_rat})
+                    else:
+                        checks_rows.append({"id": cid, "verdict": "approved", "rationale": f"Verified {cid}."})
+                payload = {
+                    "schema_version": adoption_review.SEGMENTED_ADOPTION_VERDICT,
+                    "subject_digest": original_subject_digest,
+                    "plan_digest": plan["plan_digest"],
+                    "segment_id": sid0,
+                    "verdict": verdict_str,
+                    "findings": findings_list,
+                    "checks": checks_rows,
+                }
+                (tmp_root / home_rel / f"s/{sid0}/w/o.json").write_bytes(encoded(payload))
+
+            with patch.object(exec_binding, "receipt_from", return_value=fake_receipt), patch.object(
+                exec_binding, "validate_execution", return_value=None
+            ):
+                _write_seg0_verdict("blocked", ["Short summary of blocked check"], True)
+                with self.assertRaises(codec.CodecError) as cm_sem:
+                    adoption_review._verify_segmented_adoption_semantic(tmp_root, subject)
+                self.assertEqual(cm_sem.exception.diagnostic.reason_code, codec.ReasonCode.SEMANTIC_ERROR)
+                self.assertEqual(cm_sem.exception.diagnostic.actual, [exact_blk_rat])
+
+                _write_seg0_verdict("blocked", [], True)
+                with self.assertRaises(codec.CodecError) as cm_empty:
+                    adoption_review._verify_segmented_adoption_semantic(tmp_root, subject)
+                self.assertEqual(cm_empty.exception.diagnostic.reason_code, codec.ReasonCode.IDENTITY_UNPROVABLE)
+
+                _write_seg0_verdict("approved", ["Unexpected finding on approved"], False)
+                with self.assertRaises(codec.CodecError) as cm_app:
+                    adoption_review._verify_segmented_adoption_semantic(tmp_root, subject)
+                self.assertEqual(cm_app.exception.diagnostic.reason_code, codec.ReasonCode.IDENTITY_UNPROVABLE)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
