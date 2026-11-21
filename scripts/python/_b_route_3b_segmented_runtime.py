@@ -238,8 +238,16 @@ def segmented_indexed_review_schema(
         "input_identity": {"type": "string", "const": runtime.descriptor(state)["input_identity"]},
         "runtime_identity": {"type": "string", "const": state["runtime_identity"]},
         "proposal_sha256": {"type": "string", "const": proposal_sha256},
-        "verdict": {"type": "string", "enum": ["approved", "blocked"]},
-        "findings": {"type": "array", "items": {"type": "string", "minLength": 1}},
+        "verdict": {
+            "type": "string",
+            "enum": ["approved", "blocked"],
+            "description": "blocked iff any item in checks (or reopen_reviews) has verdict=='blocked'; otherwise approved.",
+        },
+        "findings": {
+            "type": "array",
+            "items": {"type": "string", "minLength": 1},
+            "description": "Exact deduplicated verbatim rationale strings copied from checks (and reopen_reviews) whose verdict=='blocked'; [] when approved.",
+        },
         "checks": {
             "type": "array",
             "minItems": ob_count,
@@ -336,17 +344,20 @@ def decode_segmented_review_slice(
         if directive is not None
         else []
     )
-    blocked_rationales = [c["rationale"] for c in decoded_checks if c["verdict"] == "blocked"] + reopen_blocked
+    blocked_rationales = list(
+        dict.fromkeys([c["rationale"] for c in decoded_checks if c["verdict"] == "blocked"] + reopen_blocked)
+    )
     findings = raw_value["findings"]
     if (
         len(set(findings)) != len(findings)
-        or set(findings) != set(blocked_rationales)
+        or any(not f.strip() for f in findings)
+        or bool(findings) != bool(blocked_rationales)
         or (raw_value["verdict"] == "blocked") != bool(blocked_rationales)
     ):
         raise ValueError("b_route_segmented_review_findings_mismatch")
     result = {
         "checks": decoded_checks,
-        "findings": findings,
+        "findings": blocked_rationales,
         "verdict": raw_value["verdict"],
     }
     if directive is not None:
@@ -2097,10 +2108,10 @@ def generate_segmented_append(
         checkpoint=checkpoint,
         merge=runtime.merge,
         preserve=runtime.preservation,
-        repair_check=lambda before, after, issue, **kwargs: runtime.repair_scope_errors(
+        repair_check=lambda before, after, issue, **kwargs: _segmented_repair_scope_errors(
             root, state, before, after, issue, **kwargs
         ),
-        machine_repair_check=lambda before, after: runtime.machine_repair_errors(root, state, before, after),
+        machine_repair_check=lambda before, after: _segmented_machine_repair_errors(root, state, before, after),
         replacement=replacement,
         fail_execution_closed=True,
         repairability=(
@@ -3258,6 +3269,28 @@ def _segmented_append_repairability(
         return bool(runtime.repair_is_local(before, frozen, issue, root=root, state=state))
     except codec.CodecError:
         return False
+
+
+def _segmented_repair_scope_errors(
+    root: Path, state: dict, before: dict, after: dict, issue: dict, **kwargs
+) -> list[str]:
+    """Reject a repair draft on CodecError instead of aborting the append run."""
+    import _b_route_planning_runtime as runtime
+
+    try:
+        return runtime.repair_scope_errors(root, state, before, after, issue, **kwargs)
+    except codec.CodecError:
+        return ["repair_new_machine_issue"]
+
+
+def _segmented_machine_repair_errors(root: Path, state: dict, before: dict, after: dict) -> list[str]:
+    """Reject a machine repair draft on CodecError instead of aborting the append run."""
+    import _b_route_planning_runtime as runtime
+
+    try:
+        return runtime.machine_repair_errors(root, state, before, after)
+    except codec.CodecError:
+        return ["repair_new_machine_issue"]
 
 
 def _cached_decode_generation_carrier(raw_value: dict) -> dict:

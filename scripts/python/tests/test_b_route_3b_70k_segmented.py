@@ -4580,6 +4580,235 @@ class SegmentedInputDependencyPriorityTests(unittest.TestCase):
             self.assertEqual(res["restarts"][0]["reason"], "unrepairable_business_issue")
             self.assertEqual(res["accepted"], {"version": 2})
 
+    def test_decode_segmented_review_slice_summarized_blocked_findings_and_fail_closed_guards(self):
+        """Verify review schema descriptions, summarized blocked findings normalization, and fail-closed guards."""
+        input_id = "sha256:" + "1" * 64
+        proposal_sha = "sha256:" + "2" * 64
+        frozen = {"input_identity": input_id}
+        desc = {
+            "schema_version": runtime.PROFILE,
+            "profile": "3b-mvg-v1",
+            "planner": "mvg",
+            "prepared_ref": "logs/ci/unit-review-slice/b-route-prepared.json",
+            "input_identity": input_id,
+            "frozen_sha256": runtime.canonical_sha(frozen),
+            "rules": runtime.rules_identity(),
+            "limits": runtime.profile_limits("3b-mvg-v1"),
+            "wire_delivery": runtime.wire.CURRENT_SCHEMA,
+        }
+        state = {
+            "schema_version": runtime.RUN,
+            "run_id": "unit-review-slice",
+            "input_stage": "3b",
+            "planning_runtime": desc,
+            "runtime_identity": runtime.canonical_sha(desc),
+            "analysis_identity_sha256": input_id,
+        }
+        seg_obligations = [
+            {"id": "ob-0", "source_block_ids": ["blk-001"]},
+            {"id": "ob-1", "source_block_ids": ["blk-002"]},
+        ]
+        seg_sources = [
+            {"id": "blk-001", "text": "Source block 1."},
+            {"id": "blk-002", "text": "Source block 2."},
+        ]
+
+        schema = seg_runtime.segmented_indexed_review_schema(
+            state,
+            frozen,
+            proposal_sha256=proposal_sha,
+            seg_obligations=seg_obligations,
+            seg_sources=seg_sources,
+        )
+        self.assertEqual(
+            schema["properties"]["verdict"].get("description"),
+            "blocked iff any item in checks (or reopen_reviews) has verdict=='blocked'; otherwise approved.",
+        )
+        self.assertEqual(
+            schema["properties"]["findings"].get("description"),
+            "Exact deduplicated verbatim rationale strings copied from checks (and reopen_reviews) whose verdict=='blocked'; [] when approved.",
+        )
+
+        exact_check_rationale = (
+            "Detailed rationale explaining why obligation ob-1 does not satisfy blk-002 exclusivity invariant."
+        )
+
+        def _make_raw(verdict: str, findings: list[str], ob1_verdict: str) -> dict:
+            return {
+                "schema_version": runtime.INDEXED_REVIEW,
+                "input_identity": input_id,
+                "runtime_identity": state["runtime_identity"],
+                "proposal_sha256": proposal_sha,
+                "verdict": verdict,
+                "findings": findings,
+                "checks": [
+                    {
+                        "id": 0,
+                        "verdict": "approved",
+                        "rationale": "Obligation ob-0 is fully covered.",
+                        "source_block_ids": [0],
+                    },
+                    {
+                        "id": 1,
+                        "verdict": ob1_verdict,
+                        "rationale": (
+                            exact_check_rationale
+                            if ob1_verdict == "blocked"
+                            else "Obligation ob-1 is fully covered."
+                        ),
+                        "source_block_ids": [1],
+                    },
+                ],
+            }
+
+        # Blocked slice with summarized findings normalizes to exact verbatim check rationale
+        decoded_blocked = seg_runtime.decode_segmented_review_slice(
+            state,
+            frozen,
+            _make_raw("blocked", ["Short summary of blocked obligation ob-1."], "blocked"),
+            seg_obligations,
+            seg_sources,
+            proposal_sha256=proposal_sha,
+        )
+        self.assertEqual(decoded_blocked["verdict"], "blocked")
+        self.assertEqual(decoded_blocked["findings"], [exact_check_rationale])
+        self.assertEqual(decoded_blocked["checks"][1]["rationale"], exact_check_rationale)
+
+        # Approved slice with empty findings still decodes cleanly
+        decoded_approved = seg_runtime.decode_segmented_review_slice(
+            state,
+            frozen,
+            _make_raw("approved", [], "approved"),
+            seg_obligations,
+            seg_sources,
+            proposal_sha256=proposal_sha,
+        )
+        self.assertEqual(decoded_approved["verdict"], "approved")
+        self.assertEqual(decoded_approved["findings"], [])
+
+        # Fail-closed guard cases must all raise b_route_segmented_review_findings_mismatch
+        invalid_cases = [
+            ("empty_findings_with_blocked_check", _make_raw("blocked", [], "blocked")),
+            ("nonempty_findings_when_all_approved", _make_raw("approved", ["x"], "approved")),
+            ("approved_verdict_with_blocked_check", _make_raw("approved", [exact_check_rationale], "blocked")),
+            ("duplicate_findings_entries", _make_raw("blocked", ["dup", "dup"], "blocked")),
+            ("whitespace_only_finding", _make_raw("blocked", ["   "], "blocked")),
+        ]
+        for label, raw_payload in invalid_cases:
+            with self.subTest(case=label):
+                with self.assertRaisesRegex(ValueError, "^b_route_segmented_review_findings_mismatch$"):
+                    seg_runtime.decode_segmented_review_slice(
+                        state,
+                        frozen,
+                        raw_payload,
+                        seg_obligations,
+                        seg_sources,
+                        proposal_sha256=proposal_sha,
+                    )
+
+    def test_segmented_repair_scope_and_machine_repair_catch_codec_error(self):
+        """Verify Stage 4 repair scope/machine checks reject repair attempts on CodecError instead of aborting."""
+        from _mvg_capability_append import run_capability_append
+
+        root = NEWROUGE_ROOT
+        state = {"runtime_identity": "sha256:" + "a" * 64}
+        diag = codec.Diagnostic(
+            codec.ReasonCode.SEMANTIC_ERROR,
+            codec.Stage.CONTENT,
+            "proposal:exclusive-resolution-v15-3",
+            "preserved repair target projection",
+            "corrupted candidate field in repair draft",
+        )
+
+        def _raise_codec(*_a, **_kw):
+            raise codec.CodecError(diag)
+
+        # Direct unit checks on both wrappers
+        with patch.object(runtime, "machine_repair_errors", side_effect=_raise_codec):
+            self.assertEqual(
+                seg_runtime._segmented_machine_repair_errors(root, state, {"version": 1}, {"version": 2}),
+                ["repair_new_machine_issue"],
+            )
+        with patch.object(runtime, "repair_scope_errors", side_effect=_raise_codec):
+            self.assertEqual(
+                seg_runtime._segmented_repair_scope_errors(
+                    root,
+                    state,
+                    {"version": 1},
+                    {"version": 2},
+                    {"code": "semantic_gap", "path": "semantic-review"},
+                    scope={"capability_id": "cap-v15"},
+                ),
+                ["repair_new_machine_issue"],
+            )
+
+        # End-to-end run_capability_append(fail_execution_closed=True) check for both callbacks
+        for failing_hook in ("machine_repair_errors", "repair_scope_errors"):
+            with self.subTest(failing_hook=failing_hook):
+                proposed_versions: list[int] = []
+                scope = {"capability_id": "cap-v15"}
+                seed = {"schema_version": "newrouge.b-route-read-only-seed.v1", "items": []}
+
+                def _propose(_scope, _accepted, _prior, _issue, context, call):
+                    ver = len(proposed_versions) + 1
+                    proposed_versions.append(ver)
+                    call("generate", {"attempt": ver})
+                    return {"candidate": {"version": ver}, "generation_calls": [], "lineage": {"context": context}}
+
+                def _semantic(_scope, _accepted, proposal, call, _context):
+                    call("semantic", {"version": proposal["version"]})
+                    if proposal["version"] == 1:
+                        return {
+                            "issues": [{"code": "semantic_gap", "path": "semantic-review", "detail": "needs fix"}],
+                            "proof": {"verdict": "blocked"},
+                            "execution": {"status": "completed"},
+                        }
+                    return {
+                        "issues": [],
+                        "proof": {"verdict": "approved"},
+                        "execution": {"status": "completed"},
+                    }
+
+                def _fake_machine_repair(_root, _state, _before, after):
+                    if failing_hook == "machine_repair_errors" and after["version"] == 2:
+                        raise codec.CodecError(diag)
+                    return []
+
+                def _fake_repair_scope(_root, _state, _before, after, _issue, **_kwargs):
+                    if failing_hook == "repair_scope_errors" and after["version"] == 2:
+                        raise codec.CodecError(diag)
+                    return []
+
+                with tempfile.TemporaryDirectory(prefix="tbrep", dir=_temp_dir_base()) as tmp, patch.object(
+                    runtime, "machine_repair_errors", side_effect=_fake_machine_repair
+                ), patch.object(runtime, "repair_scope_errors", side_effect=_fake_repair_scope):
+                    res = run_capability_append(
+                        Path(tmp) / "capability-append",
+                        scopes=[scope],
+                        seed=seed,
+                        identity="sha256:" + "b" * 64,
+                        propose=_propose,
+                        machine=lambda _s, _a, _p: [],
+                        semantic=_semantic,
+                        final_machine=lambda _p: [],
+                        merge=lambda _acc, delta, _sc=None: deepcopy(delta["candidate"]),
+                        preserve=lambda _acc, _prop: [],
+                        repair_check=lambda before, after, issue, **kwargs: seg_runtime._segmented_repair_scope_errors(
+                            root, state, before, after, issue, **kwargs
+                        ),
+                        machine_repair_check=lambda before, after: seg_runtime._segmented_machine_repair_errors(
+                            root, state, before, after
+                        ),
+                        fail_execution_closed=True,
+                    )
+
+                self.assertEqual(res["status"], "admitted", res)
+                self.assertEqual(res["accepted"], {"version": 3})
+                self.assertEqual(proposed_versions, [1, 2, 3])
+                self.assertEqual(res["restarts"], [])
+                self.assertEqual(len(res.get("rejected_repairs", [])), 1)
+                self.assertEqual(res["rejected_repairs"][0]["errors"], ["repair_new_machine_issue"])
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
