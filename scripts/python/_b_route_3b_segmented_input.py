@@ -30,7 +30,7 @@ SEGMENTED_REQUEST_SCHEMA = "newrouge.b-route-3b-segmented-request.v1"
 MAX_WORKSPACE_PAYLOAD_BYTES = 70_000
 CONTEXT_TOKEN_LIMIT = 96_000
 ROLLING_STATE_RESERVE_BYTES = 8_500
-MAX_INLINE_DEPENDENCY_FILES_BYTES = 1_024
+MAX_INLINE_DEPENDENCY_FILES_BYTES = 3_072
 MAX_UNIT_TEXT_CHUNK_BYTES = 18_000
 INTERMEDIATE_CONTRACT_PIN_SCHEMA = "newrouge.b-route-3b-intermediate-contract-pin.v1"
 INTERMEDIATE_TARGET_PIN_SCHEMA = "newrouge.b-route-3b-intermediate-target-pin.v1"
@@ -97,27 +97,57 @@ def _split_utf8_text(text: str, max_bytes: int = MAX_UNIT_TEXT_CHUNK_BYTES) -> l
     return chunks
 
 
+def _ordered_authority_dependency_paths(inputs: dict) -> list[str]:
+    """Return deduplicated authority/source/contract dependency paths in strict priority tiers."""
+    ordered: list[str] = []
+    seen: set[str] = set()
+
+    def _add(path: object) -> None:
+        if isinstance(path, str) and path not in seen:
+            seen.add(path)
+            ordered.append(path)
+
+    dep_files = inputs["dependencies"]["files"]
+    gp = inputs["global_proof"]
+
+    # Tier 0: contract, audit ref, constraints/contexts/evidence, and source manifest/blocks/ledger
+    _add(inputs.get("contract_ref"))
+    _add(gp.get("audit_ref"))
+    for section in ("constraints", "contexts", "evidence"):
+        for row in inputs.get(section, []):
+            if isinstance(row, dict):
+                _add(row.get("path"))
+    tier0_markers = (
+        "source-manifest",
+        "source-blocks",
+        "source-ledger",
+        "source_manifest",
+        "source_blocks",
+        "source_ledger",
+    )
+    for path in dep_files:
+        name = Path(path).name
+        if any(marker in name for marker in tier0_markers):
+            _add(path)
+
+    # Tier 1: governed docs and contract source paths
+    for path in dep_files:
+        if path.startswith(("docs/", "Game.Core/Contracts/")):
+            _add(path)
+
+    # Tier 2: source accounting and requirement proposals (never generic "audit" substrings)
+    tier2_markers = ("source-accounting", "requirement-proposals")
+    for path in dep_files:
+        name = Path(path).name
+        if any(marker in name for marker in tier2_markers):
+            _add(path)
+
+    return ordered
+
+
 def _authority_dependency_paths(inputs: dict) -> set[str]:
     """Identify core authority/source/contract paths kept inline in common header."""
-    keep: set[str] = {inputs["contract_ref"]}
-    gp = inputs["global_proof"]
-    if isinstance(gp.get("audit_ref"), str):
-        keep.add(gp["audit_ref"])
-    for row in inputs.get("constraints", []):
-        if isinstance(row.get("path"), str):
-            keep.add(row["path"])
-    for row in inputs.get("contexts", []):
-        if isinstance(row.get("path"), str):
-            keep.add(row["path"])
-    for row in inputs.get("evidence", []):
-        if isinstance(row.get("path"), str):
-            keep.add(row["path"])
-    for path in inputs["dependencies"]["files"]:
-        if path.startswith(("docs/", "Game.Core/Contracts/")) or any(
-            marker in path for marker in ("source-ledger", "source-blocks", "source-manifest", "accounting", "audit")
-        ):
-            keep.add(path)
-    return keep
+    return set(_ordered_authority_dependency_paths(inputs))
 
 
 def decompose_inputs(inputs: dict) -> tuple[dict, list[dict], dict]:
@@ -154,17 +184,17 @@ def decompose_inputs(inputs: dict) -> tuple[dict, list[dict], dict]:
         inline_dep_files = deepcopy(dep_files)
         overflow_dep_items: list[tuple[str, str | None]] = []
     else:
-        priority = _authority_dependency_paths(inputs)
         inline_selected: set[str] = set()
         probe_inline: dict = {}
-        for k in dep_files:
-            if k in priority:
-                cand_inline = {**probe_inline, k: deepcopy(dep_files[k])}
-                if _compact_json_bytes(cand_inline) <= MAX_INLINE_DEPENDENCY_FILES_BYTES:
-                    probe_inline = cand_inline
-                    inline_selected.add(k)
-                else:
-                    break
+        for k in _ordered_authority_dependency_paths(inputs):
+            if k not in dep_files:
+                continue
+            cand_inline = {**probe_inline, k: deepcopy(dep_files[k])}
+            if _compact_json_bytes(cand_inline) <= MAX_INLINE_DEPENDENCY_FILES_BYTES:
+                probe_inline = cand_inline
+                inline_selected.add(k)
+            else:
+                continue
         inline_dep_files = {k: deepcopy(dep_files[k]) for k in dep_files if k in inline_selected}
         overflow_dep_items = [(k, deepcopy(v)) for k, v in dep_files.items() if k not in inline_selected]
         host_frames["overflow_dependencies_files"] = dict(overflow_dep_items)

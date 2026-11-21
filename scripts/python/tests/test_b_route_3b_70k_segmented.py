@@ -4133,5 +4133,145 @@ class TrackBSegmented70kTests(unittest.TestCase):
             self._restore_candidate_templates(tmpl_path, prior_tmpl)
 
 
+class SegmentedInputDependencyPriorityTests(unittest.TestCase):
+    """Fast deterministic unit tests for segmented input dependency-file inline priority."""
+
+    def test_authority_dependency_priority_keeps_manifest_and_ledger_inline_past_audit_steps(self):
+        """Ensure 65 b-route-source-audit step files do not crowd out source-manifest/source-blocks."""
+        contract_ref = "docs/planning/contracts/mvg-contract.json"
+        audit_ref = "logs/ci/2026-11-21/b-route-source-audit/r1/audit-01/audit-report.json"
+        constraint_path = "docs/architecture/base/constraints.md"
+        context_path = "docs/planning/semantic-topology/capabilities.v1.json"
+        evidence_path = "logs/ci/2026-11-21/evidence/ev-01.json"
+        manifest_path = "logs/ci/2026-11-21/b-route-sources/r1/prepare-01/prepare/source-manifest.json"
+        blocks_path = "logs/ci/2026-11-21/b-route-sources/r1/prepare-01/prepare/source-blocks.json"
+
+        raw_dep_files: dict[str, str] = {
+            contract_ref: "sha256:" + "1" * 64,
+            audit_ref: "sha256:" + "2" * 64,
+            constraint_path: "sha256:" + "3" * 64,
+            context_path: "sha256:" + "4" * 64,
+            evidence_path: "sha256:" + "5" * 64,
+            manifest_path: "sha256:" + "6" * 64,
+            blocks_path: "sha256:" + "7" * 64,
+        }
+        audit_step_paths = [
+            f"logs/ci/2026-11-21/b-route-source-audit/r1/audit-01/steps/step-{i:03d}.json"
+            for i in range(65)
+        ]
+        for idx, step_path in enumerate(audit_step_paths):
+            raw_dep_files[step_path] = f"sha256:{idx:064x}"
+
+        # Sort canonically so all 65 b-route-source-audit/steps entries precede b-route-sources/
+        dep_files = {k: raw_dep_files[k] for k in sorted(raw_dep_files)}
+        self.assertGreater(
+            seg_input._compact_json_bytes(dep_files),
+            seg_input.MAX_INLINE_DEPENDENCY_FILES_BYTES,
+        )
+
+        constraint_text = "Constraint body."
+        context_val = {"capabilities": ["cap-1"]}
+        context_text = json.dumps(context_val, separators=(",", ":"))
+        inputs = {
+            "schema_version": "newrouge.b-route-planning-inputs.v1",
+            "input_stage": "3b",
+            "rules_version": "v1",
+            "codec_version": "v1",
+            "contract_ref": contract_ref,
+            "contract": {
+                "scope": {"scope_id": "mvg-v15"},
+                "limits": {"max_bytes": 70_000, "max_input_tokens": 96_000, "reserved_tokens": 1_000},
+            },
+            "delivery": {"output_schema": {"type": "object", "properties": {}}},
+            "closure": {"mode": "mvg"},
+            "constraints": [
+                {
+                    "path": constraint_path,
+                    "format": "markdown",
+                    "raw_digest": raw_dep_files[constraint_path],
+                    "raw_base64": base64.b64encode(constraint_text.encode("utf-8")).decode("ascii"),
+                    "text": constraint_text,
+                }
+            ],
+            "contexts": [
+                {
+                    "kind": "capabilities",
+                    "path": context_path,
+                    "required": True,
+                    "format": "json",
+                    "raw_digest": raw_dep_files[context_path],
+                    "raw_base64": base64.b64encode(context_text.encode("utf-8")).decode("ascii"),
+                    "text": context_text,
+                    "value": context_val,
+                }
+            ],
+            "global_proof": {
+                "audit_ref": audit_ref,
+                "report": {"status": "verified"},
+                "identity": {"audit_sha256": "a" * 64, "tools": {"python": "3.12"}},
+                "comparison": {"findings": []},
+                "extractions": [],
+                "steps": [],
+                "ledger": {"schema_version": "v1", "blocks": [{"block_id": "b1", "text": "block one"}]},
+                "manifest": {"source_revision": "rev-1", "manifest_sha256": "b" * 64},
+                "accounting": {"source_accounting": []},
+                "proposals": {"proposals": [{"proposal_id": "REQ-1", "acceptance_intent": "intent"}]},
+                "candidate": {"file_results": []},
+                "unresolved": [],
+            },
+            "raw_proof_inventory": [],
+            "source_inventory": [],
+            "evidence": [
+                {
+                    "path": evidence_path,
+                    "sha256": raw_dep_files[evidence_path],
+                    "text": "evidence text",
+                }
+            ],
+            "dependencies": {
+                "files": dep_files,
+                "globs": [],
+                "rules": {"version": "1"},
+            },
+        }
+
+        common_header, units, host_frames = seg_input.decompose_inputs(inputs)
+        inline_deps = common_header["dependencies_files"]
+
+        self.assertLessEqual(
+            seg_input._compact_json_bytes(inline_deps),
+            seg_input.MAX_INLINE_DEPENDENCY_FILES_BYTES,
+        )
+        for required_path in (
+            manifest_path,
+            blocks_path,
+            contract_ref,
+            audit_ref,
+            constraint_path,
+            context_path,
+            evidence_path,
+        ):
+            self.assertIn(required_path, inline_deps)
+            self.assertEqual(inline_deps[required_path], dep_files[required_path])
+
+        for step_path in audit_step_paths:
+            self.assertNotIn(step_path, inline_deps)
+            self.assertNotIn(step_path, seg_input._authority_dependency_paths(inputs))
+
+        # Preserve canonical key order from inputs["dependencies"]["files"]
+        expected_inline_order = [k for k in dep_files if k in inline_deps]
+        self.assertEqual(list(inline_deps.keys()), expected_inline_order)
+
+        # Verify byte-identical lossless reconstruction
+        batches = [{"ordinal": 1, "unit_count": len(units), "parts": units}]
+        reconstructed = seg_input.reconstruct_inputs(common_header, batches, host_frames)
+        self.assertEqual(reconstructed, inputs)
+        self.assertEqual(
+            json.dumps(reconstructed, ensure_ascii=False, separators=(",", ":")).encode("utf-8"),
+            json.dumps(inputs, ensure_ascii=False, separators=(",", ":")).encode("utf-8"),
+        )
+        self.assertEqual(codec.canonical_digest(reconstructed), codec.canonical_digest(inputs))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
