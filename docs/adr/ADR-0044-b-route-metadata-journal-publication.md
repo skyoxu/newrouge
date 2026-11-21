@@ -1,6 +1,6 @@
 # ADR-0044：B 路线元数据 journal 发布与前缀历史
 
-- 状态：实施决策；等待 Root 实际执行与验收
+- 状态：Proposed（实施决策；等待 Root 实际执行与验收）
 - 日期：2026-11-07
 - 范围：Story 2.5，审核循环 2，R2-B1 / R2-B2 / R2-B10
 - 参考：[ADR-0041](ADR-0041-b-route-review-hardening-resource-and-metadata-boundaries.md)、[Story 2.5 规格](../../_bmad-output/implementation-artifacts/b-route/spec-2-5-independent-admission-bounded-selection.md)

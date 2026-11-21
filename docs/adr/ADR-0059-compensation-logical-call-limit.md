@@ -1,6 +1,6 @@
 # ADR-0059: Compensation call limits without a new fiscal issuer
 
-- Status: Accepted implementation scope; no new model/fiscal authorization
+- Status: Accepted (implementation scope; no new model/fiscal authorization)
 - Date: 2026-11-12
 - Scope: Story2.8; supersedes ADR-0058's fixed funding issuer and live fiscal replay condition
 - Authority: Existing Epic2 authorization and explicit user request to review unnecessary governance; clean Astra max independent necessity/proportionality assessment

@@ -1,6 +1,6 @@
 # ADR-0058: Deterministic compensation multi-segment consumer
 
-- Status: Accepted implementation scope; genuine model/fiscal and AC4 acceptance pending
+- Status: Accepted (implementation scope; genuine model/fiscal and AC4 acceptance pending)
 - Date: 2026-11-12
 - Scope: Epic2 Story2.8; extends ADR-0056 and supersedes ADR-0057 items4/7 for the new execution route
 - Authority: Existing Epic2 authorization and explicit CLI/per-segment clarification; independent clean Astra max proportionality review

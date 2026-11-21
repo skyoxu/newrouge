@@ -1,6 +1,6 @@
 # ADR-0061: Bounded Linux publication for native planning runs
 
-- Status: Accepted implementation scope; real native and Windows whole-Epic acceptance remain evidence-dependent
+- Status: Accepted (implementation scope; real native and Windows whole-Epic acceptance remain evidence-dependent)
 - Date: 2026-11-12
 - Scope: The initial run-directory publication in the existing Story2.9 producer; no new planning lifecycle
 - Authority: Continuing Epic2 authorization and the explicitly requested clean Astra max necessity/proportionality assessment in continuation25

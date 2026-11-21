@@ -1,6 +1,6 @@
 # ADR-0057: Deterministic compensation segment preflight
 
-- Status: Accepted for offline preparation only; execution and semantic qualification pending
+- Status: Accepted (for offline preparation only; execution and semantic qualification pending)
 - Date: 2026-11-12
 - Scope: Epic2 Story2.8; extends ADR-0042 and ADR-0056
 - Authority: User clarification that70000 is per segment and CLI owns partitioning, capacity, order and continuation; clean Astra max necessity/proportionality review

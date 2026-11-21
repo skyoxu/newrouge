@@ -1,6 +1,6 @@
 # ADR-0060: One explicit formal repair after a completed compensation review refusal
 
-- Status: Accepted and exercised; genuine proof.v2 and Cloud compensation published, original Windows/native and whole-Epic acceptance remain pending
+- Status: Accepted (exercised; genuine proof.v2 and Cloud compensation published, original Windows/native and whole-Epic acceptance remain pending)
 - Date: 2026-11-12
 - Scope: Story2.8; narrow amendment to ADR-0059, not a generic retry or finance system
 - Authority: User's continuing Epic2/Codex-subscription authorization, explicit instruction to make the necessary additional review serve formal completion, and independent necessity/proportionality assessment retained in continuation22
