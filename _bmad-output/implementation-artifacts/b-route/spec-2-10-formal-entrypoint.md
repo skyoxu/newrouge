@@ -2,7 +2,7 @@
 title: 'Story 2.10：现有正式入口的零 Task 采纳与跨会话复验'
 type: 'feature'
 created: '2026-11-11'
-status: 'in-progress'
+status: 'done'
 baseline_commit: '50923dc290885cb414f0a722276731c0fc53514d'
 source_repository: 'r64'
 review_loop_iteration: 1
@@ -76,8 +76,8 @@ handoff/3A/adoption 计量字段各按原 owner 提供；不把 logical_reserved
 - [x] Root 修 parser/builder 的最小 runner 接缝和 planner help；不改 B runtime 原资格门。已提交 5e08a248。
 - [x] Root 补 runner 默认/显式透传/A 默认保持的精准参数测试；复用原 audit/reopen 参数对测试，不扩展 stage。六项定向通过，非完整验收。
 - [x] Root 创建 owning status 文档并定点修已有导航与 stage 权限陈述。已提交 5e08a248。
-- [ ] Root 核对原 current-wire 与 R62 在途终态、组合源修订及前置 2.1–2.9 验收证据；不重开原 unknown。
-- [ ] Root 从正式入口收集同原 identity 的真实 Windows 链与新会话复验，完成原 AC1–6；必要调用由 Root 掌握实际授权和预算。
+- [x] Root 核对原 current-wire 与 R62 在途终态、组合源修订及前置 2.1–2.9 验收证据；不重开原 unknown。
+- [x] Root 从正式入口收集同原 identity 的真实 Windows 链与新会话复验，完成原 AC1–6；必要调用由 Root 掌握实际授权和预算。
 
 # Verification and stop conditions
 
@@ -129,3 +129,15 @@ Previous real compensation/read/clone and four Windows synthetic-upstream contro
 - Prerequisite closure: Story 2.8 is `done` (`2bc52f8c`); Story 2.9 remains `in-progress` pending its online Windows Plane-B execution checkpoint.
 - Offline BMAD 4-layer review fix-through (`review_loop_iteration: 1`): CLI, context-observation, and workflow/skill documentation hygiene fixes (`dev_cli.py`, `dev_cli_builders.py`, `b_route_adoption.py`, `docs/workflows/mvg-integration-acceptance.md`, `docs/workflows/b-route-native-planning-status.md`, `docs/workflows/b-route-adoption.md`, `docs/workflows/stable-public-entrypoints.md`, `.agents/skills/plan-mvg/SKILL.md`) are applied and tracked under `logs/ci/2026-11-20/story-2-9-2-10-review/`.
 - Remaining gate before transitioning Story 2.10 from `in-progress` to `done`: Story 2.9 online Windows Plane-B closure plus real online Windows Plane-B zero-Task adoption chain and fresh cross-session `b-route-adoption --stage inspect|read --context` verification under user authorization; Story 2.10 stays `in-progress`.
+
+## 2026-11-22 Windows Online Plane-B Zero-Task Adoption & Story 2.10 Closure
+
+- **Prerequisites Satisfied**: All Epic 2 prerequisites (`Story 2.1–2.9`) are `done`, including Story 2.9 online Windows Plane-B closure (`win-v15-audit-r11` -> `win-v15-mvg-r15` / `r16` / `r17` / `r18` / `reopen` / `clear`). Complete evidence matrix archived at `logs/ci/2026-11-21/story-2-9-2-10-online/REPORT.md` and `logs/ci/2026-11-21/story-2-9-2-10-online/final-epic2-closure-summary.json`.
+- **Zero-Task Formal Adoption Chain (`OP-win-v15-r2-20261122`)**: Executed under `HEAD = 9c11f830` with `openai/gpt-6.2-astra` (`reasoningEffort="high"`) via `scripts/python/codex_isolated_model_runner.py` consuming `win-v15-mvg-r15` and a verified live protection snapshot (`capture_complete=true`): `review-prepare` (`7` self-contained `<= 70,000`-byte Stage 6b segments) -> `7/7` isolated Codex host-review dispatches returning `verdict="approved"` -> `review-complete` -> `prepare` -> `reserve` (`catalog.v1.json` absent) -> pre-publish `inspect --context` (`rc=0`, `status="inspected"`) -> `apply` (`catalog.v1.json` still absent before `publish`) -> second idempotent `apply` (`rc=0`) -> `verify` (`rc=0`) -> catalog-last `publish` (`rc=0`, `published=true`, `formal_adoption=true`, `readiness=false`, `runtime_verified=false`, `default_b_enabled=false`, allocated `PLAN-ce4eccd48d634e24968db18a10f86c4f` rev `1`, `7` `RQ-*`, `1` `FLOW-*`, `task_definitions={}`).
+- **Cross-Session Fresh-Process Verification (`cwd = C:\Temp`)**:
+  - Post-publish `b-route-adoption --stage inspect --operation-id OP-win-v15-r2-20261122 --context`: `rc=2` (`status="blocked"` on already-applied targets while preserving `context` view and original references).
+  - `b-route-adoption --stage read --operation-id OP-win-v15-r2-20261122 --context`: `rc=0`, `status="committed"`, `formal_adoption=true`, `global_planning_completion="not_established"`, `completed_unit_reuse="unsupported"`, `default_B_activated=false`, `readiness=false`, `runtime_verified=false`.
+  - `b-route-adoption --stage recover-inspect --operation-id OP-win-v15-r2-20261122`: `rc=0`, `state="complete"`, `physical_state="committed_noop"`, `next_stage=null`.
+  - Missing-receipt `b-route-adoption --stage read --operation-id OP-missing-nonexistent-20261122`: `rc=2` refusal (`file_not_found`) preserving `resume_ref = docs/planning/b-route/commits/OP-missing-nonexistent-20261122.json`.
+- **Receipt-Sealed No-`logs/` Clone & Tamper Refusal**: Fresh-process `read --context` against `logs/ci/2026-11-21/story-2-9-2-10-online/published-clone-root` (zero `logs/` directory) passed (`rc=0`, `formal_adoption=true`, identical `catalog_raw_digest` and `input_set_digest`); tampered plan byte derivative was refused (`rc=2`, `digest_mismatch` with expected/actual digests and plan `resume_ref`). Synthetic `v15` publication artifacts were cleaned from working `docs/planning/b-route/`.
+- **Closure Boundary**: Story 2.10 transitions to `done` (closing Epic 2 `2.1–2.10`). Existing A workflows remain active; default B activation, Task compilation (Epic 3), and runtime acceptance remain outside Epic 2 scope.

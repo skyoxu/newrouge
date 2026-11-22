@@ -2,7 +2,7 @@
 
 ## 已完成 Capability 恢复与进度
 
-Story 2.9 的已完成 Capability 复用实现（`_b_route_completed_reuse.py`、`_mvg_capability_recovery.py`、`_mvg_capability_selection.py`、`_mvg_global_audit.py`、`_b_route_planning_runtime.py` 及 ADR-0062 `<= 70,000` 字节分段执行 `_b_route_3b_segmented_runtime.py`）已安装并纳入确定性测试门禁（`test_b_route_completed_reuse.py`、`test_mvg_capability_recovery.py`、`test_mvg_recovery_review_integration.py`、`test_mvg_recovery_fixthrough.py`、`test_mvg_global_audit.py`）。前置 Story 2.3、2.5、2.7 与 2.8 均已 `done`。Story 2.9 与 2.10 的正式 `done` 状态仍要求真实在线 Windows Plane-B 执行证据（严禁以合成夹具替代），且 Story 2.10 仍依赖 2.1–2.9；默认 B 启用不在当前变更范围。
+Story 2.9 的已完成 Capability 复用实现（`_b_route_completed_reuse.py`、`_mvg_capability_recovery.py`、`_mvg_capability_selection.py`、`_mvg_global_audit.py`、`_b_route_planning_runtime.py` 及 ADR-0062 `<= 70,000` 字节分段执行 `_b_route_3b_segmented_runtime.py`）已安装并纳入确定性测试门禁（`test_b_route_completed_reuse.py`、`test_mvg_capability_recovery.py`、`test_mvg_recovery_review_integration.py`、`test_mvg_recovery_fixthrough.py`、`test_mvg_global_audit.py`）。Story 2.3、2.5、2.7、2.8、2.9 与 2.10（Epic 2 `2.1–2.10`）均已 `done`，真实在线 Windows Plane-B 验收证据归档于 `logs/ci/2026-11-21/story-2-9-2-10-online/REPORT.md`（合成夹具绝不替代真实在线 Plane-B 执行证据；默认 B 启用仍不在 Epic 2 范围内）。
 
 该完成项复用仅在冻结合同明确选中一个 Capability，且既有完整根 JSON 对象、顶层数组或 `capabilities` 容器中能唯一定位完整原行时尝试恢复；完整根对象使用空 JSON Pointer。明确声明的 `shared_capability` 完整 context 不因 kind 或位于 3A source closure 外而被排除。完整原行保留未知字段、数组顺序、值和类型；原文件 raw digest、原 locator、原 whole-closure proof 与独立 adoption receipt 分别复验。多目标、缺原行、重复原行及只含嵌套 ID 引用的输入记录 `generate_fresh` / `not_registered` 诊断；不补造定义，也不阻断其他正常 fresh 路径。
 

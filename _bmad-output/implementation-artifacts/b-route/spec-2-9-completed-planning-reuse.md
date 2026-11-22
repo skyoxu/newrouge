@@ -2,7 +2,7 @@
 title: 'Story 2.9：已提交完成规划复用与 epoch/reopen 撤销'
 type: 'feature'
 created: '2026-11-10'
-status: 'in-progress'
+status: 'done'
 baseline_commit: '3896a650dcf6ceaa0cad2c5ee3bc9bc0020e0914'
 original_candidate_baseline_commit: 'dacd713984f91deed4ad80826d22459b819ffc06'
 route: 'dispatch'
@@ -93,7 +93,7 @@ Refs: FR-5；FR-13（规划成果复用部分）；FR-16；NFR-E-3；NFR-E-4；N
 - [x] `scripts/python/_mvg_capability_selection.py` 与 runtime：完成真实 adoption selected/proof/execution/handoff 组合，保原 commit_checkpoint/assert_epoch 及 fresh 路径。
 - [x] `scripts/python/_mvg_capability_recovery.py`、`scripts/python/_mvg_global_audit.py`、`scripts/python/plan_mvg.py`：检查 adoption 是否经过原 active-chain；仅修实际遗漏，不新建状态机或全局门禁。
 - [x] `scripts/python/tests/test_b_route_completed_reuse.py` 及实际受影响旧测试：单项正向、损坏/相关漂移、真无关元信息、未提交排除、epoch/reopen/后继、下游失败及三类恢复入口。新增测试模块才注册一次 `scripts/python/run_gate_bundle.py` selector。
-- [ ] `docs/workflows/mvg-integration-acceptance.md`、本 spec、`sprint-status.yaml`：同步真实已交付边界、复用原因/原证据/实际成本/unknown；原生 Step4/5 后才宣告完成。
+- [x] `docs/workflows/mvg-integration-acceptance.md`、本 spec、`sprint-status.yaml`：同步真实已交付边界、复用原因/原证据/实际成本/unknown；原生 Step4/5 后才宣告完成。
 
 **Acceptance Criteria:** 原始 AC1–5 在冻结块中逐字保留；上列任务与矩阵不替代或增加原系统验收。
 
@@ -211,3 +211,12 @@ Previous real compensation/read/clone and four Windows synthetic-upstream contro
 - Prerequisite closure: Story 2.8 is `done` (`2bc52f8c`); prerequisites 2.3, 2.5, 2.7, and 2.8 are all satisfied.
 - Offline BMAD 4-layer review fix-through (`review_loop_iteration: 1`): all offline code, test, and documentation/skill hygiene fixes are applied and recorded under `logs/ci/2026-11-20/story-2-9-2-10-review/`. `<frozen-after-approval>` AC-1..AC-5 remain byte-identical.
 - Remaining gate before transitioning Story 2.9 from `in-progress` to `done`: real online Windows Plane-B execution (`3A audit` -> single-Capability `3B generate` -> cross-run reuse / related-drift rejection / explicit `audit` -> `reopen-plan` -> `reopen` / `clear` epoch advancement) authorized by the user; synthetic fixtures never substitute for real online model execution evidence.
+
+## 2026-11-22 Windows Online Plane-B Acceptance & Story 2.9 Closure
+
+- Online Windows Plane-B acceptance completed under `HEAD = 9c11f830` with `openai/gpt-6.2-astra` (`reasoningEffort="high"`) via `scripts/python/codex_isolated_model_runner.py`; complete evidence matrix archived at `logs/ci/2026-11-21/story-2-9-2-10-online/REPORT.md` and `logs/ci/2026-11-21/story-2-9-2-10-online/final-epic2-closure-summary.json`.
+- **3A Baseline**: `win-v15-src-r4` (`prepare` + `account`: 1 file / 8 blocks / 7 proposals) and `win-v15-audit-r11` (`audit` with 2 real model dispatches + read-only `verify-01` / `verify-02`, `planning_eligible=true`, `formal_adoption=false`).
+- **Golden 3B & AC-1 Positive 0-Call Adoption**: `win-v15-mvg-r15` (`input_identity = sha256:96e6d30c3781145f7a028b097ecfdbbdfc670068ef15d4b4a0ae5d52fc19b145`, `15` model calls across 3 independent candidates + anonymous selector + admission review, `selected="winner-chain"`, registered in `logs/ci/mvg-recovery/registry.json` at `epoch=0`, `transaction_id = sha256:3edcb60cc048d8117eb24aaace1ec7eea27d80a71cfe42bb6806b7e0af052913`). Both `win-v15-mvg-r16` (same prepared ref, `0` calls, `record.kind="adoption"`) and `win-v15-mvg-r17` (minified/key-reversed `capability.r1.json`, distinct `input_identity = sha256:5ffb88b07813eddaba28998227c046a42c08b0ad8e159f3964adbcdbca0021f4`, cold fresh-process `generate --max-new-dispatches 0` + `review` + `verify-selection` + `status`, `0` model calls, `billed_cost="unknown"`) adopted cleanly while keeping `win-v15-mvg-r15` `run.json`/`proposal.json`/`handoff.json` digests unchanged. Pre-fix `win-v15-mvg-r4` (`15` calls, `transaction_id = sha256:b2837e5e...`) and `win-v15-mvg-r8` (`0`-call reuse) remain retained for audit.
+- **AC-2 Uncommitted Exclusion & AC-3 Drift Rejection**: Uncommitted `win-v15-mvg-r5` (`selection_status="pending"`) and blocked `win-v15-mvg-r11` (`selection_status="blocked"`, non-refunded call ledger) were never registered in `registry.json`; `win-v15-mvg-r18` (`input_identity = sha256:36cefd53ce4a745af891c905296a5d95620bb5e879a0ae0ec56bef33ba1956fb` with extra governed constraint) was rejected by `try_adopt` with `recovery_current_dependencies_incompatible` (`status="generate_fresh"`); `win-v15-mvg-r11` rejected pre-fix `win-v15-mvg-r4` with `b_route_runtime_planning_rules_changed`.
+- **AC-4 Reopen Cascading Revocation & Epoch Clear**: Explicit `plan-mvg audit -> reopen-plan -> reopen` on `win-v15-mvg-r15` preserved all `15` prior calls (`source_calls_preserved=true`, `refund_invocations=false`), revoked `sha256:3edcb60c...`, cascaded `recovery_source_revoked` across both `win-v15-mvg-r16` and `win-v15-mvg-r17` (`assert_active_chain`), blocked `win-v15-mvg-r19` (`try_adopt` returned `None`, `recovery_source_revoked`), and `mvg_recovery.clear()` advanced `epoch` `0 -> 1` (`mvg_recovery_epoch_invalidated` on `r17`) while leaving published `docs/planning/b-route/*` untouched (`published_b_route_files_untouched_by_clear=true`).
+- **AC-5 Three-Way Recovery Separation**: Completed-item adoption (`_mvg_capability_recovery` / `_b_route_completed_reuse`), Capability `--resume-evidence` (`test_capability_input_integrity.py`), and Story 2.8 operation journal recovery (`recover-inspect` / `recover`) remain strictly separated; `b-route-adoption --context` reports `completed_unit_reuse="unsupported"`. `<frozen-after-approval>` AC-1..AC-5 remain byte-identical; Story 2.9 transitions to `done`. Default B activation and runtime acceptance remain out of scope.
