@@ -574,3 +574,7 @@ These are additive modes of the existing Chapter workflow, not a second mileston
 ## B 路线 3A 来源准备与记账
 
 `py -3 scripts/python/dev_cli.py b-route-sources --stage prepare|account` 与直接入口 `scripts/python/account_b_route_sources.py` 共用唯一 owner。必须显式提供 root／run／scope／attempt；prepare 另需 source-set，account 另需 prepared／candidate。两者只输出单个 JSON，退出码为 0／1／2，禁止字节码写入，仅排他创建全新 logs。独立审计／复验沿用此入口的 `--stage audit|verify`，分别显式消费 accounted／audit-ref，均需 runner／expected-model；执行、语义阻断、synthetic 与真实证明、持久预算及复用合同见[来源审计 owner](b-route-source-audit.md)。准备和完整记账均不授予独立审计或正式采纳；现行 A 有效。载体、原字节身份、容量、漂移、事件及 Windows 验证见[来源记账 owner](b-route-source-accounting.md)。
+
+## B 路线 3C 只读任务变更预览
+
+稳定入口：`py -3 -B scripts/python/dev_cli.py b-route-task-preview --root <root> --plan-id <plan-id> --scope-id <scope-id> --audit-ref <3a-report> --run-id <fresh-id> [--protection-ref <path>] [--manifest <path>] [--change-intents <path>]`。直接 owner 为 `scripts/python/preview_b_route_task_changes.py`，参数相同。单行 JSON stdout，退出码 0 为稳定可审阅预览、1 为 3A/3B/语义/保护/漂移阻断、2 为参数或目录冲突；仅独占写入全新 logs，不写三联或正式规划、不分配永久 Task ID、不创建 pycache。详见[3C 预览 owner 说明](b-route-task-preview.md)。

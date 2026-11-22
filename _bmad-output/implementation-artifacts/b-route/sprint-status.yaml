@@ -41,7 +41,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 11-03-2026 17:10
-last_updated: 2026-11-22T16:00:00+08:00
+last_updated: 2026-11-22T18:57:00+08:00
 project: newrouge
 project_key: newrouge-b-route
 tracking_system: taskmaster-authoritative-planning-view
@@ -96,8 +96,8 @@ development_status:
   2-10-从正式规划入口完成零task采纳与跨会话复验: done
   epic-2-retrospective: optional
 
-  epic-3: backlog
-  3-1-从复用盘点形成真实缺口的任务变更预览: backlog
+  epic-3: in-progress
+  3-1-从复用盘点形成真实缺口的任务变更预览: done
   3-2-受治理编译三联与3c绑定并保留当前任务状态: backlog
   3-3-统一判定task来源及完整适用计划集合: backlog
   3-4-在chapter4细化生产契约与四部分实施定义: backlog

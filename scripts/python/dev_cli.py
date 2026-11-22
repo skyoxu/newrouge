@@ -20,7 +20,7 @@ import sys
 from pathlib import Path
 
 # The read-only command must not create bytecode even without Python -B.
-if len(sys.argv) > 1 and sys.argv[1] in {"b-route-preflight", "b-route-sources", "b-route-adoption"}:
+if len(sys.argv) > 1 and sys.argv[1] in {"b-route-preflight", "b-route-sources", "b-route-adoption", "b-route-task-preview"}:
     sys.dont_write_bytecode = True
 
 if __name__ == "__main__" and len(sys.argv) > 1 and sys.argv[1] == "b-route-sources":
@@ -30,6 +30,10 @@ if __name__ == "__main__" and len(sys.argv) > 1 and sys.argv[1] == "b-route-sour
 if __name__ == "__main__" and len(sys.argv) > 1 and sys.argv[1] == "b-route-adoption":
     from b_route_adoption import main as adoption_main
     raise SystemExit(adoption_main(sys.argv[2:]))
+
+if __name__ == "__main__" and len(sys.argv) > 1 and sys.argv[1] == "b-route-task-preview":
+    from preview_b_route_task_changes import main as task_preview_main
+    raise SystemExit(task_preview_main(sys.argv[2:]))
 
 from dev_cli_builders import (
     DEFAULT_GATE_BUNDLE_TASK_FILES,
@@ -54,6 +58,7 @@ from dev_cli_builders import (
     build_run_prototype_workflow_cmd,
     build_plan_capabilities_cmd,
     build_plan_mvg_cmd,
+    build_b_route_task_preview_cmd,
     build_quality_gates_cmd,
     build_run_dotnet_cmd,
     build_run_gdunit_full_cmd,
@@ -602,6 +607,13 @@ def cmd_refresh_knowledge(args: argparse.Namespace) -> int:
     return 2 if failed else 0
 
 
+def cmd_b_route_task_preview(args: argparse.Namespace) -> int:
+    """Run the read-only 3C B-route task-change preview CLI."""
+    from preview_b_route_task_changes import main as task_preview_main
+
+    return task_preview_main(build_b_route_task_preview_cmd(args)[3:])
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Dev CLI for Godot+C# template (AI-friendly entrypoint)",
@@ -619,6 +631,11 @@ def build_parser() -> argparse.ArgumentParser:
     adoption_parser = sub.add_parser("b-route-adoption", help="Explicit adoption review/prepare/commit/read; optional inspect/read context, no default B activation")
     from b_route_adoption import register_arguments as register_adoption_arguments
     register_adoption_arguments(adoption_parser)
+
+    task_preview_parser = sub.add_parser("b-route-task-preview", help="Read-only 3C reuse inventory and real-gap task-change preview; no write/apply")
+    from preview_b_route_task_changes import register_arguments as register_task_preview_arguments
+    register_task_preview_arguments(task_preview_parser)
+    task_preview_parser.set_defaults(func=cmd_b_route_task_preview)
 
     # run-ci-basic
     p_ci = sub.add_parser(
@@ -1171,6 +1188,10 @@ def main(argv: list[str] | None = None) -> int:
         sys.dont_write_bytecode = True
         from preflight_b_route_migration import main as preflight_main
         return preflight_main(arguments[1:])
+    if arguments and arguments[0] == "b-route-task-preview":
+        sys.dont_write_bytecode = True
+        from preview_b_route_task_changes import main as task_preview_main
+        return task_preview_main(arguments[1:])
     parser = build_parser()
     args = parser.parse_args(arguments)
     func = getattr(args, "func", None)

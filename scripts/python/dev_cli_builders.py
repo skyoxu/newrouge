@@ -850,3 +850,35 @@ def build_plan_mvg_cmd(args) -> list[str]:
         if args.change_plan:
             cmd += ["--change-plan", args.change_plan, "--out", args.handoff_out]
     return _runtime_arguments(args, cmd)
+
+
+def build_b_route_task_preview_cmd(args) -> list[str]:
+    if getattr(args, "write", False) or getattr(args, "apply", False):
+        raise ValueError("b-route-task-preview is strictly read-only and rejects write/apply flags")
+    cmd = [
+        sys.executable,
+        "-B",
+        str(Path(__file__).resolve().with_name("preview_b_route_task_changes.py")),
+    ]
+    for attr, flag in (
+        ("root", "--root"),
+        ("plan_id", "--plan-id"),
+        ("run_id", "--run-id"),
+        ("audit_ref", "--audit-ref"),
+        ("scope_id", "--scope-id"),
+    ):
+        value = getattr(args, attr, None)
+        if value is None or not str(value).strip():
+            raise ValueError(f"b-route-task-preview requires nonempty {flag}")
+        cmd += [flag, str(value)]
+    for attr, flag in (
+        ("protection_ref", "--protection-ref"),
+        ("manifest", "--manifest"),
+        ("change_intents", "--change-intents"),
+    ):
+        value = getattr(args, attr, None)
+        if value is not None:
+            if not str(value).strip():
+                raise ValueError(f"b-route-task-preview optional {flag} must be nonempty when provided")
+            cmd += [flag, str(value)]
+    return cmd

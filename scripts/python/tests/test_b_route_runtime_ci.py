@@ -34,7 +34,7 @@ class RuntimeCITests(unittest.TestCase):
                      'adoption', 'adoption_cli', 'adoption_concurrency', 'adoption_journal',
                      'adoption_projection', 'adoption_r10_capture', 'adoption_r10_reader',
                      'adoption_r19_reader', 'adoption_review', 'operation_leases',
-                     'operation_scope', 'public_context', 'qualified_public_context'):
+                     'operation_scope', 'public_context', 'qualified_public_context', 'task_preview'):
             selector = 'scripts.python.tests.test_b_route_' + name
             self.assertEqual(1, selected.count(selector))
             self.assertFalse(any(value.startswith(selector + '.') for value in selected))
@@ -243,6 +243,7 @@ class RuntimeCITests(unittest.TestCase):
             'scripts/python/_b_route_3b_segmented_input.py',
             'scripts/python/_b_route_3b_segmented_runtime.py',
             'scripts/python/b_route_adoption.py',
+            'scripts/python/preview_b_route_task_changes.py',
             'docs/workflows/llm-routing.json',
             'scripts/python/_capability_input_integrity.py',
             'scripts/sc/_llm_backend.py',

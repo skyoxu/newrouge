@@ -165,6 +165,7 @@ B_ROUTE_RUNTIME_DETERMINISTIC_TESTS = (
     "scripts.python.tests.test_b_route_operation_scope",
     "scripts.python.tests.test_b_route_public_context",
     "scripts.python.tests.test_b_route_qualified_public_context",
+    "scripts.python.tests.test_b_route_task_preview",
     "scripts.python.tests.test_inherited_pipe_cleanup",
     "scripts.python.tests.test_planning_main_audit_fixes.PlanningMainAuditFixesTests.test_interrupted_runner_terminates_and_reaps_real_child",
 )

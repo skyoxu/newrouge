@@ -47,6 +47,7 @@ on:
       - 'scripts/python/b_route_adoption.py'
       - 'scripts/python/account_b_route_sources.py'
       - 'scripts/python/preflight_b_route_migration.py'
+      - 'scripts/python/preview_b_route_task_changes.py'
       - 'scripts/python/inventory_b_route_baseline.py'
       - 'scripts/python/capture_b_route_protection.py'
       - 'scripts/python/validate_b_route_records.py'

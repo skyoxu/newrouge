@@ -1804,3 +1804,7 @@ Helper modules below are referenced directly by at least two included entry scri
 ## 显式 B 原生规划与正式 operation
 
 `dev_cli.py plan-capabilities|plan-mvg` 的显式 3B 路线与原直接脚本共用 owner；`b_route_adoption.py` 提供 review、prepare/reserve、commit/read 和原 operation 恢复。阶段参数、默认 runner、原 ID 续接和不同资格边界见[原生规划导航](b-route-native-planning-status.md)。此导航不授权调用或默认启用 B。
+
+## B 路线 3C 只读任务变更预览 owner
+
+`scripts/python/preview_b_route_task_changes.py` 是 `dev_cli.py b-route-task-preview` 的直接入口；`_b_route_task_preview.py` 唯一拥有 3C 只读复用盘点与任务变更预览编排。复用 `_b_route_commit.read_committed`、`_b_route_source_audit.verify_current_proof`、`_b_route_records.TaskJoinContext`、`_b_route_protection`、`_b_route_preflight.Observations` 与 `normalize_task_intents.py` 确定性规范化字段；输出 `view_deltas` 及同构 `binding_preview`（`stage="3C"`）/`origins_preview`，仅独占写全新 logs，不写三联或正式规划、不分配永久 Task ID。详见[3C 预览 owner 说明](b-route-task-preview.md)。
