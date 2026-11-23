@@ -171,6 +171,7 @@ B_ROUTE_RUNTIME_DETERMINISTIC_TESTS = (
     "scripts.python.tests.test_b_route_chapter4_binding",
     "scripts.python.tests.test_b_route_input_set",
     "scripts.python.tests.test_b_route_stage5_obligations",
+    "scripts.python.tests.test_b_route_chapter5_readiness",
     "scripts.python.tests.test_inherited_pipe_cleanup",
     "scripts.python.tests.test_planning_main_audit_fixes.PlanningMainAuditFixesTests.test_interrupted_runner_terminates_and_reaps_real_child",
 )

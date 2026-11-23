@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -113,6 +114,14 @@ def _canonical_payload_sha(payload: Any) -> str:
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
 
+def _maybe_b_route_readiness_module():
+    try:
+        import _b_route_chapter5_readiness as b_ch5
+        return b_ch5
+    except ImportError:
+        return None
+
+
 def chapter5_closure_evidence(
     root: Path,
     source_manifest: dict[str, Any],
@@ -124,6 +133,33 @@ def chapter5_closure_evidence(
     ledger_path: Path,
     semantics_path: Path,
 ) -> tuple[dict[str, Any], bool, str]:
+    b_ch5 = _maybe_b_route_readiness_module()
+    if b_ch5 is not None:
+        task_id_raw = str(readiness.get("task_id") or reconciliation.get("task_id") or "")
+        presence = b_ch5.detect_repo_b_route_presence(
+            root,
+            task_id_raw,
+            reconciliation=reconciliation,
+            readiness=readiness,
+        )
+        if presence["has_b_traces"]:
+            use_b_route = bool(presence["artifact_is_b_route"])
+            if not use_b_route:
+                if re.fullmatch(r"[1-9][0-9]*", task_id_raw) is None:
+                    return b_ch5.verify_b_route_closure_evidence(
+                        root,
+                        reconciliation=reconciliation,
+                        readiness=readiness,
+                    )
+                import _b_route_task_resolver as task_resolver
+                origin = task_resolver.resolve_task_origin(root, int(task_id_raw))
+                use_b_route = origin.get("route") in ("B", "blocked") or not origin.get("ok") or not origin.get("stable")
+            if use_b_route:
+                return b_ch5.verify_b_route_closure_evidence(
+                    root,
+                    reconciliation=reconciliation,
+                    readiness=readiness,
+                )
     errors: list[str] = []
     if reconciliation.get("schema_version") != CH5_RECONCILIATION_SCHEMA:
         errors.append("invalid_chapter5_reconciliation_schema")
@@ -855,17 +891,36 @@ def run(
     )
     reconciliation_path = reconciliation_path or (root / DEFAULT_CH5_RECONCILIATION_PATH)
     readiness_path = readiness_path or (root / DEFAULT_CH5_READINESS_PATH)
-    required = [
-        source_manifest_path, ledger_path, semantics_path, capabilities_path,
-        edges_path, candidates_path,
-    ]
-    if source == "chapter3":
-        required.append(report_path)
-        required.append(coverage_path)
-        if triplet_status == "passed":
-            required.append(triplet_attestation_path)
+    b_ch5 = _maybe_b_route_readiness_module()
+    b_route_pure_ch5 = False
+    if source == "chapter5" and b_ch5 is not None and reconciliation_path.is_file() and readiness_path.is_file():
+        rec_preview = load_json(reconciliation_path, {})
+        rdy_preview = load_json(readiness_path, {})
+        pres = b_ch5.detect_repo_b_route_presence(
+            root,
+            str(rdy_preview.get("task_id") or rec_preview.get("task_id") or "") if isinstance(rdy_preview, dict) and isinstance(rec_preview, dict) else None,
+            reconciliation=rec_preview if isinstance(rec_preview, dict) else None,
+            readiness=rdy_preview if isinstance(rdy_preview, dict) else None,
+        )
+        if pres["artifact_is_b_route"] or (
+            isinstance(rdy_preview, dict) and isinstance(rdy_preview.get("input_fingerprint"), str)
+        ):
+            b_route_pure_ch5 = True
+
+    if b_route_pure_ch5:
+        required = [reconciliation_path, readiness_path]
     else:
-        required.extend([reconciliation_path, readiness_path])
+        required = [
+            source_manifest_path, ledger_path, semantics_path, capabilities_path,
+            edges_path, candidates_path,
+        ]
+        if source == "chapter3":
+            required.append(report_path)
+            required.append(coverage_path)
+            if triplet_status == "passed":
+                required.append(triplet_attestation_path)
+        else:
+            required.extend([reconciliation_path, readiness_path])
     missing = [str(path) for path in required if not path.is_file()]
     if missing:
         reason = "partial Chapter closure: required refresh inputs are missing"
@@ -901,16 +956,27 @@ def run(
             "missing_inputs": missing,
         }
 
-    source_manifest = load_json(source_manifest_path, {})
-    ledger = load_json(ledger_path, {})
-    semantics = load_json(semantics_path, {})
-    capabilities = load_json(capabilities_path, {})
-    edges = load_json(edges_path, {})
-    candidates = load_json(candidates_path, {})
-    coverage = load_json(coverage_path, {}) if source == "chapter3" else {}
-    persisted_report = load_json(report_path, {}) if source == "chapter3" else {}
     reconciliation = load_json(reconciliation_path, {}) if source == "chapter5" else {}
     readiness = load_json(readiness_path, {}) if source == "chapter5" else {}
+    if b_route_pure_ch5 and b_ch5 is not None:
+        synth = b_ch5.synthesize_b_route_refresh_inputs(
+            root, reconciliation=reconciliation, readiness=readiness
+        )
+        source_manifest = load_json(source_manifest_path, synth["source_manifest"])
+        ledger = load_json(ledger_path, synth["ledger"])
+        semantics = load_json(semantics_path, synth["semantics"])
+        capabilities = load_json(capabilities_path, synth["capabilities"])
+        edges = load_json(edges_path, synth["edges"])
+        candidates = load_json(candidates_path, synth["candidates"])
+    else:
+        source_manifest = load_json(source_manifest_path, {})
+        ledger = load_json(ledger_path, {})
+        semantics = load_json(semantics_path, {})
+        capabilities = load_json(capabilities_path, {})
+        edges = load_json(edges_path, {})
+        candidates = load_json(candidates_path, {})
+    coverage = load_json(coverage_path, {}) if source == "chapter3" else {}
+    persisted_report = load_json(report_path, {}) if source == "chapter3" else {}
     triplet_attestation = (
         load_json(triplet_attestation_path, {})
         if source == "chapter3" and triplet_status == "passed"
@@ -983,11 +1049,19 @@ def run(
     stable_input_hash = None
     if source == "chapter5":
         input_fingerprint = reconciliation.get("input_fingerprint")
-        stable_input_hash = (
-            str(input_fingerprint.get("sha256") or "")
-            if isinstance(input_fingerprint, dict)
-            else ""
-        )
+        if isinstance(input_fingerprint, dict):
+            stable_input_hash = str(input_fingerprint.get("sha256") or "")
+        elif isinstance(input_fingerprint, str) and input_fingerprint.strip():
+            stable_input_hash = "sha256:" + _canonical_payload_sha({
+                "route": "B",
+                "input_fingerprint": input_fingerprint.strip(),
+                "applicable_set_digest": readiness.get("applicable_set_digest"),
+                "reconciliation_sha256": readiness.get("reconciliation_sha256"),
+                "readiness": readiness.get("readiness"),
+                "closure_allowed": readiness.get("closure_allowed"),
+            })
+        else:
+            stable_input_hash = ""
         if not stable_input_hash:
             stable_input_hash = "sha256:" + _canonical_payload_sha({
                 "source_revision": reconciliation.get("source_revision"),
@@ -997,6 +1071,32 @@ def run(
                 "closure_allowed": readiness.get("closure_allowed"),
             })
         attempt.setdefault("chapter_run", {})["stable_input_hash"] = stable_input_hash
+    # On b_route_pure_ch5 (str input_fingerprint), re-verify live B-route freshness before promoting/reusing CHAPTER5_STABLE_PATH.
+    if (
+        source == "chapter5"
+        and semantic_triplet_closure_passed
+        and (b_route_pure_ch5 or isinstance(readiness.get("input_fingerprint"), str))
+    ):
+        if b_ch5 is None:
+            semantic_triplet_closure_passed = False
+            closure_evidence_passed = False
+            closure_evidence_reason = "b_route_readiness_module_unavailable"
+        else:
+            re_report, re_ok, re_reason = b_ch5.verify_b_route_closure_evidence(
+                root,
+                reconciliation=reconciliation,
+                readiness=readiness,
+            )
+            if not re_ok:
+                report = re_report
+                semantic_triplet_closure_passed = False
+                closure_evidence_passed = False
+                closure_evidence_reason = re_reason
+                attempt["status"] = "concern"
+                attempt["fresh"] = False
+                attempt.setdefault("chapter_run", {})["closure_passed"] = False
+                attempt["chapter_run"]["closure_evidence_status"] = "blocked"
+                attempt["chapter_run"]["closure_evidence_reason"] = re_reason
     local_status = "skipped"
     attempt_written = False
     stable_snapshot = _snapshot_file(root / STABLE_PATH)
@@ -1083,6 +1183,34 @@ def run(
     if write_planning:
         if not closure_passed:
             planning_status = "blocked_by_closure"
+        elif b_route_pure_ch5 and any(
+            not p.is_file() for p in (ledger_path, semantics_path, capabilities_path, edges_path)
+        ):
+            missing_ch3 = [
+                p.as_posix()
+                for p in (ledger_path, semantics_path, capabilities_path, edges_path)
+                if not p.is_file()
+            ]
+            try:
+                _restore_file(root / STABLE_PATH, stable_snapshot)
+                if source == "chapter5":
+                    _restore_file(root / CHAPTER5_STABLE_PATH, chapter5_stable_snapshot)
+            except OSError:
+                pass
+            reason_msg = "b_route_pure_ch5_missing_legacy_ch3_topology_artifacts:" + ",".join(missing_ch3)
+            _mark_attempt_refresh_failure(
+                root, attempt, "planning_topology_refresh_failed", reason_msg
+            )
+            return _refresh_failure_summary(
+                root,
+                source=source,
+                trigger_run_id=trigger_run_id,
+                topology_revision=attempt.get("identity", {}).get("revision"),
+                semantic_triplet_closure_passed=True,
+                family="planning_topology_refresh_failed",
+                reason=reason_msg,
+                attempt_written=attempt_written,
+            )
         else:
             try:
                 copy_planning_artifacts(

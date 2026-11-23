@@ -1495,6 +1495,14 @@ def reconciliation_path_for_task(root: Path, task_id: str) -> Path:
     return root / DEFAULT_RECONCILIATION_DIR / f"task-{_canonical_task_id(task_id)}.json"
 
 
+def _maybe_b_route_readiness_module():
+    try:
+        import _b_route_chapter5_readiness as b_ch5
+        return b_ch5
+    except ImportError:
+        return None
+
+
 def validate_chapter5_evidence_freshness(
     root: Path,
     *,
@@ -1506,6 +1514,34 @@ def validate_chapter5_evidence_freshness(
     snapshot_path: Path | None = None,
     semantics_path: Path | None = None,
 ) -> tuple[bool, str]:
+    b_ch5 = _maybe_b_route_readiness_module()
+    if b_ch5 is not None:
+        presence = b_ch5.detect_repo_b_route_presence(
+            root,
+            task_id,
+            reconciliation=reconciliation,
+            readiness=readiness,
+        )
+        if presence["has_b_traces"]:
+            if presence["artifact_is_b_route"]:
+                return b_ch5.validate_b_route_readiness_freshness(
+                    root,
+                    task_id=task_id,
+                    reconciliation=reconciliation,
+                    readiness=readiness,
+                )
+            tid_str = _canonical_task_id(task_id)
+            if re.fullmatch(r"[1-9][0-9]*", tid_str) is None:
+                return False, "b_route_task_id_invalid:return_stage=5"
+            import _b_route_task_resolver as task_resolver
+            origin = task_resolver.resolve_task_origin(root, int(tid_str))
+            if origin.get("route") in ("B", "blocked") or not origin.get("ok") or not origin.get("stable"):
+                return b_ch5.validate_b_route_readiness_freshness(
+                    root,
+                    task_id=task_id,
+                    reconciliation=reconciliation,
+                    readiness=readiness,
+                )
     manifest_path = manifest_path or (root / DEFAULT_SOURCE_MANIFEST)
     ledger_path = ledger_path or (root / DEFAULT_SOURCE_LEDGER)
     snapshot_path = snapshot_path or (root / DEFAULT_EXTRACTION_SNAPSHOT)
@@ -1575,6 +1611,18 @@ def load_task_readiness(root: Path, task_id: str) -> tuple[bool, dict[str, Any],
     if (root / "docs/planning/semantic-topology/capability-apply.pending.json").is_file():
         return False, {}, "capability_apply_pending_recovery"
     path = readiness_path_for_task(root, task_id)
+    payload_preview = _load_json(path, {}) if path.is_file() else {}
+    b_ch5 = _maybe_b_route_readiness_module()
+    if b_ch5 is not None:
+        presence = b_ch5.detect_repo_b_route_presence(
+            root,
+            task_id,
+            readiness=payload_preview if isinstance(payload_preview, dict) else None,
+        )
+        if presence["has_b_traces"]:
+            bridged = b_ch5.load_b_route_task_readiness(root, task_id)
+            if bridged is not None:
+                return bridged
     payload = _load_json(path, {})
     if not path.is_file():
         return False, {}, "chapter5_readiness_missing"

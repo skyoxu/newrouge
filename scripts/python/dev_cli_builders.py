@@ -1010,3 +1010,47 @@ def build_b_route_stage5_obligations_cmd(args) -> list[str]:
             raise ValueError("b-route-stage5-obligations --request must be nonempty when provided")
         cmd += ["--request", str(request)]
     return cmd
+
+
+def build_b_route_chapter5_readiness_cmd(args) -> list[str]:
+    cmd = [
+        sys.executable,
+        "-B",
+        str(Path(__file__).resolve().with_name("reconcile_b_route_chapter5_readiness.py")),
+    ]
+    for attr, flag in (
+        ("root", "--root"),
+        ("stage", "--stage"),
+        ("task_id", "--task-id"),
+    ):
+        value = getattr(args, attr, None)
+        if value is None or not str(value).strip():
+            raise ValueError(f"b-route-chapter5-readiness requires nonempty {flag}")
+        cmd += [flag, str(value)]
+    for attr, flag in (
+        ("decisions", "--decisions"),
+        ("operation", "--operation"),
+        ("out", "--out"),
+        ("readiness_out", "--readiness-out"),
+        ("reconciliation", "--reconciliation"),
+        ("readiness", "--readiness"),
+        ("lock_mode", "--lock-mode"),
+    ):
+        value = getattr(args, attr, None)
+        if value is not None:
+            if not str(value).strip():
+                raise ValueError(f"b-route-chapter5-readiness optional {flag} must be nonempty when provided")
+            cmd += [flag, str(value)]
+    for audit_ref in getattr(args, "audit_ref", None) or []:
+        if not str(audit_ref).strip():
+            raise ValueError("b-route-chapter5-readiness --audit-ref entries must be nonempty")
+        cmd += ["--audit-ref", str(audit_ref)]
+    for attr, flag in (
+        ("no_latest", "--no-latest"),
+        ("dry_run", "--dry-run"),
+        ("record_technical_debt", "--record-technical-debt"),
+        ("require_full_audit_proof", "--require-full-audit-proof"),
+    ):
+        if getattr(args, attr, False):
+            cmd.append(flag)
+    return cmd

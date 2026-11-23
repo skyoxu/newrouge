@@ -35,7 +35,7 @@ class RuntimeCITests(unittest.TestCase):
                      'adoption_projection', 'adoption_r10_capture', 'adoption_r10_reader',
                      'adoption_r19_reader', 'adoption_review', 'operation_leases',
                      'operation_scope', 'public_context', 'qualified_public_context', 'task_preview',
-                     'task_compilation', 'task_resolver', 'chapter4_binding', 'input_set', 'stage5_obligations'):
+                     'task_compilation', 'task_resolver', 'chapter4_binding', 'input_set', 'stage5_obligations', 'chapter5_readiness'):
             selector = 'scripts.python.tests.test_b_route_' + name
             self.assertEqual(1, selected.count(selector))
             self.assertFalse(any(value.startswith(selector + '.') for value in selected))
@@ -250,6 +250,11 @@ class RuntimeCITests(unittest.TestCase):
             'scripts/python/refine_b_route_chapter4_binding.py',
             'scripts/python/resolve_b_route_input_set.py',
             'scripts/python/bind_b_route_stage5_obligations.py',
+            'scripts/python/reconcile_b_route_chapter5_readiness.py',
+            'scripts/python/_chapter5_contract_bindings.py',
+            'scripts/python/chapter5_semantic_reconciliation.py',
+            'scripts/python/refresh_chapter_knowledge.py',
+            'scripts/python/run_chapter5_guarded.py',
             'docs/workflows/llm-routing.json',
             'scripts/python/_capability_input_integrity.py',
             'scripts/sc/_llm_backend.py',
