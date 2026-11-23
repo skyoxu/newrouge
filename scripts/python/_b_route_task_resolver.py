@@ -409,7 +409,7 @@ def _inspect_pending(
                 if pending_allowed:
                     if not has_pub_sync_pending and pub_sync_raw is None:
                         continue
-                    if op.get("schema_version") == journal.CHAPTER4_BINDING_SCHEMA and pub_sync_raw is not None:
+                    if op.get("schema_version") in (journal.CHAPTER4_BINDING_SCHEMA, journal.STAGE5_OBLIGATIONS_SCHEMA) and pub_sync_raw is not None:
                         pub_doc = codec.strict_json_loads(pub_sync_raw)
                         if type(pub_doc) is dict and pub_doc.get("phase") == "applied":
                             continue

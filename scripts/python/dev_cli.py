@@ -20,7 +20,7 @@ import sys
 from pathlib import Path
 
 # The read-only command must not create bytecode even without Python -B.
-if len(sys.argv) > 1 and sys.argv[1] in {"b-route-preflight", "b-route-sources", "b-route-adoption", "b-route-task-preview", "b-route-task-compile", "b-route-task-origin", "b-route-chapter4-binding", "b-route-input-set"}:
+if len(sys.argv) > 1 and sys.argv[1] in {"b-route-preflight", "b-route-sources", "b-route-adoption", "b-route-task-preview", "b-route-task-compile", "b-route-task-origin", "b-route-chapter4-binding", "b-route-input-set", "b-route-stage5-obligations"}:
     sys.dont_write_bytecode = True
 
 if __name__ == "__main__" and len(sys.argv) > 1 and sys.argv[1] == "b-route-sources":
@@ -51,6 +51,10 @@ if __name__ == "__main__" and len(sys.argv) > 1 and sys.argv[1] == "b-route-inpu
     from resolve_b_route_input_set import main as input_set_main
     raise SystemExit(input_set_main(sys.argv[2:]))
 
+if __name__ == "__main__" and len(sys.argv) > 1 and sys.argv[1] == "b-route-stage5-obligations":
+    from bind_b_route_stage5_obligations import main as stage5_obligations_main
+    raise SystemExit(stage5_obligations_main(sys.argv[2:]))
+
 from dev_cli_builders import (
     DEFAULT_GATE_BUNDLE_TASK_FILES,
     build_check_directory_boundaries_cmd,
@@ -79,6 +83,7 @@ from dev_cli_builders import (
     build_b_route_task_origin_cmd,
     build_b_route_chapter4_binding_cmd,
     build_b_route_input_set_cmd,
+    build_b_route_stage5_obligations_cmd,
     build_quality_gates_cmd,
     build_run_dotnet_cmd,
     build_run_gdunit_full_cmd,
@@ -662,6 +667,13 @@ def cmd_b_route_input_set(args: argparse.Namespace) -> int:
     return input_set_main(build_b_route_input_set_cmd(args)[3:])
 
 
+def cmd_b_route_stage5_obligations(args: argparse.Namespace) -> int:
+    """Run the governed Stage-5 MVG obligations or legal other_verification binding CLI."""
+    from bind_b_route_stage5_obligations import main as stage5_obligations_main
+
+    return stage5_obligations_main(build_b_route_stage5_obligations_cmd(args)[3:])
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Dev CLI for Godot+C# template (AI-friendly entrypoint)",
@@ -704,6 +716,11 @@ def build_parser() -> argparse.ArgumentParser:
     from resolve_b_route_input_set import register_arguments as register_input_set_arguments
     register_input_set_arguments(input_set_parser)
     input_set_parser.set_defaults(func=cmd_b_route_input_set)
+
+    stage5_obligations_parser = sub.add_parser("b-route-stage5-obligations", help="Governed Stage-5 MVG obligations or legal other_verification binding (10 stages); no default B activation")
+    from bind_b_route_stage5_obligations import register_arguments as register_stage5_obligations_arguments
+    register_stage5_obligations_arguments(stage5_obligations_parser)
+    stage5_obligations_parser.set_defaults(func=cmd_b_route_stage5_obligations)
 
     # run-ci-basic
     p_ci = sub.add_parser(
@@ -1268,6 +1285,10 @@ def main(argv: list[str] | None = None) -> int:
         sys.dont_write_bytecode = True
         from resolve_b_route_input_set import main as input_set_main
         return input_set_main(arguments[1:])
+    if arguments and arguments[0] == "b-route-stage5-obligations":
+        sys.dont_write_bytecode = True
+        from bind_b_route_stage5_obligations import main as stage5_obligations_main
+        return stage5_obligations_main(arguments[1:])
     parser = build_parser()
     args = parser.parse_args(arguments)
     func = getattr(args, "func", None)

@@ -1,0 +1,682 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "newrouge.b-route-stage5-obligations-operation.v1",
+  "title": "Auxiliary governed Stage-5 MVG obligations or legal other_verification binding operation; not a formal record",
+  "$defs": {
+    "Digest": {
+      "$ref": "newrouge.b-route-common.v1#/$defs/Digest"
+    },
+    "String": {
+      "$ref": "newrouge.b-route-adoption-operation.v1#/$defs/String"
+    },
+    "Reference": {
+      "$ref": "newrouge.b-route-adoption-operation.v1#/$defs/Reference"
+    },
+    "References": {
+      "$ref": "newrouge.b-route-adoption-operation.v1#/$defs/References"
+    },
+    "ScopeIds": {
+      "$ref": "newrouge.b-route-adoption-operation.v1#/$defs/ScopeIds"
+    },
+    "StringList": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/String"
+      }
+    },
+    "TaskIdList": {
+      "type": "array",
+      "items": {
+        "$ref": "newrouge.b-route-common.v1#/$defs/PositiveInteger"
+      },
+      "uniqueItems": true
+    },
+    "ManifestDeltaSpec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "manifest_path",
+        "delta"
+      ],
+      "properties": {
+        "manifest_path": {
+          "$ref": "#/$defs/String"
+        },
+        "delta": {
+          "type": "object"
+        },
+        "expected_manifest_sha256": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Digest"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "ObligationSpec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "task_ids",
+        "requirement_ids",
+        "flow_ids",
+        "test_ids",
+        "category",
+        "responsibility",
+        "verification_refs"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/String"
+        },
+        "task_ids": {
+          "$ref": "#/$defs/TaskIdList",
+          "minItems": 1
+        },
+        "requirement_ids": {
+          "$ref": "#/$defs/StringList"
+        },
+        "flow_ids": {
+          "$ref": "#/$defs/StringList"
+        },
+        "test_ids": {
+          "$ref": "#/$defs/StringList"
+        },
+        "category": {
+          "enum": [
+            "existing_required",
+            "current_new",
+            "out_of_scope_future"
+          ]
+        },
+        "responsibility": {
+          "$ref": "#/$defs/String"
+        },
+        "verification_refs": {
+          "type": "array",
+          "items": {
+            "$ref": "newrouge.b-route-common.v1#/$defs/OwnedRef"
+          }
+        },
+        "exemption_rationale": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "exemption_basis": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "claimed_passed": {
+          "type": "boolean"
+        },
+        "skip_reverification": {
+          "type": "boolean"
+        },
+        "force_implement_now": {
+          "type": "boolean"
+        }
+      }
+    },
+    "FutureObligationSpec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "flow_id",
+        "reason"
+      ],
+      "properties": {
+        "flow_id": {
+          "$ref": "#/$defs/String"
+        },
+        "requirement_ids": {
+          "$ref": "#/$defs/StringList"
+        },
+        "reason": {
+          "$ref": "#/$defs/String"
+        },
+        "force_implement_now": {
+          "type": "boolean"
+        },
+        "claimed_passed": {
+          "type": "boolean"
+        }
+      }
+    },
+    "ImpactAnalysisSpec": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "touched_paths": {
+          "$ref": "#/$defs/StringList"
+        },
+        "touched_contracts": {
+          "$ref": "#/$defs/StringList"
+        },
+        "touched_tests": {
+          "$ref": "#/$defs/StringList"
+        },
+        "touched_consumer_chains": {
+          "$ref": "#/$defs/StringList"
+        },
+        "reverse_impact_known": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "unknown_impact_reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "cumulative_manifest_refs": {
+          "type": "array",
+          "items": {
+            "$ref": "newrouge.b-route-common.v1#/$defs/ManifestRef"
+          }
+        },
+        "future_obligations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/FutureObligationSpec"
+          }
+        }
+      }
+    },
+    "RoleHandoffSpec": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "declared_prerequisites": {
+          "type": "object",
+          "patternProperties": {
+            "^[0-9]+$": {
+              "$ref": "#/$defs/TaskIdList"
+            }
+          },
+          "additionalProperties": false
+        },
+        "require_self_done": {
+          "type": "boolean"
+        },
+        "require_integration_owner_api": {
+          "type": "boolean"
+        }
+      }
+    },
+    "ObligationRetirementSpec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "target_id",
+        "kind"
+      ],
+      "properties": {
+        "target_id": {
+          "$ref": "#/$defs/String"
+        },
+        "kind": {
+          "enum": [
+            "retire_obligation",
+            "remove_task_obligation",
+            "remove_test",
+            "remove_verification_ref",
+            "remove_manifest_ref",
+            "remove_requirement",
+            "remove_flow"
+          ]
+        },
+        "obligation_id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/String"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "authority_ref": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "authority_review": {
+          "anyOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "status": {
+                  "type": "string"
+                },
+                "rationale": {
+                  "type": "string"
+                }
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "ReportedCounts": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "unique_requirements": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "unique_routes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "unique_tests": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "unique_evidence": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "Request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "producer",
+        "operation_id",
+        "plan_id",
+        "scope_id",
+        "obligations"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "newrouge.b-route-stage5-obligations-request.v1"
+        },
+        "producer": {
+          "const": "stage5_obligations"
+        },
+        "operation_id": {
+          "$ref": "newrouge.b-route-common.v1#/$defs/FileId"
+        },
+        "plan_id": {
+          "$ref": "newrouge.b-route-common.v1#/$defs/FileId"
+        },
+        "scope_id": {
+          "$ref": "newrouge.b-route-common.v1#/$defs/BusinessId"
+        },
+        "manifest_refs": {
+          "type": "array",
+          "items": {
+            "$ref": "newrouge.b-route-common.v1#/$defs/ManifestRef"
+          }
+        },
+        "other_verification_refs": {
+          "type": "array",
+          "items": {
+            "$ref": "newrouge.b-route-common.v1#/$defs/OwnedRef"
+          }
+        },
+        "manifest_deltas": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ManifestDeltaSpec"
+          }
+        },
+        "obligations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ObligationSpec"
+          }
+        },
+        "impact_analysis": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ImpactAnalysisSpec"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "role_handoff_checks": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RoleHandoffSpec"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "obligation_retirements": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ObligationRetirementSpec"
+          }
+        },
+        "expected_manifest_sha256": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/Digest"
+          }
+        },
+        "reported_counts": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ReportedCounts"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "Allocations": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "plan_id",
+        "plan_revision",
+        "binding_revision",
+        "origins_revision",
+        "task_definitions"
+      ],
+      "properties": {
+        "plan_id": {
+          "$ref": "newrouge.b-route-common.v1#/$defs/FileId"
+        },
+        "plan_revision": {
+          "$ref": "newrouge.b-route-common.v1#/$defs/PositiveInteger"
+        },
+        "binding_revision": {
+          "$ref": "newrouge.b-route-common.v1#/$defs/PositiveInteger"
+        },
+        "origins_revision": {
+          "$ref": "newrouge.b-route-common.v1#/$defs/PositiveInteger"
+        },
+        "task_definitions": {
+          "type": "object",
+          "patternProperties": {
+            "^[0-9]+$": {
+              "$ref": "#/$defs/Digest"
+            }
+          },
+          "additionalProperties": false
+        }
+      }
+    },
+    "Target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "schema_version",
+        "before_raw_digest",
+        "after_payload",
+        "after_raw_digest",
+        "verification_mode"
+      ],
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/String"
+        },
+        "schema_version": {
+          "$ref": "#/$defs/String"
+        },
+        "before_raw_digest": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/Digest"
+            }
+          ]
+        },
+        "after_payload": {
+          "type": [
+            "object",
+            "array"
+          ]
+        },
+        "after_raw_digest": {
+          "$ref": "#/$defs/Digest"
+        },
+        "verification_mode": {
+          "const": "immutable_bytes"
+        }
+      }
+    },
+    "PublicSyncEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "kind",
+        "before_sha256",
+        "before_base64",
+        "after_sha256",
+        "after_base64"
+      ],
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/String"
+        },
+        "kind": {
+          "const": "mvg_manifest"
+        },
+        "before_sha256": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/Digest"
+            }
+          ]
+        },
+        "before_base64": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string"
+            }
+          ]
+        },
+        "after_sha256": {
+          "$ref": "#/$defs/Digest"
+        },
+        "after_base64": {
+          "type": "string"
+        }
+      }
+    },
+    "BindingMeta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "plan_id",
+        "scope_id",
+        "prior_binding_ref",
+        "plan_ref",
+        "current_catalog_digest",
+        "current_frame_digest",
+        "old_scope_ids",
+        "new_scope_ids",
+        "has_public_changes",
+        "public_sync_entries",
+        "task_input_set_digests"
+      ],
+      "properties": {
+        "plan_id": {
+          "$ref": "newrouge.b-route-common.v1#/$defs/FileId"
+        },
+        "scope_id": {
+          "$ref": "newrouge.b-route-common.v1#/$defs/BusinessId"
+        },
+        "prior_binding_ref": {
+          "$ref": "newrouge.b-route-common.v1#/$defs/BindingRef"
+        },
+        "plan_ref": {
+          "$ref": "newrouge.b-route-common.v1#/$defs/PlanRef"
+        },
+        "current_catalog_digest": {
+          "$ref": "#/$defs/Digest"
+        },
+        "current_frame_digest": {
+          "$ref": "#/$defs/Digest"
+        },
+        "old_scope_ids": {
+          "$ref": "#/$defs/ScopeIds"
+        },
+        "new_scope_ids": {
+          "$ref": "#/$defs/ScopeIds"
+        },
+        "has_public_changes": {
+          "type": "boolean"
+        },
+        "public_sync_entries": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PublicSyncEntry"
+          }
+        },
+        "task_input_set_digests": {
+          "type": "object",
+          "patternProperties": {
+            "^[0-9]+$": {
+              "$ref": "#/$defs/Digest"
+            }
+          },
+          "additionalProperties": false
+        }
+      }
+    },
+    "Frozen": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "producer",
+        "request",
+        "allocations",
+        "scope_ids",
+        "authority_refs",
+        "targets",
+        "binding_meta"
+      ],
+      "properties": {
+        "producer": {
+          "const": "stage5_obligations"
+        },
+        "request": {
+          "$ref": "#/$defs/Request"
+        },
+        "allocations": {
+          "$ref": "#/$defs/Allocations"
+        },
+        "scope_ids": {
+          "$ref": "#/$defs/ScopeIds"
+        },
+        "authority_refs": {
+          "$ref": "#/$defs/References"
+        },
+        "targets": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "$ref": "#/$defs/Target"
+          }
+        },
+        "binding_meta": {
+          "$ref": "#/$defs/BindingMeta"
+        }
+      }
+    }
+  },
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "codec_version",
+    "operation_id",
+    "state",
+    "request_raw_base64",
+    "request_raw_digest",
+    "request_digest",
+    "frozen",
+    "frozen_digest"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "newrouge.b-route-stage5-obligations-operation.v1"
+    },
+    "codec_version": {
+      "type": "string"
+    },
+    "operation_id": {
+      "$ref": "newrouge.b-route-common.v1#/$defs/FileId"
+    },
+    "state": {
+      "enum": [
+        "prepared",
+        "reserved"
+      ]
+    },
+    "request_raw_base64": {
+      "type": "string"
+    },
+    "request_raw_digest": {
+      "$ref": "#/$defs/Digest"
+    },
+    "request_digest": {
+      "$ref": "#/$defs/Digest"
+    },
+    "frozen": {
+      "$ref": "#/$defs/Frozen"
+    },
+    "frozen_digest": {
+      "$ref": "#/$defs/Digest"
+    }
+  }
+}

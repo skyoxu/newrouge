@@ -576,6 +576,62 @@ def validate_operations(operations):
             require(set(minimum) <= set(frozen['scope_ids']), 'complete owned resource scope',
                     operation['operation_id'], codec.ReasonCode.PENDING)
             continue
+        if operation['schema_version'] == journal.STAGE5_OBLIGATIONS_SCHEMA:
+            journal._operation_schema(frozen, 'Frozen')
+            allocation = frozen['allocations']
+            codec.validate_business_id(allocation['plan_id'])
+            for field in ('plan_revision', 'binding_revision', 'origins_revision'):
+                codec._positive_integer(allocation[field], codec.Stage.CONTENT)
+            require(type(allocation['task_definitions']) is dict, 'joined Task definition claims', 'task_definitions')
+            for task_id, digest in allocation['task_definitions'].items():
+                require(type(task_id) is str and task_id.isascii() and task_id.isdecimal()
+                        and str(codec.validate_task_id(int(task_id))) == task_id,
+                        'canonical existing Task ID key', task_id, codec.ReasonCode.INVALID_TYPE)
+                require(digest_validator.is_valid(digest), 'shared strict digest', task_id, codec.ReasonCode.INVALID_DIGEST)
+            binding_count = 0
+            origins_count = 0
+            for target in frozen['targets']:
+                mode = target.get('verification_mode')
+                path = target['path']
+                require(mode == 'immutable_bytes', 'immutable_bytes for stage5_obligations', mode,
+                        codec.ReasonCode.INVALID_ENUM)
+                payload = target['after_payload']
+                checked = records.validate_record(payload, path=path)
+                if not checked.ok:
+                    raise codec.CodecError(checked.diagnostic)
+                require(payload['schema_version'] == target['schema_version'],
+                        'known exact target schema', path)
+                if payload['schema_version'] == BINDING:
+                    binding_count += 1
+                    require(payload['plan_id'] == allocation['plan_id']
+                            and type(payload['binding_revision']) is int
+                            and payload['binding_revision'] == allocation['binding_revision']
+                            and payload.get('stage') == '5',
+                            'typed stage=5 binding allocation reflected in target', operation['operation_id'])
+                elif payload['schema_version'] == 'newrouge.b-route-origins.v1':
+                    origins_count += 1
+                    require(type(payload['revision']) is int
+                            and payload['revision'] == allocation['origins_revision'],
+                            'typed origins allocation reflected in target', operation['operation_id'])
+                else:
+                    fail(codec.ReasonCode.SCHEMA_MISMATCH,
+                         'binding or origins immutable target for stage5_obligations', payload['schema_version'],
+                         operation_id=operation['operation_id'])
+            require(binding_count == 1 and origins_count == 1,
+                    'one stage=5 binding and one origins target for stage5_obligations',
+                    operation['operation_id'])
+            public_sync_paths = [
+                entry['path']
+                for entry in frozen['binding_meta'].get('public_sync_entries', [])
+            ]
+            minimum = resource_scopes(
+                target_paths=[row['path'] for row in frozen['targets']] + public_sync_paths,
+                plan_ids=[allocation['plan_id']],
+                task_ids=[int(k) for k in allocation['task_definitions']],
+            )
+            require(set(minimum) <= set(frozen['scope_ids']), 'complete owned resource scope',
+                    operation['operation_id'], codec.ReasonCode.PENDING)
+            continue
         if operation['schema_version'] == journal.COMPENSATION_SCHEMA:
             import _b_route_compensation as compensation
             journal._operation_schema(frozen, 'Frozen')

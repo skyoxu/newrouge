@@ -37,6 +37,7 @@ from typing import Any, Callable, Iterator
 import _b_route_adoption_review as adoption_review
 import _b_route_chapter4_binding as ch4_binding
 import _b_route_codec as codec
+import _b_route_commit as commit
 import _b_route_inventory as inventory
 import _b_route_operation_scope as op_scope
 import _b_route_preflight as preflight
@@ -67,6 +68,34 @@ AUTHORIZATION_FLAGS = {
 _ADR_ID_RE = re.compile(r"^ADR-\d{4}$", re.IGNORECASE)
 _DIGEST_RE = re.compile(r"^sha256:[0-9a-f]{64}$")
 _POS_INT_STR_RE = re.compile(r"^[1-9][0-9]*$")
+_STAGE5_OBL_PREFIX = "stage5:obl:v1|"
+
+
+def _parse_stage5_non_catalog_flows(responsibility: Any) -> list[str]:
+    """Extract non_catalog_flow_ids from a Stage-5 obligation tag if present."""
+    if type(responsibility) is not str:
+        return []
+    s4_marker = " | " + ch4_binding.STAGE4_OBL_PREFIX
+    s4_idx = responsibility.find(s4_marker)
+    before_s4 = responsibility[:s4_idx] if s4_idx >= 0 else responsibility
+    s5_marker = " | " + _STAGE5_OBL_PREFIX
+    idx = before_s4.find(s5_marker)
+    if idx >= 0:
+        payload = before_s4[idx + len(s5_marker) :].strip()
+    elif before_s4.startswith(_STAGE5_OBL_PREFIX):
+        payload = before_s4[len(_STAGE5_OBL_PREFIX) :].strip()
+    else:
+        return []
+    try:
+        parsed = codec.strict_json_loads(payload)
+    except codec.CodecError:
+        return []
+    if type(parsed) is not dict:
+        return []
+    raw_flows = parsed.get("non_catalog_flow_ids")
+    if type(raw_flows) is not list:
+        return []
+    return [fid for fid in raw_flows if type(fid) is str and fid.strip()]
 
 _ITEM_REQUIRED_KEYS = frozenset(
     {
@@ -535,23 +564,47 @@ def compare_input_sets(baseline: dict[str, Any], current: dict[str, Any]) -> dic
         b_row = base_map.get(key)
         c_row = curr_map.get(key)
         if b_row is None and c_row is not None:
+            add_stage = c_row["return_stage"]
+            if cat == "flow_peer_task":
+                # Flow peer membership enters the InputSet strictly via Stage-5 MVG manifests.
+                add_stage = "5"
+            elif cat == "dependency_producer" and loc.startswith("dependency_producer:task:"):
+                tid_str = loc.split(":", 2)[2]
+                fp_key = ("flow_peer_task", f"flow_peer:task:{tid_str}")
+                dt_key = ("dependency_task", f"dependency:task:{tid_str}")
+                if fp_key in curr_map and fp_key not in base_map and dt_key not in curr_map:
+                    add_stage = "5"
             invalidated.append(
                 {
                     "category": cat,
                     "locator": loc,
                     "change_kind": "added",
-                    "return_stage": c_row["return_stage"],
+                    "return_stage": add_stage,
                     "baseline_digest": None,
                     "current_digest": c_row["normalized_digest"],
                 }
             )
         elif b_row is not None and c_row is None:
+            rem_stage = b_row["return_stage"]
+            if cat == "flow_peer_task":
+                rem_stage = "5"
+            elif cat == "dependency_producer" and loc.startswith("dependency_producer:task:"):
+                tid_str = loc.split(":", 2)[2]
+                fp_key = ("flow_peer_task", f"flow_peer:task:{tid_str}")
+                dt_key = ("dependency_task", f"dependency:task:{tid_str}")
+                if fp_key in base_map and fp_key not in curr_map and dt_key not in base_map:
+                    rem_stage = "5"
+            elif cat == "stage4_obligation_meta" and loc.startswith("stage4_obligation_meta:"):
+                pid = loc.split(":", 1)[1]
+                curr_b = curr_map.get(("binding", f"binding:{pid}"))
+                if curr_b is not None and curr_b.get("details", {}).get("stage") == "5":
+                    rem_stage = "5"
             invalidated.append(
                 {
                     "category": cat,
                     "locator": loc,
                     "change_kind": "removed",
-                    "return_stage": b_row["return_stage"],
+                    "return_stage": rem_stage,
                     "baseline_digest": b_row["normalized_digest"],
                     "current_digest": None,
                 }
@@ -573,7 +626,7 @@ def compare_input_sets(baseline: dict[str, Any], current: dict[str, Any]) -> dic
                 b_stage = b_row["return_stage"]
                 c_stage = c_row["return_stage"]
                 if (
-                    cat in ("binding", "task_origins", "dependency_producer")
+                    cat in ("binding", "task_origins", "dependency_producer", "stage4_obligation_meta")
                     and STAGE_RANK[c_stage] > STAGE_RANK[b_stage]
                 ):
                     stage = c_stage
@@ -855,9 +908,35 @@ def _observe_owned_ref_items(
     items: dict[tuple[str, str], dict[str, Any]],
     sealed_log_paths: set[str],
     entity_id: str,
+    candidate_overlay: dict[str, bytes] | None = None,
 ) -> list[tuple[str, bytes | None, str]]:
     """Verify an OwnedRef (live non-log bytes + receipt-sealed clean-clone logs) and emit InputSet items."""
     owner, ref_str, declared_rows = _validate_owned_ref_syntax(ref, entity_id=entity_id)
+    pre_sync = commit._READ_PRESYNC_BYTES.get() if committed else None
+    active_overlay: dict[str, bytes] | None = (
+        candidate_overlay if (not committed and candidate_overlay) else (pre_sync if pre_sync else None)
+    )
+
+    def _read_effective(rel_p: str, *, optional: bool = False) -> bytes | None:
+        norm = preflight.path(rel_p)
+        if active_overlay and norm in active_overlay:
+            return active_overlay[norm]
+        return observations.read(norm, optional=optional)
+
+    def _verify_effective_owned(target_ref: dict[str, Any]) -> None:
+        if active_overlay and any(preflight.path(f["path"]) in active_overlay for f in target_ref["files"]):
+            def _rb(rel_p: str) -> bytes:
+                norm = preflight.path(rel_p)
+                if norm in active_overlay:
+                    return active_overlay[norm]
+                return observations.read(norm)
+
+            def _contracts() -> dict[str, bytes]:
+                return records._Bytes(active_overlay, observations.root).contracts()
+
+            record_owners.resolve_owned_ref(target_ref, read_bytes=_rb, contract_sources=_contracts)
+            return
+        preflight.owned(target_ref, observations)
 
     def _put_item(
         rel: str,
@@ -883,10 +962,11 @@ def _observe_owned_ref_items(
         )
 
     if owner == "contract":
-        preflight.owned(ref, observations)
+        _verify_effective_owned(ref)
         observed_files: list[tuple[str, bytes | None, str]] = []
         for rel, expected_dg in declared_rows:
-            raw = observations.read(rel)
+            raw = _read_effective(rel)
+            assert raw is not None
             actual_dg = codec.raw_digest(raw)
             if actual_dg != expected_dg:
                 _fail(
@@ -904,13 +984,13 @@ def _observe_owned_ref_items(
     raw_by_rel: dict[str, bytes | None] = {}
     for rel, _expected_dg in declared_rows:
         can_seal = allow_sealed_logs and rel.startswith("logs/")
-        raw_by_rel[rel] = observations.read(rel, optional=can_seal)
+        raw_by_rel[rel] = _read_effective(rel, optional=can_seal)
 
     all_present = all(raw is not None for raw in raw_by_rel.values())
     if all_present:
         # Full resolve_owned_ref verification (including JSON Pointer / line-range / native record)
         # whenever all declared files exist on disk, even for logs/ references.
-        preflight.owned(ref, observations)
+        _verify_effective_owned(ref)
 
     observed_files = []
     for rel, expected_dg in declared_rows:
@@ -957,6 +1037,7 @@ def _validate_mvg_manifest_decoupled(
     observations: preflight.Observations,
     master_tasks: dict[int, dict[str, Any]],
     entity_id: str,
+    candidate_overlay: dict[str, bytes] | None = None,
 ) -> tuple[dict[str, Any], str]:
     """Validate MVG manifest structure, flows, tests, files, and Task existence decoupled from live Task status."""
     doc = codec.strict_json_loads(manifest_raw)
@@ -1014,6 +1095,8 @@ def _validate_mvg_manifest_decoupled(
         norm = preflight.path(rel_path)
         if norm == resolver.TRIPLET["master"]:
             return decoupled_tasks_bytes
+        if candidate_overlay and norm in candidate_overlay:
+            return candidate_overlay[norm]
         return observations.read(norm, optional=True)
 
     errors = mvg_manifest.validate_manifest(root, doc, executable=False, read_bytes=_observed_read)
@@ -1464,11 +1547,15 @@ def _validate_and_load_candidate_binding(
     loaded_plans: dict[str, dict[str, Any]],
     catalog: dict[str, Any],
     task_join: records.TaskJoinContext,
+    candidate_overlay: dict[str, bytes] | None = None,
 ) -> tuple[str, bytes, dict[str, Any], dict[str, Any], dict[str, Any]]:
     """Strictly validate an explicit uncommitted candidate binding and verify plan_ref + OwnedRefs."""
     entity_id = str(task_id)
     cand_rel = preflight.path(candidate_binding_path)
-    cand_raw = observations.read(cand_rel)
+    if candidate_overlay and cand_rel in candidate_overlay:
+        cand_raw = candidate_overlay[cand_rel]
+    else:
+        cand_raw = observations.read(cand_rel)
     checked = records.validate_record(cand_raw, path=None)
     if not checked.ok:
         raise codec.CodecError(checked.diagnostic)
@@ -1627,7 +1714,19 @@ def _validate_and_load_candidate_binding(
     # (allow_sealed_logs=False: absent clean-clone logs/ are strictly disallowed on candidates).
     for child in records._walk(cand_doc):
         if type(child) is dict and set(child) == {"owner", "ref", "files"}:
-            preflight.owned(child, observations)
+            if candidate_overlay and any(preflight.path(f["path"]) in candidate_overlay for f in child["files"]):
+                def _rb_cand(rel_p: str) -> bytes:
+                    norm = preflight.path(rel_p)
+                    if norm in candidate_overlay:
+                        return candidate_overlay[norm]
+                    return observations.read(norm)
+
+                def _contracts_cand() -> dict[str, bytes]:
+                    return records._Bytes(candidate_overlay, observations.root).contracts()
+
+                record_owners.resolve_owned_ref(child, read_bytes=_rb_cand, contract_sources=_contracts_cand)
+            else:
+                preflight.owned(child, observations)
 
     cand_ref = {
         "path": cand_rel,
@@ -1976,6 +2075,7 @@ def _resolve_once(
     baseline_arg: dict[str, Any] | str | Path | None,
     lock_mode: str,
     before_reread: Callable[[], None] | None,
+    candidate_overlay: dict[str, bytes] | None = None,
 ) -> tuple[dict[str, Any], bool]:
     """Run one pure read-only InputSet resolution pass. Returns (result, is_drift)."""
     result = _base_result(task_id, operation, lock_mode=lock_mode)
@@ -2229,6 +2329,7 @@ def _resolve_once(
                     loaded_plans=pre_loaded_plans,
                     catalog=catalog,
                     task_join=task_join,
+                    candidate_overlay=candidate_overlay,
                 )
                 effective_bindings[cand_doc["plan_id"]] = (cand_ref, cand_raw, cand_doc, cand_mapping, False)
                 uses_cand = True
@@ -2507,8 +2608,6 @@ def _resolve_once(
                         for o in s4_sem.get("obligations", [])
                         if o.get("stage4_meta")
                     ]
-                    if obl_s4_meta:
-                        s4_norm["obligation_stage4_meta"] = obl_s4_meta
                     items[("stage4_semantics", f"stage4_semantics:{pid}")] = _make_item(
                         category="stage4_semantics",
                         locator=f"stage4_semantics:{pid}",
@@ -2520,6 +2619,18 @@ def _resolve_once(
                         committed=is_committed,
                         details={"plan_id": pid, "stage": b_stage, "binding_revision": bdoc["binding_revision"]},
                     )
+                    if obl_s4_meta:
+                        items[("stage4_obligation_meta", f"stage4_obligation_meta:{pid}")] = _make_item(
+                            category="stage4_obligation_meta",
+                            locator=f"stage4_obligation_meta:{pid}",
+                            raw_digest=codec.raw_digest(_json_raw_bytes(obl_s4_meta)),
+                            normalization_mode="stage4_obligation_meta_projection",
+                            codec_version=codec.CODEC_VERSION,
+                            normalized_digest=codec.canonical_digest(obl_s4_meta),
+                            return_stage="5" if b_stage == "5" else "4",
+                            committed=is_committed,
+                            details={"plan_id": pid, "stage": b_stage, "binding_revision": bdoc["binding_revision"]},
+                        )
 
                 # Harvest OwnedRefs from implementation_objects, obligations, manifest_refs, other_verification_refs.
                 for obj in bdoc["implementation_objects"]:
@@ -2546,13 +2657,17 @@ def _resolve_once(
                                 items=items,
                                 sealed_log_paths=sealed_log_paths,
                                 entity_id=entity_id,
+                                candidate_overlay=candidate_overlay if not is_committed else None,
                             )
 
                 obl_by_id = {o["id"]: o for o in bdoc["obligations"]}
                 for obl_id in mapping["obligation_ids"]:
                     obl = obl_by_id[obl_id]
+                    s5_non_cat_flows = _parse_stage5_non_catalog_flows(obl.get("responsibility", ""))
                     binding_flows_by_plan.setdefault(pid, set()).update(obl["flow_ids"])
+                    binding_flows_by_plan.setdefault(pid, set()).update(s5_non_cat_flows)
                     applicable_flows_from_bindings.update(obl["flow_ids"])
+                    applicable_flows_from_bindings.update(s5_non_cat_flows)
                     applicable_reqs_from_bindings.update(obl["requirement_ids"])
                     applicable_reqs_by_plan.setdefault(pid, set()).update(obl["requirement_ids"])
                     for vref in obl.get("verification_refs", []):
@@ -2579,6 +2694,7 @@ def _resolve_once(
                                 items=items,
                                 sealed_log_paths=sealed_log_paths,
                                 entity_id=entity_id,
+                                candidate_overlay=candidate_overlay if not is_committed else None,
                             )
 
                 for mref in bdoc.get("manifest_refs", []):
@@ -2662,6 +2778,7 @@ def _resolve_once(
             # so duplicate manifest_refs never reset normalization_mode to raw_bytes or flip committed=False to True.
             manifest_temp_items: dict[tuple[str, str], dict[str, Any]] = {}
             manifest_obs_by_rel: dict[str, tuple[bytes, str]] = {}
+            manifest_has_candidate: set[str] = set()
             manifest_committed_by_rel: dict[str, list[bool]] = {}
             binding_manifest_paths_by_plan: dict[str, set[str]] = {}
             for m_pid, mref, is_committed in manifest_refs_collected:
@@ -2676,11 +2793,16 @@ def _resolve_once(
                     items=manifest_temp_items,
                     sealed_log_paths=sealed_log_paths,
                     entity_id=entity_id,
+                    candidate_overlay=candidate_overlay if not is_committed else None,
                 )
                 for m_rel, m_raw, m_raw_dg in obs_list:
                     if m_raw is None:
                         continue
-                    manifest_obs_by_rel.setdefault(m_rel, (m_raw, m_raw_dg))
+                    if not is_committed:
+                        manifest_obs_by_rel[m_rel] = (m_raw, m_raw_dg)
+                        manifest_has_candidate.add(m_rel)
+                    elif m_rel not in manifest_has_candidate:
+                        manifest_obs_by_rel.setdefault(m_rel, (m_raw, m_raw_dg))
                     manifest_committed_by_rel.setdefault(m_rel, []).append(bool(is_committed))
                     binding_manifest_paths_by_plan.setdefault(m_pid, set()).add(m_rel)
 
@@ -2696,6 +2818,7 @@ def _resolve_once(
                     observations=observations,
                     master_tasks=master_tasks,
                     entity_id=entity_id,
+                    candidate_overlay=None if combined_committed else candidate_overlay,
                 )
                 m_norm_payload = {
                     "manifest_sha256": m_sha,
@@ -2782,6 +2905,7 @@ def _resolve_once(
                     items=items,
                     sealed_log_paths=sealed_log_paths,
                     entity_id=entity_id,
+                    candidate_overlay=candidate_overlay if not is_committed else None,
                 )
 
             # Cross-plan dependency / producer projections for dependency tasks and Flow handoff peers.
@@ -2844,6 +2968,7 @@ def _resolve_once(
                                         items=items,
                                         sealed_log_paths=sealed_log_paths,
                                         entity_id=entity_id,
+                                        candidate_overlay=candidate_overlay if not b_is_comm else None,
                                     )
                         if pbdoc["stage"] in STAGE_RANK and STAGE_RANK[pbdoc["stage"]] > STAGE_RANK[peer_max_stage]:
                             peer_max_stage = pbdoc["stage"]
@@ -2886,6 +3011,7 @@ def _resolve_once(
                                         items=items,
                                         sealed_log_paths=sealed_log_paths,
                                         entity_id=entity_id,
+                                        candidate_overlay=candidate_overlay,
                                     )
                         if (
                             cand_doc_active["stage"] in STAGE_RANK
@@ -3203,6 +3329,7 @@ def resolve_input_set(
     *,
     operation: str | None = None,
     candidate_binding: str | Path | None = None,
+    candidate_overlay: dict[str, bytes] | None = None,
     baseline: dict[str, Any] | str | Path | None = None,
     max_attempts: int = DEFAULT_MAX_ATTEMPTS,
     before_reread: Callable[..., None] | None = None,
@@ -3210,6 +3337,7 @@ def resolve_input_set(
     """Pure read-only zero-write InputSet resolver with bounded re-read against transient drift."""
     validated_tid: int | None = None
     validated_op: str | None = None
+    norm_overlay: dict[str, bytes] | None = None
     try:
         root_path = resolver._validate_root(Path(root))
         validated_tid = codec.validate_task_id(task_id)
@@ -3219,6 +3347,11 @@ def resolve_input_set(
         if candidate_binding is not None:
             cand_raw_str = str(candidate_binding).replace("\\", "/")
             cand_str = preflight.path(cand_raw_str)
+        if candidate_overlay is not None:
+            norm_overlay = {
+                preflight.path(str(k).replace("\\", "/")): v
+                for k, v in candidate_overlay.items()
+            }
     except codec.CodecError as error:
         res = _base_result(validated_tid, validated_op, lock_mode="none")
         diag = error.diagnostic.to_dict()
@@ -3246,6 +3379,7 @@ def resolve_input_set(
             baseline_arg=baseline,
             lock_mode="none",
             before_reread=hook,
+            candidate_overlay=norm_overlay,
         )
         res["read_attempts"] = attempt
         last_result = res

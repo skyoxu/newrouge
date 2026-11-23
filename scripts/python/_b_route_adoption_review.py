@@ -231,6 +231,7 @@ def policy_observations():
         '_b_route_task_resolver.py',
         '_b_route_chapter4_binding.py',
         '_b_route_input_set.py',
+        '_b_route_stage5_obligations.py',
     )
     resolved_paths = {name: _script_file(name) for name in names}
     for name, file_path in resolved_paths.items():

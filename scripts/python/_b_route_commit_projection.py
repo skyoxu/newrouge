@@ -68,7 +68,7 @@ def _head_selections(current_catalog, receipt, *, frozen=None):
         _require(len(replacements[field]) == len(refs),
                  'one target revision per family and identity', field)
     compensation = frozen is not None and frozen.get('producer') == 'compensation'
-    task_comp = frozen is not None and frozen.get('producer') in ('task_compilation', 'chapter4_binding')
+    task_comp = frozen is not None and frozen.get('producer') in ('task_compilation', 'chapter4_binding', 'stage5_obligations')
     shared_container_scopes = set()
     if task_comp:
         import _b_route_operation_scope

@@ -98,6 +98,10 @@ def _is_chapter4_binding(envelope):
     return envelope['schema_version'] == journal.CHAPTER4_BINDING_SCHEMA
 
 
+def _is_stage5_obligations(envelope):
+    return envelope['schema_version'] == journal.STAGE5_OBLIGATIONS_SCHEMA
+
+
 def _has_projection_targets(envelope):
     return _is_task_compilation(envelope) or (
         _is_chapter4_binding(envelope)
@@ -415,6 +419,12 @@ def _verify_observations(root, envelope, intent, *, published=False, initial=Fal
         _validated_local_facts(root, envelope, intent, facts, initial=initial)
         _capture_boundary(root, envelope, intent, facts)
         return
+    if _is_stage5_obligations(envelope):
+        import _b_route_stage5_obligations as stage5_obligations
+        stage5_obligations.verify_observations(root, envelope, intent, facts=facts, published=published)
+        _validated_local_facts(root, envelope, intent, facts, initial=initial)
+        _capture_boundary(root, envelope, intent, facts)
+        return
     import _b_route_adoption_review as review
     from _b_route_frozen_native_reader import _safe
     _require(intent['policy_identity'] == review.policy_identity(), 'same reviewed current rules', 'policy changed', codec.ReasonCode.INPUT_STALE)
@@ -640,6 +650,15 @@ def _initial(root, envelope, snapshot):
                     for entry in pub_j['entries']
                     if entry['before_base64'] is not None
                 } or None
+        elif _is_stage5_obligations(envelope) and envelope['frozen']['binding_meta']['has_public_changes']:
+            import _b_route_stage5_obligations as stage5_obligations
+            pub_j = stage5_obligations.validate_public_sync_local(root, envelope)
+            if pub_j is not None:
+                extra_pre_sync = {
+                    entry['path']: stage5_obligations._decode_b64(entry['before_base64'])
+                    for entry in pub_j['entries']
+                    if entry['before_base64'] is not None
+                } or None
         records.published_bundle(root, catalog_raw=_decode(before[records.CATALOG_PATH]),
                                  task_join=_task_join(root), extra_candidates=extra_pre_sync)
     overrides = _target_overrides(envelope, before) if _has_projection_targets(envelope) else None
@@ -789,6 +808,9 @@ def terminal_valid(root, envelope, intent=None, *, graph=None):
     if _is_chapter4_binding(envelope):
         import _b_route_chapter4_binding as chapter4_binding
         pub_sync_ok = chapter4_binding.public_sync_terminal_ok(root, envelope, graph=graph)
+    elif _is_stage5_obligations(envelope):
+        import _b_route_stage5_obligations as stage5_obligations
+        pub_sync_ok = stage5_obligations.public_sync_terminal_ok(root, envelope, graph=graph)
     return (intent is not None and intent['phase'] == 'complete'
         and pending is None
         and pub_sync_ok
@@ -809,7 +831,7 @@ def _original_activity(root, envelope):
     Reuse the native activity/coordinator owners in their existing order. This
     acquires no new mutex and does not execute a verifier or dispatch work.
     """
-    if envelope['schema_version'] in (journal.COMPENSATION_SCHEMA, journal.TASK_COMPILATION_SCHEMA, journal.CHAPTER4_BINDING_SCHEMA):
+    if envelope['schema_version'] in (journal.COMPENSATION_SCHEMA, journal.TASK_COMPILATION_SCHEMA, journal.CHAPTER4_BINDING_SCHEMA, journal.STAGE5_OBLIGATIONS_SCHEMA):
         yield
         return
     from _b_route_planning_runtime import run_location
@@ -862,6 +884,9 @@ def _step(root, envelope, intent, stage):
         if _is_chapter4_binding(envelope):
             import _b_route_chapter4_binding as chapter4_binding
             chapter4_binding.finalize_public_sync_cleanup(root, envelope)
+        elif _is_stage5_obligations(envelope):
+            import _b_route_stage5_obligations as stage5_obligations
+            stage5_obligations.finalize_public_sync_cleanup(root, envelope)
         _require(terminal_valid(root, envelope), 'complete published terminal proof', envelope['operation_id'])
         return _result(envelope, intent, published=True)
     _verify_observations(root, envelope, intent)
@@ -938,6 +963,9 @@ def _step(root, envelope, intent, stage):
     if _is_chapter4_binding(envelope):
         import _b_route_chapter4_binding as chapter4_binding
         chapter4_binding.finalize_public_sync_cleanup(root, envelope)
+    elif _is_stage5_obligations(envelope):
+        import _b_route_stage5_obligations as stage5_obligations
+        stage5_obligations.finalize_public_sync_cleanup(root, envelope)
     _require(terminal_valid(root, envelope), 'complete published terminal proof', envelope['operation_id'])
     return _result(envelope, intent, published=True)
 
@@ -967,6 +995,17 @@ def execute(root, *, operation_id, stage):
                         _require(checked == envelope, 'same reserved operation', operation_id)
                         intent = _initial(root, envelope, snapshot)
                         return _step(root, envelope, intent, stage)
+            if _is_stage5_obligations(envelope):
+                import _b_route_stage5_obligations as stage5_obligations
+                with business_guard(root, envelope['frozen']['scope_ids'], operation_id=operation_id):
+                    if envelope['frozen']['binding_meta']['has_public_changes']:
+                        stage5_obligations.apply_public_sync(root, operation_id=operation_id, _lease_held=True)
+                    with stage5_obligations.commit_context(
+                        root, operation_id=operation_id, _held_scopes=set(envelope['frozen']['scope_ids'])
+                    ) as (snapshot, checked):
+                        _require(checked == envelope, 'same reserved operation', operation_id)
+                        intent = _initial(root, envelope, snapshot)
+                        return _step(root, envelope, intent, stage)
             if _is_task_compilation(envelope):
                 import _b_route_task_compilation as task_compilation
                 ctx = task_compilation.commit_context(root, operation_id=operation_id)
@@ -983,6 +1022,9 @@ def execute(root, *, operation_id, stage):
         if _is_chapter4_binding(envelope):
             import _b_route_chapter4_binding as chapter4_binding
             pub_unfinished = not chapter4_binding.public_sync_terminal_ok(root, envelope)
+        elif _is_stage5_obligations(envelope):
+            import _b_route_stage5_obligations as stage5_obligations
+            pub_unfinished = not stage5_obligations.public_sync_terminal_ok(root, envelope)
         unfinished = (intent['phase'] != 'complete'
                       or _read(root, _paths(operation_id)[1], optional=True) is not None
                       or pub_unfinished)
@@ -993,6 +1035,9 @@ def execute(root, *, operation_id, stage):
             elif _is_chapter4_binding(envelope):
                 import _b_route_chapter4_binding as chapter4_binding
                 chapter4_binding.verify_saved(root, envelope)
+            elif _is_stage5_obligations(envelope):
+                import _b_route_stage5_obligations as stage5_obligations
+                stage5_obligations.verify_saved(root, envelope)
             else:
                 import _b_route_adoption_review as review
                 review.verify_saved(root, envelope['frozen']['request'])
@@ -1063,6 +1108,9 @@ def inspect_recovery(root, *, operation_id):
                 elif _is_chapter4_binding(envelope):
                     import _b_route_chapter4_binding as chapter4_binding
                     chapter4_binding.verify_saved(root, envelope)
+                elif _is_stage5_obligations(envelope):
+                    import _b_route_stage5_obligations as stage5_obligations
+                    stage5_obligations.verify_saved(root, envelope)
                 else:
                     review.verify_saved(root, envelope['frozen']['request'])
                 published = _publication_proven(root, envelope, intent)
@@ -1072,11 +1120,12 @@ def inspect_recovery(root, *, operation_id):
                          'unchanged immutable recovery receipt', _receipt_path(envelope))
             else:
                 published = False
-                pub_sync_map = (
-                    {entry['path']: entry for entry in envelope['frozen']['refinement']['public_sync_entries']}
-                    if _is_chapter4_binding(envelope)
-                    else {}
-                )
+                if _is_chapter4_binding(envelope):
+                    pub_sync_map = {entry['path']: entry for entry in envelope['frozen']['refinement']['public_sync_entries']}
+                elif _is_stage5_obligations(envelope):
+                    pub_sync_map = {entry['path']: entry for entry in envelope['frozen']['binding_meta']['public_sync_entries']}
+                else:
+                    pub_sync_map = {}
                 for ref in envelope['frozen']['authority_refs']:
                     if ref['path'] in pub_sync_map:
                         entry = pub_sync_map[ref['path']]
@@ -1097,12 +1146,19 @@ def inspect_recovery(root, *, operation_id):
                 )
                 _require(untouched, 'original before targets without durable intent', operation_id)
                 physical, next_stage = 'untouched', 'apply'
-                if _is_chapter4_binding(envelope) and envelope['frozen']['refinement']['has_public_changes']:
-                    import _b_route_chapter4_binding as chapter4_binding
-                    pub_j = chapter4_binding.validate_public_sync_local(root, envelope)
-                    pub_j_rel, pub_p_rel = chapter4_binding.public_sync_paths(operation_id)
+                if (
+                    (_is_chapter4_binding(envelope) and envelope['frozen']['refinement']['has_public_changes'])
+                    or (_is_stage5_obligations(envelope) and envelope['frozen']['binding_meta']['has_public_changes'])
+                ):
+                    if _is_chapter4_binding(envelope):
+                        import _b_route_chapter4_binding as pub_owner
+                        pub_entries = envelope['frozen']['refinement']['public_sync_entries']
+                    else:
+                        import _b_route_stage5_obligations as pub_owner
+                        pub_entries = envelope['frozen']['binding_meta']['public_sync_entries']
+                    pub_j = pub_owner.validate_public_sync_local(root, envelope)
+                    pub_j_rel, pub_p_rel = pub_owner.public_sync_paths(operation_id)
                     has_pub_p = _read(root, pub_p_rel, optional=True) is not None
-                    pub_entries = envelope['frozen']['refinement']['public_sync_entries']
                     pub_after = 0
                     pub_moved = 0
                     for entry in pub_entries:
