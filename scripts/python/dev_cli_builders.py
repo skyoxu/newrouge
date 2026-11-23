@@ -905,3 +905,28 @@ def build_b_route_task_compile_cmd(args) -> list[str]:
             raise ValueError("b-route-task-compile --request must be nonempty when provided")
         cmd += ["--request", str(request)]
     return cmd
+
+
+def build_b_route_task_origin_cmd(args) -> list[str]:
+    if getattr(args, "write", False) or getattr(args, "apply", False):
+        raise ValueError("b-route-task-origin is strictly read-only and rejects write/apply flags")
+    cmd = [
+        sys.executable,
+        "-B",
+        str(Path(__file__).resolve().with_name("resolve_b_route_task_origin.py")),
+    ]
+    root = getattr(args, "root", ".")
+    if root is None or not str(root).strip():
+        raise ValueError("b-route-task-origin requires nonempty --root")
+    cmd += ["--root", str(root)]
+    task_id = getattr(args, "task_id", None)
+    if task_id is None or not str(task_id).strip():
+        raise ValueError("b-route-task-origin requires nonempty --task-id")
+    cmd += ["--task-id", str(task_id)]
+    for attr, flag in (("operation", "--operation"), ("report", "--report")):
+        value = getattr(args, attr, None)
+        if value is not None:
+            if not str(value).strip():
+                raise ValueError(f"b-route-task-origin optional {flag} must be nonempty when provided")
+            cmd += [flag, str(value)]
+    return cmd

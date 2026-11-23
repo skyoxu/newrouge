@@ -582,3 +582,7 @@ These are additive modes of the existing Chapter workflow, not a second mileston
 ## B 路线 3C 受治理三联编译与绑定
 
 稳定入口：`py -3 -B scripts/python/dev_cli.py b-route-task-compile --root <root> --stage prepare|reserve|inspect|apply|verify|publish|read|recover-inspect|recover --operation-id <op-id> [--request <request.json>]`。直接 owner 为 `scripts/python/compile_b_route_tasks.py`，参数相同。`prepare` 仅分配永久 `taskmaster_id` 与 `NG/GM` 并锁三联投影；`apply` 初入旧+新资源锁重读活三联并合并活 `status`/`subtasks[].status` 封存入 `commit.json` 与 receipt，`publish` 末推 `catalog.v1.json`；事件写 `logs/ci/b-route-task-compilation/<op>/events.jsonl`，不授 readiness/runtime/默认 B，进 Chapter 6 仍需 Chapter 4–5。详见[3C 编译 owner 说明](b-route-task-compilation.md)。
+
+## B 路线统一 Task 来源与适用计划解析
+
+稳定入口：`py -3 -B scripts/python/dev_cli.py b-route-task-origin --task-id <id> [--root <root>] [--operation <op>] [--report <logs/ci/.../*.json>]`。直接 owner 为 `scripts/python/resolve_b_route_task_origin.py`，参数相同。无 `--report` 时 100% 零目录/锁/文件创建（不调 `initialize_lock_namespace`）；先验 pending 与已提交 `policy`/`catalog`/`origins` 全反向关系，分类为 `B`、`A`、`explicit_not_enabled_a` 或 `blocked`，汇总完整适用计划/绑定/处置/Flow 闭包与 `applicable_set_digest`；退出码 0/1/2，恒不授予实施权、readiness 或默认 B。详见[Task 来源解析 owner 说明](b-route-task-origin-resolution.md)。

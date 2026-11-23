@@ -20,7 +20,7 @@ import sys
 from pathlib import Path
 
 # The read-only command must not create bytecode even without Python -B.
-if len(sys.argv) > 1 and sys.argv[1] in {"b-route-preflight", "b-route-sources", "b-route-adoption", "b-route-task-preview", "b-route-task-compile"}:
+if len(sys.argv) > 1 and sys.argv[1] in {"b-route-preflight", "b-route-sources", "b-route-adoption", "b-route-task-preview", "b-route-task-compile", "b-route-task-origin"}:
     sys.dont_write_bytecode = True
 
 if __name__ == "__main__" and len(sys.argv) > 1 and sys.argv[1] == "b-route-sources":
@@ -38,6 +38,10 @@ if __name__ == "__main__" and len(sys.argv) > 1 and sys.argv[1] == "b-route-task
 if __name__ == "__main__" and len(sys.argv) > 1 and sys.argv[1] == "b-route-task-compile":
     from compile_b_route_tasks import main as task_compile_main
     raise SystemExit(task_compile_main(sys.argv[2:]))
+
+if __name__ == "__main__" and len(sys.argv) > 1 and sys.argv[1] == "b-route-task-origin":
+    from resolve_b_route_task_origin import main as task_origin_main
+    raise SystemExit(task_origin_main(sys.argv[2:]))
 
 from dev_cli_builders import (
     DEFAULT_GATE_BUNDLE_TASK_FILES,
@@ -64,6 +68,7 @@ from dev_cli_builders import (
     build_plan_mvg_cmd,
     build_b_route_task_preview_cmd,
     build_b_route_task_compile_cmd,
+    build_b_route_task_origin_cmd,
     build_quality_gates_cmd,
     build_run_dotnet_cmd,
     build_run_gdunit_full_cmd,
@@ -626,6 +631,13 @@ def cmd_b_route_task_compile(args: argparse.Namespace) -> int:
     return task_compile_main(build_b_route_task_compile_cmd(args)[3:])
 
 
+def cmd_b_route_task_origin(args: argparse.Namespace) -> int:
+    """Run the read-only zero-write B-route Task origin and applicable plan-set resolver CLI."""
+    from resolve_b_route_task_origin import main as task_origin_main
+
+    return task_origin_main(build_b_route_task_origin_cmd(args)[3:])
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Dev CLI for Godot+C# template (AI-friendly entrypoint)",
@@ -653,6 +665,11 @@ def build_parser() -> argparse.ArgumentParser:
     from compile_b_route_tasks import register_arguments as register_task_compile_arguments
     register_task_compile_arguments(task_compile_parser)
     task_compile_parser.set_defaults(func=cmd_b_route_task_compile)
+
+    task_origin_parser = sub.add_parser("b-route-task-origin", help="Read-only zero-write unified Task origin and applicable plan-set resolver; no execution authorization")
+    from resolve_b_route_task_origin import register_arguments as register_task_origin_arguments
+    register_task_origin_arguments(task_origin_parser)
+    task_origin_parser.set_defaults(func=cmd_b_route_task_origin)
 
     # run-ci-basic
     p_ci = sub.add_parser(
@@ -1209,6 +1226,10 @@ def main(argv: list[str] | None = None) -> int:
         sys.dont_write_bytecode = True
         from preview_b_route_task_changes import main as task_preview_main
         return task_preview_main(arguments[1:])
+    if arguments and arguments[0] == "b-route-task-origin":
+        sys.dont_write_bytecode = True
+        from resolve_b_route_task_origin import main as task_origin_main
+        return task_origin_main(arguments[1:])
     parser = build_parser()
     args = parser.parse_args(arguments)
     func = getattr(args, "func", None)

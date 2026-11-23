@@ -1812,3 +1812,7 @@ Helper modules below are referenced directly by at least two included entry scri
 ## B 路线 3C 受治理三联编译 owner
 
 `scripts/python/compile_b_route_tasks.py` 是 `dev_cli.py b-route-task-compile` 的直接入口；`_b_route_task_compilation.py` 唯一拥有 `producer="task_compilation"` 适配与九阶段编排。复用 `compile_task_triplet.py`、`build_taskmaster_tasks.py`、`chapter3_task_scope.py`、`_b_route_task_preview.py`、`_b_route_source_audit.py`、`_b_route_records.py`、`_planning_apply_journal.py`、`_b_route_commit_projection.py` 与 `_b_route_commit.py`；仅 `prepare` 分配永久 `taskmaster_id` 与 `NG/GM`，`apply` 锁内合活 `status` 封存前后像与投影，末推 `catalog.v1.json`，事件落 `logs/ci/b-route-task-compilation/<op>/events.jsonl`。详见[3C 编译 owner 说明](b-route-task-compilation.md)。
+
+## B 路线统一 Task 来源解析 owner
+
+`scripts/python/resolve_b_route_task_origin.py` 是 `dev_cli.py b-route-task-origin` 的直接入口；`_b_route_task_resolver.py` 唯一拥有零写 Task 来源分类、三方反向一致性核验、冻结 A 边界核验与 `applicable_set_digest` 汇总。复用 `_b_route_codec.py`、`_b_route_records.py`（`published_bundle`/`TaskJoinContext`）、`_b_route_preflight.py`（`Observations`）、`_b_route_protection.py`、`chapter3_task_scope.py`、`_planning_apply_journal.py`（只读 `operation_state_graph`）与 `_b_route_operation_scope.py`（只读 `_legacy_pending`/`resource_scopes`）；无 `--report` 时零目录/零锁创建，并由 `_b_route_adoption_review.py` 策略锚定。详见[Task 来源解析 owner 说明](b-route-task-origin-resolution.md)。

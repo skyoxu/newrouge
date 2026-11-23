@@ -228,6 +228,7 @@ def policy_observations():
         '_b_route_published_compensation_review.py',
         '_b_route_task_preview.py',
         '_b_route_task_compilation.py',
+        '_b_route_task_resolver.py',
     )
     resolved_paths = {name: _script_file(name) for name in names}
     for name, file_path in resolved_paths.items():
