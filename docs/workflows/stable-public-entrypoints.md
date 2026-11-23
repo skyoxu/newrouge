@@ -586,3 +586,7 @@ These are additive modes of the existing Chapter workflow, not a second mileston
 ## B 路线统一 Task 来源与适用计划解析
 
 稳定入口：`py -3 -B scripts/python/dev_cli.py b-route-task-origin --task-id <id> [--root <root>] [--operation <op>] [--report <logs/ci/.../*.json>]`。直接 owner 为 `scripts/python/resolve_b_route_task_origin.py`，参数相同。无 `--report` 时 100% 零目录/锁/文件创建（不调 `initialize_lock_namespace`）；先验 pending 与已提交 `policy`/`catalog`/`origins` 全反向关系，分类为 `B`、`A`、`explicit_not_enabled_a` 或 `blocked`，汇总完整适用计划/绑定/处置/Flow 闭包与 `applicable_set_digest`；退出码 0/1/2，恒不授予实施权、readiness 或默认 B。详见[Task 来源解析 owner 说明](b-route-task-origin-resolution.md)。
+
+## B 路线 Chapter 4 生产契约与四部分实施定义细化
+
+稳定入口：`py -3 -B scripts/python/dev_cli.py b-route-chapter4-binding --root <root> --stage preview|prepare|reserve|inspect|apply|verify|publish|read|recover-inspect|recover --operation-id <op-id> [--request <request.json>]`。直接 owner 为 `scripts/python/refine_b_route_chapter4_binding.py`，参数相同。经 `published_bundle` 与 Story 3.3 `resolve_task_origin` 核验目标 Task 全为 `B` 后，细化生产命令、只读状态与唯一所有者、C# 适配、控件/场景绑定、UI 人工区与测试义务；仅显式 `public_changes` 经 base64 原始字节 `public-sync-journal.json` + `public-sync.pending.json` 前滚写入 BCL 契约、`EventTypes.cs` 与 sha256 增量合并 Overlay，再经 `_b_route_commit` 发布 `stage="4"` 绑定、`task-origins.v1.json` 与 `commits/<op>.json` 并末推 `catalog.v1.json`；事件写 `logs/ci/b-route-chapter4-binding/<op>/events.jsonl`，恒定 `readiness=false`/`runtime_verified=false`/`default_b_enabled=false`。详见[Chapter 4 绑定细化 owner 说明](b-route-chapter4-binding.md)。

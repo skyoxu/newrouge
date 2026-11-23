@@ -116,6 +116,8 @@ COMPENSATION_SCHEMA = "newrouge.b-route-compensation-operation.v2"
 COMPENSATION_REQUEST = "newrouge.b-route-compensation-request.v2"
 TASK_COMPILATION_SCHEMA = "newrouge.b-route-task-compilation-operation.v1"
 TASK_COMPILATION_REQUEST = "newrouge.b-route-task-compilation-request.v1"
+CHAPTER4_BINDING_SCHEMA = "newrouge.b-route-chapter4-binding-operation.v1"
+CHAPTER4_BINDING_REQUEST = "newrouge.b-route-chapter4-binding-request.v1"
 PENDING_SCHEMA = "newrouge.b-route-adoption-pending.v1"
 OPERATION_STORE = "logs/ci/b-route-operations"
 
@@ -138,6 +140,8 @@ def _operation_schema(value, definition=None, *, schema_id=None):
             schema_id = COMPENSATION_SCHEMA
         elif version in (TASK_COMPILATION_SCHEMA, TASK_COMPILATION_REQUEST):
             schema_id = TASK_COMPILATION_SCHEMA
+        elif version in (CHAPTER4_BINDING_SCHEMA, CHAPTER4_BINDING_REQUEST):
+            schema_id = CHAPTER4_BINDING_SCHEMA
         elif (definition == 'Target' and type(value) is dict
               and value.get('verification_mode') == 'task_definition_projection'
               and 'before_projection_digest' in value):
@@ -254,6 +258,7 @@ def _operation_validate(root, value):
         _operation_fail(codec.ReasonCode.CONFLICT, "same operation ID", "request/envelope ID mismatch")
     expected_schema = (COMPENSATION_SCHEMA if request['schema_version'] == COMPENSATION_REQUEST else
                        TASK_COMPILATION_SCHEMA if request['schema_version'] == TASK_COMPILATION_REQUEST else
+                       CHAPTER4_BINDING_SCHEMA if request['schema_version'] == CHAPTER4_BINDING_REQUEST else
                        ADOPTION_V2_SCHEMA if request['schema_version'] == ADOPTION_V2_REQUEST else OPERATION_SCHEMA)
     if value['schema_version'] != expected_schema:
         _operation_fail(codec.ReasonCode.SCHEMA_MISMATCH, 'same request/envelope version', value['schema_version'])
@@ -284,6 +289,12 @@ def _operation_validate(root, value):
         for optional_key in ('protection_ref', 'manifest_ref', 'change_intents_ref'):
             if request.get(optional_key) is not None:
                 references.append(request[optional_key])
+    elif request['schema_version'] == CHAPTER4_BINDING_REQUEST:
+        if value['schema_version'] != CHAPTER4_BINDING_SCHEMA or frozen['producer'] != 'chapter4_binding':
+            _operation_fail(codec.ReasonCode.CONFLICT, 'exact chapter4 binding producer dispatch', value['schema_version'])
+        references = []
+        for entry in frozen['refinement']['public_sync_entries']:
+            _operation_path(root, entry['path'])
     else:
         if value['schema_version'] not in (OPERATION_SCHEMA, ADOPTION_V2_SCHEMA):
             _operation_fail(codec.ReasonCode.CONFLICT, 'exact adoption producer dispatch', value['schema_version'])
@@ -347,16 +358,24 @@ def operation_inventory(root):
                     _operation_fail(codec.ReasonCode.IDENTITY_UNPROVABLE, "known operation directory key", child.name)
                 contents = list(child.iterdir())
                 names = {item.name for item in contents}
-                if 'operation.json' not in names or not names <= {'operation.json', 'commit.json', 'commit.pending.json'}:
+                allowed_base = {'operation.json', 'commit.json', 'commit.pending.json'}
+                allowed_ch4 = allowed_base | {'public-sync-journal.json', 'public-sync.pending.json'}
+                if 'operation.json' not in names or not names <= allowed_ch4:
                     _operation_fail(codec.ReasonCode.IDENTITY_UNPROVABLE, "complete single operation file", child.name,
                         resume_ref=child.relative_to(root).as_posix())
                 value = _operation_validate(root, _operation_read(root, child / 'operation.json'))
+                if value['schema_version'] != CHAPTER4_BINDING_SCHEMA and not names <= allowed_base:
+                    _operation_fail(codec.ReasonCode.IDENTITY_UNPROVABLE, "complete single operation file", child.name,
+                        resume_ref=child.relative_to(root).as_posix())
                 if _operation_key(value["operation_id"]) != child.name:
                     _operation_fail(codec.ReasonCode.CONFLICT, "directory bound to original operation ID", child.name)
                 values.append(value)
-                if names != {'operation.json'}:
+                if names & {'commit.json', 'commit.pending.json'}:
                     import _b_route_commit as commit
                     commit.validate_local(root, value)
+                if names & {'public-sync-journal.json', 'public-sync.pending.json'}:
+                    import _b_route_chapter4_binding as chapter4_binding
+                    chapter4_binding.validate_public_sync_local(root, value)
         values.sort(key=lambda value: value["operation_id"])
         if len({value["operation_id"] for value in values}) != len(values):
             _operation_fail(codec.ReasonCode.CONFLICT, "unique operation IDs", "duplicate operation ID")
@@ -425,6 +444,7 @@ def draft_operation(root, *, request_raw, frozen, state='prepared'):
     request = validate_operation_request(request_raw)
     version = (COMPENSATION_SCHEMA if request['schema_version'] == COMPENSATION_REQUEST else
                TASK_COMPILATION_SCHEMA if request['schema_version'] == TASK_COMPILATION_REQUEST else
+               CHAPTER4_BINDING_SCHEMA if request['schema_version'] == CHAPTER4_BINDING_REQUEST else
                ADOPTION_V2_SCHEMA if request['schema_version'] == ADOPTION_V2_REQUEST else OPERATION_SCHEMA)
     value = {'schema_version': version, 'codec_version': codec.CODEC_VERSION,
         'operation_id': request['operation_id'], 'state': state,
@@ -455,6 +475,7 @@ def prepare_operation(root, *, operation_id, request_raw, frozen):
     frozen_digest = codec.canonical_digest(frozen)
     version = (COMPENSATION_SCHEMA if request['schema_version'] == COMPENSATION_REQUEST else
                TASK_COMPILATION_SCHEMA if request['schema_version'] == TASK_COMPILATION_REQUEST else
+               CHAPTER4_BINDING_SCHEMA if request['schema_version'] == CHAPTER4_BINDING_REQUEST else
                ADOPTION_V2_SCHEMA if request['schema_version'] == ADOPTION_V2_REQUEST else OPERATION_SCHEMA)
     value = {"schema_version": version, "codec_version": codec.CODEC_VERSION,
         "operation_id": operation_id, "state": "prepared",
@@ -579,8 +600,11 @@ def operation_state_graph(root):
     operations = operation_inventory(root)
     names = {OPERATION_STORE + '/pending.json', 'docs/planning/b-route/catalog.v1.json'}
     for row in operations:
+        op_home = _operation_ref(row['operation_id']).rsplit('/', 1)[0]
         names.update((_operation_ref(row['operation_id']), *commit._paths(row['operation_id']),
                       'docs/planning/b-route/commits/' + row['operation_id'] + '.json'))
+        if row['schema_version'] == CHAPTER4_BINDING_SCHEMA:
+            names.update((op_home + '/public-sync-journal.json', op_home + '/public-sync.pending.json'))
     local_bytes = {name: _safe_local_bytes(name) for name in names}
     intents = {row['operation_id']: commit.validate_local(root, row) for row in operations}
     graph = {'operations': operations, 'intents': intents, 'terminals': set(), 'resolved_by': {},

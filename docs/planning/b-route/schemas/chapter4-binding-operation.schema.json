@@ -1,0 +1,1050 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "newrouge.b-route-chapter4-binding-operation.v1",
+  "title": "Auxiliary governed Chapter 4 production contract and four-part binding operation; not a formal record",
+  "$defs": {
+    "Digest": {
+      "$ref": "newrouge.b-route-common.v1#/$defs/Digest"
+    },
+    "String": {
+      "$ref": "newrouge.b-route-adoption-operation.v1#/$defs/String"
+    },
+    "Reference": {
+      "$ref": "newrouge.b-route-adoption-operation.v1#/$defs/Reference"
+    },
+    "References": {
+      "$ref": "newrouge.b-route-adoption-operation.v1#/$defs/References"
+    },
+    "ScopeIds": {
+      "$ref": "newrouge.b-route-adoption-operation.v1#/$defs/ScopeIds"
+    },
+    "StringList": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/String"
+      }
+    },
+    "TaskIdList": {
+      "type": "array",
+      "items": {
+        "$ref": "newrouge.b-route-common.v1#/$defs/PositiveInteger"
+      },
+      "uniqueItems": true
+    },
+    "LaterChecks": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "type",
+          "compile",
+          "binding",
+          "engine"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "NullableOwnedRef": {
+      "anyOf": [
+        {
+          "$ref": "newrouge.b-route-common.v1#/$defs/OwnedRef"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "CommandRefinement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "owner",
+        "preconditions",
+        "postconditions",
+        "invariants",
+        "responsible_task_ids",
+        "availability",
+        "expected_type"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/String"
+        },
+        "owner": {
+          "$ref": "#/$defs/String"
+        },
+        "preconditions": {
+          "$ref": "#/$defs/StringList"
+        },
+        "postconditions": {
+          "$ref": "#/$defs/StringList"
+        },
+        "invariants": {
+          "$ref": "#/$defs/StringList"
+        },
+        "responsible_task_ids": {
+          "$ref": "#/$defs/TaskIdList"
+        },
+        "availability": {
+          "enum": [
+            "planned",
+            "existing"
+          ]
+        },
+        "expected_type": {
+          "$ref": "#/$defs/String"
+        },
+        "target_ref": {
+          "$ref": "#/$defs/NullableOwnedRef"
+        },
+        "later_checks": {
+          "$ref": "#/$defs/LaterChecks"
+        },
+        "contract_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/String"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "handoff": {
+          "$ref": "#/$defs/String"
+        },
+        "claimed_passed": {
+          "type": "boolean"
+        }
+      }
+    },
+    "ReadOnlyStateRefinement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "single_owner",
+        "read_only_views",
+        "responsible_task_ids",
+        "availability",
+        "expected_type"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/String"
+        },
+        "single_owner": {
+          "$ref": "#/$defs/String"
+        },
+        "read_only_views": {
+          "$ref": "#/$defs/StringList"
+        },
+        "forbidden_direct_writers": {
+          "$ref": "#/$defs/StringList"
+        },
+        "responsible_task_ids": {
+          "$ref": "#/$defs/TaskIdList"
+        },
+        "availability": {
+          "enum": [
+            "planned",
+            "existing"
+          ]
+        },
+        "expected_type": {
+          "$ref": "#/$defs/String"
+        },
+        "target_ref": {
+          "$ref": "#/$defs/NullableOwnedRef"
+        },
+        "later_checks": {
+          "$ref": "#/$defs/LaterChecks"
+        },
+        "contract_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/String"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "handoff": {
+          "$ref": "#/$defs/String"
+        },
+        "claimed_passed": {
+          "type": "boolean"
+        }
+      }
+    },
+    "AdapterRefinement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "dependencies",
+        "lifecycle",
+        "responsible_task_ids",
+        "availability",
+        "expected_type"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/String"
+        },
+        "dependencies": {
+          "$ref": "#/$defs/StringList"
+        },
+        "lifecycle": {
+          "$ref": "#/$defs/String"
+        },
+        "arbitrates_domain_rules": {
+          "type": "boolean"
+        },
+        "direct_state_mutation": {
+          "type": "boolean"
+        },
+        "responsible_task_ids": {
+          "$ref": "#/$defs/TaskIdList"
+        },
+        "availability": {
+          "enum": [
+            "planned",
+            "existing"
+          ]
+        },
+        "expected_type": {
+          "$ref": "#/$defs/String"
+        },
+        "target_ref": {
+          "$ref": "#/$defs/NullableOwnedRef"
+        },
+        "later_checks": {
+          "$ref": "#/$defs/LaterChecks"
+        },
+        "handoff": {
+          "$ref": "#/$defs/String"
+        },
+        "claimed_passed": {
+          "type": "boolean"
+        }
+      }
+    },
+    "ControlBindingEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "control",
+        "target_object"
+      ],
+      "properties": {
+        "control": {
+          "$ref": "#/$defs/String"
+        },
+        "target_object": {
+          "$ref": "#/$defs/String"
+        },
+        "target_resource": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/String"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "via_command": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/String"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reads_state": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/String"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "direct_state_write": {
+          "type": "boolean"
+        }
+      }
+    },
+    "BindingRefinement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "control_to_target",
+        "responsible_task_ids",
+        "availability",
+        "expected_type"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/String"
+        },
+        "control_to_target": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ControlBindingEntry"
+          }
+        },
+        "responsible_task_ids": {
+          "$ref": "#/$defs/TaskIdList"
+        },
+        "availability": {
+          "enum": [
+            "planned",
+            "existing"
+          ]
+        },
+        "expected_type": {
+          "$ref": "#/$defs/String"
+        },
+        "target_ref": {
+          "$ref": "#/$defs/NullableOwnedRef"
+        },
+        "later_checks": {
+          "$ref": "#/$defs/LaterChecks"
+        },
+        "handoff": {
+          "$ref": "#/$defs/String"
+        },
+        "claimed_passed": {
+          "type": "boolean"
+        }
+      }
+    },
+    "SceneResourceRefinement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind",
+        "responsible_task_ids",
+        "availability",
+        "expected_type"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/String"
+        },
+        "kind": {
+          "enum": [
+            "scene",
+            "resource"
+          ]
+        },
+        "scene_entry": {
+          "$ref": "#/$defs/StringList"
+        },
+        "scene_return": {
+          "$ref": "#/$defs/StringList"
+        },
+        "responsible_task_ids": {
+          "$ref": "#/$defs/TaskIdList"
+        },
+        "availability": {
+          "enum": [
+            "planned",
+            "existing"
+          ]
+        },
+        "expected_type": {
+          "$ref": "#/$defs/String"
+        },
+        "target_ref": {
+          "$ref": "#/$defs/NullableOwnedRef"
+        },
+        "later_checks": {
+          "$ref": "#/$defs/LaterChecks"
+        },
+        "handoff": {
+          "$ref": "#/$defs/String"
+        },
+        "claimed_passed": {
+          "type": "boolean"
+        }
+      }
+    },
+    "UiSliceSpec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "applicable"
+      ],
+      "properties": {
+        "applicable": {
+          "type": "boolean"
+        },
+        "rationale": {
+          "$ref": "#/$defs/String"
+        },
+        "inputs": {
+          "$ref": "#/$defs/StringList"
+        },
+        "methods": {
+          "$ref": "#/$defs/StringList"
+        },
+        "wiring": {
+          "$ref": "#/$defs/StringList"
+        },
+        "human_zones": {
+          "$ref": "#/$defs/StringList"
+        },
+        "modified_zones": {
+          "$ref": "#/$defs/StringList"
+        },
+        "direct_state_writes": {
+          "$ref": "#/$defs/StringList"
+        }
+      }
+    },
+    "TestObligationSpec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "requirement_ids",
+        "flow_ids",
+        "test_ids",
+        "responsibility"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/String"
+        },
+        "requirement_ids": {
+          "$ref": "#/$defs/StringList"
+        },
+        "flow_ids": {
+          "$ref": "#/$defs/StringList"
+        },
+        "test_ids": {
+          "$ref": "#/$defs/StringList"
+        },
+        "responsibility": {
+          "$ref": "#/$defs/String"
+        },
+        "task_ids": {
+          "$ref": "#/$defs/TaskIdList"
+        },
+        "verification_refs": {
+          "type": "array",
+          "items": {
+            "$ref": "newrouge.b-route-common.v1#/$defs/OwnedRef"
+          }
+        }
+      }
+    },
+    "ContractChange": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "content"
+      ],
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/String"
+        },
+        "content": {
+          "type": "string"
+        },
+        "expected_before_sha256": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Digest"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "event_constants": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "name",
+              "value"
+            ],
+            "properties": {
+              "name": {
+                "$ref": "#/$defs/String"
+              },
+              "value": {
+                "$ref": "#/$defs/String"
+              }
+            }
+          }
+        }
+      }
+    },
+    "OverlayChange": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path"
+      ],
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/String"
+        },
+        "scaffold_update": {
+          "type": "object"
+        },
+        "content": {
+          "type": "string"
+        },
+        "expected_before_sha256": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Digest"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "TripletRefSyncEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "task_id"
+      ],
+      "properties": {
+        "task_id": {
+          "$ref": "newrouge.b-route-common.v1#/$defs/PositiveInteger"
+        },
+        "add_contract_refs": {
+          "$ref": "#/$defs/StringList"
+        },
+        "add_overlay_refs": {
+          "$ref": "#/$defs/StringList"
+        },
+        "add_evidence_refs": {
+          "$ref": "#/$defs/StringList"
+        },
+        "add_acceptance": {
+          "$ref": "#/$defs/StringList"
+        },
+        "replace_acceptance": {
+          "$ref": "#/$defs/StringList"
+        }
+      }
+    },
+    "PublicChanges": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "contracts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ContractChange"
+          }
+        },
+        "overlays": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/OverlayChange"
+          }
+        },
+        "triplet_ref_sync": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/TripletRefSyncEntry"
+          }
+        }
+      }
+    },
+    "Request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "producer",
+        "operation_id",
+        "plan_id",
+        "scope_id"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "newrouge.b-route-chapter4-binding-request.v1"
+        },
+        "producer": {
+          "const": "chapter4_binding"
+        },
+        "operation_id": {
+          "$ref": "newrouge.b-route-common.v1#/$defs/FileId"
+        },
+        "plan_id": {
+          "$ref": "newrouge.b-route-common.v1#/$defs/FileId"
+        },
+        "scope_id": {
+          "$ref": "newrouge.b-route-common.v1#/$defs/BusinessId"
+        },
+        "reason": {
+          "$ref": "#/$defs/String"
+        },
+        "task_ids": {
+          "$ref": "#/$defs/TaskIdList"
+        },
+        "commands": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CommandRefinement"
+          }
+        },
+        "read_only_states": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ReadOnlyStateRefinement"
+          }
+        },
+        "adapters": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AdapterRefinement"
+          }
+        },
+        "bindings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/BindingRefinement"
+          }
+        },
+        "scenes_and_resources": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SceneResourceRefinement"
+          }
+        },
+        "obligations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/TestObligationSpec"
+          }
+        },
+        "ui_slice": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/UiSliceSpec"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "public_changes": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PublicChanges"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "other_verification_refs": {
+          "type": "array",
+          "items": {
+            "$ref": "newrouge.b-route-common.v1#/$defs/OwnedRef"
+          }
+        },
+        "manifest_refs": {
+          "type": "array",
+          "items": {
+            "$ref": "newrouge.b-route-common.v1#/$defs/ManifestRef"
+          }
+        },
+        "task_part_kinds": {
+          "type": "object",
+          "patternProperties": {
+            "^[0-9]+$": {
+              "type": "array",
+              "items": {
+                "$ref": "newrouge.b-route-common.v1#/$defs/PartKind"
+              },
+              "uniqueItems": true
+            }
+          },
+          "additionalProperties": false
+        }
+      }
+    },
+    "Allocations": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "plan_id",
+        "plan_revision",
+        "binding_revision",
+        "origins_revision",
+        "task_definitions"
+      ],
+      "properties": {
+        "plan_id": {
+          "$ref": "newrouge.b-route-common.v1#/$defs/FileId"
+        },
+        "plan_revision": {
+          "$ref": "newrouge.b-route-common.v1#/$defs/PositiveInteger"
+        },
+        "binding_revision": {
+          "$ref": "newrouge.b-route-common.v1#/$defs/PositiveInteger"
+        },
+        "origins_revision": {
+          "$ref": "newrouge.b-route-common.v1#/$defs/PositiveInteger"
+        },
+        "task_definitions": {
+          "type": "object",
+          "patternProperties": {
+            "^[0-9]+$": {
+              "$ref": "#/$defs/Digest"
+            }
+          },
+          "additionalProperties": false
+        }
+      }
+    },
+    "Target": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "path",
+            "schema_version",
+            "before_raw_digest",
+            "after_payload",
+            "after_raw_digest",
+            "verification_mode"
+          ],
+          "properties": {
+            "path": {
+              "$ref": "#/$defs/String"
+            },
+            "schema_version": {
+              "$ref": "#/$defs/String"
+            },
+            "before_raw_digest": {
+              "anyOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "$ref": "#/$defs/Digest"
+                }
+              ]
+            },
+            "after_payload": {
+              "type": [
+                "object",
+                "array"
+              ]
+            },
+            "after_raw_digest": {
+              "$ref": "#/$defs/Digest"
+            },
+            "verification_mode": {
+              "const": "immutable_bytes"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "path",
+            "schema_version",
+            "before_raw_digest",
+            "after_payload",
+            "after_raw_digest",
+            "verification_mode",
+            "codec_version",
+            "before_projection_digest",
+            "after_projection_digest"
+          ],
+          "properties": {
+            "path": {
+              "$ref": "#/$defs/String"
+            },
+            "schema_version": {
+              "$ref": "#/$defs/String"
+            },
+            "before_raw_digest": {
+              "$ref": "#/$defs/Digest"
+            },
+            "after_payload": {
+              "type": [
+                "object",
+                "array"
+              ]
+            },
+            "after_raw_digest": {
+              "$ref": "#/$defs/Digest"
+            },
+            "verification_mode": {
+              "const": "task_definition_projection"
+            },
+            "codec_version": {
+              "const": "newrouge.b-route-task-definition.v1"
+            },
+            "before_projection_digest": {
+              "$ref": "#/$defs/Digest"
+            },
+            "after_projection_digest": {
+              "$ref": "#/$defs/Digest"
+            }
+          }
+        }
+      ]
+    },
+    "PublicSyncEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "kind",
+        "before_sha256",
+        "before_base64",
+        "after_sha256",
+        "after_base64"
+      ],
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/String"
+        },
+        "kind": {
+          "enum": [
+            "contract",
+            "event_types",
+            "overlay"
+          ]
+        },
+        "before_sha256": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/Digest"
+            }
+          ]
+        },
+        "before_base64": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string"
+            }
+          ]
+        },
+        "after_sha256": {
+          "$ref": "#/$defs/Digest"
+        },
+        "after_base64": {
+          "type": "string"
+        }
+      }
+    },
+    "TripletProjections": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        ".taskmaster/tasks/tasks.json",
+        ".taskmaster/tasks/tasks_back.json",
+        ".taskmaster/tasks/tasks_gameplay.json"
+      ],
+      "properties": {
+        ".taskmaster/tasks/tasks.json": {
+          "$ref": "#/$defs/Digest"
+        },
+        ".taskmaster/tasks/tasks_back.json": {
+          "$ref": "#/$defs/Digest"
+        },
+        ".taskmaster/tasks/tasks_gameplay.json": {
+          "$ref": "#/$defs/Digest"
+        }
+      }
+    },
+    "Refinement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "plan_id",
+        "scope_id",
+        "prior_binding_ref",
+        "plan_ref",
+        "current_catalog_digest",
+        "current_frame_digest",
+        "old_scope_ids",
+        "new_scope_ids",
+        "has_public_changes",
+        "public_sync_entries",
+        "chapter7_required",
+        "triplet_before_projections",
+        "triplet_after_projections"
+      ],
+      "properties": {
+        "plan_id": {
+          "$ref": "newrouge.b-route-common.v1#/$defs/FileId"
+        },
+        "scope_id": {
+          "$ref": "newrouge.b-route-common.v1#/$defs/BusinessId"
+        },
+        "prior_binding_ref": {
+          "$ref": "newrouge.b-route-common.v1#/$defs/BindingRef"
+        },
+        "plan_ref": {
+          "$ref": "newrouge.b-route-common.v1#/$defs/PlanRef"
+        },
+        "current_catalog_digest": {
+          "$ref": "#/$defs/Digest"
+        },
+        "current_frame_digest": {
+          "$ref": "#/$defs/Digest"
+        },
+        "old_scope_ids": {
+          "$ref": "#/$defs/ScopeIds"
+        },
+        "new_scope_ids": {
+          "$ref": "#/$defs/ScopeIds"
+        },
+        "has_public_changes": {
+          "type": "boolean"
+        },
+        "public_sync_entries": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PublicSyncEntry"
+          }
+        },
+        "chapter7_required": {
+          "type": "boolean"
+        },
+        "triplet_before_projections": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TripletProjections"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "triplet_after_projections": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TripletProjections"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "Frozen": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "producer",
+        "request",
+        "allocations",
+        "scope_ids",
+        "authority_refs",
+        "targets",
+        "refinement"
+      ],
+      "properties": {
+        "producer": {
+          "const": "chapter4_binding"
+        },
+        "request": {
+          "$ref": "#/$defs/Request"
+        },
+        "allocations": {
+          "$ref": "#/$defs/Allocations"
+        },
+        "scope_ids": {
+          "$ref": "#/$defs/ScopeIds"
+        },
+        "authority_refs": {
+          "$ref": "#/$defs/References"
+        },
+        "targets": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "$ref": "#/$defs/Target"
+          }
+        },
+        "refinement": {
+          "$ref": "#/$defs/Refinement"
+        }
+      }
+    }
+  },
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "codec_version",
+    "operation_id",
+    "state",
+    "request_raw_base64",
+    "request_raw_digest",
+    "request_digest",
+    "frozen",
+    "frozen_digest"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "newrouge.b-route-chapter4-binding-operation.v1"
+    },
+    "codec_version": {
+      "type": "string"
+    },
+    "operation_id": {
+      "$ref": "newrouge.b-route-common.v1#/$defs/FileId"
+    },
+    "state": {
+      "enum": [
+        "prepared",
+        "reserved"
+      ]
+    },
+    "request_raw_base64": {
+      "type": "string"
+    },
+    "request_raw_digest": {
+      "$ref": "#/$defs/Digest"
+    },
+    "request_digest": {
+      "$ref": "#/$defs/Digest"
+    },
+    "frozen": {
+      "$ref": "#/$defs/Frozen"
+    },
+    "frozen_digest": {
+      "$ref": "#/$defs/Digest"
+    }
+  }
+}

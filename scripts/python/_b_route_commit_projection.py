@@ -68,7 +68,7 @@ def _head_selections(current_catalog, receipt, *, frozen=None):
         _require(len(replacements[field]) == len(refs),
                  'one target revision per family and identity', field)
     compensation = frozen is not None and frozen.get('producer') == 'compensation'
-    task_comp = frozen is not None and frozen.get('producer') == 'task_compilation'
+    task_comp = frozen is not None and frozen.get('producer') in ('task_compilation', 'chapter4_binding')
     shared_container_scopes = set()
     if task_comp:
         import _b_route_operation_scope
@@ -179,7 +179,7 @@ immutable formal records via immutable_bytes.
                  not name.casefold().startswith((records.BASE + 'commits/').casefold()),
                  'ordinary targets excluding receipt/catalog', name, codec.ReasonCode.DIGEST_CYCLE)
         if target['verification_mode'] == 'task_definition_projection':
-            _require(frozen.get('producer') == 'task_compilation',
+            _require(frozen.get('producer') in ('task_compilation', 'chapter4_binding'),
                      'immutable formal targets in this owner slice', target['verification_mode'])
             _require(name.casefold() in triplet_paths,
                      'actual Task triplet path for projection target', name, codec.ReasonCode.INVALID_REFERENCE)

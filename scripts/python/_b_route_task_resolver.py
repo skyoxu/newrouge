@@ -383,6 +383,7 @@ def _inspect_pending(
     blocking_ops: list[dict[str, Any]] = []
     unapplied_ops: list[tuple[dict[str, Any], set[str], set[str]]] = []
 
+    active_read_op = commit._READ_OPERATION_ID.get()
     for op in graph["operations"]:
         op_id = op["operation_id"]
         if op_id in graph["terminals"] or op_id in graph["resolved_by"]:
@@ -390,6 +391,68 @@ def _inspect_pending(
         intent = graph["intents"].get(op_id)
         intent_path, pending_path = commit._paths(op_id)
         has_pending_marker = graph["local_bytes"].get(pending_path) is not None
+        op_dir = journal._operation_ref(op_id).rsplit("/", 1)[0]
+        pub_sync_journal_path = op_dir + "/public-sync-journal.json"
+        pub_sync_pending_path = op_dir + "/public-sync.pending.json"
+        pub_sync_raw = graph["local_bytes"].get(pub_sync_journal_path)
+        has_pub_sync_pending = graph["local_bytes"].get(pub_sync_pending_path) is not None
+        if active_read_op is not None and op_id == active_read_op:
+            if intent is None:
+                pending_allowed = False
+                if not has_pending_marker:
+                    pending_allowed = True
+                else:
+                    pending_raw = graph["local_bytes"].get(pending_path)
+                    pending_doc = codec.strict_json_loads(pending_raw)
+                    if type(pending_doc) is dict and pending_doc.get("operation_id") == op_id:
+                        pending_allowed = True
+                if pending_allowed:
+                    if not has_pub_sync_pending and pub_sync_raw is None:
+                        continue
+                    if op.get("schema_version") == journal.CHAPTER4_BINDING_SCHEMA and pub_sync_raw is not None:
+                        pub_doc = codec.strict_json_loads(pub_sync_raw)
+                        if type(pub_doc) is dict and pub_doc.get("phase") == "applied":
+                            continue
+        if has_pub_sync_pending or pub_sync_raw is not None:
+            pub_phase = None
+            if pub_sync_raw is not None:
+                pub_doc = codec.strict_json_loads(pub_sync_raw)
+                if type(pub_doc) is not dict:
+                    _fail(
+                        codec.ReasonCode.INVALID_TYPE,
+                        stage=codec.Stage.BUNDLE,
+                        entity_id=op_id,
+                        expected="JSON object in public-sync-journal.json",
+                        actual=type(pub_doc).__name__,
+                        resume_ref=pub_sync_journal_path,
+                    )
+                pub_phase = pub_doc.get("phase")
+            code = codec.ReasonCode.PENDING if has_pub_sync_pending else codec.ReasonCode.UNPUBLISHED
+            resume = pub_sync_journal_path if pub_sync_raw is not None else pub_sync_pending_path
+            blocking_ops.append(
+                {
+                    "operation_id": op_id,
+                    "state": op["state"],
+                    "phase": pub_phase,
+                    "has_public_sync_journal": pub_sync_raw is not None,
+                    "has_public_sync_pending": has_pub_sync_pending,
+                    "resume_ref": resume,
+                }
+            )
+            pending_summary["blocking_operations"] = list(blocking_ops)
+            _fail(
+                code,
+                stage=codec.Stage.BUNDLE,
+                entity_id=op_id,
+                expected="no active public-sync-journal.json or public-sync.pending.json operation",
+                actual={
+                    "operation_id": op_id,
+                    "phase": pub_phase,
+                    "has_public_sync_journal": pub_sync_raw is not None,
+                    "has_public_sync_pending": has_pub_sync_pending,
+                },
+                resume_ref=resume,
+            )
         if intent is not None or has_pending_marker:
             phase = intent["phase"] if type(intent) is dict else None
             code = codec.ReasonCode.PENDING if has_pending_marker else codec.ReasonCode.UNPUBLISHED
@@ -544,13 +607,31 @@ def _observe_non_log_owned_ref(ref: dict[str, Any], observations: preflight.Obse
         if preflight.path(ref_loc).startswith("logs/"):
             has_log = True
     if not has_log:
+        pre_sync = commit._READ_PRESYNC_BYTES.get()
+        if pre_sync and any(preflight.path(row["path"]) in pre_sync for row in files):
+            from _b_route_record_owners import resolve_owned_ref
+            for row in files:
+                rel = preflight.path(row["path"])
+                if rel not in pre_sync:
+                    observations.read(rel)
+            def _read_with_presync(rel_p: str) -> bytes:
+                norm = preflight.path(rel_p)
+                if norm in pre_sync:
+                    return pre_sync[norm]
+                return observations.read(norm)
+            def _contracts_with_presync() -> dict[str, bytes]:
+                base = records._Bytes(pre_sync, observations.root)
+                return base.contracts()
+            resolve_owned_ref(ref, read_bytes=_read_with_presync, contract_sources=_contracts_with_presync)
+            return
         preflight.owned(ref, observations)
         return
+    pre_sync = commit._READ_PRESYNC_BYTES.get() or {}
     for row in files:
         rel = preflight.path(row["path"])
         if rel.startswith("logs/"):
             continue
-        raw = observations.read(rel)
+        raw = pre_sync[rel] if rel in pre_sync else observations.read(rel)
         actual = codec.raw_digest(raw)
         if actual != row["raw_digest"]:
             _fail(
@@ -1681,6 +1762,7 @@ def resolve_task_origin(
                     scope_ids=None,
                     task_join=task_join,
                     _protection=True,
+                    extra_candidates=commit._READ_PRESYNC_BYTES.get(),
                 )
                 for formal_path in pub_info["formal_paths"]:
                     observations.read(formal_path)

@@ -1548,7 +1548,7 @@ def validate_compensation_sources(frozen, *, candidates, root, task_join, verify
     source_bundle.bytes.stable()
 
 
-def published_bundle(root, *, catalog_raw=None, scope_ids=None, task_join=None, _protection=False):
+def published_bundle(root, *, catalog_raw=None, scope_ids=None, task_join=None, _protection=False, extra_candidates=None):
     """Validate committed records without treating local producer logs as authority.
 
     Caller owns protection/pending and catalog-before/after checks. This API
@@ -1556,6 +1556,10 @@ def published_bundle(root, *, catalog_raw=None, scope_ids=None, task_join=None, 
     continue to use validate_bundle with its unchanged strict external checks.
     """
     candidates = {} if catalog_raw is None else {CATALOG_PATH: catalog_raw}
+    if extra_candidates:
+        for path, raw in extra_candidates.items():
+            if path not in candidates:
+                candidates[path] = raw
     bundle = _PublishedBundle(candidates, Path(root), CATALOG_PATH, None, task_join)
     catalog = bundle.load(CATALOG_PATH)
     bundle.select(catalog, scope_ids)

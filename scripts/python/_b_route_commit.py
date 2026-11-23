@@ -20,15 +20,18 @@ SCHEMA_PATH = Path(__file__).resolve().parents[2] / 'docs/planning/b-route/schem
 FLAGS = {'readiness': False, 'runtime_verified': False, 'default_b_enabled': False}
 _BOUNDARY = ContextVar('b_route_commit_boundary', default=None)
 _READ_OPERATION_ID = ContextVar('b_route_read_operation_id', default=None)
+_READ_PRESYNC_BYTES = ContextVar('b_route_read_presync_bytes', default=None)
 
 
 @contextmanager
-def read_operation_context(operation_id):
+def read_operation_context(operation_id, *, pre_sync_bytes=None):
     """Allow an owning prepared/reserved operation to revalidate its own committed base."""
     token = _READ_OPERATION_ID.set(operation_id)
+    presync_token = _READ_PRESYNC_BYTES.set(pre_sync_bytes)
     try:
         yield
     finally:
+        _READ_PRESYNC_BYTES.reset(presync_token)
         _READ_OPERATION_ID.reset(token)
 
 
@@ -91,12 +94,23 @@ def _is_task_compilation(envelope):
     return envelope['schema_version'] == journal.TASK_COMPILATION_SCHEMA
 
 
+def _is_chapter4_binding(envelope):
+    return envelope['schema_version'] == journal.CHAPTER4_BINDING_SCHEMA
+
+
+def _has_projection_targets(envelope):
+    return _is_task_compilation(envelope) or (
+        _is_chapter4_binding(envelope)
+        and any(row.get('verification_mode') == 'task_definition_projection' for row in envelope['frozen']['targets'])
+    )
+
+
 def _sealed_targets(intent):
     return {row['path']: row for row in intent['receipt']['targets']}
 
 
 def _target_after_raw(envelope, target, *, before_files=None):
-    if _is_task_compilation(envelope) and target['verification_mode'] == 'task_definition_projection':
+    if _has_projection_targets(envelope) and target['verification_mode'] == 'task_definition_projection':
         _require(before_files is not None and target['path'] in before_files,
                  'sealed triplet before bytes for live status merge', target['path'])
         before_raw = _decode(before_files[target['path']])
@@ -107,7 +121,7 @@ def _target_after_raw(envelope, target, *, before_files=None):
 
 
 def _target_overrides(envelope, before_files):
-    if not _is_task_compilation(envelope):
+    if not _has_projection_targets(envelope):
         return None
     overrides = {}
     for target in envelope['frozen']['targets']:
@@ -131,7 +145,7 @@ def _target_overrides(envelope, before_files):
 
 
 def _target_task_join(root, envelope, before_files=None):
-    if not _is_task_compilation(envelope):
+    if not _has_projection_targets(envelope):
         return _task_join(root)
     docs = {}
     mapping = {
@@ -182,9 +196,9 @@ def validate_local(root, envelope):
              and value['receipt']['operation_id'] == envelope['operation_id'], 'receipt bound to complete frozen request', intent_ref)
     target_names = {row['path'] for row in frozen['targets']}
     _require(set(value['before_files']) == target_names | {records.CATALOG_PATH}, 'complete original before images', intent_ref)
-    overrides = _target_overrides(envelope, value['before_files']) if _is_task_compilation(envelope) else None
+    overrides = _target_overrides(envelope, value['before_files']) if _has_projection_targets(envelope) else None
     for target in frozen['targets']:
-        if _is_task_compilation(envelope) and target['verification_mode'] == 'task_definition_projection':
+        if _has_projection_targets(envelope) and target['verification_mode'] == 'task_definition_projection':
             continue
         _require(_digest(_decode(value['before_files'][target['path']])) == target['before_raw_digest'],
                  'original target before bytes', target['path'])
@@ -392,6 +406,12 @@ def _verify_observations(root, envelope, intent, *, published=False, initial=Fal
     if _is_task_compilation(envelope):
         import _b_route_task_compilation as task_compilation
         task_compilation.verify_observations(root, envelope, intent, facts=facts, published=published)
+        _validated_local_facts(root, envelope, intent, facts, initial=initial)
+        _capture_boundary(root, envelope, intent, facts)
+        return
+    if _is_chapter4_binding(envelope):
+        import _b_route_chapter4_binding as chapter4_binding
+        chapter4_binding.verify_observations(root, envelope, intent, facts=facts, published=published)
         _validated_local_facts(root, envelope, intent, facts, initial=initial)
         _capture_boundary(root, envelope, intent, facts)
         return
@@ -610,8 +630,19 @@ def _initial(root, envelope, snapshot):
     before = {row['path']: _encode(_read(root, row['path'], optional=True)) for row in envelope['frozen']['targets']}
     before[records.CATALOG_PATH] = _encode(_read(root, records.CATALOG_PATH, optional=True))
     if before[records.CATALOG_PATH] is not None:
-        records.published_bundle(root, catalog_raw=_decode(before[records.CATALOG_PATH]), task_join=_task_join(root))
-    overrides = _target_overrides(envelope, before) if _is_task_compilation(envelope) else None
+        extra_pre_sync = None
+        if _is_chapter4_binding(envelope) and envelope['frozen']['refinement']['has_public_changes']:
+            import _b_route_chapter4_binding as chapter4_binding
+            pub_j = chapter4_binding.validate_public_sync_local(root, envelope)
+            if pub_j is not None:
+                extra_pre_sync = {
+                    entry['path']: chapter4_binding._decode_b64(entry['before_base64'])
+                    for entry in pub_j['entries']
+                    if entry['before_base64'] is not None
+                } or None
+        records.published_bundle(root, catalog_raw=_decode(before[records.CATALOG_PATH]),
+                                 task_join=_task_join(root), extra_candidates=extra_pre_sync)
+    overrides = _target_overrides(envelope, before) if _has_projection_targets(envelope) else None
     receipt = _draft(root, envelope, _decode(before[records.CATALOG_PATH]), before_files=before, target_overrides=overrides)
     origins_before = None
     if before[records.CATALOG_PATH] is not None:
@@ -754,8 +785,13 @@ def terminal_valid(root, envelope, intent=None, *, graph=None):
     pending = (graph['local_bytes'].get(pending_rel)
                if graph is not None and 'local_bytes' in graph
                else _read(root, pending_rel, optional=True))
+    pub_sync_ok = True
+    if _is_chapter4_binding(envelope):
+        import _b_route_chapter4_binding as chapter4_binding
+        pub_sync_ok = chapter4_binding.public_sync_terminal_ok(root, envelope, graph=graph)
     return (intent is not None and intent['phase'] == 'complete'
         and pending is None
+        and pub_sync_ok
         and _publication_proven(root, envelope, intent, graph=graph, historical=True))
 
 
@@ -773,7 +809,7 @@ def _original_activity(root, envelope):
     Reuse the native activity/coordinator owners in their existing order. This
     acquires no new mutex and does not execute a verifier or dispatch work.
     """
-    if envelope['schema_version'] in (journal.COMPENSATION_SCHEMA, journal.TASK_COMPILATION_SCHEMA):
+    if envelope['schema_version'] in (journal.COMPENSATION_SCHEMA, journal.TASK_COMPILATION_SCHEMA, journal.CHAPTER4_BINDING_SCHEMA):
         yield
         return
     from _b_route_planning_runtime import run_location
@@ -810,7 +846,7 @@ def _step(root, envelope, intent, stage):
         return _result(envelope, intent, published=True, noop=True)
     if intent['phase'] in ('published', 'complete'):
         _require(stage == 'publish', 'explicit publish to finish pending cleanup', 'pending terminal cleanup', codec.ReasonCode.PENDING)
-    sealed = _sealed_targets(intent) if _is_task_compilation(envelope) else None
+    sealed = _sealed_targets(intent) if _has_projection_targets(envelope) else None
     if stage == 'publish' and _publication_proven(root, envelope, intent):
         _verify_observations(root, envelope, intent, published=True)
         for target in envelope['frozen']['targets']:
@@ -823,6 +859,9 @@ def _step(root, envelope, intent, stage):
             intent = _save(root, intent, 'complete')
         _checkpoint('before_pending_cleanup')
         _cleanup_marker(root, envelope)
+        if _is_chapter4_binding(envelope):
+            import _b_route_chapter4_binding as chapter4_binding
+            chapter4_binding.finalize_public_sync_cleanup(root, envelope)
         _require(terminal_valid(root, envelope), 'complete published terminal proof', envelope['operation_id'])
         return _result(envelope, intent, published=True)
     _verify_observations(root, envelope, intent)
@@ -896,6 +935,9 @@ def _step(root, envelope, intent, stage):
     intent = _save(root, intent, 'complete')
     _checkpoint('before_pending_cleanup')
     _cleanup_marker(root, envelope)
+    if _is_chapter4_binding(envelope):
+        import _b_route_chapter4_binding as chapter4_binding
+        chapter4_binding.finalize_public_sync_cleanup(root, envelope)
     _require(terminal_valid(root, envelope), 'complete published terminal proof', envelope['operation_id'])
     return _result(envelope, intent, published=True)
 
@@ -914,6 +956,17 @@ def execute(root, *, operation_id, stage):
         intent = validate_local(root, envelope)
         if intent is None:
             _require(stage == 'apply', 'apply creates initial durable intent', stage, codec.ReasonCode.UNPUBLISHED)
+            if _is_chapter4_binding(envelope):
+                import _b_route_chapter4_binding as chapter4_binding
+                with business_guard(root, envelope['frozen']['scope_ids'], operation_id=operation_id):
+                    if envelope['frozen']['refinement']['has_public_changes']:
+                        chapter4_binding.apply_public_sync(root, operation_id=operation_id, _lease_held=True)
+                    with chapter4_binding.commit_context(
+                        root, operation_id=operation_id, _held_scopes=set(envelope['frozen']['scope_ids'])
+                    ) as (snapshot, checked):
+                        _require(checked == envelope, 'same reserved operation', operation_id)
+                        intent = _initial(root, envelope, snapshot)
+                        return _step(root, envelope, intent, stage)
             if _is_task_compilation(envelope):
                 import _b_route_task_compilation as task_compilation
                 ctx = task_compilation.commit_context(root, operation_id=operation_id)
@@ -926,11 +979,20 @@ def execute(root, *, operation_id, stage):
                         compensation_frozen=envelope['frozen'] if envelope['schema_version'] == journal.COMPENSATION_SCHEMA else None):
                     intent = _initial(root, envelope, snapshot)
                     return _step(root, envelope, intent, stage)
-        unfinished = intent['phase'] != 'complete' or _read(root, _paths(operation_id)[1], optional=True) is not None
+        pub_unfinished = False
+        if _is_chapter4_binding(envelope):
+            import _b_route_chapter4_binding as chapter4_binding
+            pub_unfinished = not chapter4_binding.public_sync_terminal_ok(root, envelope)
+        unfinished = (intent['phase'] != 'complete'
+                      or _read(root, _paths(operation_id)[1], optional=True) is not None
+                      or pub_unfinished)
         if unfinished:
             if _is_task_compilation(envelope):
                 import _b_route_task_compilation as task_compilation
                 task_compilation.verify_saved(root, envelope)
+            elif _is_chapter4_binding(envelope):
+                import _b_route_chapter4_binding as chapter4_binding
+                chapter4_binding.verify_saved(root, envelope)
             else:
                 import _b_route_adoption_review as review
                 review.verify_saved(root, envelope['frozen']['request'])
@@ -989,6 +1051,7 @@ def inspect_recovery(root, *, operation_id):
         envelope = journal.read_operation(root, operation_id=operation_id)
         intent = validate_local(root, envelope)
         catalog = _read(root, records.CATALOG_PATH, optional=True)
+        resume_ref = _paths(operation_id)[0] if intent is not None else journal._operation_ref(operation_id)
         if terminal_valid(root, envelope, intent):
             physical, next_stage, targets = 'committed_noop', None, []
         else:
@@ -997,6 +1060,9 @@ def inspect_recovery(root, *, operation_id):
                 if _is_task_compilation(envelope):
                     import _b_route_task_compilation as task_compilation
                     task_compilation.verify_saved(root, envelope)
+                elif _is_chapter4_binding(envelope):
+                    import _b_route_chapter4_binding as chapter4_binding
+                    chapter4_binding.verify_saved(root, envelope)
                 else:
                     review.verify_saved(root, envelope['frozen']['request'])
                 published = _publication_proven(root, envelope, intent)
@@ -1006,10 +1072,22 @@ def inspect_recovery(root, *, operation_id):
                          'unchanged immutable recovery receipt', _receipt_path(envelope))
             else:
                 published = False
+                pub_sync_map = (
+                    {entry['path']: entry for entry in envelope['frozen']['refinement']['public_sync_entries']}
+                    if _is_chapter4_binding(envelope)
+                    else {}
+                )
                 for ref in envelope['frozen']['authority_refs']:
-                    _require(_digest(_read(root, ref['path'])) == ref['raw_digest'],
-                             'unchanged original authority before initial admission', ref['path'], codec.ReasonCode.INPUT_STALE)
-            sealed = _sealed_targets(intent) if (intent is not None and _is_task_compilation(envelope)) else None
+                    if ref['path'] in pub_sync_map:
+                        entry = pub_sync_map[ref['path']]
+                        cur_sha = _digest(_read(root, ref['path'], optional=True))
+                        _require(cur_sha in (entry['before_sha256'], entry['after_sha256']),
+                                 {'before': entry['before_sha256'], 'after': entry['after_sha256']},
+                                 cur_sha, codec.ReasonCode.INPUT_STALE)
+                    else:
+                        _require(_digest(_read(root, ref['path'])) == ref['raw_digest'],
+                                 'unchanged original authority before initial admission', ref['path'], codec.ReasonCode.INPUT_STALE)
+            sealed = _sealed_targets(intent) if (intent is not None and _has_projection_targets(envelope)) else None
             targets = [_classify_target(root, row, sealed=sealed) for row in envelope['frozen']['targets']]
             before = sum(row['state'] == 'before' for row in targets)
             if intent is None:
@@ -1019,6 +1097,32 @@ def inspect_recovery(root, *, operation_id):
                 )
                 _require(untouched, 'original before targets without durable intent', operation_id)
                 physical, next_stage = 'untouched', 'apply'
+                if _is_chapter4_binding(envelope) and envelope['frozen']['refinement']['has_public_changes']:
+                    import _b_route_chapter4_binding as chapter4_binding
+                    pub_j = chapter4_binding.validate_public_sync_local(root, envelope)
+                    pub_j_rel, pub_p_rel = chapter4_binding.public_sync_paths(operation_id)
+                    has_pub_p = _read(root, pub_p_rel, optional=True) is not None
+                    pub_entries = envelope['frozen']['refinement']['public_sync_entries']
+                    pub_after = 0
+                    pub_moved = 0
+                    for entry in pub_entries:
+                        cur_sha = _digest(_read(root, entry['path'], optional=True))
+                        _require(cur_sha in (entry['before_sha256'], entry['after_sha256']),
+                                 {'before': entry['before_sha256'], 'after': entry['after_sha256']},
+                                 cur_sha, codec.ReasonCode.CONFLICT)
+                        if cur_sha == entry['after_sha256']:
+                            pub_after += 1
+                            if entry['before_sha256'] != entry['after_sha256']:
+                                pub_moved += 1
+                    if pub_j is not None or has_pub_p or pub_moved > 0:
+                        resume_ref = (
+                            pub_j_rel if pub_j is not None
+                            else (pub_p_rel if has_pub_p else journal._operation_ref(operation_id))
+                        )
+                        if pub_after == len(pub_entries) and pub_j is not None and pub_j['phase'] == 'applied':
+                            physical = 'public_sync_applied_pre_commit'
+                        else:
+                            physical = 'public_sync_partial'
             elif published:
                 _require(before == 0, 'all published targets still after', operation_id)
                 physical, next_stage = 'published_pending_cleanup', 'publish'
@@ -1048,7 +1152,7 @@ def inspect_recovery(root, *, operation_id):
             'physical_state': physical, 'next_stage': next_stage, 'target_states': targets,
             'scope_ids': envelope['frozen']['scope_ids'], 'frozen_digest': envelope['frozen_digest'],
             'legacy_routes': routes, 'formal_adoption': False, 'diagnostics': [],
-            'resume_ref': _paths(operation_id)[0] if intent is not None else journal._operation_ref(operation_id),
+            'resume_ref': resume_ref,
             'eligibility': 'facts only; execute rechecks original admission and leases', **FLAGS}
     except codec.CodecError:
         raise
@@ -1085,7 +1189,7 @@ def recover(root, *, operation_id):
         _fail('complete safe recovery; original evidence retained', type(error).__name__, resume=_paths(operation_id)[0])
 
 
-def read_committed(root, *, scope_ids=None, operation_id=None):
+def read_committed(root, *, scope_ids=None, operation_id=None, _held_scopes=None):
     """Protected formal consumption; local proof logs are not clone prerequisites.
 
     Coordination may initialize ordinary local lock metadata. Formal files are
@@ -1093,11 +1197,17 @@ def read_committed(root, *, scope_ids=None, operation_id=None):
     """
     root = Path(root).absolute()
     effective_op = operation_id if operation_id is not None else _READ_OPERATION_ID.get()
+    pre_sync_bytes = _READ_PRESYNC_BYTES.get() if effective_op is not None else None
     try:
         before = _read(root, records.CATALOG_PATH)
-        initial = records.published_bundle(root, catalog_raw=before, scope_ids=scope_ids, task_join=_task_join(root), _protection=True)
+        initial = records.published_bundle(root, catalog_raw=before, scope_ids=scope_ids,
+                                           task_join=_task_join(root), _protection=True,
+                                           extra_candidates=pre_sync_bytes)
         protection_scopes = initial.pop('_protection_scope_ids')
-        if effective_op is not None:
+        if _held_scopes is not None:
+            remaining_scopes = sorted(set(protection_scopes) - set(_held_scopes))
+            guard = business_guard(root, remaining_scopes, review_only=True) if remaining_scopes else nullcontext()
+        elif effective_op is not None:
             guard = business_guard(root, protection_scopes, review_only=True)
         else:
             guard = business_guard(root, protection_scopes)
@@ -1129,7 +1239,9 @@ def read_committed(root, *, scope_ids=None, operation_id=None):
             import _b_route_adoption as adoption
             tasks = adoption.Snapshot(root)
             joined = adoption._task_context(tasks)
-            result = records.published_bundle(root, catalog_raw=before, scope_ids=scope_ids, task_join=joined, _protection=True)
+            result = records.published_bundle(root, catalog_raw=before, scope_ids=scope_ids,
+                                              task_join=joined, _protection=True,
+                                              extra_candidates=pre_sync_bytes)
             _require(result.pop('_protection_scope_ids') == protection_scopes,
                      'same validated selected business resources under protection', records.CATALOG_PATH,
                      codec.ReasonCode.INPUT_STALE)

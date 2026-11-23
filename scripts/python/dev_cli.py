@@ -20,7 +20,7 @@ import sys
 from pathlib import Path
 
 # The read-only command must not create bytecode even without Python -B.
-if len(sys.argv) > 1 and sys.argv[1] in {"b-route-preflight", "b-route-sources", "b-route-adoption", "b-route-task-preview", "b-route-task-compile", "b-route-task-origin"}:
+if len(sys.argv) > 1 and sys.argv[1] in {"b-route-preflight", "b-route-sources", "b-route-adoption", "b-route-task-preview", "b-route-task-compile", "b-route-task-origin", "b-route-chapter4-binding"}:
     sys.dont_write_bytecode = True
 
 if __name__ == "__main__" and len(sys.argv) > 1 and sys.argv[1] == "b-route-sources":
@@ -42,6 +42,10 @@ if __name__ == "__main__" and len(sys.argv) > 1 and sys.argv[1] == "b-route-task
 if __name__ == "__main__" and len(sys.argv) > 1 and sys.argv[1] == "b-route-task-origin":
     from resolve_b_route_task_origin import main as task_origin_main
     raise SystemExit(task_origin_main(sys.argv[2:]))
+
+if __name__ == "__main__" and len(sys.argv) > 1 and sys.argv[1] == "b-route-chapter4-binding":
+    from refine_b_route_chapter4_binding import main as chapter4_binding_main
+    raise SystemExit(chapter4_binding_main(sys.argv[2:]))
 
 from dev_cli_builders import (
     DEFAULT_GATE_BUNDLE_TASK_FILES,
@@ -69,6 +73,7 @@ from dev_cli_builders import (
     build_b_route_task_preview_cmd,
     build_b_route_task_compile_cmd,
     build_b_route_task_origin_cmd,
+    build_b_route_chapter4_binding_cmd,
     build_quality_gates_cmd,
     build_run_dotnet_cmd,
     build_run_gdunit_full_cmd,
@@ -638,6 +643,13 @@ def cmd_b_route_task_origin(args: argparse.Namespace) -> int:
     return task_origin_main(build_b_route_task_origin_cmd(args)[3:])
 
 
+def cmd_b_route_chapter4_binding(args: argparse.Namespace) -> int:
+    """Run the governed Chapter 4 production contract and four-part binding refinement CLI."""
+    from refine_b_route_chapter4_binding import main as chapter4_binding_main
+
+    return chapter4_binding_main(build_b_route_chapter4_binding_cmd(args)[3:])
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Dev CLI for Godot+C# template (AI-friendly entrypoint)",
@@ -670,6 +682,11 @@ def build_parser() -> argparse.ArgumentParser:
     from resolve_b_route_task_origin import register_arguments as register_task_origin_arguments
     register_task_origin_arguments(task_origin_parser)
     task_origin_parser.set_defaults(func=cmd_b_route_task_origin)
+
+    chapter4_binding_parser = sub.add_parser("b-route-chapter4-binding", help="Governed Chapter 4 production contract and four-part binding refinement (10 stages); no default B activation")
+    from refine_b_route_chapter4_binding import register_arguments as register_chapter4_binding_arguments
+    register_chapter4_binding_arguments(chapter4_binding_parser)
+    chapter4_binding_parser.set_defaults(func=cmd_b_route_chapter4_binding)
 
     # run-ci-basic
     p_ci = sub.add_parser(

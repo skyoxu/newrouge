@@ -11,7 +11,7 @@ import _b_route_codec as codec
 
 DIRECTORY = Path(__file__).resolve().parents[2] / "docs/planning/b-route/schemas"
 FORMAL = ("common", "policy", "plan", "binding", "origins", "commit", "catalog")
-AUXILIARY = ("flow-graph", "planning-candidate", "adoption-operation", "adoption-operation-v2", "compensation-operation", "task-compilation-operation")
+AUXILIARY = ("flow-graph", "planning-candidate", "adoption-operation", "adoption-operation-v2", "compensation-operation", "task-compilation-operation", "chapter4-binding-operation")
 
 
 def fail(code, expected, actual):
