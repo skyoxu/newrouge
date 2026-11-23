@@ -51,6 +51,7 @@ on:
       - 'scripts/python/compile_b_route_tasks.py'
       - 'scripts/python/resolve_b_route_task_origin.py'
       - 'scripts/python/refine_b_route_chapter4_binding.py'
+      - 'scripts/python/resolve_b_route_input_set.py'
       - 'scripts/python/validate_contracts.py'
       - 'scripts/python/check_task_contract_refs.py'
       - 'scripts/python/validate_overlay_execution.py'

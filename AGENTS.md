@@ -37,6 +37,7 @@ Context Reset 后先读取本文件，再按当前任务范围选择首要入口
 | B 路线 3C 受治理三联编译 | [3C 编译 owner 说明](docs/workflows/b-route-task-compilation.md) | `dev_cli.py b-route-task-compile`；九阶段受治理编译三联与 3C 绑定、两段锁合活 status、末推 catalog，不授 readiness/默认 B |
 | B 路线统一 Task 来源解析 | [Task 来源解析 owner 说明](docs/workflows/b-route-task-origin-resolution.md) | `dev_cli.py b-route-task-origin`；纯只读零落盘分类 `B`/`A`/`explicit_not_enabled_a`/`blocked`，汇总适用计划集合与 `applicable_set_digest`，不授实施权 |
 | B 路线 Chapter 4 绑定细化 | [Chapter 4 绑定细化 owner 说明](docs/workflows/b-route-chapter4-binding.md) | `dev_cli.py b-route-chapter4-binding`；细化生产契约与四部分定义、原始字节 `public-sync-journal`、双态核验与归因，发布 `stage=4` 绑定与 `origins`，不授 readiness/默认 B |
+| B 路线共同 InputSet 与新鲜度 | [InputSet 与新鲜度 owner 说明](docs/workflows/b-route-input-set-resolution.md) | `dev_cli.py b-route-input-set`；汇总 3.3 计划集、3.4 绑定/候选单槽、Task 投影、契约/ADR/Overlay/manifest、依赖闭包与环境产 `input_set_digest`，归因 `3A..5`，`guarded_input_set` 仅持业务 scope 租约，不授实施权 |
 | Chapter 3 | `workflow.md` 第 3 章 | `.agents/skills/workflow-chapter3-task-triplet-baseline/SKILL.md`；本次 PRD/GDD/planning sources |
 | Chapter 4 | `workflow.md` 第 4 章 | `.agents/skills/workflow-chapter4-overlays-contracts-baseline/SKILL.md`；任务三联、相关 Overlay/Contract |
 | Chapter 5 | `workflow.md` 第 5 章 | `.agents/skills/workflow-chapter5-semantics-stabilization/SKILL.md`；当前 reconciliation/readiness |

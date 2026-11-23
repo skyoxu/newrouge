@@ -953,3 +953,37 @@ def build_b_route_chapter4_binding_cmd(args) -> list[str]:
             raise ValueError("b-route-chapter4-binding --request must be nonempty when provided")
         cmd += ["--request", str(request)]
     return cmd
+
+
+def build_b_route_input_set_cmd(args) -> list[str]:
+    if getattr(args, "write", False) or getattr(args, "apply", False):
+        raise ValueError("b-route-input-set is strictly read-only and rejects write/apply flags")
+    cmd = [
+        sys.executable,
+        "-B",
+        str(Path(__file__).resolve().with_name("resolve_b_route_input_set.py")),
+    ]
+    root = getattr(args, "root", ".")
+    if root is None or not str(root).strip():
+        raise ValueError("b-route-input-set requires nonempty --root")
+    cmd += ["--root", str(root)]
+    task_id = getattr(args, "task_id", None)
+    if task_id is None or not str(task_id).strip():
+        raise ValueError("b-route-input-set requires nonempty --task-id")
+    cmd += ["--task-id", str(task_id)]
+    for attr, flag in (
+        ("operation", "--operation"),
+        ("candidate_binding", "--candidate-binding"),
+        ("baseline", "--baseline"),
+        ("lock_mode", "--lock-mode"),
+        ("report", "--report"),
+    ):
+        value = getattr(args, attr, None)
+        if value is not None:
+            if not str(value).strip():
+                raise ValueError(f"b-route-input-set optional {flag} must be nonempty when provided")
+            cmd += [flag, str(value)]
+    max_attempts = getattr(args, "max_attempts", None)
+    if max_attempts is not None:
+        cmd += ["--max-attempts", str(max_attempts)]
+    return cmd

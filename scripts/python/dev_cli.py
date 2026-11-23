@@ -20,7 +20,7 @@ import sys
 from pathlib import Path
 
 # The read-only command must not create bytecode even without Python -B.
-if len(sys.argv) > 1 and sys.argv[1] in {"b-route-preflight", "b-route-sources", "b-route-adoption", "b-route-task-preview", "b-route-task-compile", "b-route-task-origin", "b-route-chapter4-binding"}:
+if len(sys.argv) > 1 and sys.argv[1] in {"b-route-preflight", "b-route-sources", "b-route-adoption", "b-route-task-preview", "b-route-task-compile", "b-route-task-origin", "b-route-chapter4-binding", "b-route-input-set"}:
     sys.dont_write_bytecode = True
 
 if __name__ == "__main__" and len(sys.argv) > 1 and sys.argv[1] == "b-route-sources":
@@ -46,6 +46,10 @@ if __name__ == "__main__" and len(sys.argv) > 1 and sys.argv[1] == "b-route-task
 if __name__ == "__main__" and len(sys.argv) > 1 and sys.argv[1] == "b-route-chapter4-binding":
     from refine_b_route_chapter4_binding import main as chapter4_binding_main
     raise SystemExit(chapter4_binding_main(sys.argv[2:]))
+
+if __name__ == "__main__" and len(sys.argv) > 1 and sys.argv[1] == "b-route-input-set":
+    from resolve_b_route_input_set import main as input_set_main
+    raise SystemExit(input_set_main(sys.argv[2:]))
 
 from dev_cli_builders import (
     DEFAULT_GATE_BUNDLE_TASK_FILES,
@@ -74,6 +78,7 @@ from dev_cli_builders import (
     build_b_route_task_compile_cmd,
     build_b_route_task_origin_cmd,
     build_b_route_chapter4_binding_cmd,
+    build_b_route_input_set_cmd,
     build_quality_gates_cmd,
     build_run_dotnet_cmd,
     build_run_gdunit_full_cmd,
@@ -650,6 +655,13 @@ def cmd_b_route_chapter4_binding(args: argparse.Namespace) -> int:
     return chapter4_binding_main(build_b_route_chapter4_binding_cmd(args)[3:])
 
 
+def cmd_b_route_input_set(args: argparse.Namespace) -> int:
+    """Run the read-only B-route common InputSet and freshness resolver CLI."""
+    from resolve_b_route_input_set import main as input_set_main
+
+    return input_set_main(build_b_route_input_set_cmd(args)[3:])
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Dev CLI for Godot+C# template (AI-friendly entrypoint)",
@@ -687,6 +699,11 @@ def build_parser() -> argparse.ArgumentParser:
     from refine_b_route_chapter4_binding import register_arguments as register_chapter4_binding_arguments
     register_chapter4_binding_arguments(chapter4_binding_parser)
     chapter4_binding_parser.set_defaults(func=cmd_b_route_chapter4_binding)
+
+    input_set_parser = sub.add_parser("b-route-input-set", help="Read-only common InputSet and freshness resolver with optional business-scope guard; no execution authorization")
+    from resolve_b_route_input_set import register_arguments as register_input_set_arguments
+    register_input_set_arguments(input_set_parser)
+    input_set_parser.set_defaults(func=cmd_b_route_input_set)
 
     # run-ci-basic
     p_ci = sub.add_parser(
@@ -1247,6 +1264,10 @@ def main(argv: list[str] | None = None) -> int:
         sys.dont_write_bytecode = True
         from resolve_b_route_task_origin import main as task_origin_main
         return task_origin_main(arguments[1:])
+    if arguments and arguments[0] == "b-route-input-set":
+        sys.dont_write_bytecode = True
+        from resolve_b_route_input_set import main as input_set_main
+        return input_set_main(arguments[1:])
     parser = build_parser()
     args = parser.parse_args(arguments)
     func = getattr(args, "func", None)
