@@ -1,0 +1,412 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "newrouge.b-route-task-compilation-operation.v1",
+  "title": "Auxiliary governed 3C triplet compilation operation; not a formal record",
+  "$defs": {
+    "Digest": {
+      "$ref": "newrouge.b-route-common.v1#/$defs/Digest"
+    },
+    "String": {
+      "$ref": "newrouge.b-route-adoption-operation.v1#/$defs/String"
+    },
+    "Reference": {
+      "$ref": "newrouge.b-route-adoption-operation.v1#/$defs/Reference"
+    },
+    "NullableReference": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Reference"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "References": {
+      "$ref": "newrouge.b-route-adoption-operation.v1#/$defs/References"
+    },
+    "ScopeIds": {
+      "$ref": "newrouge.b-route-adoption-operation.v1#/$defs/ScopeIds"
+    },
+    "Request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "producer",
+        "operation_id",
+        "plan_id",
+        "scope_id",
+        "audit_ref",
+        "preview_ref"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "newrouge.b-route-task-compilation-request.v1"
+        },
+        "producer": {
+          "const": "task_compilation"
+        },
+        "operation_id": {
+          "$ref": "newrouge.b-route-common.v1#/$defs/FileId"
+        },
+        "plan_id": {
+          "$ref": "newrouge.b-route-common.v1#/$defs/FileId"
+        },
+        "scope_id": {
+          "$ref": "newrouge.b-route-common.v1#/$defs/BusinessId"
+        },
+        "audit_ref": {
+          "$ref": "#/$defs/Reference"
+        },
+        "preview_ref": {
+          "$ref": "#/$defs/Reference"
+        },
+        "protection_ref": {
+          "$ref": "#/$defs/NullableReference"
+        },
+        "manifest_ref": {
+          "$ref": "#/$defs/NullableReference"
+        },
+        "change_intents_ref": {
+          "$ref": "#/$defs/NullableReference"
+        },
+        "reason": {
+          "$ref": "#/$defs/String"
+        }
+      }
+    },
+    "AllocatedTask": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "taskmaster_id",
+        "business_id",
+        "view",
+        "proposed_business_id"
+      ],
+      "properties": {
+        "taskmaster_id": {
+          "$ref": "newrouge.b-route-common.v1#/$defs/PositiveInteger"
+        },
+        "business_id": {
+          "$ref": "newrouge.b-route-common.v1#/$defs/BusinessId"
+        },
+        "view": {
+          "enum": [
+            "back",
+            "gameplay"
+          ]
+        },
+        "proposed_business_id": {
+          "$ref": "#/$defs/String"
+        }
+      }
+    },
+    "Allocations": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "plan_id",
+        "plan_revision",
+        "binding_revision",
+        "origins_revision",
+        "next_taskmaster_id_base",
+        "task_ids",
+        "task_definitions"
+      ],
+      "properties": {
+        "plan_id": {
+          "$ref": "newrouge.b-route-common.v1#/$defs/FileId"
+        },
+        "plan_revision": {
+          "$ref": "newrouge.b-route-common.v1#/$defs/PositiveInteger"
+        },
+        "binding_revision": {
+          "$ref": "newrouge.b-route-common.v1#/$defs/PositiveInteger"
+        },
+        "origins_revision": {
+          "$ref": "newrouge.b-route-common.v1#/$defs/PositiveInteger"
+        },
+        "next_taskmaster_id_base": {
+          "$ref": "newrouge.b-route-common.v1#/$defs/PositiveInteger"
+        },
+        "task_ids": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/AllocatedTask"
+          }
+        },
+        "task_definitions": {
+          "type": "object",
+          "patternProperties": {
+            "^[0-9]+$": {
+              "$ref": "#/$defs/Digest"
+            }
+          },
+          "additionalProperties": false
+        }
+      }
+    },
+    "Target": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "path",
+            "schema_version",
+            "before_raw_digest",
+            "after_payload",
+            "after_raw_digest",
+            "verification_mode"
+          ],
+          "properties": {
+            "path": {
+              "$ref": "#/$defs/String"
+            },
+            "schema_version": {
+              "$ref": "#/$defs/String"
+            },
+            "before_raw_digest": {
+              "anyOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "$ref": "#/$defs/Digest"
+                }
+              ]
+            },
+            "after_payload": {
+              "type": [
+                "object",
+                "array"
+              ]
+            },
+            "after_raw_digest": {
+              "$ref": "#/$defs/Digest"
+            },
+            "verification_mode": {
+              "const": "immutable_bytes"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "path",
+            "schema_version",
+            "before_raw_digest",
+            "after_payload",
+            "after_raw_digest",
+            "verification_mode",
+            "codec_version",
+            "before_projection_digest",
+            "after_projection_digest"
+          ],
+          "properties": {
+            "path": {
+              "$ref": "#/$defs/String"
+            },
+            "schema_version": {
+              "$ref": "#/$defs/String"
+            },
+            "before_raw_digest": {
+              "$ref": "#/$defs/Digest"
+            },
+            "after_payload": {
+              "type": [
+                "object",
+                "array"
+              ]
+            },
+            "after_raw_digest": {
+              "$ref": "#/$defs/Digest"
+            },
+            "verification_mode": {
+              "const": "task_definition_projection"
+            },
+            "codec_version": {
+              "const": "newrouge.b-route-task-definition.v1"
+            },
+            "before_projection_digest": {
+              "$ref": "#/$defs/Digest"
+            },
+            "after_projection_digest": {
+              "$ref": "#/$defs/Digest"
+            }
+          }
+        }
+      ]
+    },
+    "Compilation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "plan_id",
+        "scope_id",
+        "preview_digest",
+        "current_catalog_digest",
+        "current_frame_digest",
+        "plan_ref",
+        "old_scope_ids",
+        "new_scope_ids",
+        "triplet_before_projections",
+        "triplet_after_projections"
+      ],
+      "properties": {
+        "plan_id": {
+          "$ref": "newrouge.b-route-common.v1#/$defs/FileId"
+        },
+        "scope_id": {
+          "$ref": "newrouge.b-route-common.v1#/$defs/BusinessId"
+        },
+        "preview_digest": {
+          "$ref": "#/$defs/Digest"
+        },
+        "current_catalog_digest": {
+          "$ref": "#/$defs/Digest"
+        },
+        "current_frame_digest": {
+          "$ref": "#/$defs/Digest"
+        },
+        "plan_ref": {
+          "$ref": "newrouge.b-route-common.v1#/$defs/PlanRef"
+        },
+        "old_scope_ids": {
+          "$ref": "#/$defs/ScopeIds"
+        },
+        "new_scope_ids": {
+          "$ref": "#/$defs/ScopeIds"
+        },
+        "triplet_before_projections": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            ".taskmaster/tasks/tasks.json",
+            ".taskmaster/tasks/tasks_back.json",
+            ".taskmaster/tasks/tasks_gameplay.json"
+          ],
+          "properties": {
+            ".taskmaster/tasks/tasks.json": {
+              "$ref": "#/$defs/Digest"
+            },
+            ".taskmaster/tasks/tasks_back.json": {
+              "$ref": "#/$defs/Digest"
+            },
+            ".taskmaster/tasks/tasks_gameplay.json": {
+              "$ref": "#/$defs/Digest"
+            }
+          }
+        },
+        "triplet_after_projections": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            ".taskmaster/tasks/tasks.json",
+            ".taskmaster/tasks/tasks_back.json",
+            ".taskmaster/tasks/tasks_gameplay.json"
+          ],
+          "properties": {
+            ".taskmaster/tasks/tasks.json": {
+              "$ref": "#/$defs/Digest"
+            },
+            ".taskmaster/tasks/tasks_back.json": {
+              "$ref": "#/$defs/Digest"
+            },
+            ".taskmaster/tasks/tasks_gameplay.json": {
+              "$ref": "#/$defs/Digest"
+            }
+          }
+        }
+      }
+    },
+    "Frozen": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "producer",
+        "request",
+        "allocations",
+        "scope_ids",
+        "authority_refs",
+        "targets",
+        "compilation"
+      ],
+      "properties": {
+        "producer": {
+          "const": "task_compilation"
+        },
+        "request": {
+          "$ref": "#/$defs/Request"
+        },
+        "allocations": {
+          "$ref": "#/$defs/Allocations"
+        },
+        "scope_ids": {
+          "$ref": "#/$defs/ScopeIds"
+        },
+        "authority_refs": {
+          "$ref": "#/$defs/References"
+        },
+        "targets": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/Target"
+          }
+        },
+        "compilation": {
+          "$ref": "#/$defs/Compilation"
+        }
+      }
+    }
+  },
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "codec_version",
+    "operation_id",
+    "state",
+    "request_raw_base64",
+    "request_raw_digest",
+    "request_digest",
+    "frozen",
+    "frozen_digest"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "newrouge.b-route-task-compilation-operation.v1"
+    },
+    "codec_version": {
+      "type": "string"
+    },
+    "operation_id": {
+      "$ref": "newrouge.b-route-common.v1#/$defs/FileId"
+    },
+    "state": {
+      "enum": [
+        "prepared",
+        "reserved"
+      ]
+    },
+    "request_raw_base64": {
+      "type": "string"
+    },
+    "request_raw_digest": {
+      "$ref": "#/$defs/Digest"
+    },
+    "request_digest": {
+      "$ref": "#/$defs/Digest"
+    },
+    "frozen": {
+      "$ref": "#/$defs/Frozen"
+    },
+    "frozen_digest": {
+      "$ref": "#/$defs/Digest"
+    }
+  }
+}

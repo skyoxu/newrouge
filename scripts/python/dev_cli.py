@@ -20,7 +20,7 @@ import sys
 from pathlib import Path
 
 # The read-only command must not create bytecode even without Python -B.
-if len(sys.argv) > 1 and sys.argv[1] in {"b-route-preflight", "b-route-sources", "b-route-adoption", "b-route-task-preview"}:
+if len(sys.argv) > 1 and sys.argv[1] in {"b-route-preflight", "b-route-sources", "b-route-adoption", "b-route-task-preview", "b-route-task-compile"}:
     sys.dont_write_bytecode = True
 
 if __name__ == "__main__" and len(sys.argv) > 1 and sys.argv[1] == "b-route-sources":
@@ -34,6 +34,10 @@ if __name__ == "__main__" and len(sys.argv) > 1 and sys.argv[1] == "b-route-adop
 if __name__ == "__main__" and len(sys.argv) > 1 and sys.argv[1] == "b-route-task-preview":
     from preview_b_route_task_changes import main as task_preview_main
     raise SystemExit(task_preview_main(sys.argv[2:]))
+
+if __name__ == "__main__" and len(sys.argv) > 1 and sys.argv[1] == "b-route-task-compile":
+    from compile_b_route_tasks import main as task_compile_main
+    raise SystemExit(task_compile_main(sys.argv[2:]))
 
 from dev_cli_builders import (
     DEFAULT_GATE_BUNDLE_TASK_FILES,
@@ -59,6 +63,7 @@ from dev_cli_builders import (
     build_plan_capabilities_cmd,
     build_plan_mvg_cmd,
     build_b_route_task_preview_cmd,
+    build_b_route_task_compile_cmd,
     build_quality_gates_cmd,
     build_run_dotnet_cmd,
     build_run_gdunit_full_cmd,
@@ -614,6 +619,13 @@ def cmd_b_route_task_preview(args: argparse.Namespace) -> int:
     return task_preview_main(build_b_route_task_preview_cmd(args)[3:])
 
 
+def cmd_b_route_task_compile(args: argparse.Namespace) -> int:
+    """Run the governed 3C B-route triplet compilation and binding CLI."""
+    from compile_b_route_tasks import main as task_compile_main
+
+    return task_compile_main(build_b_route_task_compile_cmd(args)[3:])
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Dev CLI for Godot+C# template (AI-friendly entrypoint)",
@@ -636,6 +648,11 @@ def build_parser() -> argparse.ArgumentParser:
     from preview_b_route_task_changes import register_arguments as register_task_preview_arguments
     register_task_preview_arguments(task_preview_parser)
     task_preview_parser.set_defaults(func=cmd_b_route_task_preview)
+
+    task_compile_parser = sub.add_parser("b-route-task-compile", help="Governed 3C triplet compilation and 3C binding (9 stages); no default B activation")
+    from compile_b_route_tasks import register_arguments as register_task_compile_arguments
+    register_task_compile_arguments(task_compile_parser)
+    task_compile_parser.set_defaults(func=cmd_b_route_task_compile)
 
     # run-ci-basic
     p_ci = sub.add_parser(

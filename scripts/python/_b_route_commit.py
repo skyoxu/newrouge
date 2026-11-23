@@ -19,6 +19,17 @@ PHASES = ('intent', 'applied', 'verified', 'publishing', 'published', 'complete'
 SCHEMA_PATH = Path(__file__).resolve().parents[2] / 'docs/planning/b-route/schemas/commit-intent.schema.json'
 FLAGS = {'readiness': False, 'runtime_verified': False, 'default_b_enabled': False}
 _BOUNDARY = ContextVar('b_route_commit_boundary', default=None)
+_READ_OPERATION_ID = ContextVar('b_route_read_operation_id', default=None)
+
+
+@contextmanager
+def read_operation_context(operation_id):
+    """Allow an owning prepared/reserved operation to revalidate its own committed base."""
+    token = _READ_OPERATION_ID.set(operation_id)
+    try:
+        yield
+    finally:
+        _READ_OPERATION_ID.reset(token)
 
 
 def _fail(expected, actual, code=codec.ReasonCode.CONFLICT, resume=None):
@@ -76,6 +87,81 @@ def _seal(value):
     return value
 
 
+def _is_task_compilation(envelope):
+    return envelope['schema_version'] == journal.TASK_COMPILATION_SCHEMA
+
+
+def _sealed_targets(intent):
+    return {row['path']: row for row in intent['receipt']['targets']}
+
+
+def _target_after_raw(envelope, target, *, before_files=None):
+    if _is_task_compilation(envelope) and target['verification_mode'] == 'task_definition_projection':
+        _require(before_files is not None and target['path'] in before_files,
+                 'sealed triplet before bytes for live status merge', target['path'])
+        before_raw = _decode(before_files[target['path']])
+        _require(before_raw is not None, 'existing triplet before bytes', target['path'])
+        import _b_route_task_compilation as task_compilation
+        return task_compilation.merge_live_triplet_bytes(target['path'], before_raw, target['after_payload'])
+    return projection.serialized(target['after_payload'])
+
+
+def _target_overrides(envelope, before_files):
+    if not _is_task_compilation(envelope):
+        return None
+    overrides = {}
+    for target in envelope['frozen']['targets']:
+        if target['verification_mode'] != 'task_definition_projection':
+            continue
+        before_raw = _decode(before_files[target['path']])
+        _require(before_raw is not None, 'existing live triplet file before compilation', target['path'])
+        actual_before_proj = records.task_document_digest(target['path'], before_raw)
+        _require(actual_before_proj == target['before_projection_digest'],
+                 target['before_projection_digest'], actual_before_proj, codec.ReasonCode.INPUT_STALE)
+        merged_raw = _target_after_raw(envelope, target, before_files=before_files)
+        actual_after_proj = records.task_document_digest(target['path'], merged_raw)
+        _require(actual_after_proj == target['after_projection_digest'],
+                 target['after_projection_digest'], actual_after_proj, codec.ReasonCode.DIGEST_MISMATCH)
+        overrides[target['path']] = {
+            'before_digest': codec.raw_digest(before_raw),
+            'after_digest': codec.raw_digest(merged_raw),
+            'projection_digest': target['after_projection_digest'],
+        }
+    return overrides
+
+
+def _target_task_join(root, envelope, before_files=None):
+    if not _is_task_compilation(envelope):
+        return _task_join(root)
+    docs = {}
+    mapping = {
+        '.taskmaster/tasks/tasks.json': 'master',
+        '.taskmaster/tasks/tasks_back.json': 'back',
+        '.taskmaster/tasks/tasks_gameplay.json': 'gameplay',
+    }
+    for target in envelope['frozen']['targets']:
+        key = mapping.get(target['path'].casefold())
+        if key is not None:
+            raw = _target_after_raw(envelope, target, before_files=before_files)
+            docs[key] = codec.strict_json_loads(raw)
+    if set(docs) == {'master', 'back', 'gameplay'}:
+        join = records.TaskJoinContext(**docs)
+        join.indexes()
+        return join
+    return _task_join(root)
+
+
+def _classify_target(root, target, *, sealed=None):
+    if sealed is not None and target['path'] in sealed:
+        row = sealed[target['path']]
+        return journal.classify_frozen_target(
+            root, target,
+            expected_before_raw_digest=row['before_digest'],
+            expected_after_raw_digest=row['after_digest'],
+        )
+    return journal.classify_frozen_target(root, target)
+
+
 def validate_local(root, envelope):
     """Validate optional local commit metadata without erasing operation history."""
     intent_ref, pending_ref = _paths(envelope['operation_id'])
@@ -96,13 +182,16 @@ def validate_local(root, envelope):
              and value['receipt']['operation_id'] == envelope['operation_id'], 'receipt bound to complete frozen request', intent_ref)
     target_names = {row['path'] for row in frozen['targets']}
     _require(set(value['before_files']) == target_names | {records.CATALOG_PATH}, 'complete original before images', intent_ref)
+    overrides = _target_overrides(envelope, value['before_files']) if _is_task_compilation(envelope) else None
     for target in frozen['targets']:
+        if _is_task_compilation(envelope) and target['verification_mode'] == 'task_definition_projection':
+            continue
         _require(_digest(_decode(value['before_files'][target['path']])) == target['before_raw_digest'],
                  'original target before bytes', target['path'])
     _require(value['catalog_before'] == value['before_files'][records.CATALOG_PATH], 'same original catalog image', intent_ref)
     expected = projection.receipt_for_frozen(operation_id=envelope['operation_id'], frozen=frozen,
         resolved_definitions=value['receipt']['resolved_definitions'],
-        catalog_before=_decode(value['catalog_before']))
+        catalog_before=_decode(value['catalog_before']), target_overrides=overrides)
     _require(expected == value['receipt'], 'exact original receipt draft', intent_ref)
     if value['catalog_after'] is not None:
         catalog_raw = _decode(value['catalog_after'])
@@ -201,21 +290,21 @@ def _receipt_path(envelope):
     return records.BASE + 'commits/' + envelope['operation_id'] + '.json'
 
 
-def _candidates(root, envelope):
-    return {row['path']: projection.serialized(row['after_payload']) for row in envelope['frozen']['targets']}
+def _candidates(root, envelope, *, before_files=None):
+    return {row['path']: _target_after_raw(envelope, row, before_files=before_files) for row in envelope['frozen']['targets']}
 
 
-def _draft(root, envelope, catalog_before):
+def _draft(root, envelope, catalog_before, *, before_files=None, target_overrides=None):
     frozen = envelope['frozen']
-    candidates = _candidates(root, envelope)
-    bundle = records._Bundle(candidates, root, records.CATALOG_PATH, None, _task_join(root))
+    candidates = _candidates(root, envelope, before_files=before_files)
+    bundle = records._Bundle(candidates, root, records.CATALOG_PATH, None, _target_task_join(root, envelope, before_files))
     owners = {} if catalog_before is None else {(row['kind'], row['definition_id']): row
         for row in codec.strict_json_loads(catalog_before)['definition_owners']}
     plan_ids = {row['after_payload']['plan_id'] for row in frozen['targets']
                 if row['schema_version'] == 'newrouge.b-route-plan.v1'}
     owners = {key: row for key, row in owners.items() if row['plan_ref']['entity_id'] not in plan_ids}
     receipt = projection.receipt_for_frozen(operation_id=envelope['operation_id'], frozen=frozen,
-        resolved_definitions=[], catalog_before=catalog_before)
+        resolved_definitions=[], catalog_before=catalog_before, target_overrides=target_overrides)
     for ref in receipt['plan_refs']:
         plan = bundle.reference(ref)
         for plural, kind in (('flows', 'flow'), ('commands', 'command'), ('states', 'state')):
@@ -226,7 +315,8 @@ def _draft(root, envelope, catalog_before):
                 owners[key] = owner
     resolved = bundle.closure(receipt['plan_refs'], receipt['binding_refs'], owners, _receipt_path(envelope))
     return projection.receipt_for_frozen(operation_id=envelope['operation_id'], frozen=frozen,
-        resolved_definitions=[resolved[key] for key in sorted(resolved)], catalog_before=catalog_before)
+        resolved_definitions=[resolved[key] for key in sorted(resolved)], catalog_before=catalog_before,
+        target_overrides=target_overrides)
 
 
 def _observations(root, snapshot):
@@ -296,6 +386,12 @@ def _verify_observations(root, envelope, intent, *, published=False, initial=Fal
     if envelope['schema_version'] == journal.COMPENSATION_SCHEMA:
         import _b_route_compensation as compensation
         compensation.verify_observations(root, envelope, intent, facts=facts, published=published)
+        _validated_local_facts(root, envelope, intent, facts, initial=initial)
+        _capture_boundary(root, envelope, intent, facts)
+        return
+    if _is_task_compilation(envelope):
+        import _b_route_task_compilation as task_compilation
+        task_compilation.verify_observations(root, envelope, intent, facts=facts, published=published)
         _validated_local_facts(root, envelope, intent, facts, initial=initial)
         _capture_boundary(root, envelope, intent, facts)
         return
@@ -515,18 +611,19 @@ def _initial(root, envelope, snapshot):
     before[records.CATALOG_PATH] = _encode(_read(root, records.CATALOG_PATH, optional=True))
     if before[records.CATALOG_PATH] is not None:
         records.published_bundle(root, catalog_raw=_decode(before[records.CATALOG_PATH]), task_join=_task_join(root))
-    receipt = _draft(root, envelope, _decode(before[records.CATALOG_PATH]))
+    overrides = _target_overrides(envelope, before) if _is_task_compilation(envelope) else None
+    receipt = _draft(root, envelope, _decode(before[records.CATALOG_PATH]), before_files=before, target_overrides=overrides)
     origins_before = None
     if before[records.CATALOG_PATH] is not None:
         original_catalog = codec.strict_json_loads(_decode(before[records.CATALOG_PATH]))
         origins_before = _encode(_read(root, original_catalog['origins_ref']['path']))
-    candidates = _candidates(root, envelope)
+    candidates = _candidates(root, envelope, before_files=before)
     if before[records.CATALOG_PATH] is not None:
         candidates[records.CATALOG_PATH] = _decode(before[records.CATALOG_PATH])
     # Validate the complete future bundle while all originals are still intact;
     # verify later repeats it against the actually written targets.
     projection.catalog_for_receipt(current_catalog=_decode(before[records.CATALOG_PATH]),
-        receipt=receipt, candidates=candidates, task_join=_task_join(root), root=root, frozen=envelope['frozen'])
+        receipt=receipt, candidates=candidates, task_join=_target_task_join(root, envelope, before), root=root, frozen=envelope['frozen'])
     files, directories, trees = _observations(root, snapshot)
     import _b_route_adoption_review as review
     value = _seal({'schema_version': SCHEMA, 'operation_id': envelope['operation_id'],
@@ -546,6 +643,50 @@ def _initial(root, envelope, snapshot):
     return value
 
 
+def _inflight_governance_before(root, envelope, current, *, graph=None):
+    """Allow an in-flight operation's exact applied mutable governance targets to keep prior terminals valid.
+
+    Only when one validated reserved operation anchored at this exact
+    catalog_before has already written its exact frozen policy/task-origins
+    after-image (before replacing catalog.v1.json) may historical lineage
+    validation read its exact before_files image. Any external edit or conflict
+    fails closed.
+    """
+    inventory = journal.operation_inventory(root) if graph is None else graph['operations']
+    substitutions = {}
+    for gov_path in (records.BASE + 'policy.v1.json', records.BASE + 'task-origins.v1.json'):
+        actual_gov = _read(root, gov_path, optional=True)
+        if actual_gov is None:
+            continue
+        actual_digest = codec.raw_digest(actual_gov)
+        matches = []
+        for other in inventory:
+            other_id = other['operation_id']
+            if other_id == envelope['operation_id']:
+                continue
+            if other['state'] != 'reserved':
+                continue
+            other_intent = validate_local(root, other) if graph is None else graph['intents'].get(other_id)
+            if other_intent is None or other_intent['phase'] not in ('intent', 'applied', 'verified', 'publishing'):
+                continue
+            if _decode(other_intent['catalog_before']) != current:
+                continue
+            target = next(
+                (row for row in other['frozen']['targets']
+                 if row['path'] == gov_path and row['verification_mode'] == 'immutable_bytes'),
+                None,
+            )
+            if target is None or actual_digest != target['after_raw_digest']:
+                continue
+            before_gov = _decode(other_intent['before_files'].get(gov_path))
+            if before_gov is None or codec.raw_digest(before_gov) != target['before_raw_digest']:
+                continue
+            matches.append(before_gov)
+        if len(matches) == 1:
+            substitutions[gov_path] = matches[0]
+    return substitutions or None
+
+
 def _publication_proven(root, envelope, intent, *, graph=None, historical=False):
     """Prove publication lineage; only completed history omits current freshness."""
     if intent is None or intent['phase'] not in ('publishing', 'published', 'complete'):
@@ -560,8 +701,10 @@ def _publication_proven(root, envelope, intent, *, graph=None, historical=False)
         return False
     try:
         if historical:
+            extra = _inflight_governance_before(root, envelope, current, graph=graph)
             records._publication_history(root, catalog_raw=current,
-                receipt_ref=projection.reference(_receipt_path(envelope), receipt_raw))
+                receipt_ref=projection.reference(_receipt_path(envelope), receipt_raw),
+                extra_candidates=extra)
         else:
             records.published_bundle(root, catalog_raw=current,
                 scope_ids=envelope['frozen']['scope_ids'], task_join=_task_join(root))
@@ -630,7 +773,7 @@ def _original_activity(root, envelope):
     Reuse the native activity/coordinator owners in their existing order. This
     acquires no new mutex and does not execute a verifier or dispatch work.
     """
-    if envelope['schema_version'] == journal.COMPENSATION_SCHEMA:
+    if envelope['schema_version'] in (journal.COMPENSATION_SCHEMA, journal.TASK_COMPILATION_SCHEMA):
         yield
         return
     from _b_route_planning_runtime import run_location
@@ -667,10 +810,11 @@ def _step(root, envelope, intent, stage):
         return _result(envelope, intent, published=True, noop=True)
     if intent['phase'] in ('published', 'complete'):
         _require(stage == 'publish', 'explicit publish to finish pending cleanup', 'pending terminal cleanup', codec.ReasonCode.PENDING)
+    sealed = _sealed_targets(intent) if _is_task_compilation(envelope) else None
     if stage == 'publish' and _publication_proven(root, envelope, intent):
         _verify_observations(root, envelope, intent, published=True)
         for target in envelope['frozen']['targets']:
-            _require(journal.classify_frozen_target(root, target)['state'] == 'after',
+            _require(_classify_target(root, target, sealed=sealed)['state'] == 'after',
                      'actual published after targets before cleanup', target['path'])
         if PHASES.index(intent['phase']) < PHASES.index('published'):
             intent = _save(root, intent, 'published')
@@ -686,12 +830,12 @@ def _step(root, envelope, intent, stage):
         _require(intent['phase'] in ('intent', 'applied'), 'unpublished apply lifecycle', intent['phase'])
         for index, target in enumerate(envelope['frozen']['targets']):
             _verify_observations(root, envelope, intent)
-            if journal.classify_frozen_target(root, target)['state'] == 'before':
+            if _classify_target(root, target, sealed=sealed)['state'] == 'before':
                 _checkpoint('before_target:' + str(index))
                 # Recheck after the fault seam and directly before the write.
                 _verify_observations(root, envelope, intent)
-                if journal.classify_frozen_target(root, target)['state'] == 'before':
-                    _write(root, target['path'], projection.serialized(target['after_payload']))
+                if _classify_target(root, target, sealed=sealed)['state'] == 'before':
+                    _write(root, target['path'], _target_after_raw(envelope, target, before_files=intent['before_files']))
                 _checkpoint('after_target:' + str(index))
         intent = _save(root, intent, 'applied')
         _checkpoint('applied_durable')
@@ -699,8 +843,8 @@ def _step(root, envelope, intent, stage):
     _require(intent['phase'] in ('applied', 'verified', 'publishing', 'published', 'complete'),
              'all targets applied before verification/publication', intent['phase'], codec.ReasonCode.UNPUBLISHED)
     for target in envelope['frozen']['targets']:
-        _require(journal.classify_frozen_target(root, target)['state'] == 'after', 'all exact after images', target['path'])
-    candidates = _candidates(root, envelope)
+        _require(_classify_target(root, target, sealed=sealed)['state'] == 'after', 'all exact after images', target['path'])
+    candidates = _candidates(root, envelope, before_files=intent['before_files'])
     current_catalog = _read(root, records.CATALOG_PATH, optional=True)
     already_published = (intent['catalog_after'] is not None
                          and (current_catalog == _decode(intent['catalog_after'])
@@ -770,8 +914,13 @@ def execute(root, *, operation_id, stage):
         intent = validate_local(root, envelope)
         if intent is None:
             _require(stage == 'apply', 'apply creates initial durable intent', stage, codec.ReasonCode.UNPUBLISHED)
-            import _b_route_adoption as adoption
-            with adoption.commit_context(root, operation_id=operation_id) as (snapshot, checked):
+            if _is_task_compilation(envelope):
+                import _b_route_task_compilation as task_compilation
+                ctx = task_compilation.commit_context(root, operation_id=operation_id)
+            else:
+                import _b_route_adoption as adoption
+                ctx = adoption.commit_context(root, operation_id=operation_id)
+            with ctx as (snapshot, checked):
                 _require(checked == envelope, 'same reserved operation', operation_id)
                 with business_guard(root, envelope['frozen']['scope_ids'], operation_id=operation_id,
                         compensation_frozen=envelope['frozen'] if envelope['schema_version'] == journal.COMPENSATION_SCHEMA else None):
@@ -779,8 +928,12 @@ def execute(root, *, operation_id, stage):
                     return _step(root, envelope, intent, stage)
         unfinished = intent['phase'] != 'complete' or _read(root, _paths(operation_id)[1], optional=True) is not None
         if unfinished:
-            import _b_route_adoption_review as review
-            review.verify_saved(root, envelope['frozen']['request'])
+            if _is_task_compilation(envelope):
+                import _b_route_task_compilation as task_compilation
+                task_compilation.verify_saved(root, envelope)
+            else:
+                import _b_route_adoption_review as review
+                review.verify_saved(root, envelope['frozen']['request'])
         with _original_activity(root, envelope) if unfinished else nullcontext():
             with business_guard(root, envelope['frozen']['scope_ids'], operation_id=operation_id,
                     compensation_frozen=envelope['frozen'] if envelope['schema_version'] == journal.COMPENSATION_SCHEMA else None):
@@ -841,7 +994,11 @@ def inspect_recovery(root, *, operation_id):
         else:
             _checkpoint('recovery_before_review')
             if intent is not None:
-                review.verify_saved(root, envelope['frozen']['request'])
+                if _is_task_compilation(envelope):
+                    import _b_route_task_compilation as task_compilation
+                    task_compilation.verify_saved(root, envelope)
+                else:
+                    review.verify_saved(root, envelope['frozen']['request'])
                 published = _publication_proven(root, envelope, intent)
                 _verify_observations(root, envelope, intent, published=published)
                 receipt = _read(root, _receipt_path(envelope), optional=True)
@@ -852,10 +1009,15 @@ def inspect_recovery(root, *, operation_id):
                 for ref in envelope['frozen']['authority_refs']:
                     _require(_digest(_read(root, ref['path'])) == ref['raw_digest'],
                              'unchanged original authority before initial admission', ref['path'], codec.ReasonCode.INPUT_STALE)
-            targets = [journal.classify_frozen_target(root, row) for row in envelope['frozen']['targets']]
+            sealed = _sealed_targets(intent) if (intent is not None and _is_task_compilation(envelope)) else None
+            targets = [_classify_target(root, row, sealed=sealed) for row in envelope['frozen']['targets']]
             before = sum(row['state'] == 'before' for row in targets)
             if intent is None:
-                _require(before == len(targets), 'original before targets without durable intent', operation_id)
+                untouched = all(
+                    t['state'] == 'before' or t['actual_raw_digest'] == row['before_raw_digest']
+                    for t, row in zip(targets, envelope['frozen']['targets'])
+                )
+                _require(untouched, 'original before targets without durable intent', operation_id)
                 physical, next_stage = 'untouched', 'apply'
             elif published:
                 _require(before == 0, 'all published targets still after', operation_id)
@@ -923,18 +1085,45 @@ def recover(root, *, operation_id):
         _fail('complete safe recovery; original evidence retained', type(error).__name__, resume=_paths(operation_id)[0])
 
 
-def read_committed(root, *, scope_ids=None):
+def read_committed(root, *, scope_ids=None, operation_id=None):
     """Protected formal consumption; local proof logs are not clone prerequisites.
 
     Coordination may initialize ordinary local lock metadata. Formal files are
     never written, repaired or classified from optional trace existence.
     """
     root = Path(root).absolute()
+    effective_op = operation_id if operation_id is not None else _READ_OPERATION_ID.get()
     try:
         before = _read(root, records.CATALOG_PATH)
         initial = records.published_bundle(root, catalog_raw=before, scope_ids=scope_ids, task_join=_task_join(root), _protection=True)
         protection_scopes = initial.pop('_protection_scope_ids')
-        with business_guard(root, protection_scopes):
+        if effective_op is not None:
+            guard = business_guard(root, protection_scopes, review_only=True)
+        else:
+            guard = business_guard(root, protection_scopes)
+        with guard:
+            if effective_op is not None:
+                from _b_route_operation_scope import STORE as _OP_STORE, _hash as _op_hash
+                inv_by_id = {row['operation_id']: row for row in journal.operation_inventory(root)}
+                if effective_op in inv_by_id:
+                    _require(
+                        validate_local(root, inv_by_id[effective_op]) is None,
+                        'uncommitted operation before durable commit.json',
+                        effective_op,
+                        codec.ReasonCode.PENDING,
+                    )
+                requested_set = set(protection_scopes)
+                for row in journal.active_operation_inventory(root):
+                    other_id = row['operation_id']
+                    if other_id == effective_op:
+                        continue
+                    other_scopes = set(row['frozen']['scope_ids'])
+                    if other_scopes & requested_set:
+                        resume = _OP_STORE + '/operations/' + _op_hash(other_id) + '/operation.json'
+                        raise codec.CodecError(codec.Diagnostic(
+                            codec.ReasonCode.PENDING, codec.Stage.BUNDLE, other_id,
+                            'nonoverlapping operation', sorted(other_scopes), resume,
+                        ))
             _require(_read(root, records.CATALOG_PATH) == before, 'same catalog under protection', records.CATALOG_PATH,
                      codec.ReasonCode.INPUT_STALE)
             import _b_route_adoption as adoption

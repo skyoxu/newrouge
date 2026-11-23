@@ -34,6 +34,7 @@ Context Reset 后先读取本文件，再按当前任务范围选择首要入口
 | B 路线 3A 独立来源审计 | [来源审计 owner 说明](docs/workflows/b-route-source-audit.md) | `dev_cli.py b-route-sources --stage audit\|verify`；完整来源两步独立审计／只读 proof 复验，不授正式采纳或默认 B 启用 |
 | B 路线只读迁移预检 | [预检 owner 说明](docs/workflows/b-route-migration-preflight.md) | `dev_cli.py b-route-preflight`；明确候选／意图／保护原身份，仅新 logs，不调用 apply 或授予启用 |
 | B 路线 3C 只读任务变更预览 | [3C 预览 owner 说明](docs/workflows/b-route-task-preview.md) | `dev_cli.py b-route-task-preview`；盘点复用与真实缺口，输出业务增量与 3.2 同构草案，不写三联或分配正式 ID |
+| B 路线 3C 受治理三联编译 | [3C 编译 owner 说明](docs/workflows/b-route-task-compilation.md) | `dev_cli.py b-route-task-compile`；九阶段受治理编译三联与 3C 绑定、两段锁合活 status、末推 catalog，不授 readiness/默认 B |
 | Chapter 3 | `workflow.md` 第 3 章 | `.agents/skills/workflow-chapter3-task-triplet-baseline/SKILL.md`；本次 PRD/GDD/planning sources |
 | Chapter 4 | `workflow.md` 第 4 章 | `.agents/skills/workflow-chapter4-overlays-contracts-baseline/SKILL.md`；任务三联、相关 Overlay/Contract |
 | Chapter 5 | `workflow.md` 第 5 章 | `.agents/skills/workflow-chapter5-semantics-stabilization/SKILL.md`；当前 reconciliation/readiness |

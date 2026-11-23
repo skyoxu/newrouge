@@ -882,3 +882,26 @@ def build_b_route_task_preview_cmd(args) -> list[str]:
                 raise ValueError(f"b-route-task-preview optional {flag} must be nonempty when provided")
             cmd += [flag, str(value)]
     return cmd
+
+
+def build_b_route_task_compile_cmd(args) -> list[str]:
+    cmd = [
+        sys.executable,
+        "-B",
+        str(Path(__file__).resolve().with_name("compile_b_route_tasks.py")),
+    ]
+    for attr, flag in (
+        ("root", "--root"),
+        ("stage", "--stage"),
+        ("operation_id", "--operation-id"),
+    ):
+        value = getattr(args, attr, None)
+        if value is None or not str(value).strip():
+            raise ValueError(f"b-route-task-compile requires nonempty {flag}")
+        cmd += [flag, str(value)]
+    request = getattr(args, "request", None)
+    if request is not None:
+        if not str(request).strip():
+            raise ValueError("b-route-task-compile --request must be nonempty when provided")
+        cmd += ["--request", str(request)]
+    return cmd

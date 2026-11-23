@@ -68,9 +68,55 @@ def _head_selections(current_catalog, receipt, *, frozen=None):
         _require(len(replacements[field]) == len(refs),
                  'one target revision per family and identity', field)
     compensation = frozen is not None and frozen.get('producer') == 'compensation'
+    task_comp = frozen is not None and frozen.get('producer') == 'task_compilation'
+    shared_container_scopes = set()
+    if task_comp:
+        import _b_route_operation_scope
+        shared_container_scopes = set(_b_route_operation_scope.resource_scopes(target_paths=[
+            records.BASE + 'policy.v1.json',
+            records.BASE + 'task-origins.v1.json',
+            '.taskmaster/tasks/tasks.json',
+            '.taskmaster/tasks/tasks_back.json',
+            '.taskmaster/tasks/tasks_gameplay.json',
+        ]))
     heads = []
     for scope in receipt['scopes']:
         previous = before.get(scope)
+        if task_comp:
+            if scope in shared_container_scopes:
+                heads.append({'scope_id': scope, 'plan_refs': [], 'binding_refs': []})
+                continue
+            if scope.startswith('task:'):
+                tid = int(scope.split(':', 1)[1])
+                mapped_plan_ids = {
+                    t['after_payload']['plan_id']
+                    for t in frozen['targets']
+                    if t['schema_version'] == 'newrouge.b-route-binding.v1'
+                    and any(m['task_id'] == tid for m in t['after_payload']['task_mappings'])
+                }
+                target_binding_plan_ids = set(replacements['binding_refs'])
+                kept_bindings = [
+                    ref for ref in (previous['binding_refs'] if previous is not None else [])
+                    if ref['entity_id'] not in target_binding_plan_ids
+                ]
+                added_bindings = [
+                    replacements['binding_refs'][pid]
+                    for pid in sorted(mapped_plan_ids)
+                    if pid in replacements['binding_refs']
+                ]
+                heads.append({
+                    'scope_id': scope,
+                    'plan_refs': deepcopy(previous['plan_refs']) if previous is not None else [],
+                    'binding_refs': deepcopy(kept_bindings + added_bindings),
+                })
+                continue
+            if scope.startswith('file:') and previous is None:
+                heads.append({
+                    'scope_id': scope,
+                    'plan_refs': [],
+                    'binding_refs': deepcopy(list(replacements['binding_refs'].values())),
+                })
+                continue
         head = {'scope_id': scope}
         for field in ('plan_refs', 'binding_refs'):
             if compensation:
@@ -79,17 +125,27 @@ def _head_selections(current_catalog, receipt, *, frozen=None):
             elif previous is None:
                 refs = list(replacements[field].values())
             else:
+                existing_ids = {ref['entity_id'] for ref in previous[field]}
                 refs = [replacements[field].get(ref['entity_id'], ref) for ref in previous[field]]
+                if field == 'binding_refs':
+                    previous_plan_ids = {ref['entity_id'] for ref in previous['plan_refs']}
+                    is_resource_scope = scope.startswith((
+                        'file:', 'task:', 'plan:', 'flow:', 'requirement:', 'command:', 'state:',
+                    ))
+                    for entity_id, ref in replacements[field].items():
+                        if entity_id not in existing_ids and (entity_id in previous_plan_ids or is_resource_scope):
+                            refs.append(ref)
             head[field] = deepcopy(refs)
         heads.append(head)
     return heads
 
 
-def receipt_for_frozen(*, operation_id, frozen, resolved_definitions, catalog_before=None):
+def receipt_for_frozen(*, operation_id, frozen, resolved_definitions, catalog_before=None, target_overrides=None):
     """Draft a receipt bound to the complete frozen identity; never claim verified.
 
-The current 2.6 target contract supports immutable formal records. Task write
-projections and native/bootstrap authorization belong to their owning adapters.
+The current 2.6 target contract supports immutable formal records. Task
+compilation targets bind triplet containers via task_definition_projection and
+immutable formal records via immutable_bytes.
 """
     journal._operation_schema(frozen, 'Frozen')
     _require(operation_id == frozen['request']['operation_id'],
@@ -107,6 +163,12 @@ projections and native/bootstrap authorization belong to their owning adapters.
              'sorted distinct complete frozen scopes', frozen['scope_ids'])
     for scope in frozen['scope_ids']:
         codec.validate_business_id(scope)
+    triplet_paths = {
+        '.taskmaster/tasks/tasks.json',
+        '.taskmaster/tasks/tasks_back.json',
+        '.taskmaster/tasks/tasks_gameplay.json',
+    }
+    overrides = target_overrides or {}
     seen = set()
     for target in frozen['targets']:
         name = target['path']
@@ -116,6 +178,36 @@ projections and native/bootstrap authorization belong to their owning adapters.
         _require(name.casefold() not in (path.casefold(), records.CATALOG_PATH.casefold()) and
                  not name.casefold().startswith((records.BASE + 'commits/').casefold()),
                  'ordinary targets excluding receipt/catalog', name, codec.ReasonCode.DIGEST_CYCLE)
+        if target['verification_mode'] == 'task_definition_projection':
+            _require(frozen.get('producer') == 'task_compilation',
+                     'immutable formal targets in this owner slice', target['verification_mode'])
+            _require(name.casefold() in triplet_paths,
+                     'actual Task triplet path for projection target', name, codec.ReasonCode.INVALID_REFERENCE)
+            _require(target.get('codec_version') == records.PROJECTION_CODEC,
+                     records.PROJECTION_CODEC, target.get('codec_version'), codec.ReasonCode.UNKNOWN_CODEC_VERSION)
+            raw = serialized(target['after_payload'])
+            _require(codec.raw_digest(raw) == target['after_raw_digest'],
+                     target['after_raw_digest'], name, codec.ReasonCode.DIGEST_MISMATCH)
+            projected = records.task_document_digest(name, raw)
+            _require(projected == target['after_projection_digest'],
+                     target['after_projection_digest'], projected, codec.ReasonCode.DIGEST_MISMATCH)
+            override = overrides.get(name)
+            if override is not None:
+                _require(override.get('projection_digest') == target['after_projection_digest'],
+                         target['after_projection_digest'], override.get('projection_digest'),
+                         codec.ReasonCode.DIGEST_MISMATCH)
+                before_digest = override['before_digest']
+                after_digest = override['after_digest']
+                projection_digest = override['projection_digest']
+            else:
+                before_digest = target['before_raw_digest']
+                after_digest = target['after_raw_digest']
+                projection_digest = target['after_projection_digest']
+            skeleton['targets'].append({'path': name, 'before_digest': before_digest,
+                'after_digest': after_digest, 'verification_mode': 'task_definition_projection',
+                'codec_version': records.PROJECTION_CODEC, 'projection_digest': projection_digest})
+            skeleton['result']['target_paths'].append(name)
+            continue
         _require(target['verification_mode'] == 'immutable_bytes',
                  'immutable formal targets in this owner slice', target['verification_mode'])
         _checked(target['after_payload'], name)

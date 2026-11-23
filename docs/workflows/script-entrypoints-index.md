@@ -1808,3 +1808,7 @@ Helper modules below are referenced directly by at least two included entry scri
 ## B 路线 3C 只读任务变更预览 owner
 
 `scripts/python/preview_b_route_task_changes.py` 是 `dev_cli.py b-route-task-preview` 的直接入口；`_b_route_task_preview.py` 唯一拥有 3C 只读复用盘点与任务变更预览编排。复用 `_b_route_commit.read_committed`、`_b_route_source_audit.verify_current_proof`、`_b_route_records.TaskJoinContext`、`_b_route_protection`、`_b_route_preflight.Observations` 与 `normalize_task_intents.py` 确定性规范化字段；输出 `view_deltas` 及同构 `binding_preview`（`stage="3C"`）/`origins_preview`，仅独占写全新 logs，不写三联或正式规划、不分配永久 Task ID。详见[3C 预览 owner 说明](b-route-task-preview.md)。
+
+## B 路线 3C 受治理三联编译 owner
+
+`scripts/python/compile_b_route_tasks.py` 是 `dev_cli.py b-route-task-compile` 的直接入口；`_b_route_task_compilation.py` 唯一拥有 `producer="task_compilation"` 适配与九阶段编排。复用 `compile_task_triplet.py`、`build_taskmaster_tasks.py`、`chapter3_task_scope.py`、`_b_route_task_preview.py`、`_b_route_source_audit.py`、`_b_route_records.py`、`_planning_apply_journal.py`、`_b_route_commit_projection.py` 与 `_b_route_commit.py`；仅 `prepare` 分配永久 `taskmaster_id` 与 `NG/GM`，`apply` 锁内合活 `status` 封存前后像与投影，末推 `catalog.v1.json`，事件落 `logs/ci/b-route-task-compilation/<op>/events.jsonl`。详见[3C 编译 owner 说明](b-route-task-compilation.md)。

@@ -578,3 +578,7 @@ These are additive modes of the existing Chapter workflow, not a second mileston
 ## B 路线 3C 只读任务变更预览
 
 稳定入口：`py -3 -B scripts/python/dev_cli.py b-route-task-preview --root <root> --plan-id <plan-id> --scope-id <scope-id> --audit-ref <3a-report> --run-id <fresh-id> [--protection-ref <path>] [--manifest <path>] [--change-intents <path>]`。直接 owner 为 `scripts/python/preview_b_route_task_changes.py`，参数相同。单行 JSON stdout，退出码 0 为稳定可审阅预览、1 为 3A/3B/语义/保护/漂移阻断、2 为参数或目录冲突；仅独占写入全新 logs，不写三联或正式规划、不分配永久 Task ID、不创建 pycache。详见[3C 预览 owner 说明](b-route-task-preview.md)。
+
+## B 路线 3C 受治理三联编译与绑定
+
+稳定入口：`py -3 -B scripts/python/dev_cli.py b-route-task-compile --root <root> --stage prepare|reserve|inspect|apply|verify|publish|read|recover-inspect|recover --operation-id <op-id> [--request <request.json>]`。直接 owner 为 `scripts/python/compile_b_route_tasks.py`，参数相同。`prepare` 仅分配永久 `taskmaster_id` 与 `NG/GM` 并锁三联投影；`apply` 初入旧+新资源锁重读活三联并合并活 `status`/`subtasks[].status` 封存入 `commit.json` 与 receipt，`publish` 末推 `catalog.v1.json`；事件写 `logs/ci/b-route-task-compilation/<op>/events.jsonl`，不授 readiness/runtime/默认 B，进 Chapter 6 仍需 Chapter 4–5。详见[3C 编译 owner 说明](b-route-task-compilation.md)。

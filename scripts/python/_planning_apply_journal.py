@@ -114,6 +114,8 @@ ADOPTION_V2_SCHEMA = "newrouge.b-route-adoption-operation.v2"
 ADOPTION_V2_REQUEST = "newrouge.b-route-adoption-request.v2"
 COMPENSATION_SCHEMA = "newrouge.b-route-compensation-operation.v2"
 COMPENSATION_REQUEST = "newrouge.b-route-compensation-request.v2"
+TASK_COMPILATION_SCHEMA = "newrouge.b-route-task-compilation-operation.v1"
+TASK_COMPILATION_REQUEST = "newrouge.b-route-task-compilation-request.v1"
 PENDING_SCHEMA = "newrouge.b-route-adoption-pending.v1"
 OPERATION_STORE = "logs/ci/b-route-operations"
 
@@ -134,6 +136,12 @@ def _operation_schema(value, definition=None, *, schema_id=None):
         version = subject.get('schema_version') if type(subject) is dict else None
         if version in (COMPENSATION_SCHEMA, COMPENSATION_REQUEST):
             schema_id = COMPENSATION_SCHEMA
+        elif version in (TASK_COMPILATION_SCHEMA, TASK_COMPILATION_REQUEST):
+            schema_id = TASK_COMPILATION_SCHEMA
+        elif (definition == 'Target' and type(value) is dict
+              and value.get('verification_mode') == 'task_definition_projection'
+              and 'before_projection_digest' in value):
+            schema_id = TASK_COMPILATION_SCHEMA
         elif version in (ADOPTION_V2_SCHEMA, ADOPTION_V2_REQUEST):
             schema_id = ADOPTION_V2_SCHEMA
         else:
@@ -245,6 +253,7 @@ def _operation_validate(root, value):
     if request["operation_id"] != value["operation_id"]:
         _operation_fail(codec.ReasonCode.CONFLICT, "same operation ID", "request/envelope ID mismatch")
     expected_schema = (COMPENSATION_SCHEMA if request['schema_version'] == COMPENSATION_REQUEST else
+                       TASK_COMPILATION_SCHEMA if request['schema_version'] == TASK_COMPILATION_REQUEST else
                        ADOPTION_V2_SCHEMA if request['schema_version'] == ADOPTION_V2_REQUEST else OPERATION_SCHEMA)
     if value['schema_version'] != expected_schema:
         _operation_fail(codec.ReasonCode.SCHEMA_MISMATCH, 'same request/envelope version', value['schema_version'])
@@ -268,6 +277,13 @@ def _operation_validate(root, value):
             references.append(request['host_review_ref'])
         if frozen['compensation']['relation'] != request['compensates']:
             _operation_fail(codec.ReasonCode.CONFLICT, 'same exact reviewed compensation relation', value['operation_id'])
+    elif request['schema_version'] == TASK_COMPILATION_REQUEST:
+        if value['schema_version'] != TASK_COMPILATION_SCHEMA or frozen['producer'] != 'task_compilation':
+            _operation_fail(codec.ReasonCode.CONFLICT, 'exact task compilation producer dispatch', value['schema_version'])
+        references = [request['audit_ref'], request['preview_ref']]
+        for optional_key in ('protection_ref', 'manifest_ref', 'change_intents_ref'):
+            if request.get(optional_key) is not None:
+                references.append(request[optional_key])
     else:
         if value['schema_version'] not in (OPERATION_SCHEMA, ADOPTION_V2_SCHEMA):
             _operation_fail(codec.ReasonCode.CONFLICT, 'exact adoption producer dispatch', value['schema_version'])
@@ -290,6 +306,10 @@ def _operation_validate(root, value):
         raw_after = (json.dumps(target["after_payload"], ensure_ascii=False, indent=2) + "\n").encode("utf-8")
         if codec.raw_digest(raw_after) != target["after_raw_digest"]:
             _operation_fail(codec.ReasonCode.DIGEST_MISMATCH, "original complete after bytes", target["path"])
+        if target["verification_mode"] == "task_definition_projection" and "after_projection_digest" in target:
+            import _b_route_records as records
+            if records.task_document_digest(target["path"], raw_after) != target["after_projection_digest"]:
+                _operation_fail(codec.ReasonCode.DIGEST_MISMATCH, "original projected triplet digest", target["path"])
     return value
 
 
@@ -404,6 +424,7 @@ def draft_operation(root, *, request_raw, frozen, state='prepared'):
     import _b_route_codec as codec
     request = validate_operation_request(request_raw)
     version = (COMPENSATION_SCHEMA if request['schema_version'] == COMPENSATION_REQUEST else
+               TASK_COMPILATION_SCHEMA if request['schema_version'] == TASK_COMPILATION_REQUEST else
                ADOPTION_V2_SCHEMA if request['schema_version'] == ADOPTION_V2_REQUEST else OPERATION_SCHEMA)
     value = {'schema_version': version, 'codec_version': codec.CODEC_VERSION,
         'operation_id': request['operation_id'], 'state': state,
@@ -433,6 +454,7 @@ def prepare_operation(root, *, operation_id, request_raw, frozen):
     frozen = codec.strict_json_loads(json.dumps(frozen, ensure_ascii=False))
     frozen_digest = codec.canonical_digest(frozen)
     version = (COMPENSATION_SCHEMA if request['schema_version'] == COMPENSATION_REQUEST else
+               TASK_COMPILATION_SCHEMA if request['schema_version'] == TASK_COMPILATION_REQUEST else
                ADOPTION_V2_SCHEMA if request['schema_version'] == ADOPTION_V2_REQUEST else OPERATION_SCHEMA)
     value = {"schema_version": version, "codec_version": codec.CODEC_VERSION,
         "operation_id": operation_id, "state": "prepared",
@@ -458,7 +480,7 @@ def reserve_operation(root, *, operation_id):
                     operation_id=operation_id, resume_ref=_operation_ref(operation_id))
 
 
-def classify_frozen_target(root, target):
+def classify_frozen_target(root, target, *, expected_before_raw_digest=None, expected_after_raw_digest=None):
     """Read an exact frozen image without writing, creating or repairing anything.
 
     This is not apply authorization or a TOCTOU-proof write reservation. The
@@ -475,12 +497,45 @@ def classify_frozen_target(root, target):
                         "changed frozen payload", resume_ref=target["path"])
     info = _operation_no_reparse(path)
     if info is None:
+        raw_bytes = None
         actual = None
     else:
         if not stat.S_ISREG(info.st_mode) or info.st_nlink != 1:
             _operation_fail(codec.ReasonCode.UNSAFE_PATH, "single plain target file", target["path"],
                             resume_ref=target["path"])
-        actual = codec.raw_digest(codec.read_reference_bytes(root, target["path"]))
+        raw_bytes = codec.read_reference_bytes(root, target["path"])
+        actual = codec.raw_digest(raw_bytes)
+    if expected_before_raw_digest is not None or expected_after_raw_digest is not None:
+        before_expected = expected_before_raw_digest
+        after_expected = expected_after_raw_digest if expected_after_raw_digest is not None else target["after_raw_digest"]
+        if actual == after_expected:
+            state = "after"
+        elif actual == before_expected:
+            state = "before"
+        else:
+            _operation_fail(codec.ReasonCode.CONFLICT,
+                            {"before": before_expected, "after": after_expected},
+                            actual, resume_ref=target["path"])
+        return {"path": target["path"], "state": state, "actual_raw_digest": actual}
+    if target["verification_mode"] == "task_definition_projection" and "before_projection_digest" in target:
+        if raw_bytes is None:
+            _operation_fail(codec.ReasonCode.CONFLICT,
+                            {"before_projection": target["before_projection_digest"],
+                             "after_projection": target["after_projection_digest"]},
+                            None, resume_ref=target["path"])
+        import _b_route_records as records
+        actual_proj = records.task_document_digest(target["path"], raw_bytes)
+        if actual_proj == target["after_projection_digest"]:
+            state = "after"
+        elif actual_proj == target["before_projection_digest"]:
+            state = "before"
+        else:
+            _operation_fail(codec.ReasonCode.CONFLICT,
+                            {"before_projection": target["before_projection_digest"],
+                             "after_projection": target["after_projection_digest"]},
+                            actual_proj, resume_ref=target["path"])
+        return {"path": target["path"], "state": state, "actual_raw_digest": actual,
+                "actual_projection_digest": actual_proj}
     if actual == target["after_raw_digest"]:
         state = "after"
     elif actual == target["before_raw_digest"]:

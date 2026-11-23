@@ -1100,9 +1100,12 @@ class _PublicationHistory(_Bundle):
         return
 
 
-def _publication_history(root, *, catalog_raw, receipt_ref):
+def _publication_history(root, *, catalog_raw, receipt_ref, extra_candidates=None):
     """Validate actual formal evidence for a separately proven catalog lineage."""
-    bundle = _PublicationHistory({CATALOG_PATH: catalog_raw}, Path(root), CATALOG_PATH, None, None)
+    candidates = {CATALOG_PATH: catalog_raw}
+    if extra_candidates:
+        candidates.update(extra_candidates)
+    bundle = _PublicationHistory(candidates, Path(root), CATALOG_PATH, None, None)
     catalog = bundle.load(CATALOG_PATH)
     # A superseded operation must retain its own real immutable receipt and
     # target closure even when no current head selects that receipt anymore.
@@ -1202,9 +1205,217 @@ class _PublishedBundle(_Bundle):
                     continue
                 actual = codec.raw_digest(self.bytes.read(name))
                 if actual != pin['after_digest']:
-                    _fail(codec.ReasonCode.INPUT_STALE, path=name,
-                          expected=pin['after_digest'], actual=actual)
+                    target_key = self.bytes.lookup(name)
+                    mutable_governance = target_key in (
+                        self.bytes.lookup(BASE + 'policy.v1.json'),
+                        self.bytes.lookup(BASE + 'task-origins.v1.json'),
+                    )
+                    superseded = mutable_governance and any(
+                        other_path != path and other_path in self.current_receipts
+                        and other['schema_version'] == 'newrouge.b-route-commit.v1'
+                        and any(
+                            self.bytes.lookup(other_row['path']) == target_key
+                            and other_row['verification_mode'] == 'immutable_bytes'
+                            and other_row['after_digest'] == actual
+                            for other_row in other['targets']
+                        )
+                        for other_path, other in self.records.items()
+                    )
+                    if not superseded:
+                        _fail(codec.ReasonCode.INPUT_STALE, path=name,
+                              expected=pin['after_digest'], actual=actual)
+                    continue
                 self.authority_observations[name] = actual
+
+    def _load_verified_op_target_payload(self, op_id, target_rel_path, expected_proj_digest):
+        """Load and cryptographically verify an operation's frozen triplet after_payload if present."""
+        from _b_route_commit_projection import serialized
+        import _planning_apply_journal as journal
+        op_rel = None
+        for candidate in (journal._operation_ref(op_id), BASE + f"operations/{op_id}.json"):
+            contained = self.bytes._contained(candidate)
+            if self.bytes.lookup(candidate) in self.bytes.candidates or (contained is not None and contained.is_file()):
+                op_rel = candidate
+                break
+        if op_rel is None:
+            return None
+        op_doc = codec.strict_json_loads(self.bytes.read(op_rel))
+        if type(op_doc) is not dict:
+            _fail(codec.ReasonCode.INPUT_STALE, path=op_rel,
+                  expected='operation object', actual=type(op_doc).__name__)
+        target_key = self.bytes.lookup(target_rel_path)
+        frozen = op_doc.get('frozen')
+        targets = frozen.get('targets', []) if type(frozen) is dict else []
+        target = next(
+            (item for item in targets
+             if type(item) is dict and 'path' in item
+             and self.bytes.lookup(item['path']) == target_key
+             and item.get('verification_mode') == 'task_definition_projection'),
+            None,
+        )
+        if target is None or 'after_payload' not in target:
+            _fail(codec.ReasonCode.INPUT_STALE, path=target_rel_path,
+                  expected='verified frozen after_payload for receipt target', actual=op_id)
+        serialized_bytes = serialized(target['after_payload'])
+        actual_proj = task_document_digest(target_rel_path, serialized_bytes)
+        if actual_proj != expected_proj_digest:
+            _fail(codec.ReasonCode.INPUT_STALE, path=target_rel_path,
+                  expected=expected_proj_digest, actual=actual_proj)
+        return target['after_payload']
+
+    def _verify_superseded_task_projections(self, receipt, row, raw, *, path=None, actual=None):
+        """Verify per-Task binding projections when a newer current receipt succeeded the triplet."""
+        from _b_route_protection import task_definition_projection
+        name = _path(row['path']).casefold()
+        doc = codec.strict_json_loads(raw)
+        if name == '.taskmaster/tasks/tasks.json':
+            container = 'master'
+            live_master = {item['id']: item for item in doc['master']['tasks']}
+        elif name == '.taskmaster/tasks/tasks_back.json':
+            container = 'back'
+            live_view = {(item['id'], item['taskmaster_id']): item for item in doc}
+        elif name == '.taskmaster/tasks/tasks_gameplay.json':
+            container = 'gameplay'
+            live_view = {(item['id'], item['taskmaster_id']): item for item in doc}
+        else:
+            _fail(codec.ReasonCode.INVALID_REFERENCE, path=row['path'],
+                  expected='actual Task triplet path', actual=row['path'])
+        bound_refs = [ref for ref in receipt['binding_refs']
+                      if self.bytes.lookup(ref['path']) in self.active]
+        if not bound_refs:
+            return
+        join_master = join_views = None
+        if self.task_join is not None:
+            join_master, join_views = self.task_join.indexes()
+        target_path = self.bytes.lookup(row['path'])
+        all_current_receipt_targets = [
+            (other, other_row)
+            for other_path, other in self.records.items()
+            if other_path != path
+            and other_path in self.current_receipts
+            and other['schema_version'] == 'newrouge.b-route-commit.v1'
+            for other_row in other['targets']
+            if self.bytes.lookup(other_row['path']) == target_path
+            and other_row['verification_mode'] == 'task_definition_projection'
+            and other_row['codec_version'] == codec.PROJECTION_CODEC
+        ]
+        payload_cache = {}
+
+        def _cached_payload(op_id, expected_digest):
+            cache_key = (op_id, expected_digest)
+            if cache_key not in payload_cache:
+                payload_cache[cache_key] = self._load_verified_op_target_payload(op_id, row['path'], expected_digest)
+            return payload_cache[cache_key]
+
+        def _op_task_projection(payload, *, tid, key=None):
+            if container == 'master':
+                op_map = {item['id']: item for item in payload['master']['tasks']}
+                if tid not in op_map:
+                    _fail(codec.ReasonCode.MAPPING_MISMATCH, path=row['path'],
+                          expected='bound master Task in verified operation after_payload', actual=tid)
+                return codec.canonical_digest(task_definition_projection(op_map[tid]))
+            op_map = {(item['id'], item['taskmaster_id']): item for item in payload}
+            if key not in op_map:
+                _fail(codec.ReasonCode.MAPPING_MISMATCH, path=row['path'],
+                      expected='bound business-view Task in verified operation after_payload', actual=list(key))
+            return codec.canonical_digest(task_definition_projection(op_map[key]))
+
+        for ref in bound_refs:
+            binding = self.reference(ref)
+            for mapping in binding['task_mappings']:
+                tid = mapping['task_id']
+                other_active_binders = [
+                    (other, other_row)
+                    for other, other_row in all_current_receipt_targets
+                    if any(
+                        m['task_id'] == tid
+                        for bref in other['binding_refs']
+                        if self.bytes.lookup(bref['path']) in self.active
+                        for m in self.reference(bref)['task_mappings']
+                    )
+                ]
+                if container == 'master':
+                    if tid not in live_master:
+                        _fail(codec.ReasonCode.MAPPING_MISMATCH, path=row['path'],
+                              expected='bound master Task retained after receipt succession', actual=tid)
+                    live_proj = codec.canonical_digest(task_definition_projection(live_master[tid]))
+                    if join_master is not None:
+                        if tid not in join_master:
+                            _fail(codec.ReasonCode.MAPPING_MISMATCH, path=row['path'],
+                                  expected='joined master Task retained after receipt succession', actual=tid)
+                        join_proj = codec.canonical_digest(task_definition_projection(join_master[tid]))
+                        if live_proj != join_proj:
+                            _fail(codec.ReasonCode.INPUT_STALE, path=row['path'],
+                                  expected=join_proj, actual=live_proj)
+                    if not other_active_binders:
+                        own_payload = _cached_payload(receipt['operation_id'], row['projection_digest'])
+                        if own_payload is not None:
+                            own_proj = _op_task_projection(own_payload, tid=tid)
+                            if live_proj != own_proj:
+                                _fail(codec.ReasonCode.INPUT_STALE, path=row['path'],
+                                      expected=own_proj, actual=live_proj)
+                    else:
+                        present_payloads = [
+                            p for cand, cand_row in [(receipt, row), *other_active_binders]
+                            for p in (_cached_payload(cand['operation_id'], cand_row['projection_digest']),)
+                            if p is not None
+                        ]
+                        if present_payloads and not any(
+                            live_proj == _op_task_projection(p, tid=tid) for p in present_payloads
+                        ):
+                            _fail(codec.ReasonCode.INPUT_STALE, path=row['path'],
+                                  expected='projection matching an active binder receipt', actual=live_proj)
+                else:
+                    for vref in mapping['view_refs']:
+                        if vref['view'] != container:
+                            continue
+                        key = (vref['business_id'], tid)
+                        if key not in live_view:
+                            _fail(codec.ReasonCode.MAPPING_MISMATCH, path=row['path'],
+                                  expected='bound business-view Task retained after receipt succession', actual=list(key))
+                        live_row = live_view[key]
+                        if not (set(mapping['requirement_ids']) <= set(live_row.get('requirement_ids', []))):
+                            _fail(codec.ReasonCode.MAPPING_MISMATCH, path=row['path'],
+                                  expected=mapping['requirement_ids'], actual=live_row.get('requirement_ids', []))
+                        if ref['path'] not in live_row.get('evidence_refs', []):
+                            _fail(codec.ReasonCode.MAPPING_MISMATCH, path=row['path'],
+                                  expected=ref['path'], actual=live_row.get('evidence_refs', []))
+                        if binding['plan_ref']['path'] not in live_row.get('source_refs', []):
+                            _fail(codec.ReasonCode.MAPPING_MISMATCH, path=row['path'],
+                                  expected=binding['plan_ref']['path'], actual=live_row.get('source_refs', []))
+                        live_proj = codec.canonical_digest(task_definition_projection(live_row))
+                        if join_views is not None:
+                            if join_views[container].get(vref['business_id']) != tid:
+                                _fail(codec.ReasonCode.MAPPING_MISMATCH, path=row['path'],
+                                      expected='joined business-view Task retained after receipt succession', actual=vref)
+                            join_rows = self.task_join.back if container == 'back' else self.task_join.gameplay
+                            matched = next((item for item in join_rows
+                                            if item['id'] == vref['business_id'] and item['taskmaster_id'] == tid), None)
+                            if matched is None:
+                                _fail(codec.ReasonCode.MAPPING_MISMATCH, path=row['path'],
+                                      expected='exact business-view row in TaskJoinContext', actual=vref)
+                            join_proj = codec.canonical_digest(task_definition_projection(matched))
+                            if live_proj != join_proj:
+                                _fail(codec.ReasonCode.INPUT_STALE, path=row['path'],
+                                      expected=join_proj, actual=live_proj)
+                        if not other_active_binders:
+                            own_payload = _cached_payload(receipt['operation_id'], row['projection_digest'])
+                            if own_payload is not None:
+                                own_proj = _op_task_projection(own_payload, tid=tid, key=key)
+                                if live_proj != own_proj:
+                                    _fail(codec.ReasonCode.INPUT_STALE, path=row['path'],
+                                          expected=own_proj, actual=live_proj)
+                        else:
+                            present_payloads = [
+                                p for cand, cand_row in [(receipt, row), *other_active_binders]
+                                for p in (_cached_payload(cand['operation_id'], cand_row['projection_digest']),)
+                                if p is not None
+                            ]
+                            if present_payloads and not any(
+                                live_proj == _op_task_projection(p, tid=tid, key=key) for p in present_payloads
+                            ):
+                                _fail(codec.ReasonCode.INPUT_STALE, path=row['path'],
+                                      expected='projection matching an active binder receipt', actual=live_proj)
 
     def receipt(self, receipt, path, active):
         super().receipt(receipt, path, active)
@@ -1214,9 +1425,28 @@ class _PublishedBundle(_Bundle):
             if row['codec_version'] != codec.PROJECTION_CODEC:
                 _fail(codec.ReasonCode.UNKNOWN_CODEC_VERSION, path=row['path'],
                       expected=codec.PROJECTION_CODEC, actual=row['codec_version'])
-            actual = task_document_digest(row['path'], self.bytes.read(row['path']))
-            if actual != row['projection_digest']:
+            raw = self.bytes.read(row['path'])
+            actual = task_document_digest(row['path'], raw)
+            if actual == row['projection_digest']:
+                continue
+            target_path = self.bytes.lookup(row['path'])
+            replaced = any(
+                other_path != path
+                and other_path in self.current_receipts
+                and other['schema_version'] == 'newrouge.b-route-commit.v1'
+                and any(
+                    self.bytes.lookup(other_row['path']) == target_path
+                    and other_row['verification_mode'] == 'task_definition_projection'
+                    and other_row['codec_version'] == codec.PROJECTION_CODEC
+                    and other_row['projection_digest'] == actual
+                    for other_row in other['targets']
+                )
+                for other_path, other in self.records.items()
+            )
+            if not replaced:
                 _fail(codec.ReasonCode.INPUT_STALE, path=row['path'], expected=row['projection_digest'], actual=actual)
+            self._verify_superseded_task_projections(receipt, row, raw, path=path, actual=actual)
+            self.historical_targets_not_revalidated.append({"operation_id": receipt["operation_id"], "path": row["path"]})
 
     def protection_scopes(self):
         """Canonical selected business resources; catalog labels stay public.

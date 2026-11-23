@@ -432,9 +432,82 @@ def validate_allocations(value):
 def validate_operations(operations):
     """Unknown business claims cannot silently influence new allocation or scope."""
     import _b_route_records as records
+    import _b_route_schema_resources as schemas
     from _b_route_operation_scope import resource_scopes
+    digest_validator = schemas.validator(PLAN).evolve(schema={'$ref': 'newrouge.b-route-common.v1#/$defs/Digest'})
     for operation in operations:
         frozen = operation['frozen']
+        if operation['schema_version'] == journal.TASK_COMPILATION_SCHEMA:
+            journal._operation_schema(frozen, 'Frozen')
+            allocation = frozen['allocations']
+            codec.validate_business_id(allocation['plan_id'])
+            for field in ('plan_revision', 'binding_revision', 'origins_revision', 'next_taskmaster_id_base'):
+                codec._positive_integer(allocation[field], codec.Stage.CONTENT)
+            require(type(allocation['task_definitions']) is dict, 'joined Task definition claims', 'task_definitions')
+            for task_id, digest in allocation['task_definitions'].items():
+                require(type(task_id) is str and task_id.isascii() and task_id.isdecimal()
+                        and str(codec.validate_task_id(int(task_id))) == task_id,
+                        'canonical existing Task ID key', task_id, codec.ReasonCode.INVALID_TYPE)
+                require(digest_validator.is_valid(digest), 'shared strict digest', task_id, codec.ReasonCode.INVALID_DIGEST)
+            require(type(allocation['task_ids']) is dict, 'allocated Task ID map', 'task_ids', codec.ReasonCode.INVALID_TYPE)
+            for ckey, claim in allocation['task_ids'].items():
+                require(type(ckey) is str and bool(ckey) and type(claim) is dict,
+                        'valid allocated Task entry', ckey, codec.ReasonCode.INVALID_TYPE)
+                codec.validate_task_id(claim['taskmaster_id'])
+                codec.validate_business_id(claim['business_id'])
+                require(claim.get('view') in {'back', 'gameplay'},
+                        'back or gameplay view', claim.get('view'), codec.ReasonCode.INVALID_ENUM)
+            binding_count = 0
+            origins_count = 0
+            triplet_paths = set()
+            expected_triplets = set(TRIPLET.values())
+            for target in frozen['targets']:
+                mode = target.get('verification_mode')
+                path = target['path']
+                if mode == 'immutable_bytes':
+                    payload = target['after_payload']
+                    checked = records.validate_record(payload, path=path)
+                    if not checked.ok:
+                        raise codec.CodecError(checked.diagnostic)
+                    require(payload['schema_version'] == target['schema_version'],
+                            'known exact target schema', path)
+                    if payload['schema_version'] == BINDING:
+                        binding_count += 1
+                        require(payload['plan_id'] == allocation['plan_id']
+                                and type(payload['binding_revision']) is int
+                                and payload['binding_revision'] == allocation['binding_revision'],
+                                'typed binding allocation reflected in target', operation['operation_id'])
+                    elif payload['schema_version'] == 'newrouge.b-route-origins.v1':
+                        origins_count += 1
+                        require(type(payload['revision']) is int
+                                and payload['revision'] == allocation['origins_revision'],
+                                'typed origins allocation reflected in target', operation['operation_id'])
+                    else:
+                        fail(codec.ReasonCode.SCHEMA_MISMATCH,
+                             'binding or origins immutable target for task_compilation', payload['schema_version'],
+                             operation_id=operation['operation_id'])
+                elif mode == 'task_definition_projection':
+                    require(target.get('codec_version') == records.PROJECTION_CODEC,
+                            records.PROJECTION_CODEC, target.get('codec_version'),
+                            codec.ReasonCode.UNKNOWN_CODEC_VERSION)
+                    require(path in expected_triplets and path not in triplet_paths,
+                            'unique Taskmaster triplet target path', path)
+                    triplet_paths.add(path)
+                else:
+                    fail(codec.ReasonCode.INVALID_ENUM,
+                         'immutable_bytes or task_definition_projection', mode,
+                         operation_id=operation['operation_id'])
+            require(binding_count == 1 and origins_count == 1 and triplet_paths == expected_triplets,
+                    'one binding, one origins, and all three triplet targets for task_compilation',
+                    operation['operation_id'])
+            minimum = resource_scopes(
+                target_paths=[row['path'] for row in frozen['targets']],
+                plan_ids=[allocation['plan_id']],
+                task_ids=[int(k) for k in allocation['task_definitions']],
+            )
+            require(set(minimum) <= set(frozen['scope_ids']), 'complete owned resource scope',
+                    operation['operation_id'], codec.ReasonCode.PENDING)
+            continue
         if operation['schema_version'] == journal.COMPENSATION_SCHEMA:
             import _b_route_compensation as compensation
             journal._operation_schema(frozen, 'Frozen')
