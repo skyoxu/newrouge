@@ -68,6 +68,17 @@ def _is_example_task_fixture_payload(tasks_json: Path, tasks_back: Path, tasks_g
 
 def _restore_task_triplet_from_head_if_needed() -> None:
     root = repo_root()
+    import sys
+
+    python_scripts_dir = str(Path(__file__).resolve().parents[1] / "python")
+    if python_scripts_dir not in sys.path:
+        sys.path.insert(0, python_scripts_dir)
+    import _b_route_chapter6_gate as _ch6_gate
+
+    presence = _ch6_gate.detect_b_route_presence(root)
+    if presence.get("has_b_traces") or presence.get("capability_apply_pending"):
+        # Never run git checkout on B-route repos!
+        return
     tasks_dir = root / ".taskmaster" / "tasks"
     tasks_json = tasks_dir / "tasks.json"
     tasks_back = tasks_dir / "tasks_back.json"
@@ -293,11 +304,42 @@ def main() -> int:
 
     task_id = parse_task_id(args.task_id)
 
+    import sys
+
+    python_scripts_dir = str(Path(__file__).resolve().parents[1] / "python")
+    if python_scripts_dir not in sys.path:
+        sys.path.insert(0, python_scripts_dir)
+    import _b_route_chapter6_gate as _ch6_gate
+
+    if task_id is not None:
+        raw_tid = str(task_id).split(".", 1)[0].strip()
+        if _ch6_gate.STRICT_TASK_ID_RE.fullmatch(raw_tid) is None:
+            print("[sc-acceptance-check] ERROR: --task-id must be an ASCII positive integer.")
+            return 2
+        gate_res = _ch6_gate.enforce_internal_script_gate(
+            repo_root(),
+            raw_tid,
+            consumer="sc_acceptance_check",
+        )
+        if not gate_res.get("ok"):
+            print(_ch6_gate.format_gate_block_message("sc-acceptance-check", gate_res))
+            return 2
+
     try:
         triplet = resolve_triplet(task_id=task_id)
     except Exception as exc:  # noqa: BLE001
         print(f"[sc-acceptance-check] ERROR: failed to resolve task: {exc}")
         return 2
+
+    if task_id is None:
+        gate_res = _ch6_gate.enforce_internal_script_gate(
+            repo_root(),
+            str(triplet.task_id),
+            consumer="sc_acceptance_check",
+        )
+        if not gate_res.get("ok"):
+            print(_ch6_gate.format_gate_block_message("sc-acceptance-check", gate_res))
+            return 2
 
     out_dir = ci_dir(f"sc-acceptance-check-task-{triplet.task_id}") if bool(args.out_per_task) else ci_dir("sc-acceptance-check")
     only_steps = parse_only_steps(args.only)

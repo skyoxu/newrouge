@@ -35,7 +35,7 @@ class RuntimeCITests(unittest.TestCase):
                      'adoption_projection', 'adoption_r10_capture', 'adoption_r10_reader',
                      'adoption_r19_reader', 'adoption_review', 'operation_leases',
                      'operation_scope', 'public_context', 'qualified_public_context', 'task_preview',
-                     'task_compilation', 'task_resolver', 'chapter4_binding', 'input_set', 'stage5_obligations', 'chapter5_readiness'):
+                     'task_compilation', 'task_resolver', 'chapter4_binding', 'input_set', 'stage5_obligations', 'chapter5_readiness', 'chapter6_gate'):
             selector = 'scripts.python.tests.test_b_route_' + name
             self.assertEqual(1, selected.count(selector))
             self.assertFalse(any(value.startswith(selector + '.') for value in selected))
@@ -251,6 +251,19 @@ class RuntimeCITests(unittest.TestCase):
             'scripts/python/resolve_b_route_input_set.py',
             'scripts/python/bind_b_route_stage5_obligations.py',
             'scripts/python/reconcile_b_route_chapter5_readiness.py',
+            'scripts/python/check_b_route_chapter6_gate.py',
+            'scripts/python/run_single_task_chapter6_lane.py',
+            'scripts/python/update_task_test_refs_from_acceptance_refs.py',
+            'scripts/python/apply_chapter7_status_patch.py',
+            'scripts/python/run_single_task_light_lane.py',
+            'scripts/sc/check_tdd_execution_plan.py',
+            'scripts/sc/llm_generate_tests_from_acceptance_refs.py',
+            'scripts/sc/build/tdd.py',
+            'scripts/sc/run_review_pipeline.py',
+            'scripts/sc/llm_review_needs_fix_fast.py',
+            'scripts/sc/_llm_review_engine.py',
+            'scripts/sc/acceptance_check.py',
+            'scripts/sc/test.py',
             'scripts/python/_chapter5_contract_bindings.py',
             'scripts/python/chapter5_semantic_reconciliation.py',
             'scripts/python/refresh_chapter_knowledge.py',

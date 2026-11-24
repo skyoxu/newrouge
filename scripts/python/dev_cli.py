@@ -20,7 +20,7 @@ import sys
 from pathlib import Path
 
 # The read-only command must not create bytecode even without Python -B.
-if len(sys.argv) > 1 and sys.argv[1] in {"b-route-preflight", "b-route-sources", "b-route-adoption", "b-route-task-preview", "b-route-task-compile", "b-route-task-origin", "b-route-chapter4-binding", "b-route-input-set", "b-route-stage5-obligations", "b-route-chapter5-readiness"}:
+if len(sys.argv) > 1 and sys.argv[1] in {"b-route-preflight", "b-route-sources", "b-route-adoption", "b-route-task-preview", "b-route-task-compile", "b-route-task-origin", "b-route-chapter4-binding", "b-route-input-set", "b-route-stage5-obligations", "b-route-chapter5-readiness", "b-route-chapter6-gate"}:
     sys.dont_write_bytecode = True
 
 if __name__ == "__main__" and len(sys.argv) > 1 and sys.argv[1] == "b-route-sources":
@@ -59,6 +59,10 @@ if __name__ == "__main__" and len(sys.argv) > 1 and sys.argv[1] == "b-route-chap
     from reconcile_b_route_chapter5_readiness import main as chapter5_readiness_main
     raise SystemExit(chapter5_readiness_main(sys.argv[2:]))
 
+if __name__ == "__main__" and len(sys.argv) > 1 and sys.argv[1] == "b-route-chapter6-gate":
+    from check_b_route_chapter6_gate import main as chapter6_gate_main
+    raise SystemExit(chapter6_gate_main(sys.argv[2:]))
+
 from dev_cli_builders import (
     DEFAULT_GATE_BUNDLE_TASK_FILES,
     build_check_directory_boundaries_cmd,
@@ -89,6 +93,7 @@ from dev_cli_builders import (
     build_b_route_input_set_cmd,
     build_b_route_stage5_obligations_cmd,
     build_b_route_chapter5_readiness_cmd,
+    build_b_route_chapter6_gate_cmd,
     build_quality_gates_cmd,
     build_run_dotnet_cmd,
     build_run_gdunit_full_cmd,
@@ -315,8 +320,62 @@ def _build_acceptance_preflight_cmd(script_name: str, *, task_id: str, stage: st
     return cmd
 
 
+REPO_ROOT = Path(__file__).resolve().parents[2]
+
+
+def _enforce_dev_cli_task_gate(root: Path, task_id: str, *, consumer: str) -> int | None:
+    """Enforce the unified Chapter 6 gate on task-scoped dev_cli subcommands."""
+    if not str(task_id or "").strip():
+        return None
+    import _b_route_chapter6_gate as ch6_gate
+
+    gate_res = ch6_gate.enforce_internal_script_gate(root, str(task_id), consumer=consumer)
+    if not gate_res.get("ok"):
+        print(ch6_gate.format_gate_block_message(consumer, gate_res), file=sys.stderr)
+        print(json.dumps(gate_res, ensure_ascii=True, allow_nan=False, separators=(",", ":")))
+        return 2
+    return None
+
+
 def cmd_run_acceptance_preflight(args: argparse.Namespace) -> int:
     """Run the lightweight acceptance refs + anchors preflight."""
+    root = REPO_ROOT
+    raw_tid = str(args.task_id or "")
+    if not raw_tid.strip():
+        import _b_route_chapter6_gate as ch6_gate
+
+        presence = ch6_gate.detect_b_route_presence(root, None)
+        if (
+            presence.get("has_b_traces")
+            or presence.get("capability_apply_pending")
+            or presence.get("pending_journals")
+            or presence.get("na_labels")
+        ):
+            print(
+                "[run-acceptance-preflight] BLOCKED by b-route-chapter6-gate: "
+                "--task-id is required on B-route repositories",
+                file=sys.stderr,
+            )
+            print(
+                json.dumps(
+                    {
+                        "ok": False,
+                        "reason_code": "invalid_argument",
+                        "reason": "task_id_required_on_b_route_repository",
+                        "return_stage": "5",
+                        "runtime_verified": False,
+                        "default_b_enabled": False,
+                    },
+                    ensure_ascii=True,
+                    allow_nan=False,
+                    separators=(",", ":"),
+                )
+            )
+            return 2
+    else:
+        blocked_rc = _enforce_dev_cli_task_gate(root, raw_tid, consumer="run-acceptance-preflight")
+        if blocked_rc is not None:
+            return blocked_rc
 
     out_dir = _acceptance_preflight_out_dir(task_id=args.task_id, stage=args.stage, out_dir=args.out_dir)
     refs_cmd = _build_acceptance_preflight_cmd(
@@ -502,24 +561,68 @@ def cmd_init_knowledge_catalog(args: argparse.Namespace) -> int:
 
 
 def cmd_generate_knowledge_links(args: argparse.Namespace) -> int:
+    root = Path(args.repo_root).resolve()
+    if bool(args.write_task_refs):
+        import _b_route_chapter6_gate as ch6_gate
+
+        presence = ch6_gate.detect_b_route_presence(root, None)
+        if (
+            presence.get("has_b_traces")
+            or presence.get("capability_apply_pending")
+            or presence.get("pending_journals")
+            or presence.get("na_labels")
+        ):
+            print(
+                "[generate-knowledge-links] BLOCKED by b-route-chapter6-gate: "
+                "--write-task-refs is forbidden on B-route repositories",
+                file=sys.stderr,
+            )
+            print(
+                json.dumps(
+                    {
+                        "ok": False,
+                        "reason_code": "conflict",
+                        "reason": "b_route_global_task_ref_write_forbidden",
+                        "return_stage": "3C",
+                        "runtime_verified": False,
+                        "default_b_enabled": False,
+                    },
+                    ensure_ascii=True,
+                    allow_nan=False,
+                    separators=(",", ":"),
+                )
+            )
+            return 2
+        for tid in list(args.task_ids or []):
+            blocked_rc = _enforce_dev_cli_task_gate(root, str(tid), consumer="generate-knowledge-links")
+            if blocked_rc is not None:
+                return blocked_rc
     from generate_knowledge_links import generate
-    print(json.dumps(generate(Path(args.repo_root).resolve(), set(args.task_ids or []), args.write_task_refs), ensure_ascii=False))
+    print(json.dumps(generate(root, set(args.task_ids or []), args.write_task_refs), ensure_ascii=False))
     return 0
 
 
 def cmd_chapter6_knowledge(args: argparse.Namespace) -> int:
+    root = Path(args.repo_root).resolve()
+    blocked_rc = _enforce_dev_cli_task_gate(root, str(args.task_id), consumer="chapter6-knowledge")
+    if blocked_rc is not None:
+        return blocked_rc
     from dev_cli_builders import enforce_paid_api_opt_in
     enforce_paid_api_opt_in(args.llm_backend, allow_paid_api=getattr(args, "allow_paid_api", False), repo_root=args.repo_root)
     from chapter6_knowledge import run
-    result = run(Path(args.repo_root).resolve(), str(args.task_id), args.write_task_refs, args.semantic, args.llm_backend)
+    result = run(root, str(args.task_id), args.write_task_refs, args.semantic, args.llm_backend)
     print(json.dumps(result, ensure_ascii=False))
     return 0 if result.get("status") == "knowledge_captured" else 1
 
 
 def cmd_publish_chapter6_semantics(args: argparse.Namespace) -> int:
+    root = Path(args.repo_root).resolve()
+    blocked_rc = _enforce_dev_cli_task_gate(root, str(args.task_id), consumer="publish-chapter6-semantics")
+    if blocked_rc is not None:
+        return blocked_rc
     from chapter6_semantic_publication import publish
     try:
-        result = publish(Path(args.repo_root).resolve(), str(args.task_id),
+        result = publish(root, str(args.task_id),
                          candidate_sha256=args.candidate_sha256, reviewed_by=args.reviewed_by,
                          review_note=args.review_note, confirm=args.confirm)
     except (OSError, ValueError, TypeError) as exc:
@@ -686,6 +789,13 @@ def cmd_b_route_chapter5_readiness(args: argparse.Namespace) -> int:
     return chapter5_readiness_main(build_b_route_chapter5_readiness_cmd(args)[3:])
 
 
+def cmd_b_route_chapter6_gate(args: argparse.Namespace) -> int:
+    """Run the read-only B-route Chapter 6 unified execution gate CLI."""
+    from check_b_route_chapter6_gate import main as chapter6_gate_main
+
+    return chapter6_gate_main(build_b_route_chapter6_gate_cmd(args)[3:])
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Dev CLI for Godot+C# template (AI-friendly entrypoint)",
@@ -738,6 +848,11 @@ def build_parser() -> argparse.ArgumentParser:
     from reconcile_b_route_chapter5_readiness import register_arguments as register_chapter5_readiness_arguments
     register_chapter5_readiness_arguments(chapter5_readiness_parser)
     chapter5_readiness_parser.set_defaults(func=cmd_b_route_chapter5_readiness)
+
+    chapter6_gate_parser = sub.add_parser("b-route-chapter6-gate", help="Read-only unified B-route Chapter 6 execution gate; no runtime verification or default B activation")
+    from check_b_route_chapter6_gate import register_arguments as register_chapter6_gate_arguments
+    register_chapter6_gate_arguments(chapter6_gate_parser)
+    chapter6_gate_parser.set_defaults(func=cmd_b_route_chapter6_gate)
 
     # run-ci-basic
     p_ci = sub.add_parser(
@@ -947,6 +1062,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_ch6.add_argument("--binding-evidence", default="")
     p_ch6.add_argument("--milestone-handoff", default="")
     p_ch6.add_argument("--milestone-regression-summary", default="")
+    p_ch6.add_argument("--execution-plan-signal", action="append", default=[])
     p_ch6.add_argument("--self-check", action="store_true")
     p_ch6.set_defaults(func=cmd_run_single_task_chapter6)
 
@@ -1310,6 +1426,10 @@ def main(argv: list[str] | None = None) -> int:
         sys.dont_write_bytecode = True
         from reconcile_b_route_chapter5_readiness import main as chapter5_readiness_main
         return chapter5_readiness_main(arguments[1:])
+    if arguments and arguments[0] == "b-route-chapter6-gate":
+        sys.dont_write_bytecode = True
+        from check_b_route_chapter6_gate import main as chapter6_gate_main
+        return chapter6_gate_main(arguments[1:])
     parser = build_parser()
     args = parser.parse_args(arguments)
     func = getattr(args, "func", None)

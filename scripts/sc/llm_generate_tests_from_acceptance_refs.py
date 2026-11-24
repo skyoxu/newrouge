@@ -12,9 +12,11 @@ from pathlib import Path
 
 def _bootstrap_imports() -> None:
     sys.path.insert(0, str(Path(__file__).resolve().parent))
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "python"))
 
 _bootstrap_imports()
 
+import _b_route_chapter6_gate as _ch6_gate  # noqa: E402
 import _acceptance_testgen_flow as _flow_helpers  # noqa: E402
 import _acceptance_testgen_llm as _llm_helpers  # noqa: E402
 import _acceptance_testgen_quality as _quality_helpers  # noqa: E402
@@ -146,7 +148,25 @@ def _select_primary_ref_with_llm(*, task_id: str, title: str, by_ref, context_ex
     )
 
 
-def _generate_missing_files(*, refs: list[str], by_ref, task_id: str, title: str, args, task_context_md: str, out_dir: Path):
+def _revalidate_b_route_boundary(task_id: str, *, step_name: str, expected_digest: str | None = None) -> None:
+    gate_res = _ch6_gate.enforce_internal_script_gate(
+        repo_root(),
+        task_id,
+        consumer=f"llm_generate_tests_from_acceptance_refs:{step_name}",
+    )
+    if not gate_res.get("ok"):
+        raise _ch6_gate.Chapter6GateBlockedError(gate_res)
+    if expected_digest and gate_res.get("input_set_digest") and gate_res.get("input_set_digest") != expected_digest:
+        drift_res = _ch6_gate.evaluate_chapter6_gate(
+            repo_root(),
+            task_id,
+            expected_input_set_digest=expected_digest,
+            consumer=f"llm_generate_tests_from_acceptance_refs:{step_name}",
+        )
+        raise _ch6_gate.Chapter6GateBlockedError(drift_res)
+
+
+def _generate_missing_files(*, refs: list[str], by_ref, task_id: str, title: str, args, task_context_md: str, out_dir: Path, expected_digest: str | None = None):
     results: list[GenResult] = []
     created = 0
     any_gd = any(Path(ref).suffix.lower() == ".gd" for ref in refs)
@@ -161,6 +181,7 @@ def _generate_missing_files(*, refs: list[str], by_ref, task_id: str, title: str
         prd_context_path=str(args.prd_context_path),
     )
     if str(args.tdd_stage) == "red-first" and missing_refs:
+        _revalidate_b_route_boundary(task_id, step_name="before_select_primary_ref", expected_digest=expected_digest)
         primary_ref, primary_meta = _select_primary_ref_with_llm(
             task_id=task_id,
             title=title,
@@ -193,6 +214,7 @@ def _generate_missing_files(*, refs: list[str], by_ref, task_id: str, title: str
         prompt_path = out_dir / f"prompt-{task_id}-{token}.txt"
         output_path = out_dir / f"codex-last-{task_id}-{token}.txt"
         trace_path = out_dir / f"codex-trace-{task_id}-{token}.log"
+        _revalidate_b_route_boundary(task_id, step_name="before_llm_exec", expected_digest=expected_digest)
         write_text(prompt_path, prompt)
         rc, trace_out, _cmd = _run_codex_exec(
             backend=str(getattr(args, "llm_backend", "codex-cli") or "codex-cli"),
@@ -229,6 +251,7 @@ def _generate_missing_files(*, refs: list[str], by_ref, task_id: str, title: str
             ok, anchor_error = _validate_anchor_binding(ref=ref_norm, content=content, required_anchors=required_anchors)
             if not ok:
                 raise ValueError(anchor_error or "anchor binding validation failed")
+            _revalidate_b_route_boundary(task_id, step_name="before_write_test", expected_digest=expected_digest)
             disk.parent.mkdir(parents=True, exist_ok=True)
             disk.write_text(content.replace("\r\n", "\n"), encoding="utf-8", newline="\n")
             created += 1
@@ -348,9 +371,19 @@ def main() -> int:
     args.llm_backend = resolve_llm_backend(getattr(args, "llm_backend", None))
 
     task_id = str(args.task_id).split(".", 1)[0].strip()
-    if not task_id.isdigit():
-        print("SC_LLM_ACCEPTANCE_TESTS ERROR: --task-id must be a numeric master id.")
+    if _ch6_gate.STRICT_TASK_ID_RE.fullmatch(task_id) is None:
+        print("SC_LLM_ACCEPTANCE_TESTS ERROR: --task-id must be an ASCII positive integer master id.")
         return 2
+
+    entry_gate = _ch6_gate.enforce_internal_script_gate(
+        repo_root(),
+        task_id,
+        consumer="llm_generate_tests_from_acceptance_refs",
+    )
+    if not entry_gate.get("ok"):
+        print(_ch6_gate.format_gate_block_message("sc-llm-acceptance-tests", entry_gate))
+        return 2
+    expected_digest = entry_gate.get("input_set_digest")
 
     out_dir = ci_dir("sc-llm-acceptance-tests")
     gate_cmd = [
@@ -443,15 +476,20 @@ def main() -> int:
         print(f"SC_LLM_ACCEPTANCE_TESTS ERROR: no allowed test refs found for task_id={task_id}.")
         return 1
 
-    results, created, any_gd, primary_ref = _generate_missing_files(
-        refs=refs,
-        by_ref=by_ref,
-        task_id=task_id,
-        title=title,
-        args=args,
-        task_context_md=task_context_md,
-        out_dir=out_dir,
-    )
+    try:
+        results, created, any_gd, primary_ref = _generate_missing_files(
+            refs=refs,
+            by_ref=by_ref,
+            task_id=task_id,
+            title=title,
+            args=args,
+            task_context_md=task_context_md,
+            out_dir=out_dir,
+            expected_digest=expected_digest,
+        )
+    except _ch6_gate.Chapter6GateBlockedError as exc:
+        print(_ch6_gate.format_gate_block_message("sc-llm-acceptance-tests", exc.gate_result))
+        return 2
     sync_cmd = ["py", "-3", "scripts/python/update_task_test_refs_from_acceptance_refs.py", "--task-id", task_id, "--mode", "replace", "--write"]
     sync_rc, sync_out = run_cmd(sync_cmd, cwd=repo_root(), timeout_sec=60)
     write_text(out_dir / f"sync-test-refs-{task_id}.log", sync_out)

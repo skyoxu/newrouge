@@ -200,6 +200,34 @@ def _run_dry_plan(args: argparse.Namespace) -> int:
             print(f"[sc-llm-review] ERROR: {e}")
         return 2
 
+    import sys
+    from pathlib import Path
+
+    python_scripts_dir = str(Path(__file__).resolve().parents[1] / "python")
+    if python_scripts_dir not in sys.path:
+        sys.path.insert(0, python_scripts_dir)
+    import _b_route_chapter6_gate as _ch6_gate
+
+    expected_b_digest: str | None = None
+    gate_task_id: str | None = None
+    if args.task_id is not None:
+        import re as _re
+
+        raw_arg_tid = str(args.task_id)
+        if _re.fullmatch(r"^[1-9][0-9]*(\.[1-9][0-9]*)?$", raw_arg_tid, _re.ASCII) is None:
+            print("[sc-llm-review] ERROR: --task-id must be an ASCII positive integer.")
+            return 2
+        gate_task_id = raw_arg_tid.split(".", 1)[0]
+        gate_res = _ch6_gate.enforce_internal_script_gate(
+            repo_root(),
+            gate_task_id,
+            consumer="sc_llm_review",
+        )
+        if not gate_res.get("ok"):
+            print(_ch6_gate.format_gate_block_message("sc-llm-review", gate_res))
+            return 2
+        expected_b_digest = gate_res.get("input_set_digest")
+
     triplet = None
     if args.task_id:
         try:
@@ -251,6 +279,34 @@ def main() -> int:
         for e in errors:
             print(f"[sc-llm-review] ERROR: {e}")
         return 2
+
+    import sys
+    from pathlib import Path
+
+    python_scripts_dir = str(Path(__file__).resolve().parents[1] / "python")
+    if python_scripts_dir not in sys.path:
+        sys.path.insert(0, python_scripts_dir)
+    import _b_route_chapter6_gate as _ch6_gate
+
+    expected_b_digest: str | None = None
+    gate_task_id: str | None = None
+    if args.task_id is not None:
+        import re as _re
+
+        raw_arg_tid = str(args.task_id)
+        if _re.fullmatch(r"^[1-9][0-9]*(\.[1-9][0-9]*)?$", raw_arg_tid, _re.ASCII) is None:
+            print("[sc-llm-review] ERROR: --task-id must be an ASCII positive integer.")
+            return 2
+        gate_task_id = raw_arg_tid.split(".", 1)[0]
+        gate_res = _ch6_gate.enforce_internal_script_gate(
+            repo_root(),
+            gate_task_id,
+            consumer="sc_llm_review",
+        )
+        if not gate_res.get("ok"):
+            print(_ch6_gate.format_gate_block_message("sc-llm-review", gate_res))
+            return 2
+        expected_b_digest = gate_res.get("input_set_digest")
 
     triplet = None
     if args.task_id:
@@ -460,6 +516,16 @@ def main() -> int:
         agent_cap = per_agent_overrides.get(agent, per_agent_timeout_sec)
         remaining_before_sec = max(0, int(remaining))
         effective_timeout = max(1, int(agent_cap))
+        if gate_task_id is not None and expected_b_digest is not None:
+            recheck_llm = _ch6_gate.evaluate_chapter6_gate(
+                repo_root(),
+                gate_task_id,
+                expected_input_set_digest=expected_b_digest,
+                consumer="sc_llm_review:before_llm_exec",
+            )
+            if not recheck_llm.get("ok"):
+                print(_ch6_gate.format_gate_block_message("sc-llm-review", recheck_llm))
+                return 2
         rc, trace_out, cmd = run_codex_exec(
             backend=str(args.llm_backend),
             prompt=prompt_used,

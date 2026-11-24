@@ -1657,10 +1657,55 @@ def build_parser() -> argparse.ArgumentParser:
 def main() -> int:
     args = build_parser().parse_args()
     root = _repo_root()
+    import _b_route_chapter6_gate as ch6_gate
+
+    if str(args.task_ids or "").strip():
+        for raw_token in str(args.task_ids).split(","):
+            token = raw_token.strip()
+            if not token or ch6_gate.STRICT_TASK_ID_RE.fullmatch(token) is None:
+                print(f"[run_single_task_light_lane] ERROR: --task-ids must contain ASCII positive integers: {raw_token!r}")
+                return 2
+
     selected = _select_task_ids(root, args)
     if not selected:
         print("SINGLE_TASK_LIGHT_LANE status=fail reason=no_selected_tasks")
         return 2
+
+    if not bool(args.self_check):
+        import _b_route_task_resolver as task_resolver
+
+        for tid_check in selected:
+            presence = ch6_gate.detect_b_route_presence(root, tid_check)
+            if (
+                presence.get("has_b_traces")
+                or presence.get("capability_apply_pending")
+                or presence.get("pending_journals")
+                or presence.get("na_labels")
+            ):
+                origin = task_resolver.resolve_task_origin(root, tid_check)
+                route = str(origin.get("route") or "blocked")
+                if route in ("B", "blocked") or not origin.get("ok") or not origin.get("stable"):
+                    gate_res = ch6_gate.evaluate_chapter6_gate(root, tid_check, consumer="run_single_task_light_lane")
+                    reason_code = (
+                        "conflict"
+                        if route == "B" and gate_res.get("ok")
+                        else str(gate_res.get("reason_code") or "conflict")
+                    )
+                    return_stage = (
+                        "5"
+                        if route == "B" and gate_res.get("ok")
+                        else str(gate_res.get("return_stage") or "5")
+                    )
+                    print(
+                        f"[run_single_task_light_lane] BLOCKED legacy 5.1 light lane on B-route/blocked task={tid_check}: "
+                        f"route={route} reason_code={reason_code} return_stage={return_stage}"
+                    )
+                    return 2
+                if route == "A":
+                    gate_res = ch6_gate.evaluate_chapter6_gate(root, tid_check, consumer="run_single_task_light_lane")
+                    if not gate_res.get("ok"):
+                        print(ch6_gate.format_gate_block_message("run_single_task_light_lane", gate_res))
+                        return 2
 
     out_dir = Path(args.out_dir) if str(args.out_dir).strip() else _default_out_dir(root)
     out_dir.mkdir(parents=True, exist_ok=True)

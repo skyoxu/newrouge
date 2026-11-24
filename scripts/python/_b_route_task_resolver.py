@@ -1689,8 +1689,12 @@ def resolve_task_origin(
             graph_bytes_holder=graph_bytes_holder,
         )
 
-        # 3. Observe governance directory and triplet B-route traces.
-        discovered = observations.scan("docs/planning/b-route")
+        # 3. Observe governance directory and triplet B-route traces (exclude static committed schemas/**).
+        discovered = [
+            p
+            for p in observations.scan("docs/planning/b-route")
+            if not p.casefold().startswith("docs/planning/b-route/schemas/")
+        ]
         managed_traces = [p for p in discovered if records._managed_candidate(p)]
         for rel in discovered:
             observations.read(rel)

@@ -100,7 +100,14 @@ def main() -> int:
     if not isinstance(back, list) or not isinstance(gameplay, list):
         raise ValueError("tasks_back.json and tasks_gameplay.json must be JSON arrays")
 
-    task_id = str(args.task_id).strip()
+    raw_task_id = str(args.task_id)
+    import _b_route_chapter6_gate as _ch6_gate
+
+    if _ch6_gate.STRICT_TASK_ID_RE.fullmatch(raw_task_id) is None:
+        print(f"UPDATE_TASK_TEST_REFS ERROR: --task-id must be an ASCII positive integer: {raw_task_id!r}")
+        return 2
+
+    task_id = raw_task_id
     back_task = find_view_task(back, task_id)
     gameplay_task = find_view_task(gameplay, task_id)
     if back_task is None or gameplay_task is None:
@@ -120,9 +127,18 @@ def main() -> int:
     print(f"UPDATE_TASK_TEST_REFS task_id={task_id} add={len(add_items)} changed_back={changed_back} changed_game={changed_game} write={bool(args.write)}")
     if not args.write:
         return 0
+    if not changed_back and not changed_game:
+        return 0
 
-    write_json(back_path, back)
-    write_json(gameplay_path, gameplay)
+    guard = _ch6_gate.guard_task_test_refs_sync(root, task_id, changed=True)
+    if not guard.get("ok") or not guard.get("allow_write"):
+        print(_ch6_gate.format_gate_block_message("update_task_test_refs", guard))
+        return 2
+
+    if changed_back:
+        write_json(back_path, back)
+    if changed_game:
+        write_json(gameplay_path, gameplay)
     return 0
 
 

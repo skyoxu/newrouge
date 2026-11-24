@@ -11,10 +11,12 @@ import sys
 
 def _bootstrap_imports() -> None:
     sys.path.insert(0, str(Path(__file__).resolve().parent))
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "python"))
 
 
 _bootstrap_imports()
 
+import _b_route_chapter6_gate as _ch6_gate  # noqa: E402
 import _execution_plan_policy as _policy  # noqa: E402
 from _taskmaster import resolve_triplet  # noqa: E402
 from _util import ci_dir, repo_root, write_json, write_text  # noqa: E402
@@ -57,12 +59,18 @@ def main() -> int:
     ap.add_argument("--coordination-signal", action="append", default=[], help="Explicit durable coordination signal; repeat as needed.")
     args = ap.parse_args()
 
-    task_id = str(args.task_id).split(".", 1)[0].strip()
-    if not task_id.isdigit():
-        print("SC_TDD_EXECUTION_PLAN ERROR: --task-id must be a numeric master id.")
+    raw_task_id = str(args.task_id)
+    task_id = raw_task_id.split(".", 1)[0].strip()
+    if _ch6_gate.STRICT_TASK_ID_RE.fullmatch(task_id) is None:
+        print("SC_TDD_EXECUTION_PLAN ERROR: --task-id must be an ASCII positive integer master id.")
         return 2
 
     root = repo_root()
+    gate_res = _ch6_gate.enforce_internal_script_gate(root, task_id, consumer="check_tdd_execution_plan")
+    if not gate_res.get("ok"):
+        print(_ch6_gate.format_gate_block_message("sc-check-tdd-execution-plan", gate_res))
+        return 2
+
     out_dir = ci_dir("sc-tdd-execution-plan")
     triplet = resolve_triplet(task_id=task_id)
     assessment = _policy.assess_execution_plan_need(

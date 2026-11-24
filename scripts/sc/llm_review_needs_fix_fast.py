@@ -1449,11 +1449,17 @@ def _derive_summary_recommendation(summary: dict[str, Any]) -> tuple[str, str]:
     return "inspect", "Inspect the latest narrow closure artifacts before deciding whether to rerun or close the task."
 
 
-def _write_summary(out_dir: Path, summary: dict[str, Any]) -> None:
+def _write_summary(out_dir: Path, summary: dict[str, Any], *, b_route_active: bool = False) -> None:
     recommended_action, recommended_action_why = _derive_summary_recommendation(summary)
     summary["recommended_action"] = recommended_action
     summary["recommended_action_why"] = recommended_action_why
+    if b_route_active:
+        summary["runtime_verified"] = False
+        summary["default_b_enabled"] = False
     write_json(out_dir / "summary.json", summary)
+
+
+_STRICT_RAW_TASK_ID_RE = re.compile(r"^[1-9][0-9]*(\.[1-9][0-9]*)?$", re.ASCII)
 
 
 def main() -> int:
@@ -1474,6 +1480,27 @@ def main() -> int:
     if args.max_rounds < 1:
         print("[needs-fix-fast] ERROR: --max-rounds must be >= 1")
         return 2
+
+    python_scripts_dir = str(Path(__file__).resolve().parents[1] / "python")
+    if python_scripts_dir not in sys.path:
+        sys.path.insert(0, python_scripts_dir)
+    import _b_route_chapter6_gate as _ch6_gate
+
+    raw_arg_tid = str(args.task_id)
+    if _STRICT_RAW_TASK_ID_RE.fullmatch(raw_arg_tid) is None:
+        print("[needs-fix-fast] ERROR: --task-id must be an ASCII positive integer.")
+        return 2
+    raw_tid = raw_arg_tid.split(".", 1)[0]
+    gate_res = _ch6_gate.enforce_internal_script_gate(
+        repo_root(),
+        raw_tid,
+        consumer="llm_review_needs_fix_fast",
+    )
+    if not gate_res.get("ok"):
+        print(_ch6_gate.format_gate_block_message("sc-needs-fix-fast", gate_res))
+        return 2
+    b_route_active = not bool(gate_res.get("legacy_a_passthrough"))
+    expected_b_digest = gate_res.get("input_set_digest") if b_route_active else None
 
     agents = resolve_configured_agents(args.agents)
     if not agents:
@@ -1512,7 +1539,7 @@ def main() -> int:
             "final_needs_fix_agents": [],
             "final_unknown_agents": [],
         }
-        _write_summary(out_dir, summary)
+        _write_summary(out_dir, summary, b_route_active=b_route_active)
         print(f"SC_NEEDS_FIX_FAST status=ok out={out_dir}")
         return 0
 
@@ -1542,7 +1569,7 @@ def main() -> int:
                 "final_needs_fix_agents": [],
                 "final_unknown_agents": list(agents),
             }
-            _write_summary(out_dir, summary)
+            _write_summary(out_dir, summary, b_route_active=b_route_active)
             print(f"SC_NEEDS_FIX_FAST status=indeterminate out={out_dir}")
             return 1
         route_payload = _run_chapter6_route_preflight(
@@ -1578,7 +1605,7 @@ def main() -> int:
                     "route_preflight": route_payload,
                     "residual_recording": residual_recording,
                 }
-                _write_summary(out_dir, summary)
+                _write_summary(out_dir, summary, b_route_active=b_route_active)
                 print(f"SC_NEEDS_FIX_FAST status={status} out={out_dir}")
                 return exit_code
 
@@ -1671,7 +1698,7 @@ def main() -> int:
             "timeline": timeline,
             "elapsed_sec": elapsed_sec(script_start),
         }
-        _write_summary(out_dir, summary)
+        _write_summary(out_dir, summary, b_route_active=b_route_active)
         print(f"SC_NEEDS_FIX_FAST status=fail out={out_dir}")
         return 1
 
@@ -1700,6 +1727,16 @@ def main() -> int:
         )
     participating_agents: set[str] = set(run_agents)
     for round_no in range(1, args.max_rounds + 1):
+        if b_route_active:
+            recheck_round = _ch6_gate.evaluate_chapter6_gate(
+                repo_root(),
+                raw_tid,
+                expected_input_set_digest=expected_b_digest,
+                consumer=f"llm_review_needs_fix_fast:round_{round_no}",
+            )
+            if not recheck_round.get("ok"):
+                print(_ch6_gate.format_gate_block_message("sc-needs-fix-fast", recheck_round))
+                return 2
         if not run_agents:
             break
 
@@ -1734,7 +1771,7 @@ def main() -> int:
                     "elapsed_sec": elapsed_sec(script_start),
                     "delivery_profile": str(args.delivery_profile),
                 }
-                _write_summary(out_dir, summary)
+                _write_summary(out_dir, summary, b_route_active=b_route_active)
                 print(f"SC_NEEDS_FIX_FAST status=fail out={out_dir}")
                 return 1
             break
@@ -1806,7 +1843,7 @@ def main() -> int:
                     "delivery_profile": str(args.delivery_profile),
                     "llm_budget_prediction_history": llm_budget_prediction_history,
                 }
-                _write_summary(out_dir, summary)
+                _write_summary(out_dir, summary, b_route_active=b_route_active)
                 print(f"SC_NEEDS_FIX_FAST status=fail out={out_dir}")
                 return 1
             break
@@ -1984,7 +2021,7 @@ def main() -> int:
         "final_unknown_agents": final_unknown,
     }
     summary.update(_build_timeline_bottleneck_summary(timeline=timeline, rounds=rounds))
-    _write_summary(out_dir, summary)
+    _write_summary(out_dir, summary, b_route_active=b_route_active)
 
     if status == "ok":
         print(f"SC_NEEDS_FIX_FAST status=ok out={out_dir}")

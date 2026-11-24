@@ -34,6 +34,7 @@ _bootstrap_imports()
 
 from _acceptance_verification_surface import collect_acceptance_verification  # noqa: E402
 from _acceptance_testgen_red import evaluate_direct_dotnet_red  # noqa: E402
+import _b_route_chapter6_gate as _ch6_gate  # noqa: E402
 from _delivery_profile import (  # noqa: E402
     default_security_profile_for_delivery,
     known_delivery_profiles,
@@ -778,9 +779,65 @@ def run_refactor_checks(out_dir: Path, *, task_id: str) -> list[dict[str, Any]]:
     return steps
 
 
+def _check_b_route_tdd_gate(task_id: str, *, step_name: str, expected_digest: str | None = None) -> dict[str, Any]:
+    gate_res = _ch6_gate.enforce_internal_script_gate(
+        repo_root(),
+        task_id,
+        consumer=f"sc-build-tdd:{step_name}",
+    )
+    if not gate_res.get("ok"):
+        raise _ch6_gate.Chapter6GateBlockedError(gate_res)
+    if expected_digest and gate_res.get("input_set_digest") and gate_res.get("input_set_digest") != expected_digest:
+        drift_res = _ch6_gate.evaluate_chapter6_gate(
+            repo_root(),
+            task_id,
+            expected_input_set_digest=expected_digest,
+            consumer=f"sc-build-tdd:{step_name}",
+        )
+        raise _ch6_gate.Chapter6GateBlockedError(drift_res)
+    return gate_res
+
+
+def _is_false_green_step(step: dict[str, Any] | None) -> bool:
+    """Reject planned, empty, or skipped outcomes from claiming green/refactor pass."""
+    if not isinstance(step, dict) or not step:
+        return True
+    status = str(step.get("status") or "").strip().lower()
+    reason = str(step.get("reason") or "").strip().lower()
+    if status in {"planned", "skipped", ""}:
+        return True
+    if "planned" in reason:
+        return True
+    return False
+
+
+_STRICT_RAW_TASK_ID_RE = re.compile(r"^[1-9][0-9]*(\.[1-9][0-9]*)?$", re.ASCII)
+
+
 def main() -> int:
     start_monotonic = time.monotonic()
     args = build_parser().parse_args()
+    if args.task_id is not None:
+        raw_arg = str(args.task_id)
+        if _STRICT_RAW_TASK_ID_RE.fullmatch(raw_arg) is None:
+            print("[sc-build-tdd] ERROR: --task-id must be an ASCII positive integer.")
+            return 2
+        raw_tid = raw_arg.split(".", 1)[0]
+        try:
+            _check_b_route_tdd_gate(raw_tid, step_name="entry")
+        except _ch6_gate.Chapter6GateBlockedError as exc:
+            print(_ch6_gate.format_gate_block_message("sc-build-tdd", exc.gate_result))
+            return 2
+    else:
+        presence = _ch6_gate.detect_b_route_presence(repo_root(), None)
+        if (
+            presence.get("has_b_traces")
+            or presence.get("capability_apply_pending")
+            or presence.get("pending_journals")
+            or presence.get("na_labels")
+        ):
+            print("[sc-build-tdd] BLOCKED by b-route-chapter6-gate: --task-id is required on B-route repositories.")
+            return 2
     runtime = resolve_tdd_runtime(
         delivery_profile=args.delivery_profile,
         security_profile=args.security_profile,
@@ -799,6 +856,8 @@ def main() -> int:
         "security_profile": str(runtime["security_profile"]),
         "allow_contract_changes": bool(args.allow_contract_changes),
         "status": "fail",
+        "runtime_verified": False,
+        "default_b_enabled": False,
         "started_at": _utc_now_iso(),
         "steps": [],
     }
@@ -806,6 +865,13 @@ def main() -> int:
     summary["solution"] = resolved_solution
 
     triplet = resolve_triplet(task_id=args.task_id)
+    try:
+        entry_gate = _check_b_route_tdd_gate(str(triplet.task_id), step_name="resolved_triplet")
+    except _ch6_gate.Chapter6GateBlockedError as exc:
+        print(_ch6_gate.format_gate_block_message("sc-build-tdd", exc.gate_result))
+        return 2
+    expected_digest = entry_gate.get("input_set_digest")
+    summary["b_route_gate"] = entry_gate
     summary["task"] = {
         "task_id": triplet.task_id,
         "title": triplet.master.get("title"),
@@ -833,6 +899,11 @@ def main() -> int:
             assert_no_new_contract_files(before_contracts, allow_changes=bool(args.allow_contract_changes))
             return 1
 
+        try:
+            _check_b_route_tdd_gate(str(triplet.task_id), step_name="before_ensure_red_test_exists", expected_digest=expected_digest)
+        except _ch6_gate.Chapter6GateBlockedError as exc:
+            print(_ch6_gate.format_gate_block_message("sc-build-tdd", exc.gate_result))
+            return 2
         test_path = ensure_red_test_exists(
             triplet.task_id,
             str(triplet.master.get("title") or ""),
@@ -844,6 +915,11 @@ def main() -> int:
             print("[sc-build-tdd] ERROR: no task-scoped test found. Use --generate-red-test to create one.")
             return 2
 
+        try:
+            _check_b_route_tdd_gate(str(triplet.task_id), step_name="before_run_dotnet_test_filtered", expected_digest=expected_digest)
+        except _ch6_gate.Chapter6GateBlockedError as exc:
+            print(_ch6_gate.format_gate_block_message("sc-build-tdd", exc.gate_result))
+            return 2
         step = run_dotnet_test_filtered(
             triplet.task_id,
             solution=resolved_solution,
@@ -896,6 +972,11 @@ def main() -> int:
             print(f"SC_BUILD_TDD status=fail out={out_dir}")
             assert_no_new_contract_files(before_contracts, allow_changes=bool(args.allow_contract_changes))
             return 1
+        try:
+            _check_b_route_tdd_gate(str(triplet.task_id), step_name="before_run_green_gate", expected_digest=expected_digest)
+        except _ch6_gate.Chapter6GateBlockedError as exc:
+            print(_ch6_gate.format_gate_block_message("sc-build-tdd", exc.gate_result))
+            return 2
         step = run_green_gate(
             task_id=triplet.task_id,
             triplet=triplet,
@@ -910,11 +991,12 @@ def main() -> int:
         summary["steps"].append(step)
         if step["rc"] == 2:
             summary["steps"].append(write_coverage_hotspots(ci_out_dir=out_dir, run_dotnet_output=step.get("stdout") or ""))
-        summary["status"] = "ok" if step["rc"] == 0 else "fail"
+        green_ok = step["rc"] == 0 and not _is_false_green_step(step)
+        summary["status"] = "ok" if green_ok else "fail"
         write_json(out_dir / "summary.json", _finalize_summary(summary, start_monotonic=start_monotonic))
         print(f"SC_BUILD_TDD status={summary['status']} out={out_dir}")
         assert_no_new_contract_files(before_contracts, allow_changes=bool(args.allow_contract_changes))
-        return 0 if step["rc"] == 0 else 1
+        return 0 if green_ok else 1
 
     if args.stage == "refactor":
         prereq_step = validate_refactor_green_prerequisite(task_id=triplet.task_id, out_dir=out_dir)
@@ -941,9 +1023,15 @@ def main() -> int:
             assert_no_new_contract_files(before_contracts, allow_changes=bool(args.allow_contract_changes))
             return 1
 
+        try:
+            _check_b_route_tdd_gate(str(triplet.task_id), step_name="before_run_refactor_checks", expected_digest=expected_digest)
+        except _ch6_gate.Chapter6GateBlockedError as exc:
+            print(_ch6_gate.format_gate_block_message("sc-build-tdd", exc.gate_result))
+            return 2
         steps = run_refactor_checks(out_dir, task_id=triplet.task_id)
         summary["steps"].extend(steps)
-        summary["status"] = "ok" if all(s["rc"] == 0 for s in steps) else "fail"
+        executed_steps = [s for s in steps if str(s.get("status") or "").strip().lower() != "skipped"]
+        summary["status"] = "ok" if (bool(executed_steps) and all(s["rc"] == 0 for s in steps) and all(str(s.get("status") or "").strip().lower() != "planned" for s in steps)) else "fail"
         write_json(out_dir / "summary.json", _finalize_summary(summary, start_monotonic=start_monotonic))
 
         if summary["status"] != "ok":

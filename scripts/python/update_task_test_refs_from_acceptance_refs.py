@@ -122,7 +122,14 @@ def main() -> int:
     if not isinstance(back, list) or not isinstance(gameplay, list):
         raise ValueError("tasks_back.json and tasks_gameplay.json must be JSON arrays")
 
-    task_id = str(args.task_id).strip()
+    raw_task_id = str(args.task_id)
+    import _b_route_chapter6_gate as ch6_gate
+
+    if ch6_gate.STRICT_TASK_ID_RE.fullmatch(raw_task_id) is None:
+        print(f"UPDATE_TEST_REFS_FROM_ACCEPTANCE ERROR: --task-id must be an ASCII positive integer: {raw_task_id!r}")
+        return 2
+
+    task_id = raw_task_id
     back_task = find_view_task(back, task_id)
     gameplay_task = find_view_task(gameplay, task_id)
     if back_task is None and gameplay_task is None:
@@ -167,8 +174,20 @@ def main() -> int:
     if not args.write:
         return 0
 
-    write_json(back_path, back)
-    write_json(gameplay_path, gameplay)
+    import _b_route_chapter6_gate as ch6_gate
+
+    any_changed = bool(changed_back or changed_game)
+    guard = ch6_gate.guard_task_test_refs_sync(root, task_id, changed=any_changed)
+    if not guard.get("ok"):
+        print(ch6_gate.format_gate_block_message("update_task_test_refs_from_acceptance_refs", guard))
+        return 2
+    if not guard.get("allow_write"):
+        return 0
+
+    if changed_back:
+        write_json(back_path, back)
+    if changed_game:
+        write_json(gameplay_path, gameplay)
     return 0
 
 

@@ -1859,6 +1859,20 @@ def main() -> int:
     if not task_id:
         print("[sc-review-pipeline] ERROR: invalid --task-id")
         return 2
+    import _b_route_chapter6_gate as _ch6_gate
+    if _ch6_gate.STRICT_TASK_ID_RE.fullmatch(str(task_id)) is None:
+        print("[sc-review-pipeline] ERROR: --task-id must be an ASCII positive integer.")
+        return 2
+    b_route_gate_res: dict[str, Any] | None = None
+    if not args.abort:
+        b_route_gate_res = _ch6_gate.enforce_internal_script_gate(
+            repo_root(),
+            task_id,
+            consumer="run_review_pipeline",
+        )
+        if not b_route_gate_res.get("ok"):
+            print(_ch6_gate.format_gate_block_message("sc-review-pipeline", b_route_gate_res))
+            return 12
     readiness_ok, readiness_payload, readiness_reason = load_task_readiness(repo_root(), task_id)
     if not readiness_ok and not args.abort:
         print(
@@ -2623,6 +2637,17 @@ def main() -> int:
                     return 2 if session.schema_error_log.exists() else 1
                 print(f"SC_REVIEW_PIPELINE status={session.summary['status']} out={out_dir}")
                 return session.finish()
+    if b_route_gate_res is not None and not b_route_gate_res.get("legacy_a_passthrough"):
+        expected_digest = b_route_gate_res.get("input_set_digest")
+        recheck_preflight = _ch6_gate.evaluate_chapter6_gate(
+            repo_root(),
+            task_id,
+            expected_input_set_digest=expected_digest,
+            consumer="run_review_pipeline:before_acceptance_preflight",
+        )
+        if not recheck_preflight.get("ok"):
+            print(_ch6_gate.format_gate_block_message("sc-review-pipeline", recheck_preflight))
+            return 12
     preflight_rc = _run_acceptance_preflight(
         session=session,
         args=args,
@@ -2637,9 +2662,30 @@ def main() -> int:
     if preflight_rc is not None:
         print(f"SC_REVIEW_PIPELINE status={session.summary['status']} out={out_dir}")
         return preflight_rc
+    if b_route_gate_res is not None and not b_route_gate_res.get("legacy_a_passthrough"):
+        expected_digest = b_route_gate_res.get("input_set_digest")
+        recheck = _ch6_gate.evaluate_chapter6_gate(
+            repo_root(),
+            task_id,
+            expected_input_set_digest=expected_digest,
+            consumer="run_review_pipeline:before_execute_steps",
+        )
+        if not recheck.get("ok"):
+            print(_ch6_gate.format_gate_block_message("sc-review-pipeline", recheck))
+            return 12
     step_rc = session.execute_steps(steps, resume_or_fork=bool(args.resume or args.fork))
     if step_rc is not None:
         return step_rc
+    if b_route_gate_res is not None and not b_route_gate_res.get("legacy_a_passthrough"):
+        recheck_debt = _ch6_gate.evaluate_chapter6_gate(
+            repo_root(),
+            task_id,
+            expected_input_set_digest=b_route_gate_res.get("input_set_digest"),
+            consumer="run_review_pipeline:before_debt_sync",
+        )
+        if not recheck_debt.get("ok"):
+            print(_ch6_gate.format_gate_block_message("sc-review-pipeline", recheck_debt))
+            return 12
     final_rc = session.finish()
     try:
         write_low_priority_debt_artifacts(

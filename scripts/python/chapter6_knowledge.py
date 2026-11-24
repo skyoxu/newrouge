@@ -265,6 +265,39 @@ def run(root: Path, task_id: str, write_task_refs: bool = False, semantic: bool 
             'global_refresh': 'forbidden',
             'steps': [],
         }
+    py_dir = str(Path(__file__).resolve().parent)
+    if py_dir not in sys.path:
+        sys.path.insert(0, py_dir)
+    import _b_route_chapter6_gate as _ch6_gate
+
+    root_path = Path(root).resolve()
+    presence = _ch6_gate.detect_b_route_presence(root_path, None)
+    has_b_or_pending = bool(
+        presence.get('has_b_traces')
+        or presence.get('capability_apply_pending')
+        or presence.get('pending_journals')
+        or presence.get('na_labels')
+        or presence.get('has_lease_env')
+        or presence.get('has_adr_0040')
+    )
+    has_master = (root_path / '.taskmaster/tasks/tasks.json').is_file()
+    if has_master or has_b_or_pending:
+        gate_res = _ch6_gate.enforce_internal_script_gate(
+            root_path,
+            str(task_id),
+            consumer='chapter6_knowledge',
+        )
+        if not gate_res.get('ok'):
+            return {
+                'status': 'blocked_by_b_route_gate',
+                'task_id': str(task_id),
+                'reason_code': gate_res.get('reason_code'),
+                'return_stage': gate_res.get('return_stage'),
+                'diagnostics': gate_res.get('diagnostics', []),
+                'global_refresh': 'not_performed',
+                'runtime_verified': False,
+                'default_b_enabled': False,
+            }
     out_dir = root / 'logs/ci/chapter6-knowledge' / f'task-{task_id}'
     capture = _capture_element_manifest(root, task_id, out_dir)
     result = {

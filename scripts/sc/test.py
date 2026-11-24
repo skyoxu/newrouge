@@ -227,6 +227,28 @@ def main() -> int:
     args = build_parser().parse_args()
     if bool(args.self_check):
         return _run_self_check(args)
+    if args.task_id is not None:
+        import re as _re
+        import sys
+
+        python_scripts_dir = str(Path(__file__).resolve().parents[1] / "python")
+        if python_scripts_dir not in sys.path:
+            sys.path.insert(0, python_scripts_dir)
+        import _b_route_chapter6_gate as _ch6_gate
+
+        raw_arg_tid = str(args.task_id)
+        if _re.fullmatch(r"^[1-9][0-9]*(\.[1-9][0-9]*)?$", raw_arg_tid, _re.ASCII) is None:
+            print("[sc-test] ERROR: --task-id must be an ASCII positive integer.")
+            return 2
+        raw_tid = raw_arg_tid.split(".", 1)[0]
+        gate_res = _ch6_gate.enforce_internal_script_gate(
+            repo_root(),
+            raw_tid,
+            consumer="sc_test",
+        )
+        if not gate_res.get("ok"):
+            print(_ch6_gate.format_gate_block_message("sc-test", gate_res))
+            return 2
     runtime = resolve_test_runtime(
         delivery_profile=args.delivery_profile,
         security_profile=args.security_profile,

@@ -23,8 +23,8 @@ def applicable_milestone_plans(root: Path, task_id: str, manifest_ref: str) -> l
     return plans
 
 
-def check_task_obligations(root: Path, task_id: str) -> tuple[bool, str, dict[str, Any]]:
-    """Fail closed without consulting transient planning run logs."""
+def _check_legacy_task_obligations(root: Path, task_id: str) -> tuple[bool, str, dict[str, Any]]:
+    """Legacy A trace-based MVG obligation check within frozen or explicit_not_enabled_a boundary."""
     traces = [load_json(path, {}) for path in sorted((root / TRACE_ROOT).glob("*.json"))]
     handoff_paths = set()
     active = {}
@@ -72,3 +72,48 @@ def check_task_obligations(root: Path, task_id: str) -> tuple[bool, str, dict[st
         else:
             return False, "mvg_obligation_binding_invalid", trace
     return True, "current", {"milestone_handoff_paths": sorted(handoff_paths)}
+
+
+def check_task_obligations(root: Path, task_id: str) -> tuple[bool, str, dict[str, Any]]:
+    """Fail closed via unified B-route Chapter 6 gate before consulting legacy MVG traces."""
+    import _b_route_chapter6_gate as ch6_gate
+
+    gate_res = ch6_gate.enforce_internal_script_gate(
+        root,
+        task_id,
+        consumer="mvg_obligations",
+    )
+    if not gate_res.get("ok"):
+        reason_code = str(gate_res.get("reason_code") or "conflict")
+        return_stage = str(gate_res.get("return_stage") or "5")
+        return (
+            False,
+            f"b_route_chapter6_gate_blocked:{reason_code}:return_stage={return_stage}",
+            gate_res,
+        )
+    route = str(gate_res.get("route") or "")
+    if route == "B":
+        return (
+            True,
+            "b_route_gate_current",
+            {
+                "milestone_handoff_paths": [],
+                "route": "B",
+                "b_route_gate": gate_res,
+                "runtime_verified": False,
+                "default_b_enabled": False,
+            },
+        )
+    if route == "A":
+        return (
+            True,
+            "current",
+            {
+                "milestone_handoff_paths": list(gate_res.get("milestone_handoff_paths") or []),
+                "route": "A",
+                "b_route_gate": gate_res,
+                "runtime_verified": False,
+                "default_b_enabled": False,
+            },
+        )
+    return _check_legacy_task_obligations(root, task_id)

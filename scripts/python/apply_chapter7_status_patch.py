@@ -5,8 +5,11 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import json
+import re
 from pathlib import Path
 from typing import Any
+
+_STRICT_TASK_ID_RE = re.compile(r'^[1-9][0-9]*$', re.ASCII)
 
 
 def _today() -> str:
@@ -38,11 +41,136 @@ def _apply_view_status(data: list[dict[str, Any]], *, task_id: int, to_status: s
     return False
 
 
+def _infer_repo_root_for_task_file(path: Path) -> Path | None:
+    resolved = path.resolve()
+    parts = [p.lower() for p in resolved.parts]
+    for idx in range(len(parts) - 2):
+        if parts[idx] == '.taskmaster' and parts[idx + 1] == 'tasks':
+            return Path(*resolved.parts[:idx])
+    return None
+
+
 def _apply_operation(op: dict[str, Any], *, dry_run: bool) -> dict[str, Any]:
     path = Path(str(op.get('path') or ''))
     view = str(op.get('view') or '')
-    task_id = int(op.get('task_id'))
     to_status = str(op.get('to_status') or '')
+    raw_tid_val = op.get('task_id')
+    raw_tid = '' if raw_tid_val is None else str(raw_tid_val)
+    if isinstance(raw_tid_val, bool) or _STRICT_TASK_ID_RE.fullmatch(raw_tid) is None:
+        return {
+            'path': str(path.resolve()).replace('\\', '/') if str(op.get('path') or '').strip() else '',
+            'view': view,
+            'task_id': raw_tid_val,
+            'task_ref': op.get('task_ref', ''),
+            'from_status': op.get('from_status', ''),
+            'to_status': to_status,
+            'applied': False,
+            'dry_run': dry_run,
+            'error': 'invalid_task_id',
+            'runtime_verified': False,
+            'default_b_enabled': False,
+        }
+    task_id = int(raw_tid)
+    inferred_root = _infer_repo_root_for_task_file(path)
+    if inferred_root is not None:
+        import _b_route_chapter6_gate as ch6_gate
+        import _b_route_codec as codec
+
+        presence = ch6_gate.detect_b_route_presence(inferred_root, task_id)
+        if (
+            presence.get('has_b_traces')
+            or presence.get('capability_apply_pending')
+            or presence.get('pending_journals')
+            or presence.get('na_labels')
+        ):
+            if view == 'tasks_json':
+                sync_views = False
+                target_views: tuple[str, ...] = ('back', 'gameplay')
+            elif view == 'tasks_back':
+                sync_views = True
+                target_views = ('back',)
+            elif view == 'tasks_gameplay':
+                sync_views = True
+                target_views = ('gameplay',)
+            else:
+                sync_views = True
+                target_views = ('back', 'gameplay')
+            try:
+                if dry_run:
+                    ch6_gate.validate_taskmaster_status_write_guard(
+                        inferred_root,
+                        task_id,
+                        to_status,
+                        sync_views=sync_views,
+                        target_views=target_views,
+                    )
+                    payload = _load_json(path)
+                    updated = (
+                        _apply_master_status(payload, task_id=task_id, to_status=to_status)
+                        if view == 'tasks_json'
+                        else _apply_view_status(payload, task_id=task_id, to_status=to_status)
+                    )
+                    return {
+                        'path': str(path.resolve()).replace('\\', '/'),
+                        'view': view,
+                        'task_id': task_id,
+                        'task_ref': op.get('task_ref', ''),
+                        'from_status': op.get('from_status', ''),
+                        'to_status': to_status,
+                        'applied': bool(updated),
+                        'dry_run': True,
+                        'guarded_write': True,
+                        'definition_projection_preserved': True,
+                        'runtime_verified': False,
+                        'default_b_enabled': False,
+                    }
+                guarded = ch6_gate.write_taskmaster_status_guarded(
+                    inferred_root,
+                    task_id,
+                    to_status,
+                    sync_views=sync_views,
+                    target_views=target_views,
+                )
+                return {
+                    'path': str(path.resolve()).replace('\\', '/'),
+                    'view': view,
+                    'task_id': task_id,
+                    'task_ref': op.get('task_ref', ''),
+                    'from_status': op.get('from_status', ''),
+                    'to_status': to_status,
+                    'applied': bool(guarded.get('ok')),
+                    'dry_run': dry_run,
+                    'guarded_write': True,
+                    'definition_projection_preserved': bool(guarded.get('definition_projection_preserved')),
+                    'runtime_verified': False,
+                    'default_b_enabled': False,
+                }
+            except (ch6_gate.Chapter6GateBlockedError, codec.CodecError, ValueError) as exc:
+                if isinstance(exc, ch6_gate.Chapter6GateBlockedError):
+                    reason_code = str(exc.gate_result.get('reason_code') or 'conflict')
+                    diagnostics = list(exc.gate_result.get('diagnostics') or [])
+                elif isinstance(exc, codec.CodecError):
+                    diag = exc.diagnostic.to_dict()
+                    reason_code = str(diag.get('reason_code') or 'conflict')
+                    diagnostics = [diag]
+                else:
+                    reason_code = 'invalid_argument'
+                    diagnostics = [{'reason_code': reason_code, 'actual': str(exc)}]
+                return {
+                    'path': str(path.resolve()).replace('\\', '/'),
+                    'view': view,
+                    'task_id': task_id,
+                    'task_ref': op.get('task_ref', ''),
+                    'from_status': op.get('from_status', ''),
+                    'to_status': to_status,
+                    'applied': False,
+                    'dry_run': dry_run,
+                    'guarded_write': True,
+                    'reason_code': reason_code,
+                    'diagnostics': diagnostics,
+                    'runtime_verified': False,
+                    'default_b_enabled': False,
+                }
     payload = _load_json(path)
     if view == 'tasks_json':
         updated = _apply_master_status(payload, task_id=task_id, to_status=to_status)

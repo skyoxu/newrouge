@@ -30,15 +30,21 @@ from typing import Any
 
 
 def _bootstrap_imports() -> None:
-    # scripts/sc/llm_generate_red_test.py -> scripts/sc
+    # scripts/sc/llm_generate_red_test.py -> scripts/sc and scripts/python
     sys.path.insert(0, str(Path(__file__).resolve().parent))
+    py_dir = str(Path(__file__).resolve().parents[1] / "python")
+    if py_dir not in sys.path:
+        sys.path.insert(0, py_dir)
 
 
 _bootstrap_imports()
 
+import _b_route_chapter6_gate as _ch6_gate  # noqa: E402
 from _taskmaster import resolve_triplet  # noqa: E402
 from _llm_backend import KNOWN_LLM_BACKENDS, resolve_llm_backend, run_llm_exec  # noqa: E402
 from _util import ci_dir, repo_root, run_cmd, write_json, write_text  # noqa: E402
+
+_STRICT_RAW_TASK_ID_RE = re.compile(r"^[1-9][0-9]*(\.[1-9][0-9]*)?$", re.ASCII)
 
 
 def _read_text(path: Path) -> str:
@@ -192,9 +198,18 @@ def main() -> int:
     args = ap.parse_args()
     args.llm_backend = resolve_llm_backend(getattr(args, "llm_backend", None))
 
-    task_id = str(args.task_id).split(".", 1)[0].strip()
-    if not task_id.isdigit():
-        print("SC_LLM_RED_TEST ERROR: --task-id must be a numeric master id (e.g. 11).")
+    raw_arg = str(args.task_id)
+    if _STRICT_RAW_TASK_ID_RE.fullmatch(raw_arg) is None:
+        print("SC_LLM_RED_TEST ERROR: --task-id must be an ASCII numeric master id (e.g. 11).")
+        return 2
+    task_id = raw_arg.split(".", 1)[0]
+    gate_res = _ch6_gate.enforce_internal_script_gate(
+        repo_root(),
+        task_id,
+        consumer="llm_generate_red_test",
+    )
+    if not gate_res.get("ok"):
+        print(_ch6_gate.format_gate_block_message("sc-llm-red-test", gate_res))
         return 2
 
     out_dir = ci_dir("sc-llm-red-test")

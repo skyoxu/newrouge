@@ -6,9 +6,11 @@ import datetime as dt
 import json
 import os
 import subprocess
+from contextlib import nullcontext
 from pathlib import Path
 from typing import Any
 
+import _b_route_chapter6_gate as ch6_gate
 from impact_analysis_handoff import validate_handoff
 from milestone_incremental_handoff import validate_task_handoff, validate_milestone_regressions
 from _chapter6_recovery_common import route_execution_policy
@@ -877,9 +879,18 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main() -> int:
     args = build_parser().parse_args()
-    task_id = str(args.task_id).strip()
+    raw_task_id = str(args.task_id)
+    if ch6_gate.STRICT_TASK_ID_RE.fullmatch(raw_task_id) is None:
+        gate_blocked = ch6_gate.enforce_internal_script_gate(_repo_root(), raw_task_id, consumer="run_single_task_chapter6_lane")
+        stop_reason = f"b_route_chapter6_gate:{gate_blocked.get('reason_code')}:return_stage={gate_blocked.get('return_stage')}"
+        print(ch6_gate.format_gate_block_message("run_single_task_chapter6_lane", gate_blocked))
+        print(f"SINGLE_TASK_CHAPTER6 status=blocked task=invalid stop={stop_reason}")
+        return 2
+
+    task_id = raw_task_id
     out_dir = Path(str(args.out_dir).strip()) if str(args.out_dir).strip() else _default_out_dir(task_id)
     out_dir.mkdir(parents=True, exist_ok=True)
+
     try:
         profile_policy = resolve_profile_policy(
             str(args.delivery_profile),
@@ -893,6 +904,8 @@ def main() -> int:
             "status": "fail",
             "stop_reason": "invalid_fix_through",
             "message": str(exc),
+            "runtime_verified": False,
+            "default_b_enabled": False,
             "steps": [],
             "out_dir": str(out_dir).replace("\\", "/"),
         }
@@ -900,9 +913,62 @@ def main() -> int:
         print(f"SINGLE_TASK_CHAPTER6 status=fail task={task_id} stop=invalid_fix_through")
         return 2
 
+    repo_path_root = _repo_root()
+    presence = ch6_gate.detect_b_route_presence(repo_path_root, task_id)
+    gate_cm = (
+        ch6_gate.guarded_chapter6_execution(
+            repo_path_root,
+            task_id,
+            consumer="run_single_task_chapter6_lane",
+            out_dir=out_dir,
+        )
+        if presence.get("should_enforce_gate")
+        else nullcontext(None)
+    )
+    try:
+        with gate_cm as gate_handle:
+            return _main_under_gate(
+                args=args,
+                task_id=task_id,
+                out_dir=out_dir,
+                profile_policy=profile_policy,
+                gate_handle=gate_handle,
+            )
+    except ch6_gate.Chapter6GateBlockedError as exc:
+        res = exc.gate_result
+        reason_code = str(res.get("reason_code") or "conflict")
+        return_stage = str(res.get("return_stage") or "5")
+        payload = {
+            "cmd": "run-single-task-chapter6",
+            "task_id": task_id,
+            "status": "blocked",
+            "blocked_by": "b_route_chapter6_gate",
+            "stop_reason": f"b_route_chapter6_gate:{reason_code}:return_stage={return_stage}",
+            "reason_code": reason_code,
+            "return_stage": return_stage,
+            "b_route_gate": res,
+            "runtime_verified": False,
+            "default_b_enabled": False,
+            "steps": [],
+            "out_dir": str(out_dir).replace("\\", "/"),
+        }
+        _write_json(out_dir / "summary.json", payload)
+        print(f"SINGLE_TASK_CHAPTER6 status=blocked task={task_id} stop={payload['stop_reason']}")
+        return 2
+
+
+def _main_under_gate(
+    *,
+    args: argparse.Namespace,
+    task_id: str,
+    out_dir: Path,
+    profile_policy: dict[str, str],
+    gate_handle: ch6_gate.Chapter6ExecutionHandle | None,
+) -> int:
+    gate_result = gate_handle.gate_result if gate_handle is not None else None
     handoff = validate_handoff(args.frozen_context, args.impact_report, args.revision, repo_root=_repo_root(), consumer="chapter6", task_id=task_id, binding_evidence=args.binding_evidence)
     if not handoff.ok:
-        payload = {"cmd": "run-single-task-chapter6", "task_id": task_id, "status": "fail", "stop_reason": handoff.code, "handoff": {"code": handoff.code, "reason": handoff.reason}, "steps": [], "out_dir": str(out_dir).replace("\\", "/")}
+        payload = {"cmd": "run-single-task-chapter6", "task_id": task_id, "status": "fail", "stop_reason": handoff.code, "handoff": {"code": handoff.code, "reason": handoff.reason}, "b_route_gate": gate_result, "runtime_verified": False, "default_b_enabled": False, "steps": [], "out_dir": str(out_dir).replace("\\", "/")}
         _write_json(out_dir / "summary.json", payload)
         print(f"SINGLE_TASK_CHAPTER6 status=fail task={task_id} stop={handoff.code}")
         return handoff.exit_code
@@ -912,12 +978,16 @@ def main() -> int:
     obligations_ok, obligations_reason, obligations = check_task_obligations(_repo_root(), task_id)
     if not obligations_ok:
         _write_json(out_dir / "summary.json", {"cmd": "run-single-task-chapter6", "task_id": task_id,
-            "status": "blocked", "stop_reason": obligations_reason, "blocked_by": "mvg_obligations", "steps": []})
+            "status": "blocked", "stop_reason": obligations_reason, "blocked_by": "mvg_obligations",
+            "reason_code": obligations.get("reason_code") if isinstance(obligations, dict) else None,
+            "return_stage": obligations.get("return_stage") if isinstance(obligations, dict) else None,
+            "b_route_gate": obligations if isinstance(obligations, dict) and obligations.get("schema_version") == ch6_gate.SCHEMA else gate_result,
+            "runtime_verified": False, "default_b_enabled": False, "steps": []})
         print(f"SINGLE_TASK_CHAPTER6 status=blocked task={task_id} stop={obligations_reason}")
         return 2
     bound_handoffs = obligations.get("milestone_handoff_paths", [])
     if len(bound_handoffs) > 1 or (bound_handoffs and args.milestone_handoff and str(args.milestone_handoff) not in bound_handoffs):
-        _write_json(out_dir / "summary.json", {"status": "blocked", "stop_reason": "mvg_milestone_handoff_scope_mismatch", "steps": []})
+        _write_json(out_dir / "summary.json", {"status": "blocked", "stop_reason": "mvg_milestone_handoff_scope_mismatch", "runtime_verified": False, "default_b_enabled": False, "steps": []})
         return 2
     if bound_handoffs:
         args.milestone_handoff = bound_handoffs[0]
@@ -930,6 +1000,8 @@ def main() -> int:
                 "task_id": task_id,
                 "status": "blocked",
                 "stop_reason": reason,
+                "runtime_verified": False,
+                "default_b_enabled": False,
                 "steps": [],
                 "out_dir": str(out_dir).replace("\\", "/"),
             }
@@ -938,6 +1010,17 @@ def main() -> int:
             return 2
 
     if bool(args.self_check):
+        if gate_handle is not None:
+            gate_result = gate_handle.revalidate_boundary(step_name="self-check")
+            ch6_gate.record_chapter6_gate_event(
+                _repo_root(),
+                task_id=task_id,
+                consumer="run_single_task_chapter6_lane",
+                event_kind="execution",
+                gate_result=gate_result,
+                out_dir=out_dir,
+                extra={"mode": "self-check"},
+            )
         placeholder_route = {
             "preferred_lane": "inspect-first",
             "run_id": "n/a",
@@ -966,6 +1049,9 @@ def main() -> int:
             "plan_status": plan["status"],
             "stop_reason": str(plan.get("stop_reason") or ""),
             "steps": plan["steps"],
+            "b_route_gate": gate_result,
+            "runtime_verified": False,
+            "default_b_enabled": False,
             "out_dir": str(out_dir).replace("\\", "/"),
         }
         for key in ("pending_step", "next_action"):
@@ -987,6 +1073,9 @@ def main() -> int:
         "out_dir": str(out_dir).replace("\\", "/"),
         "steps": [],
         "stop_reason": "",
+        "b_route_gate": gate_result,
+        "runtime_verified": False,
+        "default_b_enabled": False,
         "milestone_handoff": {
             "path": str(args.milestone_handoff or ""),
             "change_plan_sha256": milestone_handoff_payload.get("change_plan_sha256"),
@@ -1054,8 +1143,20 @@ def main() -> int:
                 summary["stop_reason"] = reason
                 _write_json(out_dir / "summary.json", summary)
                 return 2
+        if gate_handle is not None:
+            ch6_gate.record_chapter6_gate_event(
+                _repo_root(),
+                task_id=task_id,
+                consumer="run_single_task_chapter6_lane",
+                event_kind="reuse",
+                gate_result=gate_handle.gate_result,
+                out_dir=out_dir,
+                extra={"stop_reason": str(plan["stop_reason"] or "continue")},
+            )
         summary["status"] = "complete"
         summary["stop_reason"] = str(plan["stop_reason"] or "continue")
+        summary["runtime_verified"] = False
+        summary["default_b_enabled"] = False
         _write_json(out_dir / "summary.json", summary)
         print(f"SINGLE_TASK_CHAPTER6 status=complete task={task_id} stop={summary['stop_reason']}")
         return 0
@@ -1090,8 +1191,47 @@ def main() -> int:
             print(f"SINGLE_TASK_CHAPTER6 status=blocked task={task_id} stop=review_context_required")
             print(summary["next_action"])
             return False
-        step = _run_plain_step(out_dir, name=name, cmd=cmd)
+        # Enforce --skip-project-health on local-hard-checks (forbid implicit global Knowledge refresh in Chapter 6).
+        effective_cmd = list(cmd)
+        if name == "local-hard-checks" and "--skip-project-health" not in effective_cmd:
+            effective_cmd.append("--skip-project-health")
+        # Revalidate B-route InputSet / pending / readiness boundary BEFORE executing every step.
+        if gate_handle is not None:
+            try:
+                refreshed_gate = gate_handle.revalidate_boundary(
+                    step_name=name,
+                    model_invocation=(name in {"red-first", "review-pipeline", "review-pipeline-fork", "needs-fix-fast"}),
+                    file_write=(name in {"check-tdd-plan", "red-first", "green", "refactor", "needs-fix-fast"}),
+                )
+                summary["b_route_gate"] = refreshed_gate
+            except ch6_gate.Chapter6GateBlockedError as exc:
+                res = exc.gate_result
+                reason_code = str(res.get("reason_code") or "input_stale")
+                return_stage = str(res.get("return_stage") or "5")
+                summary["status"] = "blocked"
+                summary["blocked_by"] = "b_route_chapter6_gate"
+                summary["stop_reason"] = f"boundary_drift:{reason_code}:return_stage={return_stage}"
+                summary["reason_code"] = reason_code
+                summary["return_stage"] = return_stage
+                summary["b_route_gate"] = res
+                summary["runtime_verified"] = False
+                summary["default_b_enabled"] = False
+                _write_json(out_dir / "summary.json", summary)
+                print(f"SINGLE_TASK_CHAPTER6 status=blocked task={task_id} stop={summary['stop_reason']}")
+                return False
+        step = _run_plain_step(out_dir, name=name, cmd=effective_cmd)
         summary["steps"].append(step)
+        if gate_handle is not None:
+            event_kind = "rework" if name == "needs-fix-fast" else "execution"
+            ch6_gate.record_chapter6_gate_event(
+                _repo_root(),
+                task_id=task_id,
+                consumer="run_single_task_chapter6_lane",
+                event_kind=event_kind,
+                gate_result=gate_handle.gate_result,
+                out_dir=out_dir,
+                extra={"step_name": name, "rc": int(step["rc"])},
+            )
         if int(step["rc"]) != 0:
             summary["status"] = "fail"
             summary["stop_reason"] = name

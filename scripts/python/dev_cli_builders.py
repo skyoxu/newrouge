@@ -492,6 +492,10 @@ def build_run_single_task_chapter6_cmd(args) -> list[str]:
         value = str(getattr(args, name, "") or "").strip()
         if value:
             cmd += [f"--{name.replace('_', '-')}", value]
+    for signal in getattr(args, "execution_plan_signal", None) or []:
+        sig_text = str(signal or "").strip()
+        if sig_text:
+            cmd += ["--execution-plan-signal", sig_text]
     if getattr(args, "self_check", False):
         cmd.append("--self-check")
     return cmd
@@ -1053,4 +1057,34 @@ def build_b_route_chapter5_readiness_cmd(args) -> list[str]:
     ):
         if getattr(args, attr, False):
             cmd.append(flag)
+    return cmd
+
+
+def build_b_route_chapter6_gate_cmd(args) -> list[str]:
+    if getattr(args, "write", False) or getattr(args, "apply", False):
+        raise ValueError("b-route-chapter6-gate is strictly read-only and rejects write/apply flags")
+    cmd = [
+        sys.executable,
+        "-B",
+        str(Path(__file__).resolve().with_name("check_b_route_chapter6_gate.py")),
+    ]
+    root = getattr(args, "root", ".")
+    if root is None or not str(root).strip():
+        raise ValueError("b-route-chapter6-gate requires nonempty --root")
+    cmd += ["--root", str(root)]
+    task_id = getattr(args, "task_id", None)
+    if task_id is None or not str(task_id).strip():
+        raise ValueError("b-route-chapter6-gate requires nonempty --task-id")
+    cmd += ["--task-id", str(task_id)]
+    for attr, flag in (
+        ("operation", "--operation"),
+        ("lock_mode", "--lock-mode"),
+        ("expected_input_set_digest", "--expected-input-set-digest"),
+        ("report", "--report"),
+    ):
+        value = getattr(args, attr, None)
+        if value is not None:
+            if not str(value).strip():
+                raise ValueError(f"b-route-chapter6-gate optional {flag} must be nonempty when provided")
+            cmd += [flag, str(value)]
     return cmd
