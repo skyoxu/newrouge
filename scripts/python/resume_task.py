@@ -493,6 +493,13 @@ def build_resume_payload(
                 consumer="resume_task",
             )
             if not rec_pre.get("legacy_a_passthrough") and not rec_pre.get("ok"):
+                import _b_route_defect_routing as _defect_routing
+
+                defect_handoff = _defect_routing.build_chapter6_handoff_summary(
+                    repo_root,
+                    task_id,
+                    recovery_result=rec_pre,
+                )
                 cmds = _candidate_commands(task_id, latest)
                 forb = [c for c in (cmds.get("resume"), cmds.get("fork"), cmds.get("rerun"), cmds.get("needs_fix_fast")) if c]
                 return 2, {
@@ -513,6 +520,7 @@ def build_resume_payload(
                     "return_stage": rec_pre.get("return_stage"),
                     "resume_ref": rec_pre.get("resume_ref"),
                     "b_route_recovery": rec_pre,
+                    "b_route_defect_routing": defect_handoff,
                     "runtime_verified": False,
                     "default_b_enabled": False,
                     "inspection_exit_code": 2,
@@ -694,10 +702,54 @@ def build_resume_payload(
             consumer="resume_task",
         )
         if not rec_eval.get("legacy_a_passthrough"):
+            import _b_route_defect_routing as _defect_routing
+
             payload["b_route_recovery"] = rec_eval
+            defect_handoff = _defect_routing.build_chapter6_handoff_summary(
+                repo_root,
+                resolved_task_id,
+                run_dir=run_dir_path,
+                recovery_result=rec_eval,
+            )
+            payload["b_route_defect_routing"] = defect_handoff
             payload["runtime_verified"] = False
             payload["default_b_enabled"] = False
-            if not rec_eval.get("ok"):
+            is_disguised_defect = defect_handoff.get("defect_class") == "disguised_definition_change"
+            if is_disguised_defect or (rec_eval.get("ok") and not defect_handoff.get("local_repair_allowed")):
+                forb_cmds = list(payload.get("forbidden_commands") or [])
+                for k in ("resume", "fork", "rerun", "needs_fix_fast"):
+                    cval = str(candidate_commands.get(k) or "").strip()
+                    if cval and cval not in forb_cmds:
+                        forb_cmds.append(cval)
+                payload["recommended_action"] = "return-to-owning-stage"
+                payload["recommended_command"] = str(
+                    (defect_handoff.get("governed_handoff") or {}).get("entrypoint_command") or ""
+                )
+                payload["forbidden_commands"] = forb_cmds
+                payload["execution_allowed"] = False
+                payload["blocked_by"] = "b_route_defect_routing"
+                payload["reason_code"] = defect_handoff.get("reason_code")
+                payload["return_stage"] = defect_handoff.get("return_stage")
+                payload["resume_ref"] = defect_handoff.get("resume_ref")
+                payload["recommended_action_why"] = str(
+                    defect_handoff.get("classification_rationale") or defect_handoff.get("reason") or "blocked"
+                )
+                payload["decision_basis"] = "b-route-defect-routing"
+                payload["recommendation_source"] = "b-route-defect-routing"
+                payload["recommendation_reason"] = str(defect_handoff.get("reason") or "blocked")
+                payload["blocking_signals"] = list(payload.get("blocking_signals") or []) + [
+                    f"b_route_defect_routing.reason_code={defect_handoff.get('reason_code')}",
+                    f"b_route_defect_routing.return_stage={defect_handoff.get('return_stage')}",
+                ]
+                hints_copy = dict(payload.get("chapter6_hints") or {})
+                hints_copy["next_action"] = "return-to-owning-stage"
+                hints_copy["blocked_by"] = "b_route_defect_routing"
+                hints_copy["can_skip_6_7"] = False
+                hints_copy["can_go_to_6_8"] = False
+                hints_copy["rerun_forbidden"] = True
+                payload["chapter6_hints"] = hints_copy
+                inspection_rc = 2
+            elif not rec_eval.get("ok"):
                 forb_cmds = list(payload.get("forbidden_commands") or [])
                 for k in ("resume", "fork", "rerun", "needs_fix_fast"):
                     cval = str(candidate_commands.get(k) or "").strip()
@@ -964,7 +1016,10 @@ def main(argv: list[str] | None = None) -> int:
         print(f"ERROR: failed to build task resume summary: {exc}", file=sys.stderr)
         return 2
 
-    is_b_blocked = str(payload.get("recommended_action") or "").strip() == "blocked-by-b-route-gate"
+    is_b_blocked = (
+        str(payload.get("recommended_action") or "").strip() in {"blocked-by-b-route-gate", "return-to-owning-stage"}
+        or str(payload.get("blocked_by") or "").strip() in {"b_route_chapter6_gate", "b_route_defect_routing"}
+    )
     if rec_only:
         # Strictly read-only zero-write mode: NEVER repair active-task or write summary files.
         if str(args.recommendation_format or "kv").strip().lower() == "json":
@@ -995,7 +1050,6 @@ def main(argv: list[str] | None = None) -> int:
     out_md.parent.mkdir(parents=True, exist_ok=True)
     out_json.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8", newline="\n")
     out_md.write_text(_render_markdown(payload), encoding="utf-8", newline="\n")
-    is_b_blocked = str(payload.get("recommended_action") or "").strip() == "blocked-by-b-route-gate"
     status_label = "blocked" if is_b_blocked else "ok"
     print(f"TASK_RESUME status={status_label} out_json={_repo_rel(root, out_json)} out_md={_repo_rel(root, out_md)}")
     return 2 if is_b_blocked else 0

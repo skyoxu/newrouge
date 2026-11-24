@@ -58,6 +58,8 @@ on:
       - 'scripts/python/reconcile_b_route_chapter5_readiness.py'
       - 'scripts/python/check_b_route_chapter6_gate.py'
       - 'scripts/python/_b_route_chapter6_recovery.py'
+      - 'scripts/python/_b_route_defect_routing.py'
+      - 'scripts/python/check_b_route_defect_routing.py'
       - 'scripts/python/resume_task.py'
       - 'scripts/python/chapter6_route.py'
       - 'scripts/python/inspect_run.py'

@@ -255,20 +255,79 @@ def _record_residual_docs(
     }
 
 
-def _b_route_blocked_route_payload(task_id: str, run_id: str, rec_eval: dict[str, Any]) -> dict[str, Any]:
+def _b_route_blocked_route_payload(
+    task_id: str,
+    run_id: str,
+    rec_eval: dict[str, Any],
+    *,
+    repo_root: Path | None = None,
+    run_dir: Path | None = None,
+    fix_through: str = "P1",
+) -> dict[str, Any]:
+    defect_handoff = None
+    if repo_root is not None and str(task_id or "").strip():
+        import _b_route_defect_routing as _defect_routing
+
+        defect_handoff = _defect_routing.build_chapter6_handoff_summary(
+            repo_root,
+            task_id,
+            run_dir=run_dir,
+            recovery_result=rec_eval,
+            fix_through=fix_through,
+        )
+    forbidden_commands = [
+        "Chapter 6 RED/GREEN/REFACTOR",
+        f"py -3 scripts/sc/run_review_pipeline.py --task-id {task_id} --resume",
+        f"py -3 scripts/sc/run_review_pipeline.py --task-id {task_id} --fork",
+        f"py -3 scripts/sc/run_review_pipeline.py --task-id {task_id}",
+        f"py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id {task_id} --delivery-profile fast-ship --rerun-failing-only --max-rounds 1",
+    ]
+    if isinstance(defect_handoff, dict) and defect_handoff.get("defect_class") == "disguised_definition_change":
+        return {
+            "task_id": task_id,
+            "run_id": run_id,
+            "execution_allowed": False,
+            "preferred_lane": "return-to-owning-stage",
+            "recommended_command": str(
+                (defect_handoff.get("governed_handoff") or {}).get("entrypoint_command") or ""
+            ),
+            "forbidden_commands": forbidden_commands,
+            "reviewer_anchor_hit": False,
+            "changed_paths": [],
+            "six_eight_worthwhile": False,
+            "full_67_recommended": False,
+            "repo_noise_classification": "task-issue",
+            "repo_noise_reason": str(defect_handoff.get("reason") or "disguised_definition_change"),
+            "recommended_action": "return-to-owning-stage",
+            "recommended_action_why": str(
+                defect_handoff.get("classification_rationale") or defect_handoff.get("reason") or ""
+            ),
+            "latest_reason": str(defect_handoff.get("reason") or "disguised_definition_change"),
+            "chapter6_next_action": "return-to-owning-stage",
+            "blocked_by": "b_route_defect_routing",
+            "diagnostic_blocked_by": "b_route_defect_routing",
+            "reason_code": defect_handoff.get("reason_code"),
+            "return_stage": defect_handoff.get("return_stage"),
+            "resume_ref": defect_handoff.get("resume_ref"),
+            "b_route_recovery": rec_eval,
+            "b_route_defect_routing": defect_handoff,
+            "runtime_verified": False,
+            "default_b_enabled": False,
+            "residual_recording": {
+                "eligible": False,
+                "reason": "blocked_by_b_route_defect_routing",
+                "performed": False,
+                "register_path": "",
+                "register_status": "",
+            },
+        }
     return {
         "task_id": task_id,
         "run_id": run_id,
         "execution_allowed": False,
         "preferred_lane": "blocked-by-b-route-gate",
         "recommended_command": "",
-        "forbidden_commands": [
-            "Chapter 6 RED/GREEN/REFACTOR",
-            f"py -3 scripts/sc/run_review_pipeline.py --task-id {task_id} --resume",
-            f"py -3 scripts/sc/run_review_pipeline.py --task-id {task_id} --fork",
-            f"py -3 scripts/sc/run_review_pipeline.py --task-id {task_id}",
-            f"py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id {task_id} --delivery-profile fast-ship --rerun-failing-only --max-rounds 1",
-        ],
+        "forbidden_commands": forbidden_commands,
         "reviewer_anchor_hit": False,
         "changed_paths": [],
         "six_eight_worthwhile": False,
@@ -284,6 +343,7 @@ def _b_route_blocked_route_payload(task_id: str, run_id: str, rec_eval: dict[str
         "return_stage": rec_eval.get("return_stage"),
         "resume_ref": rec_eval.get("resume_ref"),
         "b_route_recovery": rec_eval,
+        "b_route_defect_routing": defect_handoff,
         "runtime_verified": False,
         "default_b_enabled": False,
         "residual_recording": {"eligible": False, "performed": False},
@@ -322,7 +382,14 @@ def route_chapter6(
             consumer="chapter6_route",
         )
         if not rec_eval.get("legacy_a_passthrough") and not rec_eval.get("ok"):
-            return 3, _b_route_blocked_route_payload(tid_str, str(run_id or "").strip(), rec_eval)
+            return 3, _b_route_blocked_route_payload(
+                tid_str,
+                str(run_id or "").strip(),
+                rec_eval,
+                repo_root=root,
+                run_dir=pre_latest_out_dir,
+                fix_through=fix_through,
+            )
     readiness_ok, readiness, readiness_reason = load_task_readiness(root, tid_str)
     from _mvg_obligations import check_task_obligations
     obligations_ok, obligations_reason, obligations = check_task_obligations(root, tid_str)
@@ -363,7 +430,14 @@ def route_chapter6(
             consumer="chapter6_route",
         )
         if not rec_eval.get("legacy_a_passthrough") and not rec_eval.get("ok"):
-            return 3, _b_route_blocked_route_payload(tid_str, str(payload.get("run_id") or run_id or "").strip(), rec_eval)
+            return 3, _b_route_blocked_route_payload(
+                tid_str,
+                str(payload.get("run_id") or run_id or "").strip(),
+                rec_eval,
+                repo_root=root,
+                run_dir=out_dir_late,
+                fix_through=fix_through,
+            )
         readiness_ok, readiness, readiness_reason = load_task_readiness(root, tid_str)
         obligations_ok, obligations_reason, obligations = check_task_obligations(root, tid_str)
         if not obligations_ok:
@@ -398,7 +472,14 @@ def route_chapter6(
             )
             rec_eval = rec_with_run
             if not rec_with_run.get("ok"):
-                return 3, _b_route_blocked_route_payload(tid_str, str(payload.get("run_id") or run_id or "").strip(), rec_with_run)
+                return 3, _b_route_blocked_route_payload(
+                    tid_str,
+                    str(payload.get("run_id") or run_id or "").strip(),
+                    rec_with_run,
+                    repo_root=root,
+                    run_dir=_resolve_path(root, out_dir_rel),
+                    fix_through=fix_through,
+                )
     if not readiness_ok and not has_existing_run:
         return 3, {
             "task_id": str(task_id or "").strip(),
@@ -455,6 +536,75 @@ def route_chapter6(
         and str(chapter6_hints.get("blocked_by") or "").strip().lower() != "artifact_integrity"
         and str(latest_summary_signals.get("reason") or "").strip().lower() != "planned_only_incomplete"
     )
+
+    # Evaluate B-route defect routing BEFORE _record_residual_docs so blocked tasks NEVER write technical-debt.md.
+    defect_handoff: dict[str, Any] | None = None
+    if rec_eval is not None and not rec_eval.get("legacy_a_passthrough"):
+        import _b_route_defect_routing as _defect_routing
+
+        insp_paths_pre = ((payload.get("inspection") or {}).get("paths") or {}) if isinstance(payload.get("inspection"), dict) else {}
+        out_dir_pre_rel = str(insp_paths_pre.get("out_dir") or "").strip()
+        out_dir_pre = _resolve_path(root, out_dir_pre_rel) if out_dir_pre_rel else None
+        ctx_explicit_paths = (
+            [str(p).strip().replace("\\", "/") for p in execution_context.get("changed_paths", []) if str(p).strip()]
+            if isinstance(execution_context.get("changed_paths"), list)
+            else []
+        )
+        scoped_changed_paths = changed_paths if root == REPO_ROOT.resolve() else ctx_explicit_paths
+        defect_handoff = _defect_routing.build_chapter6_handoff_summary(
+            root,
+            tid_str,
+            run_dir=out_dir_pre,
+            recovery_result=rec_eval,
+            changed_paths=scoped_changed_paths,
+            fix_through=fix_through,
+        )
+        if not defect_handoff.get("local_repair_allowed"):
+            forb_list = [str(item).strip() for item in list(payload.get("forbidden_commands") or []) if str(item).strip()]
+            for forb_item in [
+                "Chapter 6 RED/GREEN/REFACTOR",
+                str(candidate_commands.get("resume") or "").strip(),
+                str(candidate_commands.get("fork") or "").strip(),
+                str(candidate_commands.get("rerun") or "").strip(),
+                str(candidate_commands.get("needs_fix_fast") or "").strip(),
+            ]:
+                if forb_item and forb_item not in forb_list:
+                    forb_list.append(forb_item)
+            blocked_route_payload = {
+                "task_id": str(payload.get("task_id") or tid_str).strip(),
+                "run_id": str(payload.get("run_id") or "").strip(),
+                "preferred_lane": "return-to-owning-stage",
+                "recommended_command": str(
+                    (defect_handoff.get("governed_handoff") or {}).get("entrypoint_command") or ""
+                ),
+                "forbidden_commands": forb_list,
+                "reviewer_anchor_hit": reviewer_anchor_hit,
+                "changed_paths": changed_paths,
+                "six_eight_worthwhile": False,
+                "full_67_recommended": False,
+                "repo_noise_classification": repo_noise_classification,
+                "repo_noise_reason": repo_noise_reason,
+                "recommended_action": "return-to-owning-stage",
+                "recommended_action_why": str(
+                    defect_handoff.get("classification_rationale") or defect_handoff.get("reason") or ""
+                ),
+                "latest_reason": str(defect_handoff.get("reason") or latest_summary_signals.get("reason") or "").strip(),
+                "chapter6_next_action": "return-to-owning-stage",
+                "blocked_by": "b_route_defect_routing",
+                "diagnostic_blocked_by": "b_route_defect_routing",
+                "reason_code": defect_handoff.get("reason_code"),
+                "return_stage": defect_handoff.get("return_stage"),
+                "resume_ref": defect_handoff.get("resume_ref"),
+                "chapter5_readiness": readiness,
+                "chapter5_readiness_reason": readiness_reason,
+                "execution_allowed": False,
+                "residual_recording": {"eligible": False, "reason": "blocked_by_b_route_defect_routing", "performed": False, "register_path": "", "register_status": ""},
+                "b_route_recovery": rec_eval,
+                "b_route_defect_routing": defect_handoff,
+                "runtime_verified": False,
+                "default_b_enabled": False,
+            }
+            return 3, blocked_route_payload
 
     residual_eligible, residual_reason = _residual_reason_from_agent_review(
         agent_review,
@@ -530,6 +680,7 @@ def route_chapter6(
         ))
     if rec_eval is not None and not rec_eval.get("legacy_a_passthrough"):
         route_payload["b_route_recovery"] = rec_eval
+        route_payload["b_route_defect_routing"] = defect_handoff
         route_payload["runtime_verified"] = False
         route_payload["default_b_enabled"] = False
         if rec_eval.get("stop_loss_active"):
@@ -620,10 +771,17 @@ def _compact_payload(payload: dict[str, Any]) -> dict[str, Any]:
         "residual_recording": "performed" if bool(residual.get("performed")) else ("eligible" if bool(residual.get("eligible")) else "no"),
     }
     b_rec = payload.get("b_route_recovery") if isinstance(payload.get("b_route_recovery"), dict) else None
-    if isinstance(b_rec, dict) and not bool(b_rec.get("ok")):
-        result["reason_code"] = str(payload.get("reason_code") or b_rec.get("reason_code") or "").strip() or "n/a"
-        result["return_stage"] = str(payload.get("return_stage") or b_rec.get("return_stage") or "").strip() or "n/a"
-        result["resume_ref"] = str(payload.get("resume_ref") or b_rec.get("resume_ref") or "").strip() or "n/a"
+    b_def = payload.get("b_route_defect_routing") if isinstance(payload.get("b_route_defect_routing"), dict) else None
+    if (isinstance(b_rec, dict) and not bool(b_rec.get("ok"))) or str(payload.get("blocked_by") or "").strip() == "b_route_defect_routing":
+        result["reason_code"] = str(
+            payload.get("reason_code") or (b_def or {}).get("reason_code") or (b_rec or {}).get("reason_code") or ""
+        ).strip() or "n/a"
+        result["return_stage"] = str(
+            payload.get("return_stage") or (b_def or {}).get("return_stage") or (b_rec or {}).get("return_stage") or ""
+        ).strip() or "n/a"
+        result["resume_ref"] = str(
+            payload.get("resume_ref") or (b_def or {}).get("resume_ref") or (b_rec or {}).get("resume_ref") or ""
+        ).strip() or "n/a"
     return result
 
 

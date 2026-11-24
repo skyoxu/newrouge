@@ -335,7 +335,7 @@ def _evaluate_route_state(route_payload: dict[str, Any] | None, *, allow_needs_f
     stop_reason = ""
     needs_fix = False
 
-    if not execution_allowed or blocked_by in {"chapter5_readiness", "b_route_chapter6_gate", "b_route_chapter6_recovery"} or lane == "blocked-by-b-route-gate":
+    if not execution_allowed or blocked_by in {"chapter5_readiness", "b_route_chapter6_gate", "b_route_chapter6_recovery", "b_route_defect_routing"} or lane in {"blocked-by-b-route-gate", "return-to-owning-stage"}:
         stop_reason = blocked_by or "b_route_chapter6_gate"
     elif has_recovery_signal:
         if blocked_by == "artifact_integrity" or latest_reason == "planned_only_incomplete" or latest_run_type == "planned-only":
@@ -485,10 +485,10 @@ def _decide_phase(
     approval_fork_ready = required_action == "fork" and status == "approved" and ("fork" in allowed_actions or not allowed_actions)
     no_increment_stop_reason = _no_increment_stop_reason(resume_payload, route_payload)
 
-    if not bool(route_eval["execution_allowed"]) or blocked_by == "chapter5_readiness":
+    if not bool(route_eval["execution_allowed"]) or blocked_by in {"chapter5_readiness", "b_route_chapter6_gate", "b_route_chapter6_recovery", "b_route_defect_routing"}:
         return {
             "action": "blocked",
-            "stop_reason": "chapter5_readiness",
+            "stop_reason": blocked_by if blocked_by in {"b_route_chapter6_gate", "b_route_chapter6_recovery", "b_route_defect_routing"} else "chapter5_readiness",
         }
     if approval_resume_stop_reason:
         return {
@@ -841,7 +841,15 @@ def _run_json_step(out_dir: Path, *, name: str, cmd: list[str]) -> tuple[dict[st
         "stderr_tail": stderr.strip().splitlines()[-1] if stderr.strip() else "",
         "log": log_path,
     }
-    payload = _parse_json_stdout(stdout) if rc == 0 else {}
+    parsed = _parse_json_stdout(stdout)
+    if rc == 0 or str(parsed.get("blocked_by") or "").strip() in {
+        "b_route_defect_routing",
+        "b_route_chapter6_gate",
+        "b_route_chapter6_recovery",
+    }:
+        payload = parsed
+    else:
+        payload = {}
     return step, payload
 
 
@@ -938,6 +946,37 @@ def main() -> int:
         res = exc.gate_result
         reason_code = str(res.get("reason_code") or "conflict")
         return_stage = str(res.get("return_stage") or "5")
+        defect_handoff = None
+        if not res.get("legacy_a_passthrough"):
+            import _b_route_defect_routing as _defect_routing
+
+            defect_handoff = _defect_routing.build_chapter6_handoff_summary(
+                repo_path_root,
+                task_id,
+                fix_through=str(profile_policy.get("fix_through") or "P1"),
+            )
+        if isinstance(defect_handoff, dict) and defect_handoff.get("defect_class") == "disguised_definition_change":
+            d_rc = str(defect_handoff.get("reason_code") or "conflict")
+            d_rs = str(defect_handoff.get("return_stage") or "5")
+            payload = {
+                "cmd": "run-single-task-chapter6",
+                "task_id": task_id,
+                "status": "blocked",
+                "blocked_by": "b_route_defect_routing",
+                "stop_reason": f"b_route_defect_routing:{d_rc}:return_stage={d_rs}",
+                "reason_code": d_rc,
+                "return_stage": d_rs,
+                "resume_ref": defect_handoff.get("resume_ref"),
+                "b_route_gate": res,
+                "b_route_defect_routing": defect_handoff,
+                "runtime_verified": False,
+                "default_b_enabled": False,
+                "steps": [],
+                "out_dir": str(out_dir).replace("\\", "/"),
+            }
+            _write_json(out_dir / "summary.json", payload)
+            print(f"SINGLE_TASK_CHAPTER6 status=blocked task={task_id} stop={payload['stop_reason']}")
+            return 2
         payload = {
             "cmd": "run-single-task-chapter6",
             "task_id": task_id,
@@ -947,6 +986,7 @@ def main() -> int:
             "reason_code": reason_code,
             "return_stage": return_stage,
             "b_route_gate": res,
+            "b_route_defect_routing": defect_handoff,
             "runtime_verified": False,
             "default_b_enabled": False,
             "steps": [],
@@ -968,6 +1008,7 @@ def _main_under_gate(
     gate_result = gate_handle.gate_result if gate_handle is not None else None
     if gate_handle is not None and not gate_handle.legacy_a_passthrough:
         import _b_route_chapter6_recovery as _ch6_recovery
+        import _b_route_defect_routing as _defect_routing
 
         rec_check = _ch6_recovery.evaluate_chapter6_recovery(
             _repo_root(),
@@ -982,6 +1023,34 @@ def _main_under_gate(
             reason_code = str(rec_check.get("reason_code") or "conflict")
             return_stage = str(rec_check.get("return_stage") or "5")
             is_stop_loss = str(rec_check.get("reason") or "").startswith("durable_stop_loss:")
+            defect_handoff = _defect_routing.build_chapter6_handoff_summary(
+                _repo_root(),
+                task_id,
+                recovery_result=rec_check,
+                fix_through=str(profile_policy.get("fix_through") or "P1"),
+            )
+            if isinstance(defect_handoff, dict) and defect_handoff.get("defect_class") == "disguised_definition_change":
+                d_rc = str(defect_handoff.get("reason_code") or "conflict")
+                d_rs = str(defect_handoff.get("return_stage") or "5")
+                payload = {
+                    "cmd": "run-single-task-chapter6",
+                    "task_id": task_id,
+                    "status": "blocked",
+                    "blocked_by": "b_route_defect_routing",
+                    "stop_reason": f"b_route_defect_routing:{d_rc}:return_stage={d_rs}",
+                    "reason_code": d_rc,
+                    "return_stage": d_rs,
+                    "resume_ref": defect_handoff.get("resume_ref"),
+                    "b_route_recovery": rec_check,
+                    "b_route_defect_routing": defect_handoff,
+                    "runtime_verified": False,
+                    "default_b_enabled": False,
+                    "steps": [],
+                    "out_dir": str(out_dir).replace("\\", "/"),
+                }
+                _write_json(out_dir / "summary.json", payload)
+                print(f"SINGLE_TASK_CHAPTER6 status=blocked task={task_id} stop={payload['stop_reason']}")
+                return 2
             payload = {
                 "cmd": "run-single-task-chapter6",
                 "task_id": task_id,
@@ -1000,6 +1069,7 @@ def _main_under_gate(
                 "return_stage": return_stage,
                 "resume_ref": rec_check.get("resume_ref"),
                 "b_route_recovery": rec_check,
+                "b_route_defect_routing": defect_handoff,
                 "runtime_verified": False,
                 "default_b_enabled": False,
                 "steps": [],
@@ -1008,6 +1078,39 @@ def _main_under_gate(
             _write_json(out_dir / "summary.json", payload)
             print(f"SINGLE_TASK_CHAPTER6 status=blocked task={task_id} stop={payload['stop_reason']}")
             return 1 if is_stop_loss else 2
+        latest_durable_rel = str((rec_check.get("durable_signals") or {}).get("latest_durable_run_dir") or "").strip()
+        latest_run_dir = (_repo_root() / latest_durable_rel).resolve() if latest_durable_rel else None
+        if latest_run_dir is not None and not latest_run_dir.is_dir():
+            latest_run_dir = None
+        defect_check = _defect_routing.build_chapter6_handoff_summary(
+            _repo_root(),
+            task_id,
+            run_dir=latest_run_dir,
+            recovery_result=rec_check,
+            fix_through=str(profile_policy.get("fix_through") or "P1"),
+        )
+        if not defect_check.get("local_repair_allowed"):
+            reason_code = str(defect_check.get("reason_code") or "conflict")
+            return_stage = str(defect_check.get("return_stage") or "5")
+            payload = {
+                "cmd": "run-single-task-chapter6",
+                "task_id": task_id,
+                "status": "blocked",
+                "blocked_by": "b_route_defect_routing",
+                "stop_reason": f"b_route_defect_routing:{reason_code}:return_stage={return_stage}",
+                "reason_code": reason_code,
+                "return_stage": return_stage,
+                "resume_ref": defect_check.get("resume_ref"),
+                "b_route_recovery": rec_check,
+                "b_route_defect_routing": defect_check,
+                "runtime_verified": False,
+                "default_b_enabled": False,
+                "steps": [],
+                "out_dir": str(out_dir).replace("\\", "/"),
+            }
+            _write_json(out_dir / "summary.json", payload)
+            print(f"SINGLE_TASK_CHAPTER6 status=blocked task={task_id} stop={payload['stop_reason']}")
+            return 2
         if not bool(args.self_check):
             _ch6_recovery.write_recovery_input_set(
                 _repo_root(),
@@ -1160,6 +1263,18 @@ def _main_under_gate(
         if _is_missing_latest_run_step(initial_route_step):
             initial_route = _fresh_start_route_payload()
             summary["initial_route"] = initial_route
+        elif str(initial_route.get("blocked_by") or "").strip() == "b_route_defect_routing":
+            reason_code = str(initial_route.get("reason_code") or "conflict")
+            return_stage = str(initial_route.get("return_stage") or "5")
+            summary["status"] = "blocked"
+            summary["blocked_by"] = "b_route_defect_routing"
+            summary["reason_code"] = reason_code
+            summary["return_stage"] = return_stage
+            summary["resume_ref"] = initial_route.get("resume_ref")
+            summary["stop_reason"] = f"b_route_defect_routing:{reason_code}:return_stage={return_stage}"
+            _write_json(out_dir / "summary.json", summary)
+            print(f"SINGLE_TASK_CHAPTER6 status=blocked task={task_id} stop={summary['stop_reason']}")
+            return 2
         else:
             summary["status"] = "fail"
             summary["stop_reason"] = "chapter6-route-initial"
@@ -1284,6 +1399,15 @@ def _main_under_gate(
         if int(step["rc"]) != 0:
             summary["status"] = "fail"
             summary["stop_reason"] = name
+            if gate_handle is not None and not gate_handle.legacy_a_passthrough:
+                import _b_route_defect_routing as _defect_routing
+
+                summary["b_route_defect_routing"] = _defect_routing.build_chapter6_handoff_summary(
+                    _repo_root(),
+                    task_id,
+                    run_dir=out_dir,
+                    fix_through=str(profile_policy.get("fix_through") or "P1"),
+                )
             _write_json(out_dir / "summary.json", summary)
             print(f"SINGLE_TASK_CHAPTER6 status=fail task={task_id} stop={name}")
             return False
@@ -1298,12 +1422,27 @@ def _main_under_gate(
         summary["steps"].append(step)
         summary[name.replace("-", "_")] = payload
         if int(step["rc"]) != 0:
+            if str(payload.get("blocked_by") or "").strip() == "b_route_defect_routing":
+                reason_code = str(payload.get("reason_code") or "conflict")
+                return_stage = str(payload.get("return_stage") or "5")
+                summary["status"] = "blocked"
+                summary["blocked_by"] = "b_route_defect_routing"
+                summary["reason_code"] = reason_code
+                summary["return_stage"] = return_stage
+                summary["resume_ref"] = payload.get("resume_ref")
+                summary["stop_reason"] = f"b_route_defect_routing:{reason_code}:return_stage={return_stage}"
+                _write_json(out_dir / "summary.json", summary)
+                print(f"SINGLE_TASK_CHAPTER6 status=blocked task={task_id} stop={summary['stop_reason']}")
+                return None
             summary["status"] = "fail"
             summary["stop_reason"] = name
             _write_json(out_dir / "summary.json", summary)
             print(f"SINGLE_TASK_CHAPTER6 status=fail task={task_id} stop={name}")
             return None
         return payload
+
+    def _route_fail_rc() -> int:
+        return 2 if str(summary.get("blocked_by") or "").strip() == "b_route_defect_routing" else 1
 
     decision = build_orchestration_decision(
         initial_route=initial_route,
@@ -1316,7 +1455,7 @@ def _main_under_gate(
             return 1
         final_route = _run_route("chapter6-route-post-needs-fix")
         if final_route is None:
-            return 1
+            return _route_fail_rc()
         final_decision = build_orchestration_decision(
             initial_route=initial_route,
             post_review_route={},
@@ -1337,7 +1476,7 @@ def _main_under_gate(
             return 1
         post_review_route = _run_route("chapter6-route-post-review")
         if post_review_route is None:
-            return 1
+            return _route_fail_rc()
         post_review_decision = build_orchestration_decision(
             initial_route=initial_route,
             post_review_route=post_review_route,
@@ -1355,7 +1494,7 @@ def _main_under_gate(
                 return 1
             final_route = _run_route("chapter6-route-post-needs-fix")
             if final_route is None:
-                return 1
+                return _route_fail_rc()
             final_decision = build_orchestration_decision(
                 initial_route=initial_route,
                 post_review_route=post_review_route,
@@ -1381,7 +1520,7 @@ def _main_under_gate(
                 return 1
         post_review_route = _run_route("chapter6-route-post-review")
         if post_review_route is None:
-            return 1
+            return _route_fail_rc()
         post_review_decision = build_orchestration_decision(
             initial_route=initial_route,
             post_review_route=post_review_route,
@@ -1399,7 +1538,7 @@ def _main_under_gate(
                 return 1
             final_route = _run_route("chapter6-route-post-needs-fix")
             if final_route is None:
-                return 1
+                return _route_fail_rc()
             final_decision = build_orchestration_decision(
                 initial_route=initial_route,
                 post_review_route=post_review_route,

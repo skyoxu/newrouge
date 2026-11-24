@@ -1088,3 +1088,34 @@ def build_b_route_chapter6_gate_cmd(args) -> list[str]:
                 raise ValueError(f"b-route-chapter6-gate optional {flag} must be nonempty when provided")
             cmd += [flag, str(value)]
     return cmd
+
+
+def build_b_route_defect_routing_cmd(args) -> list[str]:
+    if getattr(args, "write", False) or getattr(args, "apply", False):
+        raise ValueError("b-route-defect-routing is strictly read-only and rejects write/apply flags")
+    cmd = [
+        sys.executable,
+        "-B",
+        str(Path(__file__).resolve().with_name("check_b_route_defect_routing.py")),
+    ]
+    root = getattr(args, "root", ".")
+    if root is None or not str(root).strip():
+        raise ValueError("b-route-defect-routing requires nonempty --root")
+    cmd += ["--root", str(root)]
+    task_id = getattr(args, "task_id", None)
+    if task_id is None or not str(task_id).strip():
+        raise ValueError("b-route-defect-routing requires nonempty --task-id")
+    cmd += ["--task-id", str(task_id)]
+    for attr, flag in (
+        ("run_dir", "--run-dir"),
+        ("defect_input", "--defect-input"),
+        ("delta_intents", "--delta-intents"),
+        ("fix_through", "--fix-through"),
+        ("report", "--report"),
+    ):
+        value = getattr(args, attr, None)
+        if value is not None:
+            if not str(value).strip():
+                raise ValueError(f"b-route-defect-routing optional {flag} must be nonempty when provided")
+            cmd += [flag, str(value)]
+    return cmd

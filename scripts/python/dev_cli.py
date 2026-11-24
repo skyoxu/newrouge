@@ -20,7 +20,7 @@ import sys
 from pathlib import Path
 
 # The read-only command must not create bytecode even without Python -B.
-if len(sys.argv) > 1 and sys.argv[1] in {"b-route-preflight", "b-route-sources", "b-route-adoption", "b-route-task-preview", "b-route-task-compile", "b-route-task-origin", "b-route-chapter4-binding", "b-route-input-set", "b-route-stage5-obligations", "b-route-chapter5-readiness", "b-route-chapter6-gate"}:
+if len(sys.argv) > 1 and sys.argv[1] in {"b-route-preflight", "b-route-sources", "b-route-adoption", "b-route-task-preview", "b-route-task-compile", "b-route-task-origin", "b-route-chapter4-binding", "b-route-input-set", "b-route-stage5-obligations", "b-route-chapter5-readiness", "b-route-chapter6-gate", "b-route-defect-routing"}:
     sys.dont_write_bytecode = True
 
 if __name__ == "__main__" and len(sys.argv) > 1 and sys.argv[1] == "b-route-sources":
@@ -63,6 +63,10 @@ if __name__ == "__main__" and len(sys.argv) > 1 and sys.argv[1] == "b-route-chap
     from check_b_route_chapter6_gate import main as chapter6_gate_main
     raise SystemExit(chapter6_gate_main(sys.argv[2:]))
 
+if __name__ == "__main__" and len(sys.argv) > 1 and sys.argv[1] == "b-route-defect-routing":
+    from check_b_route_defect_routing import main as defect_routing_main
+    raise SystemExit(defect_routing_main(sys.argv[2:]))
+
 from dev_cli_builders import (
     DEFAULT_GATE_BUNDLE_TASK_FILES,
     build_check_directory_boundaries_cmd,
@@ -94,6 +98,7 @@ from dev_cli_builders import (
     build_b_route_stage5_obligations_cmd,
     build_b_route_chapter5_readiness_cmd,
     build_b_route_chapter6_gate_cmd,
+    build_b_route_defect_routing_cmd,
     build_quality_gates_cmd,
     build_run_dotnet_cmd,
     build_run_gdunit_full_cmd,
@@ -796,6 +801,13 @@ def cmd_b_route_chapter6_gate(args: argparse.Namespace) -> int:
     return chapter6_gate_main(build_b_route_chapter6_gate_cmd(args)[3:])
 
 
+def cmd_b_route_defect_routing(args: argparse.Namespace) -> int:
+    """Run the read-only B-route Chapter 6 defect routing and handoff CLI."""
+    from check_b_route_defect_routing import main as defect_routing_main
+
+    return defect_routing_main(build_b_route_defect_routing_cmd(args)[3:])
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Dev CLI for Godot+C# template (AI-friendly entrypoint)",
@@ -853,6 +865,11 @@ def build_parser() -> argparse.ArgumentParser:
     from check_b_route_chapter6_gate import register_arguments as register_chapter6_gate_arguments
     register_chapter6_gate_arguments(chapter6_gate_parser)
     chapter6_gate_parser.set_defaults(func=cmd_b_route_chapter6_gate)
+
+    defect_routing_parser = sub.add_parser("b-route-defect-routing", help="Read-only B-route defect routing, anti-disguise guard, and governed handoff; no upstream auto-rerun or runtime verification")
+    from check_b_route_defect_routing import register_arguments as register_defect_routing_arguments
+    register_defect_routing_arguments(defect_routing_parser)
+    defect_routing_parser.set_defaults(func=cmd_b_route_defect_routing)
 
     # run-ci-basic
     p_ci = sub.add_parser(
@@ -1439,6 +1456,10 @@ def main(argv: list[str] | None = None) -> int:
         sys.dont_write_bytecode = True
         from check_b_route_chapter6_gate import main as chapter6_gate_main
         return chapter6_gate_main(arguments[1:])
+    if arguments and arguments[0] == "b-route-defect-routing":
+        sys.dont_write_bytecode = True
+        from check_b_route_defect_routing import main as defect_routing_main
+        return defect_routing_main(arguments[1:])
     parser = build_parser()
     args = parser.parse_args(arguments)
     func = getattr(args, "func", None)

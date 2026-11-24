@@ -862,9 +862,16 @@ class BRouteChapter6RecoveryTests(unittest.TestCase):
             contract_file.write_text(contract_file.read_text(encoding="utf-8") + "// mid-run drift\n", encoding="utf-8")
             return None
 
+        import _active_task_sidecar
+        import _marathon_state
+        import _pipeline_helpers
+
         stdout_res = io.StringIO()
         with (
             patch.object(run_review_pipeline, "repo_root", return_value=root_res),
+            patch.object(_pipeline_helpers, "repo_root", return_value=root_res),
+            patch.object(_marathon_state, "repo_root", return_value=root_res),
+            patch.object(_active_task_sidecar, "repo_root", return_value=root_res),
             patch.object(run_review_pipeline, "_load_source_run", return_value=(res_dir, res_summary, res_marathon)),
             patch.object(run_review_pipeline, "_run_acceptance_preflight", side_effect=_drift_contract_during_preflight),
             patch.object(run_review_pipeline.PipelineSession, "execute_steps", side_effect=AssertionError("execute_steps must not run after drift")),

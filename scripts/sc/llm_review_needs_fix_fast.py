@@ -1545,6 +1545,24 @@ def main() -> int:
         print(_ch6_recovery.format_recovery_block_message("sc-needs-fix-fast", rec_res))
         return 2
     b_route_active = not bool(gate_res.get("legacy_a_passthrough"))
+    if b_route_active:
+        import _b_route_defect_routing as _defect_routing
+
+        defect_res = _defect_routing.evaluate_defect_routing(
+            repo_root(),
+            raw_tid,
+            run_dir=prior_run_dir,
+            recovery_result=rec_res,
+            fix_through=str(args.fix_through or "P1"),
+        )
+        if not defect_res.get("local_repair_allowed"):
+            print(
+                "[sc-needs-fix-fast] BLOCKED by b-route-defect-routing: "
+                f"reason_code={defect_res.get('reason_code')} "
+                f"return_stage={defect_res.get('return_stage')} "
+                f"reason={defect_res.get('reason')}"
+            )
+            return 2
 
     agents = resolve_configured_agents(args.agents)
     if not agents:

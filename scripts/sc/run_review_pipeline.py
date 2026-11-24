@@ -1852,6 +1852,36 @@ def _run_acceptance_preflight(
     return session.finish()
 
 
+def _maybe_block_on_disguised_defect(
+    task_id: str,
+    *,
+    run_dir: Path | None = None,
+    recovery_result: dict[str, Any] | None = None,
+    fix_through: str = "P1",
+) -> bool:
+    import _b_route_defect_routing as _defect_routing
+
+    norm_ft = str(fix_through or "P1").strip().upper()
+    if norm_ft not in {"P1", "P2", "P3"}:
+        norm_ft = "P1"
+    defect_res = _defect_routing.evaluate_defect_routing(
+        repo_root(),
+        task_id,
+        run_dir=run_dir,
+        recovery_result=recovery_result,
+        fix_through=norm_ft,
+    )
+    if defect_res.get("defect_class") == "disguised_definition_change":
+        print(
+            "[sc-review-pipeline] BLOCKED by b-route-defect-routing: "
+            f"reason_code={defect_res.get('reason_code')} "
+            f"return_stage={defect_res.get('return_stage')} "
+            f"reason={defect_res.get('reason')}"
+        )
+        return True
+    return False
+
+
 def main() -> int:
     script_start_monotonic = time.monotonic()
     args = build_parser().parse_args()
@@ -1871,6 +1901,11 @@ def main() -> int:
             consumer="run_review_pipeline",
         )
         if not b_route_gate_res.get("ok"):
+            if not b_route_gate_res.get("legacy_a_passthrough") and _maybe_block_on_disguised_defect(
+                task_id,
+                fix_through=str(getattr(args, "fix_through", "") or "P1"),
+            ):
+                return 12
             print(_ch6_gate.format_gate_block_message("sc-review-pipeline", b_route_gate_res))
             return 12
     readiness_ok, readiness_payload, readiness_reason = load_task_readiness(repo_root(), task_id)
@@ -1934,6 +1969,13 @@ def main() -> int:
                         enforce_durable_stop_loss=not bool(args.allow_full_rerun or args.allow_repeat_deterministic_failures),
                     )
                     if not resume_rec.get("legacy_a_passthrough") and not resume_rec.get("ok"):
+                        if _maybe_block_on_disguised_defect(
+                            task_id,
+                            run_dir=out_dir,
+                            recovery_result=resume_rec,
+                            fix_through=str(getattr(args, "fix_through", "") or "P1"),
+                        ):
+                            return 12
                         print(_ch6_recovery.format_recovery_block_message("sc-review-pipeline", resume_rec))
                         return 12
                 blocked, message = _enforce_approval_contract(
@@ -1961,6 +2003,13 @@ def main() -> int:
                     enforce_durable_stop_loss=not bool(args.allow_full_rerun or args.allow_repeat_deterministic_failures),
                 )
                 if not fork_rec.get("legacy_a_passthrough") and not fork_rec.get("ok"):
+                    if _maybe_block_on_disguised_defect(
+                        task_id,
+                        run_dir=source_out_dir,
+                        recovery_result=fork_rec,
+                        fix_through=str(getattr(args, "fix_through", "") or "P1"),
+                    ):
+                        return 12
                     print(_ch6_recovery.format_recovery_block_message("sc-review-pipeline", fork_rec))
                     return 12
             source_handoff_path = source_out_dir / "impact-analysis-handoff.json"
@@ -2022,6 +2071,13 @@ def main() -> int:
                 not fresh_rec.get("ok")
                 or (fresh_rec.get("stop_loss_active") and not _allow_sl_override)
             ):
+                if _maybe_block_on_disguised_defect(
+                    task_id,
+                    run_dir=None,
+                    recovery_result=fresh_rec,
+                    fix_through=str(getattr(args, "fix_through", "") or "P1"),
+                ):
+                    return 12
                 print(_ch6_recovery.format_recovery_block_message("sc-review-pipeline", fresh_rec))
                 return 12
             run_id, out_dir = _allocate_out_dir(
@@ -2482,6 +2538,24 @@ def main() -> int:
     )
     try:
         with _rec_cm as rec_handle:
+            if _b_route_recovery_active:
+                import _b_route_defect_routing as _defect_routing
+
+                _defect_res = _defect_routing.evaluate_defect_routing(
+                    repo_root(),
+                    task_id,
+                    run_dir=_rec_baseline_dir,
+                    recovery_result=rec_handle.recovery_result if rec_handle is not None else None,
+                    fix_through=fix_through,
+                )
+                if not _defect_res.get("local_repair_allowed"):
+                    print(
+                        "[sc-review-pipeline] BLOCKED by b-route-defect-routing: "
+                        f"reason_code={_defect_res.get('reason_code')} "
+                        f"return_stage={_defect_res.get('return_stage')} "
+                        f"reason={_defect_res.get('reason')}"
+                    )
+                    return 12
             if not session.persist():
                 return 2
             return _execute_review_pipeline_under_recovery(
@@ -2509,6 +2583,13 @@ def main() -> int:
                 rec_handle=rec_handle,
             )
     except _ch6_recovery.Chapter6RecoveryBlockedError as exc:
+        if _maybe_block_on_disguised_defect(
+            task_id,
+            run_dir=_rec_baseline_dir,
+            recovery_result=exc.recovery_result,
+            fix_through=fix_through,
+        ):
+            return 12
         print(_ch6_recovery.format_recovery_block_message("sc-review-pipeline", exc.recovery_result))
         return 12
 

@@ -48,10 +48,10 @@ def route_execution_policy(route_payload: dict[str, Any] | None) -> dict[str, An
             allowed = True
         else:
             allowed = blocked_by != "chapter5_readiness"
-    if blocked_by in {"chapter5_readiness", "b_route_chapter6_gate", "b_route_chapter6_recovery"}:
+    if blocked_by in {"chapter5_readiness", "b_route_chapter6_gate", "b_route_chapter6_recovery", "b_route_defect_routing"}:
         allowed = False
     stop_reason = ""
-    if not allowed and blocked_by in {"chapter5_readiness", "b_route_chapter6_gate", "b_route_chapter6_recovery"}:
+    if not allowed and blocked_by in {"chapter5_readiness", "b_route_chapter6_gate", "b_route_chapter6_recovery", "b_route_defect_routing"}:
         stop_reason = blocked_by
     return {
         "execution_allowed": bool(allowed),
@@ -299,8 +299,19 @@ def compact_recommendation_fields(payload: dict[str, Any]) -> dict[str, str]:
     b_rec = base.get("b_route_recovery") if isinstance(base.get("b_route_recovery"), dict) else None
     if b_rec is None and isinstance(inspection.get("b_route_recovery"), dict):
         b_rec = inspection.get("b_route_recovery")
-    if isinstance(b_rec, dict) and not bool(b_rec.get("ok")):
-        result["reason_code"] = str(base.get("reason_code") or b_rec.get("reason_code") or "").strip() or "n/a"
-        result["return_stage"] = str(base.get("return_stage") or b_rec.get("return_stage") or "").strip() or "n/a"
-        result["resume_ref"] = str(base.get("resume_ref") or b_rec.get("resume_ref") or "").strip() or "n/a"
+    b_def = base.get("b_route_defect_routing") if isinstance(base.get("b_route_defect_routing"), dict) else None
+    is_defect_blocked = (
+        str(base.get("blocked_by") or chapter6_hints.get("blocked_by") or "").strip() == "b_route_defect_routing"
+        or (isinstance(b_def, dict) and not bool(b_def.get("local_repair_allowed")))
+    )
+    if (isinstance(b_rec, dict) and not bool(b_rec.get("ok"))) or is_defect_blocked:
+        result["reason_code"] = str(
+            base.get("reason_code") or (b_def or {}).get("reason_code") or (b_rec or {}).get("reason_code") or ""
+        ).strip() or "n/a"
+        result["return_stage"] = str(
+            base.get("return_stage") or (b_def or {}).get("return_stage") or (b_rec or {}).get("return_stage") or ""
+        ).strip() or "n/a"
+        result["resume_ref"] = str(
+            base.get("resume_ref") or (b_def or {}).get("resume_ref") or (b_rec or {}).get("resume_ref") or ""
+        ).strip() or "n/a"
     return result
