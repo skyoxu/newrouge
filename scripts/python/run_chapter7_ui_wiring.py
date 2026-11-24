@@ -402,11 +402,15 @@ def _build_closure_summary(
     ui_candidates_path: Path,
     wiring_audit_path: Path | None,
     profile: dict[str, Any],
+    target_slices: list[str] | None = None,
 ) -> dict[str, Any]:
     candidate_payload = _load_json_if_exists(ui_candidates_path)
     candidates_by_bucket = _candidate_by_bucket(candidate_payload)
     audit_text = _read_text_if_exists(wiring_audit_path) if wiring_audit_path and wiring_audit_path.exists() else ''
     bucket_order = bucket_names(profile)
+    if target_slices:
+        requested = {str(s).strip() for s in target_slices if str(s).strip()}
+        bucket_order = [b for b in bucket_order if b in requested]
     slices: list[dict[str, Any]] = []
     for bucket in bucket_order:
         config = bucket_profile(profile, bucket)
@@ -533,6 +537,130 @@ def _is_skipped_input_summary(source_payload: dict[str, Any]) -> bool:
     return str(source_payload.get('status') or '').lower() == 'skipped' and str(source_payload.get('reason') or '') == 'missing_task_triplet'
 
 
+def _detect_active_b_route(repo_root: Path) -> bool:
+    import _b_route_chapter6_gate as ch6_gate
+
+    presence = ch6_gate.detect_b_route_presence(repo_root, None)
+    return bool(
+        presence.get('has_b_traces')
+        or presence.get('capability_apply_pending')
+        or presence.get('pending_journals')
+        or presence.get('na_labels')
+    )
+
+
+def _aggregate_b_route_slice_results(
+    *,
+    slice_results: list[dict[str, Any]],
+    norm_slices: list[str],
+    norm_flow_id: str,
+) -> dict[str, Any]:
+    if len(slice_results) == 1:
+        single = dict(slice_results[0])
+        single.setdefault('target_slices', list(norm_slices))
+        return single
+
+    all_ok = all(bool(r.get('ok')) for r in slice_results)
+    merged_tids = sorted({int(t) for r in slice_results for t in (r.get('target_task_ids') or [])})
+    verified_items = [item for r in slice_results for item in (r.get('verified_items') or [])]
+    pending_items = [item for r in slice_results for item in (r.get('pending_items') or [])]
+    manual_items = [item for r in slice_results for item in (r.get('manual_items') or [])]
+    blocked_items = [item for r in slice_results for item in (r.get('blocked_items') or [])]
+    reused_obls = [item for r in slice_results for item in (r.get('reused_ui_obligations') or [])]
+    rejected_ev = [item for r in slice_results for item in (r.get('rejected_evidence') or [])]
+    gap_routing = [item for r in slice_results for item in (r.get('governed_gap_routing') or [])]
+    diagnostics = [d for r in slice_results for d in (r.get('diagnostics') or [])]
+    ops: list[dict[str, Any]] = []
+    plan_ids: list[str] = []
+    for r in slice_results:
+        deltas = r.get('proposed_governed_deltas')
+        if isinstance(deltas, dict):
+            ops.extend(deltas.get('operations') or [])
+            for pid in deltas.get('plan_ids') or []:
+                if pid not in plan_ids:
+                    plan_ids.append(pid)
+    first = slice_results[0]
+    proposed_deltas = None
+    if ops:
+        proposed_deltas = {
+            'schema_version': 'newrouge.b-route-task-change-intents.v1',
+            'compatible_with': ['b-route-task-preview', 'b-route-task-compile'],
+            'task_triplet_written': False,
+            'permanent_ids_allocated': False,
+            'mature_done_status_preserved': True,
+            'plan_ids': plan_ids,
+            'target_slice': norm_slices[0] if norm_slices else None,
+            'target_slices': list(norm_slices),
+            'target_flow_id': norm_flow_id or first.get('target_flow_id'),
+            'operations': ops,
+        }
+    return {
+        'schema_version': first.get('schema_version'),
+        'ok': all_ok,
+        'route': 'B' if all_ok else 'blocked',
+        'legacy_a_passthrough': False,
+        'target_slice': norm_slices[0] if norm_slices else first.get('target_slice'),
+        'target_slices': list(norm_slices),
+        'target_flow_id': norm_flow_id or first.get('target_flow_id'),
+        'target_task_ids': merged_tids,
+        'ui_applicability': (
+            'not_applicable'
+            if all(r.get('ui_applicability') == 'not_applicable' for r in slice_results)
+            else 'applicable'
+        ),
+        'reason_code': 'ok' if all_ok else next((r.get('reason_code') for r in slice_results if not r.get('ok')), 'conflict'),
+        'reason': 'target_slices_evaluated' if all_ok else 'target_slice_chapter7_blocked',
+        'return_stage': None if all_ok else next((r.get('return_stage') for r in slice_results if r.get('return_stage')), '4'),
+        'per_slice_results': slice_results,
+        'verified_items': verified_items,
+        'pending_items': pending_items,
+        'manual_items': manual_items,
+        'blocked_items': blocked_items,
+        'reused_ui_obligations': reused_obls,
+        'rejected_evidence': rejected_ev,
+        'governed_gap_routing': gap_routing,
+        'proposed_governed_deltas': proposed_deltas,
+        'native_scene_manual_regions_preserved': all(bool(r.get('native_scene_manual_regions_preserved', True)) for r in slice_results),
+        'diagnostics': diagnostics,
+        'flow_all_required_obligations_completed': False,
+        'flow_completed': False,
+        'cumulative_milestone_completed': False,
+        'downstream_flow_obligations_preserved': True,
+        'cumulative_milestone_obligations_preserved': True,
+        'task_triplet_written': False,
+        'global_knowledge_refresh': 'not_performed',
+        'runtime_verified': False,
+        'default_b_enabled': False,
+        'handoff': {
+            'schema_version': 'newrouge.b-route-chapter7-handoff.v1',
+            'target_slice': norm_slices[0] if norm_slices else first.get('target_slice'),
+            'target_slices': list(norm_slices),
+            'target_flow_id': norm_flow_id or first.get('target_flow_id'),
+            'target_task_ids': merged_tids,
+            'ui_applicability': (
+                'not_applicable'
+                if all(r.get('ui_applicability') == 'not_applicable' for r in slice_results)
+                else 'applicable'
+            ),
+            'verified_items': verified_items,
+            'pending_items': pending_items,
+            'manual_items': manual_items,
+            'blocked_items': blocked_items,
+            'reused_ui_obligations': reused_obls,
+            'governed_gap_routing': gap_routing,
+            'proposed_governed_deltas': proposed_deltas,
+            'downstream_flow_obligations_preserved': True,
+            'cumulative_milestone_obligations_preserved': True,
+            'flow_all_required_obligations_completed': False,
+            'flow_completed': False,
+            'cumulative_milestone_completed': False,
+            'global_knowledge_refresh': 'not_performed',
+            'runtime_verified': False,
+            'default_b_enabled': False,
+        },
+    }
+
+
 def orchestrate(
     *,
     repo_root: Path,
@@ -550,6 +678,8 @@ def orchestrate(
     repo_label: str,
     back_story_id: str,
     gameplay_story_id: str,
+    slices: list[str] | None = None,
+    flow_id: str = '',
 ) -> tuple[int, dict[str, Any]]:
     out_dir = repo_root / 'logs' / 'ci' / _today() / 'chapter7-ui-wiring'
     steps: list[dict[str, Any]] = []
@@ -558,12 +688,250 @@ def orchestrate(
     resolved_alignment_audit_path = _optional_resolved_path(repo_root, alignment_audit_path)
     resolved_wiring_audit_path = _optional_resolved_path(repo_root, wiring_audit_path)
     profile = load_chapter7_profile(repo_root=repo_root, profile_path=chapter7_profile_path)
+    norm_slices = [str(item).strip() for item in (slices or []) if str(item).strip()]
+    norm_flow_id = str(flow_id or '').strip()
+
+    input_contract = {
+        'repo_root': str(repo_root.resolve()).replace('\\', '/'),
+        'tasks_json_path': _contract_path(repo_root, tasks_json_path),
+        'tasks_back_path': _contract_path(repo_root, tasks_back_path),
+        'tasks_gameplay_path': _contract_path(repo_root, tasks_gameplay_path),
+        'overlay_root_path': _contract_path(repo_root, overlay_root_path),
+        'ui_gdd_flow_path': _contract_path(repo_root, ui_gdd_flow_path),
+        'ui_candidates_path': _contract_path(repo_root, ui_candidates_path),
+        'alignment_audit_path': _contract_path(repo_root, alignment_audit_path),
+        'wiring_audit_path': _contract_path(repo_root, wiring_audit_path),
+        'chapter7_profile_path': profile.get('_loaded_profile_path') or '',
+        'repo_label': repo_label,
+        'back_story_id': back_story_id,
+        'gameplay_story_id': gameplay_story_id,
+        'target_slices': norm_slices,
+        'target_flow_id': norm_flow_id,
+    }
+
+    try:
+        is_b_route = _detect_active_b_route(repo_root)
+    except Exception as exc:
+        out_dir.mkdir(parents=True, exist_ok=True)
+        err_slice = {
+            'schema_version': 'newrouge.b-route-chapter7-slice.v1',
+            'ok': False,
+            'route': 'blocked',
+            'reason_code': 'read_error',
+            'reason': f'b_route_detection_error:{type(exc).__name__}',
+            'error': str(exc),
+            'global_knowledge_refresh': 'not_performed',
+            'runtime_verified': False,
+            'default_b_enabled': False,
+        }
+        slice_out_path = out_dir / 'b-route-chapter7-slice.json'
+        slice_out_path.write_text(json.dumps(err_slice, ensure_ascii=False, indent=2) + '\n', encoding='utf-8', newline='\n')
+        summary_path = out_dir / 'summary.json'
+        manifest_path = out_dir / 'artifact-manifest.json'
+        artifact_entries.append(
+            _artifact_entry(
+                repo_root=repo_root,
+                path=slice_out_path,
+                artifact_type='b-route-chapter7-slice',
+                producer_step='b-route-slice',
+            )
+        )
+        artifact_entries.append(
+            {
+                'artifact_type': 'summary',
+                'producer_step': 'summary',
+                'path': str(summary_path.resolve()).replace('\\', '/'),
+                'relative_path': str(summary_path.resolve().relative_to(repo_root.resolve())).replace('\\', '/'),
+                'sha256': 'non-idempotent-summary',
+            }
+        )
+        return 2, {
+            'ts': dt.datetime.now(dt.timezone.utc).isoformat(),
+            'action': 'run-chapter7-ui-wiring',
+            'status': 'blocked',
+            'reason': f'b_route_detection_error:{type(exc).__name__}',
+            'error': str(exc),
+            'delivery_profile': delivery_profile,
+            'write_doc': write_doc,
+            'create_tasks': create_tasks,
+            'b_route_slice_only': True,
+            'task_triplet_written': False,
+            'global_knowledge_refresh': 'not_performed',
+            'runtime_verified': False,
+            'default_b_enabled': False,
+            'out_dir': str(out_dir).replace('\\', '/'),
+            'steps': [{'name': 'b-route-detection', 'rc': 2, 'cmd': ['detect_b_route_presence'], 'log': str(slice_out_path).replace('\\', '/')}],
+            'b_route_chapter7_slice': err_slice,
+            'b_route_chapter7_slice_path': str(slice_out_path.resolve()).replace('\\', '/'),
+            'input_contract': input_contract,
+            'artifact_manifest': str(manifest_path.resolve()).replace('\\', '/'),
+            '_artifact_manifest_entries': artifact_entries,
+        }
+
+    if is_b_route and (create_tasks or norm_slices or norm_flow_id):
+        import _b_route_chapter7_slice as ch7_slice
+
+        slice_targets: list[str | None] = list(norm_slices)
+        if not slice_targets and not norm_flow_id:
+            avail = bucket_names(profile)
+            slice_targets = [avail[0]] if avail else [None]
+        elif not slice_targets:
+            slice_targets = [None]
+
+        per_slice_results: list[dict[str, Any]] = []
+        for s_arg in slice_targets:
+            per_slice_results.append(
+                ch7_slice.evaluate_chapter7_slice(
+                    repo_root,
+                    flow_id=norm_flow_id or None,
+                    slice_name=s_arg,
+                    profile_path=chapter7_profile_path,
+                    delivery_profile=delivery_profile,
+                )
+            )
+        slice_res = _aggregate_b_route_slice_results(
+            slice_results=per_slice_results,
+            norm_slices=norm_slices,
+            norm_flow_id=norm_flow_id,
+        )
+        out_dir.mkdir(parents=True, exist_ok=True)
+        slice_out_path = out_dir / 'b-route-chapter7-slice.json'
+        slice_out_path.write_text(
+            json.dumps(slice_res, ensure_ascii=False, indent=2) + '\n',
+            encoding='utf-8',
+            newline='\n',
+        )
+        artifact_entries.append(
+            _artifact_entry(
+                repo_root=repo_root,
+                path=slice_out_path,
+                artifact_type='b-route-chapter7-slice',
+                producer_step='b-route-slice',
+            )
+        )
+        summary_path = out_dir / 'summary.json'
+        manifest_path = out_dir / 'artifact-manifest.json'
+        if create_tasks:
+            delta_candidate = slice_res.get('proposed_governed_deltas') or {
+                'schema_version': ch7_slice.DELTA_CANDIDATE_SCHEMA,
+                'compatible_with': ['b-route-task-preview', 'b-route-task-compile'],
+                'task_triplet_written': False,
+                'permanent_ids_allocated': False,
+                'mature_done_status_preserved': True,
+                'target_slice': norm_slices[0] if norm_slices else None,
+                'target_slices': list(norm_slices),
+                'target_flow_id': norm_flow_id or slice_res.get('target_flow_id'),
+                'operations': [],
+                'route_via': 'py -3 -B scripts/python/dev_cli.py b-route-task-preview',
+            }
+            delta_path = out_dir / 'governed-task-delta-candidate.json'
+            delta_path.write_text(
+                json.dumps(delta_candidate, ensure_ascii=False, indent=2) + '\n',
+                encoding='utf-8',
+                newline='\n',
+            )
+            artifact_entries.append(
+                _artifact_entry(
+                    repo_root=repo_root,
+                    path=delta_path,
+                    artifact_type='governed-task-delta-candidate',
+                    producer_step='governed-handoff',
+                )
+            )
+            artifact_entries.append(
+                {
+                    'artifact_type': 'summary',
+                    'producer_step': 'summary',
+                    'path': str(summary_path.resolve()).replace('\\', '/'),
+                    'relative_path': str(summary_path.resolve().relative_to(repo_root.resolve())).replace('\\', '/'),
+                    'sha256': 'non-idempotent-summary',
+                }
+            )
+            steps.append(
+                {
+                    'name': 'create-tasks-governed-handoff',
+                    'rc': 2,
+                    'cmd': ['b-route-chapter7-slice', '--governed-handoff'],
+                    'log': str(delta_path).replace('\\', '/'),
+                }
+            )
+            payload = {
+                'ts': dt.datetime.now(dt.timezone.utc).isoformat(),
+                'action': 'run-chapter7-ui-wiring',
+                'status': 'blocked',
+                'reason': 'b_route_direct_task_creation_forbidden_use_3_1_3_2',
+                'delivery_profile': delivery_profile,
+                'write_doc': write_doc,
+                'create_tasks': create_tasks,
+                'b_route_slice_only': True,
+                'task_triplet_written': False,
+                'global_knowledge_refresh': 'not_performed',
+                'runtime_verified': False,
+                'default_b_enabled': False,
+                'out_dir': str(out_dir).replace('\\', '/'),
+                'steps': steps,
+                'b_route_chapter7_slice': slice_res,
+                'b_route_chapter7_slice_path': str(slice_out_path.resolve()).replace('\\', '/'),
+                'governed_task_delta_candidate': str(delta_path.resolve()).replace('\\', '/'),
+                'governed_handoff': slice_res.get('handoff'),
+                'input_contract': input_contract,
+                'artifact_manifest': str(manifest_path.resolve()).replace('\\', '/'),
+                '_artifact_manifest_entries': artifact_entries,
+            }
+            return 2, payload
+
+        slice_rc = 0 if slice_res.get('ok') else 1
+        slice_cmd_flags: list[str] = []
+        for s_arg in norm_slices:
+            slice_cmd_flags.extend(['--slice', s_arg])
+        if norm_flow_id:
+            slice_cmd_flags.extend(['--flow-id', norm_flow_id])
+        steps.append(
+            {
+                'name': 'b-route-chapter7-slice',
+                'rc': slice_rc,
+                'cmd': ['b-route-chapter7-slice', *slice_cmd_flags],
+                'log': str(slice_out_path).replace('\\', '/'),
+            }
+        )
+        artifact_entries.append(
+            {
+                'artifact_type': 'summary',
+                'producer_step': 'summary',
+                'path': str(summary_path.resolve()).replace('\\', '/'),
+                'relative_path': str(summary_path.resolve().relative_to(repo_root.resolve())).replace('\\', '/'),
+                'sha256': 'non-idempotent-summary',
+            }
+        )
+        payload = {
+            'ts': dt.datetime.now(dt.timezone.utc).isoformat(),
+            'action': 'run-chapter7-ui-wiring',
+            'status': 'ok' if slice_rc == 0 else 'fail',
+            'delivery_profile': delivery_profile,
+            'write_doc': write_doc,
+            'create_tasks': create_tasks,
+            'b_route_slice_only': True,
+            'task_triplet_written': False,
+            'global_knowledge_refresh': 'not_performed',
+            'runtime_verified': False,
+            'default_b_enabled': False,
+            'out_dir': str(out_dir).replace('\\', '/'),
+            'steps': steps,
+            'b_route_chapter7_slice': slice_res,
+            'b_route_chapter7_slice_path': str(slice_out_path.resolve()).replace('\\', '/'),
+            'governed_handoff': slice_res.get('handoff'),
+            'input_contract': input_contract,
+            'artifact_manifest': str(manifest_path.resolve()).replace('\\', '/'),
+            '_artifact_manifest_entries': artifact_entries,
+        }
+        return slice_rc, payload
     commands = [
         (
             'collect',
             [
                 'py',
                 '-3',
+                '-B',
                 _script_path('collect_ui_wiring_inputs.py'),
                 '--repo-root',
                 str(repo_root),
@@ -587,6 +955,7 @@ def orchestrate(
                 [
                     'py',
                     '-3',
+                    '-B',
                     _script_path('chapter7_ui_gdd_writer.py'),
                     '--repo-root',
                     str(repo_root),
@@ -611,6 +980,7 @@ def orchestrate(
             [
                 'py',
                 '-3',
+                '-B',
                 _script_path('validate_chapter7_ui_wiring.py'),
                 '--repo-root',
                 str(repo_root),
@@ -636,6 +1006,7 @@ def orchestrate(
                 [
                     'py',
                     '-3',
+                    '-B',
                     _script_path('create_chapter7_tasks_from_ui_candidates.py'),
                     '--repo-root',
                     str(repo_root),
@@ -761,6 +1132,7 @@ def orchestrate(
                     ui_candidates_path=ui_candidates_path if ui_candidates_path.is_absolute() else (repo_root / ui_candidates_path),
                     wiring_audit_path=resolved_wiring_audit_path,
                     profile=profile,
+                    target_slices=norm_slices or None,
                 )
                 closure_summary_path.write_text(
                     json.dumps(closure_summary, ensure_ascii=False, indent=2) + '\n',
@@ -883,6 +1255,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument('--gameplay-story-id', default='')
     parser.add_argument('--write-doc', action='store_true')
     parser.add_argument('--create-tasks', action='store_true')
+    parser.add_argument('--slice', action='append', default=[])
+    parser.add_argument('--flow-id', default='')
     parser.add_argument('--out-json', default='')
     parser.add_argument('--self-check', action='store_true')
     args = parser.parse_args(argv)
@@ -912,6 +1286,8 @@ def main(argv: list[str] | None = None) -> int:
             'repo_label': args.repo_label,
             'back_story_id': args.back_story_id,
             'gameplay_story_id': args.gameplay_story_id,
+            'target_slices': list(args.slice or []),
+            'target_flow_id': args.flow_id,
             'planned_steps': planned_steps,
         }
         print(json.dumps(payload, ensure_ascii=False, indent=2))
@@ -937,6 +1313,8 @@ def main(argv: list[str] | None = None) -> int:
         repo_label=args.repo_label,
         back_story_id=args.back_story_id,
         gameplay_story_id=args.gameplay_story_id,
+        slices=list(args.slice or []),
+        flow_id=args.flow_id,
     )
     out = Path(args.out_json) if args.out_json else (repo_root / 'logs' / 'ci' / _today() / 'chapter7-ui-wiring' / 'summary.json')
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -946,7 +1324,11 @@ def main(argv: list[str] | None = None) -> int:
         if item.get('artifact_type') == 'summary':
             summary_path = out.resolve()
             item['path'] = str(summary_path).replace('\\', '/')
-            item['relative_path'] = str(summary_path.relative_to(repo_root.resolve())).replace('\\', '/')
+            try:
+                rel_summary = str(summary_path.relative_to(repo_root.resolve())).replace('\\', '/')
+            except ValueError:
+                rel_summary = summary_path.name
+            item['relative_path'] = rel_summary
     out.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
     manifest_payload = {
         'schema_version': 1,
@@ -956,47 +1338,41 @@ def main(argv: list[str] | None = None) -> int:
         'out_dir': payload['out_dir'],
         'artifacts': artifact_entries,
     }
+    if payload.get('b_route_slice_only'):
+        manifest_payload['b_route_slice_only'] = True
     if payload.get('skip_reason'):
         manifest_payload['skip_reason'] = payload['skip_reason']
     manifest_path.parent.mkdir(parents=True, exist_ok=True)
     manifest_path.write_text(json.dumps(manifest_payload, ensure_ascii=False, indent=2) + '\n', encoding='utf-8', newline='\n')
     validation_out = manifest_path.with_name('artifact-manifest-validation.json')
-    manifest_rc, manifest_output = _run(
-        [
-            'py',
-            '-3',
-            _script_path('validate_chapter7_artifact_manifest.py'),
-            '--repo-root',
-            str(repo_root),
-            '--manifest',
-            str(manifest_path),
-            '--out',
-            str(validation_out),
-        ],
-        cwd=repo_root,
-    )
+    manifest_cmd = [
+        'py',
+        '-3',
+        '-B',
+        _script_path('validate_chapter7_artifact_manifest.py'),
+        '--repo-root',
+        str(repo_root),
+        '--manifest',
+        str(manifest_path),
+        '--out',
+        str(validation_out),
+    ]
+    manifest_rc, manifest_output = _run(manifest_cmd, cwd=repo_root)
     manifest_log = manifest_path.with_name('artifact-manifest.log')
     _write(manifest_log, manifest_output)
     payload['steps'].append(
         {
             'name': 'artifact-manifest',
             'rc': manifest_rc,
-            'cmd': [
-                'py',
-                '-3',
-                _script_path('validate_chapter7_artifact_manifest.py'),
-                '--repo-root',
-                str(repo_root),
-                '--manifest',
-                str(manifest_path),
-                '--out',
-                str(validation_out),
-            ],
+            'cmd': manifest_cmd,
             'log': str(manifest_log).replace('\\', '/'),
         }
     )
     payload['artifact_manifest_validation'] = str(validation_out.resolve()).replace('\\', '/')
-    payload['status'] = 'ok' if rc == 0 and manifest_rc == 0 else 'fail'
+    if rc == 2 and manifest_rc == 0 and payload.get('status') == 'blocked':
+        payload['status'] = 'blocked'
+    else:
+        payload['status'] = 'ok' if rc == 0 and manifest_rc == 0 else 'fail'
     out.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
     print(f"CHAPTER7_UI_WIRING status={payload['status']} steps={len(payload['steps'])} out={str(out).replace('\\', '/')}")
     return rc if rc != 0 else manifest_rc

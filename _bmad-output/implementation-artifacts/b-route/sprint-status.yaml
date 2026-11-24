@@ -107,7 +107,7 @@ development_status:
   3-8-让直接chapter6与公共cli消费统一实施门禁: done
   3-9-在恢复与route入口重验当前输入和任务资格: done
   3-10-按缺陷类型复用规划或返回定义所属阶段: done
-  3-11-按目标slice收口chapter7并复用已验证ui: backlog
+  3-11-按目标slice收口chapter7并复用已验证ui: done
   3-12-让页面实施触发与全入口决定保持一致: backlog
   epic-3-retrospective: optional
 

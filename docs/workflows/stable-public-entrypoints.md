@@ -201,13 +201,14 @@ Why this is stable:
 - it is the top-level Chapter 7 UI wiring orchestrator
 - it runs the collector, optional writer, validator, and artifact-manifest validator in fixed order
 - `--write-doc` also produces `docs/gdd/ui-gdd-flow.candidates.json` as the machine-readable candidate sidecar
-- `--create-tasks` also runs `create_chapter7_tasks_from_ui_candidates.py` and can parameterize `--repo-label`, `--back-story-id`, and `--gameplay-story-id`
+- `--create-tasks` also runs `create_chapter7_tasks_from_ui_candidates.py` and can parameterize `--repo-label`, `--back-story-id`, and `--gameplay-story-id` (on active B-route repos, `--create-tasks` blocks direct triplet mutation with `rc=2` and writes a read-only Story 3.1/3.2 `governed-task-delta-candidate.json` containing `"operations"`)
+- `--slice <bucket>` (repeatable) and `--flow-id <id>` target a specific slice/Flow without waiting for whole-game completion; on active B-route repos, target-slice runs evaluate only the selected slice(s) and still write + validate `artifact-manifest.json` without falling back to whole-game `collect`/`validate`
 - `docs/workflows/chapter7-profile-guide.md` is the operator-facing reference for repo-local profile overrides and template seeds
 - `--chapter7-profile-path` lets business repos override bucket mapping, task identity, labels, refs, headings, and surface defaults without forking the scripts; the template example lives at `docs/workflows/templates/chapter7-profile.template.json`
 - it writes `logs/ci/<date>/chapter7-ui-wiring/summary.json` as the canonical Chapter 7 execution summary
 - it also writes `inputs.snapshot.json`, `closure-summary.json`, `task-status-patch-preview.json`, `task-status-patch-preview.md`, `task-status-patch.json`, `artifact-manifest.json`, and `artifact-manifest-validation.json` for deterministic rerun, closure inspection, and write-back planning
 
-### `py -3 scripts/python/dev_cli.py run-chapter7-backlog-gap --design-doc-path <doc> --epics-doc-path <doc> --duplicate-audit-path <doc>`
+### `py -3 scripts/python/dev_cli.py run-chapter7-backlog-gap --design-doc-path <doc> --epics-doc-path <doc> --duplicate-audit-path <doc> [--slice <bucket>] [--flow-id <id>] [--chapter7-profile-path <path>] [--ui-evidence <json>]`
 
 Use when:
 - you want to decide whether Chapter 7 should create new `T47+` backlog items or stay in wiring-only closure
@@ -222,8 +223,9 @@ Why this is stable:
 - it is the top-level backlog-gap analyzer for Chapter 7
 - it emits a machine-readable summary and recommendation instead of relying on manual judgment
 - it helps separate "already covered by T1-T46" from "not clearly covered and may justify T47+"
+- with `--slice` / `--flow-id` / `--ui-evidence` on active B-route repos, it evaluates all requested slices and reuses verified B-route UI obligations only when slice evaluation succeeds (`ok=true`)
 
-### `py -3 scripts/python/dev_cli.py apply-chapter7-status-patch --patch <path>`
+### `py -3 scripts/python/dev_cli.py apply-chapter7-status-patch --patch <path> [--repo-root <root>] [--dry-run]`
 
 Use when:
 - you want to apply the machine-readable status patch contract produced by Chapter 7 closure analysis
@@ -613,3 +615,7 @@ These are additive modes of the existing Chapter workflow, not a second mileston
 ## B 路线按缺陷类型复用规划或返回定义所属阶段
 
 稳定入口：`py -3 -B scripts/python/dev_cli.py b-route-defect-routing --task-id <id> [--root <root>] [--run-dir <dir>] [--defect-input <json>] [--delta-intents <json>] [--fix-through P1|P2|P3] [--report <logs/ci/.../*.json>]`。直接 owner 为 `scripts/python/check_b_route_defect_routing.py`，参数相同。默认无 `--report` 时严格零写盘，不自动重跑 3A/3B、不直写 `.taskmaster/tasks/*.json`、不分配永久 Task ID 且禁止全局 Knowledge 刷新；基于 Story 3.8/3.9 实时门禁与跨目录持久信号区分纯实现缺陷与定义/契约/所有权/交接/绑定/义务变更，拦截弱化 Acceptance/Refs、自由 `N/A`、失败改 `done`、删测/Skip、削弱累计 MVG manifest 与同义重复修复任务，产出 `3A..5` 治理交接与 3.1/3.2 业务 delta 校验，诚实拆分局部 PASS、运行验证与人工/未完义务并守 `P1` 底线与实测遥测，恒定 `runtime_verified=false`/`default_b_enabled=false`。详见[缺陷分类与归属阶段路由 owner 说明](b-route-defect-routing.md)。
+
+## B 路线按目标 slice 收口 Chapter 7 并复用已验证 UI
+
+稳定入口：`py -3 -B scripts/python/dev_cli.py b-route-chapter7-slice [--flow-id <id>] [--slice <bucket>] [--task-id <id>] [--root <root>] [--profile <json>] [--evidence-dir <dir>] [--ui-evidence <json>] [--gap-input <json>] [--operation <op>] [--report <logs/ci/.../*.json>]`。直接 owner 为 `scripts/python/check_b_route_chapter7_slice.py`，参数相同；同时 `run-chapter7-ui-wiring` 与 `run-chapter7-backlog-gap` 支持 `--slice`/`--flow-id` 目标切片参数，`apply-chapter7-status-patch` 在 B 路线仓库禁止清除成熟 `done` 状态。默认无 `--report` 严格零写盘，仅针对目标 Flow/slice 核对入口/返回、真实引擎输入、反馈、四部分绑定与人工义务而无需等待全游完成；仅在具备有效提交非 UI 依据与证明时返回 `not_applicable`；严格按当前 `InputSet` 与测试文件 SHA-256 复用 Chapter 6 真实引擎输入证据（拒过期、异条件、纯静态接线与纯方法调用），诚实定位断链/类型/生命周期不符及空/跳过/planned 证据，独立保留人工视觉手感义务且不宣告 Flow 全完成；UI 定义缺口经 Story 3.10 返 `3A..5`，任务补缺输出 3.1/3.2 只读治理 delta 候选且保护原生 `.tscn` 人工区，输出可回溯四分交接且 `global_knowledge_refresh="not_performed"`、`runtime_verified=false`/`default_b_enabled=false`。详见[目标 slice Chapter 7 收口 owner 说明](b-route-chapter7-slice.md)。

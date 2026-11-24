@@ -10,6 +10,7 @@ from typing import Any
 
 
 REQUIRED_ARTIFACT_TYPES = ["input-snapshot", "ui-gdd", "candidate-sidecar", "summary"]
+REQUIRED_B_ROUTE_SLICE_ARTIFACT_TYPES = ["b-route-chapter7-slice", "summary"]
 
 
 def _sha256_file(path: Path) -> str:
@@ -45,9 +46,14 @@ def validate(*, repo_root: Path, manifest_path: Path) -> tuple[int, dict[str, An
         for key in ["schema_version", "run_profile", "action", "status", "out_dir", "artifacts"]
         if key not in payload
     ]
+    required_types = (
+        REQUIRED_B_ROUTE_SLICE_ARTIFACT_TYPES
+        if payload.get("b_route_slice_only") is True
+        else REQUIRED_ARTIFACT_TYPES
+    )
     missing_artifact_types = [
         artifact_type
-        for artifact_type in REQUIRED_ARTIFACT_TYPES
+        for artifact_type in required_types
         if artifact_type not in [str(item.get("artifact_type") or "") for item in artifacts if isinstance(item, dict)]
     ]
     missing_files: list[str] = []

@@ -303,6 +303,8 @@ def build_apply_chapter7_status_patch_cmd(args) -> list[str]:
         "--patch",
         args.patch,
     ]
+    if getattr(args, "repo_root", ""):
+        cmd += ["--repo-root", args.repo_root]
     if args.dry_run:
         cmd.append("--dry-run")
     if args.out_json:
@@ -537,6 +539,11 @@ def build_run_chapter7_ui_wiring_cmd(args) -> list[str]:
         cmd.append("--write-doc")
     if getattr(args, 'create_tasks', False):
         cmd.append("--create-tasks")
+    for item in getattr(args, 'slice', None) or []:
+        if str(item).strip():
+            cmd += ["--slice", str(item)]
+    if getattr(args, 'flow_id', ''):
+        cmd += ["--flow-id", args.flow_id]
     if getattr(args, 'out_json', ''):
         cmd += ["--out-json", args.out_json]
     if getattr(args, 'self_check', False):
@@ -566,6 +573,15 @@ def build_run_chapter7_backlog_gap_cmd(args) -> list[str]:
         cmd += ["--epics-doc-path", args.epics_doc_path]
     if getattr(args, 'duplicate_audit_path', ''):
         cmd += ["--duplicate-audit-path", args.duplicate_audit_path]
+    for item in getattr(args, 'slice', None) or []:
+        if str(item).strip():
+            cmd += ["--slice", str(item)]
+    if getattr(args, 'flow_id', ''):
+        cmd += ["--flow-id", args.flow_id]
+    if getattr(args, 'chapter7_profile_path', ''):
+        cmd += ["--chapter7-profile-path", args.chapter7_profile_path]
+    if getattr(args, 'ui_evidence', ''):
+        cmd += ["--ui-evidence", args.ui_evidence]
     if getattr(args, 'out_json', ''):
         cmd += ["--out-json", args.out_json]
     if getattr(args, 'self_check', False):
@@ -1117,5 +1133,44 @@ def build_b_route_defect_routing_cmd(args) -> list[str]:
         if value is not None:
             if not str(value).strip():
                 raise ValueError(f"b-route-defect-routing optional {flag} must be nonempty when provided")
+            cmd += [flag, str(value)]
+    return cmd
+
+
+def build_b_route_chapter7_slice_cmd(args) -> list[str]:
+    if getattr(args, "write", False) or getattr(args, "apply", False):
+        raise ValueError("b-route-chapter7-slice is strictly read-only and rejects write/apply flags")
+    cmd = [
+        sys.executable,
+        "-B",
+        str(Path(__file__).resolve().with_name("check_b_route_chapter7_slice.py")),
+    ]
+    root = getattr(args, "root", ".")
+    if root is None or not str(root).strip():
+        raise ValueError("b-route-chapter7-slice requires nonempty --root")
+    cmd += ["--root", str(root)]
+    flow_id = getattr(args, "flow_id", None)
+    slice_name = getattr(args, "slice", None)
+    task_ids = list(getattr(args, "task_id", None) or [])
+    if not flow_id and not slice_name and not task_ids:
+        raise ValueError("b-route-chapter7-slice requires at least one of --flow-id, --slice, or --task-id")
+    for tid in task_ids:
+        if not str(tid).strip():
+            raise ValueError("b-route-chapter7-slice --task-id entries must be nonempty")
+        cmd += ["--task-id", str(tid)]
+    for attr, flag in (
+        ("flow_id", "--flow-id"),
+        ("slice", "--slice"),
+        ("profile", "--profile"),
+        ("evidence_dir", "--evidence-dir"),
+        ("ui_evidence", "--ui-evidence"),
+        ("gap_input", "--gap-input"),
+        ("operation", "--operation"),
+        ("report", "--report"),
+    ):
+        value = getattr(args, attr, None)
+        if value is not None:
+            if not str(value).strip():
+                raise ValueError(f"b-route-chapter7-slice optional {flag} must be nonempty when provided")
             cmd += [flag, str(value)]
     return cmd

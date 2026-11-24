@@ -171,7 +171,7 @@ Each bucket under `buckets.<name>` can override:
 | `buckets.*.closure_task_ids`, `wiring_task_id` | `run_chapter7_ui_wiring.py` | changes which Chapter 7 task rows are treated as closure targets |
 | `buckets.*.scene_rel_path` | `run_chapter7_ui_wiring.py` | changes which `.tscn` files are probed for implemented surfaces |
 | `buckets.*.slice_title`, `screen_group`, `audience`, `ui_entry`, `player_action`, `system_response`, `suggested_surfaces`, `semantics_defaults`, `screen_contract`, `screen_state` | `chapter7_ui_gdd_writer.py` | changes generated UI GDD wording and candidate sidecar content |
-| `--chapter7-profile-path` only | `run_chapter7_ui_wiring.py`, `chapter7_ui_gdd_writer.py`, `create_chapter7_tasks_from_ui_candidates.py`, `validate_chapter7_ui_wiring.py` | selects a non-default override file |
+| `--chapter7-profile-path` / `--profile` | `run_chapter7_ui_wiring.py`, `run_chapter7_backlog_gap.py`, `chapter7_ui_gdd_writer.py`, `create_chapter7_tasks_from_ui_candidates.py`, `validate_chapter7_ui_wiring.py` (`--chapter7-profile-path`); `check_b_route_chapter7_slice.py` / `dev_cli.py b-route-chapter7-slice` (`--profile`) | selects a non-default override file (note: built-in `unclassified` defaults never mask blank B-route UI declarations) |
 
 ## Why This Repo Uses A Short Profile
 
@@ -352,4 +352,10 @@ Top-level entrypoint:
 
 ```powershell
 py -3 scripts/python/dev_cli.py run-chapter7-ui-wiring --delivery-profile fast-ship --chapter7-profile-path docs/workflows/chapter7-profile.json --write-doc
+```
+
+B-route target-slice read-only evaluation (without waiting for whole-game completion):
+
+```powershell
+py -3 -B scripts/python/dev_cli.py b-route-chapter7-slice --slice <bucket> --flow-id <flow-id> --profile docs/workflows/chapter7-profile.json
 ```

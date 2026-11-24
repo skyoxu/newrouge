@@ -1840,3 +1840,7 @@ Helper modules below are referenced directly by at least two included entry scri
 ## B 路线缺陷分类与归属阶段路由 owner
 
 `scripts/python/check_b_route_defect_routing.py` 是 `dev_cli.py b-route-defect-routing` 的直接入口；`_b_route_defect_routing.py` 唯一拥有纯实现缺陷与定义/契约/所有权/交接/绑定/义务变更分类（`evaluate_defect_routing`）、反伪装拦截（弱化验收/Refs、自由 `N/A`、失败改 `done`、删测/Skip、削弱 MVG manifest）、Story 3.1/3.2 治理业务 delta 校验（`validate_repair_task_delta`、禁同义重复任务与旧 `done` 遮新义务）、跨目录复现定位/上游复用与诚实义务拆解（`build_chapter6_handoff_summary`）。由 `dev_cli.py`、`dev_cli_builders.py`、`resume_task.py`、`chapter6_route.py` 与 `run_single_task_chapter6_lane.py` 消费；复用 Story 3.1/3.2/3.5/3.8/3.9 与 `update_mvg_baseline.py`，默认零写盘且恒定 `runtime_verified=false`/`default_b_enabled=false`。详见[缺陷分类与归属阶段路由 owner 说明](b-route-defect-routing.md)。
+
+## B 路线目标 slice Chapter 7 收口 owner
+
+`scripts/python/check_b_route_chapter7_slice.py` 是 `dev_cli.py b-route-chapter7-slice` 的直接入口；`_b_route_chapter7_slice.py` 唯一拥有目标 Flow/slice UI 责任与合法非 UI 核对（`evaluate_chapter7_slice`）、Chapter 6 真实引擎输入证据按当前 `InputSet` 与测试身份复用、确定性 `.tscn`/C#/GD 接线与类型/生命周期检查（`inspect_scene_and_adapter_wiring`）、原生 `.tscn` 人工区保护、Story 3.10 缺口归属与 Story 3.1/3.2 只读治理 delta 候选以及四分可回溯交接。由 `dev_cli.py`、`dev_cli_builders.py`、`run_chapter7_ui_wiring.py`、`run_chapter7_backlog_gap.py` 消费，并与 `apply_chapter7_status_patch.py` 的 B 路线成熟 `done` 保护联动；默认零写盘、`global_knowledge_refresh="not_performed"` 且恒定 `runtime_verified=false`/`default_b_enabled=false`。详见[目标 slice Chapter 7 收口 owner 说明](b-route-chapter7-slice.md)。

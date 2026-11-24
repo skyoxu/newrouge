@@ -32,7 +32,9 @@ Start with self-check, then write-doc, then create-tasks only after the candidat
 
 ## Primary Command Or Action
 
-`py -3 scripts/python/dev_cli.py run-chapter7-ui-wiring --delivery-profile <profile> --self-check`
+- Legacy / full-repo self-check: `py -3 scripts/python/dev_cli.py run-chapter7-ui-wiring --delivery-profile <profile> --self-check`
+- B-route target-slice read-only UI closure (zero-write default, no whole-game wait, no global Knowledge refresh): `py -3 -B scripts/python/dev_cli.py b-route-chapter7-slice [--flow-id <flow-id>] [--slice <bucket>] [--task-id <id>] [--root <root>] [--profile <json>] [--evidence-dir <dir>] [--ui-evidence <json>] [--gap-input <json>] [--operation <op>] [--report <logs/ci/.../*.json>]`
+- Target-slice Chapter 7 orchestrator / backlog-gap options: pass `--slice <bucket>` (repeatable) and/or `--flow-id <flow-id>` (plus `--chapter7-profile-path <path>` and `--ui-evidence <json>` on `run-chapter7-backlog-gap`) to `dev_cli.py run-chapter7-ui-wiring` and `dev_cli.py run-chapter7-backlog-gap` (on active B-route repos, `--create-tasks` emits a read-only Story 3.1/3.2 governed delta candidate with `operations` instead of writing `.taskmaster/tasks/*.json`, and `dev_cli.py apply-chapter7-status-patch --patch <path> [--repo-root <root>]` preserves mature `done` status across all triplet views). See `docs/workflows/b-route-chapter7-slice.md`.
 
 ## Evidence Rule
 

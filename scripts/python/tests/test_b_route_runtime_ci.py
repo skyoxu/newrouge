@@ -35,7 +35,7 @@ class RuntimeCITests(unittest.TestCase):
                      'adoption_projection', 'adoption_r10_capture', 'adoption_r10_reader',
                      'adoption_r19_reader', 'adoption_review', 'operation_leases',
                      'operation_scope', 'public_context', 'qualified_public_context', 'task_preview',
-                     'task_compilation', 'task_resolver', 'chapter4_binding', 'input_set', 'stage5_obligations', 'chapter5_readiness', 'chapter6_gate', 'chapter6_recovery', 'defect_routing'):
+                     'task_compilation', 'task_resolver', 'chapter4_binding', 'input_set', 'stage5_obligations', 'chapter5_readiness', 'chapter6_gate', 'chapter6_recovery', 'defect_routing', 'chapter7_slice'):
             selector = 'scripts.python.tests.test_b_route_' + name
             self.assertEqual(1, selected.count(selector))
             self.assertFalse(any(value.startswith(selector + '.') for value in selected))
@@ -47,6 +47,7 @@ class RuntimeCITests(unittest.TestCase):
                          'scripts.python.tests.test_mvg_global_audit.GlobalAuditTests.test_unresolved_resolution_cannot_become_admitted',
                          'scripts.python.tests.test_mvg_global_audit.GlobalAuditTests.test_audit_recomputes_completion_and_source_gap_verdict',
                          'scripts.python.tests.test_mvg_global_audit_boundaries',
+                         'scripts.python.tests.test_chapter7_backlog_gap',
                          'scripts.python.tests.test_inherited_pipe_cleanup'):
             self.assertIn(selector, selected)
 
@@ -228,6 +229,8 @@ class RuntimeCITests(unittest.TestCase):
         self.assertIn("- 'scripts/python/_b_route_chapter6_recovery.py'", workflow)
         self.assertIn("- 'scripts/python/_b_route_defect_routing.py'", workflow)
         self.assertIn("- 'scripts/python/check_b_route_defect_routing.py'", workflow)
+        self.assertIn("- 'scripts/python/_b_route_chapter7_slice.py'", workflow)
+        self.assertIn("- 'scripts/python/check_b_route_chapter7_slice.py'", workflow)
         path_block = workflow.split('    paths:\n', 1)[1].split('  workflow_dispatch:', 1)[0]
         patterns = [line.strip()[3:-1] for line in path_block.splitlines()
             if line.strip().startswith("- '") and line.strip().endswith("'")]
@@ -258,6 +261,10 @@ class RuntimeCITests(unittest.TestCase):
             'scripts/python/_b_route_chapter6_recovery.py',
             'scripts/python/_b_route_defect_routing.py',
             'scripts/python/check_b_route_defect_routing.py',
+            'scripts/python/_b_route_chapter7_slice.py',
+            'scripts/python/check_b_route_chapter7_slice.py',
+            'scripts/python/run_chapter7_ui_wiring.py',
+            'scripts/python/run_chapter7_backlog_gap.py',
             'scripts/python/resume_task.py',
             'scripts/python/chapter6_route.py',
             'scripts/python/inspect_run.py',

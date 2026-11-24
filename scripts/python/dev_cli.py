@@ -20,7 +20,7 @@ import sys
 from pathlib import Path
 
 # The read-only command must not create bytecode even without Python -B.
-if len(sys.argv) > 1 and sys.argv[1] in {"b-route-preflight", "b-route-sources", "b-route-adoption", "b-route-task-preview", "b-route-task-compile", "b-route-task-origin", "b-route-chapter4-binding", "b-route-input-set", "b-route-stage5-obligations", "b-route-chapter5-readiness", "b-route-chapter6-gate", "b-route-defect-routing"}:
+if len(sys.argv) > 1 and sys.argv[1] in {"b-route-preflight", "b-route-sources", "b-route-adoption", "b-route-task-preview", "b-route-task-compile", "b-route-task-origin", "b-route-chapter4-binding", "b-route-input-set", "b-route-stage5-obligations", "b-route-chapter5-readiness", "b-route-chapter6-gate", "b-route-defect-routing", "b-route-chapter7-slice"}:
     sys.dont_write_bytecode = True
 
 if __name__ == "__main__" and len(sys.argv) > 1 and sys.argv[1] == "b-route-sources":
@@ -67,6 +67,10 @@ if __name__ == "__main__" and len(sys.argv) > 1 and sys.argv[1] == "b-route-defe
     from check_b_route_defect_routing import main as defect_routing_main
     raise SystemExit(defect_routing_main(sys.argv[2:]))
 
+if __name__ == "__main__" and len(sys.argv) > 1 and sys.argv[1] == "b-route-chapter7-slice":
+    from check_b_route_chapter7_slice import main as chapter7_slice_main
+    raise SystemExit(chapter7_slice_main(sys.argv[2:]))
+
 from dev_cli_builders import (
     DEFAULT_GATE_BUNDLE_TASK_FILES,
     build_check_directory_boundaries_cmd,
@@ -99,6 +103,7 @@ from dev_cli_builders import (
     build_b_route_chapter5_readiness_cmd,
     build_b_route_chapter6_gate_cmd,
     build_b_route_defect_routing_cmd,
+    build_b_route_chapter7_slice_cmd,
     build_quality_gates_cmd,
     build_run_dotnet_cmd,
     build_run_gdunit_full_cmd,
@@ -808,6 +813,13 @@ def cmd_b_route_defect_routing(args: argparse.Namespace) -> int:
     return defect_routing_main(build_b_route_defect_routing_cmd(args)[3:])
 
 
+def cmd_b_route_chapter7_slice(args: argparse.Namespace) -> int:
+    """Run the read-only B-route target-slice Chapter 7 UI closure CLI."""
+    from check_b_route_chapter7_slice import main as chapter7_slice_main
+
+    return chapter7_slice_main(build_b_route_chapter7_slice_cmd(args)[3:])
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Dev CLI for Godot+C# template (AI-friendly entrypoint)",
@@ -870,6 +882,11 @@ def build_parser() -> argparse.ArgumentParser:
     from check_b_route_defect_routing import register_arguments as register_defect_routing_arguments
     register_defect_routing_arguments(defect_routing_parser)
     defect_routing_parser.set_defaults(func=cmd_b_route_defect_routing)
+
+    chapter7_slice_parser = sub.add_parser("b-route-chapter7-slice", help="Read-only B-route target-slice Chapter 7 UI closure, evidence reuse, and governed handoff; no global Knowledge refresh")
+    from check_b_route_chapter7_slice import register_arguments as register_chapter7_slice_arguments
+    register_chapter7_slice_arguments(chapter7_slice_parser)
+    chapter7_slice_parser.set_defaults(func=cmd_b_route_chapter7_slice)
 
     # run-ci-basic
     p_ci = sub.add_parser(
@@ -1195,6 +1212,8 @@ def build_parser() -> argparse.ArgumentParser:
     p_ch7.add_argument("--gameplay-story-id", default="")
     p_ch7.add_argument("--write-doc", action="store_true")
     p_ch7.add_argument("--create-tasks", action="store_true")
+    p_ch7.add_argument("--slice", action="append", default=[])
+    p_ch7.add_argument("--flow-id", default="")
     p_ch7.add_argument("--out-json", default="")
     p_ch7.add_argument("--self-check", action="store_true")
     p_ch7.set_defaults(func=cmd_run_chapter7_ui_wiring)
@@ -1205,6 +1224,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="apply or dry-run a machine-readable Chapter 7 task-status patch contract",
     )
     p_ch7_apply.add_argument("--patch", required=True)
+    p_ch7_apply.add_argument("--repo-root", default="")
     p_ch7_apply.add_argument("--dry-run", action="store_true")
     p_ch7_apply.add_argument("--out-json", default="")
     p_ch7_apply.add_argument("--self-check", action="store_true")
@@ -1223,6 +1243,10 @@ def build_parser() -> argparse.ArgumentParser:
     p_ch7_gap.add_argument("--design-doc-path", required=True)
     p_ch7_gap.add_argument("--epics-doc-path", required=True)
     p_ch7_gap.add_argument("--duplicate-audit-path", required=True)
+    p_ch7_gap.add_argument("--slice", action="append", default=[])
+    p_ch7_gap.add_argument("--flow-id", default="")
+    p_ch7_gap.add_argument("--chapter7-profile-path", default="")
+    p_ch7_gap.add_argument("--ui-evidence", default="")
     p_ch7_gap.add_argument("--out-json", default="")
     p_ch7_gap.add_argument("--self-check", action="store_true")
     p_ch7_gap.set_defaults(func=cmd_run_chapter7_backlog_gap)
@@ -1460,6 +1484,10 @@ def main(argv: list[str] | None = None) -> int:
         sys.dont_write_bytecode = True
         from check_b_route_defect_routing import main as defect_routing_main
         return defect_routing_main(arguments[1:])
+    if arguments and arguments[0] == "b-route-chapter7-slice":
+        sys.dont_write_bytecode = True
+        from check_b_route_chapter7_slice import main as chapter7_slice_main
+        return chapter7_slice_main(arguments[1:])
     parser = build_parser()
     args = parser.parse_args(arguments)
     func = getattr(args, "func", None)
