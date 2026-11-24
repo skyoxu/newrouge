@@ -131,6 +131,8 @@ Prerequisites:
 
 Why this is stable:
 - it is the canonical task recovery entrypoint
+- `--recommendation-only` is strictly zero-write (never repairs active-task or writes summary files) and revalidates live B-route InputSet, Chapter 5 readiness, Stage-5 obligations, pending/post-edit journals, Story 2.9 epoch/reopen revocations, and live Task/dependency eligibility; pure `explicit_not_enabled_a` repos keep exact compact golden output
+- durable recovery scanning across all `logs/ci/*` date folders prevents deleting `active-task`/`latest.json` or rebuilding Knowledge from whitewashing stop-loss/rerun_guard history
 - it consumes active-task sidecars, inspect output, and recovery docs
 - it is the first place to read `reason`, `run_type`, `reuse_mode`, `artifact_integrity`, and `diagnostics` before deciding between `6.7` and `6.8`
 - it now surfaces `Chapter6 next action`, `Chapter6 can skip 6.7`, `Chapter6 can go to 6.8`, and `Chapter6 blocked by`
@@ -154,6 +156,7 @@ Prerequisites:
 
 Why this is stable:
 - it is the canonical sidecar inspection entrypoint
+- `--recommendation-only` is strictly zero-write, and on active B-route repositories it attaches read-only `b_route_recovery` validation (`runtime_verified=false`, `default_b_enabled=false`)
 - it now exposes `latest_summary_signals` and `chapter6_hints` in one place for rerun/stop-loss decisions
 - `chapter6_hints.blocked_by` now covers `rerun_guard`, `llm_retry_stop_loss`, `sc_test_retry_stop_loss`, `waste_signals`, `recent_failure_summary`, and `artifact_integrity`
 - inspection is also where you confirm `planned_only_incomplete` / `artifact_integrity`, repeated same-family failures via `recent_failure_summary`, approval contract states (`pending|approved|denied|invalid|mismatched`), and whether the next move should be inspect-first instead of reopening `6.7`

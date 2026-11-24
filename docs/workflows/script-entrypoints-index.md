@@ -36,11 +36,11 @@ Generated from source scan on `2026-03-25`. This document inventories recurring 
 ### Repo bootstrap and recovery
 
 - `scripts/python/dev_cli.py`
-- `scripts/python/chapter6_route.py`
-- `scripts/python/inspect_run.py`
+- `scripts/python/chapter6_route.py` (live B-route InputSet/readiness/obligations/eligibility revalidation; strictly zero-write under `--recommendation-only`)
+- `scripts/python/inspect_run.py` (read-only live B-route recovery validation when active; strictly zero-write under `--recommendation-only`)
 - `scripts/python/project_health_scan.py`
 - `scripts/python/serve_project_health.py`
-- `scripts/python/resume_task.py`
+- `scripts/python/resume_task.py` (live B-route recovery revalidation and cross-date durable stop-loss scanning; strictly zero-write under `--recommendation-only`)
 - `scripts/python/run_single_task_chapter6_lane.py`
 - `scripts/python/run_prototype_workflow.py`
 - `scripts/python/run_chapter7_ui_wiring.py`

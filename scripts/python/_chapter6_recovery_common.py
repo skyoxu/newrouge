@@ -48,12 +48,15 @@ def route_execution_policy(route_payload: dict[str, Any] | None) -> dict[str, An
             allowed = True
         else:
             allowed = blocked_by != "chapter5_readiness"
-    if blocked_by == "chapter5_readiness":
+    if blocked_by in {"chapter5_readiness", "b_route_chapter6_gate", "b_route_chapter6_recovery"}:
         allowed = False
+    stop_reason = ""
+    if not allowed and blocked_by in {"chapter5_readiness", "b_route_chapter6_gate", "b_route_chapter6_recovery"}:
+        stop_reason = blocked_by
     return {
         "execution_allowed": bool(allowed),
         "blocked_by": blocked_by,
-        "stop_reason": "chapter5_readiness" if not allowed and blocked_by == "chapter5_readiness" else "",
+        "stop_reason": stop_reason,
     }
 
 
@@ -276,7 +279,7 @@ def compact_recommendation_fields(payload: dict[str, Any]) -> dict[str, str]:
     forbidden_commands = [str(item).strip() for item in list(base.get("forbidden_commands") or []) if str(item).strip()]
     if not forbidden_commands:
         forbidden_commands = [str(item).strip() for item in list(inspection.get("forbidden_commands") or []) if str(item).strip()]
-    return {
+    result = {
         "task_id": str(base.get("task_id") or inspection.get("task_id") or "").strip() or "n/a",
         "run_id": str(base.get("run_id") or inspection.get("run_id") or "").strip() or "n/a",
         "failure_code": str(failure.get("code") or "").strip() or "unknown",
@@ -293,3 +296,11 @@ def compact_recommendation_fields(payload: dict[str, Any]) -> dict[str, str]:
         "latest_turn": str(run_event_summary.get("latest_turn_id") or "").strip() or "n/a",
         "turn_count": str(int(run_event_summary.get("turn_count") or 0)) if run_event_summary else "0",
     }
+    b_rec = base.get("b_route_recovery") if isinstance(base.get("b_route_recovery"), dict) else None
+    if b_rec is None and isinstance(inspection.get("b_route_recovery"), dict):
+        b_rec = inspection.get("b_route_recovery")
+    if isinstance(b_rec, dict) and not bool(b_rec.get("ok")):
+        result["reason_code"] = str(base.get("reason_code") or b_rec.get("reason_code") or "").strip() or "n/a"
+        result["return_stage"] = str(base.get("return_stage") or b_rec.get("return_stage") or "").strip() or "n/a"
+        result["resume_ref"] = str(base.get("resume_ref") or b_rec.get("resume_ref") or "").strip() or "n/a"
+    return result

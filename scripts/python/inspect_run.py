@@ -9,9 +9,11 @@ from typing import Any
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
+PYTHON_DIR = REPO_ROOT / "scripts" / "python"
 SC_DIR = REPO_ROOT / "scripts" / "sc"
-if str(SC_DIR) not in sys.path:
-    sys.path.insert(0, str(SC_DIR))
+for _candidate_dir in (PYTHON_DIR, SC_DIR):
+    if str(_candidate_dir) not in sys.path:
+        sys.path.insert(0, str(_candidate_dir))
 
 from _artifact_schema import (  # noqa: E402
     ArtifactSchemaError,
@@ -947,8 +949,11 @@ def inspect_run_artifacts(
         recent_failure_summary=recent_failure_summary,
         approval=approval,
     )
-    if not str((payload.get("latest_summary_signals") or {}).get("failure_kind") or "").strip():
-        payload["latest_summary_signals"]["failure_kind"] = str(failure.get("code") or "").strip()
+    if detected_kind == "pipeline":
+        if not str((payload.get("latest_summary_signals") or {}).get("failure_kind") or "").strip():
+            payload["latest_summary_signals"]["failure_kind"] = str(failure.get("code") or "").strip()
+    elif not str((payload.get("latest_summary_signals") or {}).get("failure_kind") or "").strip():
+        payload["latest_summary_signals"].pop("failure_kind", None)
     summary_candidate_commands = summary.get("candidate_commands") if isinstance(summary.get("candidate_commands"), dict) else {}
     repair_action, repair_why, repair_command = _repair_guide_recommendation(repair_guide)
     if detected_kind == "local-hard-checks":
@@ -999,21 +1004,64 @@ def inspect_run_artifacts(
         )
         if not str(summary.get("recommended_action") or "").strip() and repair_action and repair_why:
             payload["recommended_action_why"] = repair_why
+        inspected_tid = str(payload.get("task_id") or "").strip()
+        if inspected_tid:
+            import _b_route_chapter6_gate as _ch6_gate
+            import _b_route_chapter6_recovery as _ch6_recovery
+
+            presence = _ch6_gate.detect_b_route_presence(artifact_root, inspected_tid or None)
+            if presence.get("should_enforce_gate"):
+                rec_eval = _ch6_recovery.evaluate_chapter6_recovery(
+                    artifact_root,
+                    inspected_tid,
+                    run_dir=out_dir,
+                    operation="inspect",
+                    recommendation_only=True,
+                    consumer="inspect_run",
+                )
+                if not rec_eval.get("legacy_a_passthrough"):
+                    payload["b_route_recovery"] = rec_eval
+                    payload["runtime_verified"] = False
+                    payload["default_b_enabled"] = False
+                    if not rec_eval.get("ok"):
+                        block_msg = _ch6_recovery.format_recovery_block_message("inspect-run", rec_eval)
+                        failure["code"] = "b-route-gate-blocked"
+                        failure["message"] = block_msg
+                        failure["severity"] = "hard"
+                        payload["status"] = "fail"
+                        payload["recommended_action"] = "blocked-by-b-route-gate"
+                        payload["recommended_command"] = ""
+                        payload["recommended_action_why"] = block_msg
+                        payload["reason_code"] = rec_eval.get("reason_code")
+                        payload["return_stage"] = rec_eval.get("return_stage")
+                        payload["resume_ref"] = rec_eval.get("resume_ref")
+                        hints_copy = dict(payload.get("chapter6_hints") or {})
+                        hints_copy["next_action"] = "blocked-by-b-route-gate"
+                        hints_copy["blocked_by"] = "b_route_chapter6_gate"
+                        hints_copy["can_skip_6_7"] = False
+                        hints_copy["can_go_to_6_8"] = False
+                        hints_copy["rerun_forbidden"] = True
+                        payload["chapter6_hints"] = hints_copy
     return (0 if failure["code"] == "ok" else 1), payload
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Inspect the latest local harness run and emit a stable JSON summary.")
+    parser = argparse.ArgumentParser(
+        description=(
+            "Inspect the latest local harness run and emit a stable read-only JSON summary "
+            "(with live B-route recovery revalidation when active)."
+        )
+    )
     parser.add_argument("--repo-root", default=str(REPO_ROOT), help="Repository root used to resolve relative paths.")
     parser.add_argument("--latest", default="", help="Explicit latest index path.")
     parser.add_argument("--kind", default="", choices=["", "pipeline", "local-hard-checks"], help="Expected run kind.")
     parser.add_argument("--task-id", default="", help="Task id used to resolve the latest pipeline run.")
     parser.add_argument("--run-id", default="", help="Optional run id filter when resolving latest.json automatically.")
-    parser.add_argument("--out-json", default="", help="Optional file path to persist the inspection payload.")
+    parser.add_argument("--out-json", default="", help="Optional file path to persist the inspection payload (ignored with --recommendation-only).")
     parser.add_argument(
         "--recommendation-only",
         action="store_true",
-        help="Print a compact recovery recommendation instead of the full JSON payload.",
+        help="Strictly read-only zero-write mode: print a compact recovery recommendation instead of writing or printing the full JSON payload.",
     )
     parser.add_argument(
         "--recommendation-format",
@@ -1033,8 +1081,8 @@ def _compact_recommendation_payload(payload: dict[str, Any]) -> dict[str, str]:
     return compact_recommendation_fields(payload)
 
 
-def main() -> int:
-    args = build_parser().parse_args()
+def main(argv: list[str] | None = None) -> int:
+    args = build_parser().parse_args(argv)
     try:
         rc, payload = inspect_run_artifacts(
             repo_root=Path(str(args.repo_root or REPO_ROOT)),
@@ -1047,6 +1095,13 @@ def main() -> int:
         print(json.dumps({"status": "fail", "failure": {"code": "artifact-missing", "message": str(exc), "severity": "hard"}}, ensure_ascii=False, indent=2))
         return 2
 
+    if bool(args.recommendation_only):
+        if str(args.recommendation_format or "kv").strip().lower() == "json":
+            print(json.dumps(_compact_recommendation_payload(payload), ensure_ascii=False))
+        else:
+            print(_render_recommendation_only(payload), end="")
+        return rc
+
     out_json = str(args.out_json or "").strip()
     if out_json:
         out_path = Path(out_json)
@@ -1054,13 +1109,7 @@ def main() -> int:
             out_path = Path(str(args.repo_root or REPO_ROOT)) / out_path
         out_path.parent.mkdir(parents=True, exist_ok=True)
         out_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8", newline="\n")
-    if bool(args.recommendation_only):
-        if str(args.recommendation_format or "kv").strip().lower() == "json":
-            print(json.dumps(_compact_recommendation_payload(payload), ensure_ascii=False))
-        else:
-            print(_render_recommendation_only(payload), end="")
-    else:
-        print(json.dumps(payload, ensure_ascii=False, indent=2))
+    print(json.dumps(payload, ensure_ascii=False, indent=2))
     return rc
 
 

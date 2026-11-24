@@ -20,6 +20,7 @@ for candidate in (PYTHON_DIR, SC_DIR):
 from _change_scope import classify_change_scope_between_snapshots  # noqa: E402
 from _technical_debt import update_technical_debt_register  # noqa: E402
 from _agent_review_contract import normalize_finding_severity  # noqa: E402
+import _b_route_chapter6_recovery as _ch6_recovery  # noqa: E402
 from llm_review_needs_fix_fast import _changed_paths_hit_reviewer_anchors, current_git_fingerprint  # noqa: E402
 from resume_task import build_resume_payload  # noqa: E402
 
@@ -254,6 +255,41 @@ def _record_residual_docs(
     }
 
 
+def _b_route_blocked_route_payload(task_id: str, run_id: str, rec_eval: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "task_id": task_id,
+        "run_id": run_id,
+        "execution_allowed": False,
+        "preferred_lane": "blocked-by-b-route-gate",
+        "recommended_command": "",
+        "forbidden_commands": [
+            "Chapter 6 RED/GREEN/REFACTOR",
+            f"py -3 scripts/sc/run_review_pipeline.py --task-id {task_id} --resume",
+            f"py -3 scripts/sc/run_review_pipeline.py --task-id {task_id} --fork",
+            f"py -3 scripts/sc/run_review_pipeline.py --task-id {task_id}",
+            f"py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id {task_id} --delivery-profile fast-ship --rerun-failing-only --max-rounds 1",
+        ],
+        "reviewer_anchor_hit": False,
+        "changed_paths": [],
+        "six_eight_worthwhile": False,
+        "full_67_recommended": False,
+        "repo_noise_classification": "task-issue",
+        "repo_noise_reason": str(rec_eval.get("reason") or "b_route_gate_blocked"),
+        "recommended_action": "blocked-by-b-route-gate",
+        "recommended_action_why": _ch6_recovery.format_recovery_block_message("chapter6-route", rec_eval),
+        "latest_reason": str(rec_eval.get("reason") or "b_route_gate_blocked"),
+        "chapter6_next_action": "blocked-by-b-route-gate",
+        "blocked_by": "b_route_chapter6_gate",
+        "reason_code": rec_eval.get("reason_code"),
+        "return_stage": rec_eval.get("return_stage"),
+        "resume_ref": rec_eval.get("resume_ref"),
+        "b_route_recovery": rec_eval,
+        "runtime_verified": False,
+        "default_b_enabled": False,
+        "residual_recording": {"eligible": False, "performed": False},
+    }
+
+
 def route_chapter6(
     *,
     repo_root: Path,
@@ -262,25 +298,49 @@ def route_chapter6(
     run_id: str = "",
     record_residual: bool = False,
     fix_through: str = "P1",
+    recommendation_only: bool = False,
 ) -> tuple[int, dict[str, Any]]:
     root = Path(repo_root).resolve()
-    readiness_ok, readiness, readiness_reason = load_task_readiness(root, str(task_id or "").strip())
+    tid_str = str(task_id or "").strip()
+    latest_str = str(latest or "").strip()
+    pre_latest_out_dir: Path | None = None
+    if not tid_str and latest_str:
+        latest_doc = _read_json(_resolve_path(root, latest_str))
+        tid_str = str(latest_doc.get("task_id") or "").strip()
+        raw_out = str(latest_doc.get("latest_out_dir") or "").strip()
+        if raw_out:
+            pre_latest_out_dir = _resolve_path(root, raw_out)
+    effective_record_residual = False if recommendation_only else bool(record_residual)
+    rec_eval: dict[str, Any] | None = None
+    if tid_str:
+        rec_eval = _ch6_recovery.evaluate_chapter6_recovery(
+            root,
+            tid_str,
+            run_dir=pre_latest_out_dir,
+            operation="route",
+            recommendation_only=recommendation_only,
+            consumer="chapter6_route",
+        )
+        if not rec_eval.get("legacy_a_passthrough") and not rec_eval.get("ok"):
+            return 3, _b_route_blocked_route_payload(tid_str, str(run_id or "").strip(), rec_eval)
+    readiness_ok, readiness, readiness_reason = load_task_readiness(root, tid_str)
     from _mvg_obligations import check_task_obligations
-    obligations_ok, obligations_reason, obligations = check_task_obligations(root, str(task_id or "").strip())
+    obligations_ok, obligations_reason, obligations = check_task_obligations(root, tid_str)
     if not obligations_ok:
-        return 3, {"task_id": str(task_id), "execution_allowed": False, "preferred_lane": "blocked",
+        return 3, {"task_id": str(tid_str or task_id), "execution_allowed": False, "preferred_lane": "blocked",
             "blocked_by": "mvg_obligations", "latest_reason": obligations_reason,
             "recommended_action": "rebind_mvg_obligations", "mvg_obligations": obligations,
-            "recommended_command": "py -3 scripts/python/plan_mvg.py rebind-handoff --run-id <applied-run> --task-id " + str(task_id),
+            "recommended_command": "py -3 scripts/python/plan_mvg.py rebind-handoff --run-id <applied-run> --task-id " + str(tid_str or task_id),
             "forbidden_commands": ["Chapter 6 RED/GREEN/REFACTOR"]}
     payload: dict[str, Any] = {}
     has_existing_run = False
     try:
         _resume_rc, payload = build_resume_payload(
             repo_root=root,
-            task_id=str(task_id or "").strip(),
-            latest=str(latest or "").strip(),
+            task_id=tid_str,
+            latest=latest_str,
             run_id=str(run_id or "").strip(),
+            recommendation_only=recommendation_only,
         )
         has_existing_run = bool(
             isinstance(payload, dict)
@@ -289,6 +349,56 @@ def route_chapter6(
     except FileNotFoundError:
         if readiness_ok:
             raise
+    resolved_from_payload = str(payload.get("task_id") or "").strip()
+    if not tid_str and resolved_from_payload:
+        tid_str = resolved_from_payload
+        insp_paths_late = ((payload.get("inspection") or {}).get("paths") or {}) if isinstance(payload.get("inspection"), dict) else {}
+        out_dir_late = _resolve_path(root, str(insp_paths_late.get("out_dir") or "").strip())
+        rec_eval = _ch6_recovery.evaluate_chapter6_recovery(
+            root,
+            tid_str,
+            run_dir=out_dir_late,
+            operation="route",
+            recommendation_only=recommendation_only,
+            consumer="chapter6_route",
+        )
+        if not rec_eval.get("legacy_a_passthrough") and not rec_eval.get("ok"):
+            return 3, _b_route_blocked_route_payload(tid_str, str(payload.get("run_id") or run_id or "").strip(), rec_eval)
+        readiness_ok, readiness, readiness_reason = load_task_readiness(root, tid_str)
+        obligations_ok, obligations_reason, obligations = check_task_obligations(root, tid_str)
+        if not obligations_ok:
+            return 3, {"task_id": tid_str, "execution_allowed": False, "preferred_lane": "blocked",
+                "blocked_by": "mvg_obligations", "latest_reason": obligations_reason,
+                "recommended_action": "rebind_mvg_obligations", "mvg_obligations": obligations,
+                "recommended_command": "py -3 scripts/python/plan_mvg.py rebind-handoff --run-id <applied-run> --task-id " + tid_str,
+                "forbidden_commands": ["Chapter 6 RED/GREEN/REFACTOR"]}
+    if not tid_str:
+        import _b_route_chapter6_gate as _ch6_gate
+
+        if _ch6_gate.detect_b_route_presence(root, None).get("should_enforce_gate"):
+            blocked_missing_tid = _ch6_recovery.evaluate_chapter6_recovery(
+                root,
+                "",
+                operation="route",
+                recommendation_only=recommendation_only,
+                consumer="chapter6_route",
+            )
+            return 3, _b_route_blocked_route_payload("", str(payload.get("run_id") or run_id or "").strip(), blocked_missing_tid)
+    if has_existing_run and tid_str and rec_eval is not None and not rec_eval.get("legacy_a_passthrough"):
+        insp_paths = ((payload.get("inspection") or {}).get("paths") or {}) if isinstance(payload.get("inspection"), dict) else {}
+        out_dir_rel = str(insp_paths.get("out_dir") or "").strip()
+        if out_dir_rel:
+            rec_with_run = _ch6_recovery.evaluate_chapter6_recovery(
+                root,
+                tid_str,
+                run_dir=_resolve_path(root, out_dir_rel),
+                operation="route",
+                recommendation_only=recommendation_only,
+                consumer="chapter6_route",
+            )
+            rec_eval = rec_with_run
+            if not rec_with_run.get("ok"):
+                return 3, _b_route_blocked_route_payload(tid_str, str(payload.get("run_id") or run_id or "").strip(), rec_with_run)
     if not readiness_ok and not has_existing_run:
         return 3, {
             "task_id": str(task_id or "").strip(),
@@ -322,9 +432,21 @@ def route_chapter6(
     inspection = payload.get("inspection") if isinstance(payload.get("inspection"), dict) else {}
     failure = inspection.get("failure") if isinstance(inspection.get("failure"), dict) else {}
     latest_summary_signals = payload.get("latest_summary_signals") if isinstance(payload.get("latest_summary_signals"), dict) else {}
-    chapter6_hints = payload.get("chapter6_hints") if isinstance(payload.get("chapter6_hints"), dict) else {}
+    chapter6_hints = dict(payload.get("chapter6_hints") or {}) if isinstance(payload.get("chapter6_hints"), dict) else {}
     candidate_commands = payload.get("candidate_commands") if isinstance(payload.get("candidate_commands"), dict) else {}
     recommended_action = str(payload.get("recommended_action") or "").strip().lower()
+    if rec_eval is not None and not rec_eval.get("legacy_a_passthrough") and rec_eval.get("stop_loss_active"):
+        sl_blocked = str(rec_eval.get("stop_loss_blocked_by") or "rerun_guard")
+        if not str(chapter6_hints.get("blocked_by") or "").strip():
+            chapter6_hints["blocked_by"] = sl_blocked
+            chapter6_hints["rerun_forbidden"] = True
+            if sl_blocked == "llm_retry_stop_loss":
+                chapter6_hints["can_go_to_6_8"] = True
+                chapter6_hints["can_skip_6_7"] = True
+                if not recommended_action or recommended_action in {"none", "continue", "rerun", "inspect"}:
+                    recommended_action = "needs-fix-fast"
+        else:
+            chapter6_hints["rerun_forbidden"] = True
     repo_noise_classification, repo_noise_reason = _classify_repo_noise(payload)
     six_eight_worthwhile = bool(chapter6_hints.get("can_go_to_6_8")) and recommended_action == "needs-fix-fast" and reviewer_anchor_hit
     full_67_recommended = (
@@ -355,7 +477,10 @@ def route_chapter6(
     elif str(chapter6_hints.get("blocked_by") or "").strip().lower() == "artifact_integrity":
         preferred_lane = "inspect-first"
         recommended_command = str(candidate_commands.get("rerun") or recommended_command)
-    elif str(failure.get("code") or "").strip().lower() == "step-failed" or str(chapter6_hints.get("blocked_by") or "").strip().lower() in {
+    elif (
+        str(failure.get("code") or "").strip().lower() == "step-failed"
+        and str(chapter6_hints.get("blocked_by") or "").strip().lower() != "llm_retry_stop_loss"
+    ) or str(chapter6_hints.get("blocked_by") or "").strip().lower() in {
         "deterministic_failure",
         "sc_test_retry_stop_loss",
         "waste_signals",
@@ -364,7 +489,7 @@ def route_chapter6(
     elif six_eight_worthwhile:
         preferred_lane = "run-6.8"
         recommended_command = str(candidate_commands.get("needs_fix_fast") or recommended_command)
-    elif record_residual and residual_eligible:
+    elif effective_record_residual and residual_eligible:
         residual_recording = _record_residual_docs(root=root, payload=payload, low_priority_findings=low_priority_findings)
         preferred_lane = "record-residual"
         recommended_command = str(candidate_commands.get("inspect") or recommended_command)
@@ -403,20 +528,51 @@ def route_chapter6(
         route_payload["forbidden_commands"] = sorted(set(
             route_payload["forbidden_commands"] + ["Chapter 6 RED/GREEN/REFACTOR", "new Review run"]
         ))
+    if rec_eval is not None and not rec_eval.get("legacy_a_passthrough"):
+        route_payload["b_route_recovery"] = rec_eval
+        route_payload["runtime_verified"] = False
+        route_payload["default_b_enabled"] = False
+        if rec_eval.get("stop_loss_active"):
+            sl_blocked = str(rec_eval.get("stop_loss_blocked_by") or "rerun_guard")
+            if not str(route_payload.get("blocked_by") or "").strip():
+                route_payload["blocked_by"] = sl_blocked
+            route_payload["full_67_recommended"] = False
+            if route_payload["preferred_lane"] == "run-6.7":
+                route_payload["preferred_lane"] = (
+                    "fix-deterministic"
+                    if sl_blocked in {"sc_test_retry_stop_loss", "waste_signals"}
+                    else "inspect-first"
+                )
+            rerun_cmd = str(candidate_commands.get("rerun") or "").strip()
+            if rerun_cmd and rerun_cmd not in route_payload["forbidden_commands"]:
+                route_payload["forbidden_commands"].append(rerun_cmd)
     return 0, route_payload
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Route Chapter 6 recovery decisions through a stable artifact-aware entrypoint.")
+    parser = argparse.ArgumentParser(
+        description=(
+            "Route Chapter 6 recovery decisions through a live-revalidated, artifact-aware entrypoint "
+            "(verifies B-route InputSet, Chapter 5 readiness, Stage-5 obligations, and Task/dependency eligibility)."
+        )
+    )
     parser.add_argument("--repo-root", default=str(REPO_ROOT))
     parser.add_argument("--task-id", default="", help="Taskmaster task id.")
     parser.add_argument("--run-id", default="", help="Optional run id filter.")
     parser.add_argument("--latest", default="", help="Optional latest.json path.")
-    parser.add_argument("--record-residual", action="store_true", help="Record deferrable findings in docs/technical-debt.md.")
+    parser.add_argument(
+        "--record-residual",
+        action="store_true",
+        help="Record deferrable findings in docs/technical-debt.md (suppressed when --recommendation-only is set).",
+    )
     parser.add_argument("--fix-through", default="P1", choices=["P1", "P2", "P3"], help="Must-fix severity floor used by residual eligibility.")
-    parser.add_argument("--out-json", default="", help="Optional output JSON path.")
-    parser.add_argument("--out-md", default="", help="Optional output Markdown path.")
-    parser.add_argument("--recommendation-only", action="store_true", help="Print a compact route summary.")
+    parser.add_argument("--out-json", default="", help="Optional output JSON path (ignored with --recommendation-only).")
+    parser.add_argument("--out-md", default="", help="Optional output Markdown path (ignored with --recommendation-only).")
+    parser.add_argument(
+        "--recommendation-only",
+        action="store_true",
+        help="Strictly read-only zero-write mode: print a compact route summary without writing technical-debt.md or output files.",
+    )
     parser.add_argument("--recommendation-format", default="kv", choices=["kv", "json"], help="Output format for --recommendation-only.")
     return parser
 
@@ -450,7 +606,7 @@ def _render_markdown(payload: dict[str, Any]) -> str:
 
 def _compact_payload(payload: dict[str, Any]) -> dict[str, Any]:
     residual = payload.get("residual_recording") if isinstance(payload.get("residual_recording"), dict) else {}
-    return {
+    result = {
         "task_id": str(payload.get("task_id") or "").strip() or "n/a",
         "run_id": str(payload.get("run_id") or "").strip() or "n/a",
         "preferred_lane": str(payload.get("preferred_lane") or "").strip() or "inspect-first",
@@ -463,6 +619,12 @@ def _compact_payload(payload: dict[str, Any]) -> dict[str, Any]:
         "repo_noise_classification": str(payload.get("repo_noise_classification") or "").strip() or "task-issue",
         "residual_recording": "performed" if bool(residual.get("performed")) else ("eligible" if bool(residual.get("eligible")) else "no"),
     }
+    b_rec = payload.get("b_route_recovery") if isinstance(payload.get("b_route_recovery"), dict) else None
+    if isinstance(b_rec, dict) and not bool(b_rec.get("ok")):
+        result["reason_code"] = str(payload.get("reason_code") or b_rec.get("reason_code") or "").strip() or "n/a"
+        result["return_stage"] = str(payload.get("return_stage") or b_rec.get("return_stage") or "").strip() or "n/a"
+        result["resume_ref"] = str(payload.get("resume_ref") or b_rec.get("resume_ref") or "").strip() or "n/a"
+    return result
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -473,18 +635,29 @@ def main(argv: list[str] | None = None) -> int:
         print("ERROR: pass --task-id or --latest", file=sys.stderr)
         return 2
     root = Path(str(args.repo_root or REPO_ROOT)).resolve()
+    rec_only = bool(args.recommendation_only)
     try:
         route_rc, payload = route_chapter6(
             repo_root=root,
             task_id=task_id,
             latest=latest,
             run_id=str(args.run_id or "").strip(),
-            record_residual=bool(args.record_residual),
+            record_residual=False if rec_only else bool(args.record_residual),
             fix_through=str(args.fix_through),
+            recommendation_only=rec_only,
         )
     except Exception as exc:
         print(f"ERROR: failed to route chapter6 recovery: {exc}", file=sys.stderr)
         return 2
+
+    if rec_only:
+        # Strictly read-only zero-write mode: NEVER write technical-debt.md or output files.
+        compact = _compact_payload(payload)
+        if str(args.recommendation_format or "kv").strip().lower() == "json":
+            print(json.dumps(compact, ensure_ascii=False))
+        else:
+            print("\n".join(f"{key}={value}" for key, value in compact.items()))
+        return route_rc
 
     out_json = str(args.out_json or "").strip()
     if out_json:
@@ -498,14 +671,6 @@ def main(argv: list[str] | None = None) -> int:
         assert out_md_path is not None
         out_md_path.parent.mkdir(parents=True, exist_ok=True)
         out_md_path.write_text(_render_markdown(payload), encoding="utf-8", newline="\n")
-
-    if bool(args.recommendation_only):
-        compact = _compact_payload(payload)
-        if str(args.recommendation_format or "kv").strip().lower() == "json":
-            print(json.dumps(compact, ensure_ascii=False))
-        else:
-            print("\n".join(f"{key}={value}" for key, value in compact.items()))
-        return route_rc
 
     print(json.dumps(payload, ensure_ascii=False, indent=2))
     return route_rc

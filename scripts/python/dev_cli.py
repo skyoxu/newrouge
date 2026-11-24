@@ -1009,39 +1009,48 @@ def build_parser() -> argparse.ArgumentParser:
     p_dl.set_defaults(func=cmd_new_decision_log)
 
     # resume-task
-    p_rt = sub.add_parser("resume-task", help="build a task-scoped recovery summary from the latest pipeline artifacts")
+    p_rt = sub.add_parser(
+        "resume-task",
+        help="revalidate live B-route InputSet/readiness/eligibility and build a task-scoped recovery summary (--recommendation-only is strictly zero-write)",
+    )
     p_rt.add_argument("--repo-root", default=".")
     p_rt.add_argument("--task-id", default="")
     p_rt.add_argument("--run-id", default="")
     p_rt.add_argument("--latest", default="")
     p_rt.add_argument("--out-json", default="")
     p_rt.add_argument("--out-md", default="")
-    p_rt.add_argument("--recommendation-only", action="store_true")
+    p_rt.add_argument("--recommendation-only", action="store_true", help="strictly read-only zero-write compact recommendation")
     p_rt.add_argument("--recommendation-format", default="", choices=["", "kv", "json"])
     p_rt.set_defaults(func=cmd_resume_task)
 
     # inspect-run
-    p_ir = sub.add_parser("inspect-run", help="inspect the latest local harness run and emit a stable recovery summary")
+    p_ir = sub.add_parser(
+        "inspect-run",
+        help="inspect the latest local harness run with read-only live B-route recovery validation (--recommendation-only is strictly zero-write)",
+    )
     p_ir.add_argument("--repo-root", default=".")
     p_ir.add_argument("--latest", default="")
     p_ir.add_argument("--kind", default="", choices=["", "pipeline", "local-hard-checks"])
     p_ir.add_argument("--task-id", default="")
     p_ir.add_argument("--run-id", default="")
     p_ir.add_argument("--out-json", default="")
-    p_ir.add_argument("--recommendation-only", action="store_true")
+    p_ir.add_argument("--recommendation-only", action="store_true", help="strictly read-only zero-write compact recommendation")
     p_ir.add_argument("--recommendation-format", default="", choices=["", "kv", "json"])
     p_ir.set_defaults(func=cmd_inspect_run)
 
     # chapter6-route
-    p_c6 = sub.add_parser("chapter6-route", help="route Chapter 6 recovery decisions through the artifact-aware entrypoint")
+    p_c6 = sub.add_parser(
+        "chapter6-route",
+        help="revalidate live B-route InputSet/readiness/obligations/eligibility and route Chapter 6 recovery (--recommendation-only is strictly zero-write)",
+    )
     p_c6.add_argument("--repo-root", default=".")
     p_c6.add_argument("--task-id", default="")
     p_c6.add_argument("--run-id", default="")
     p_c6.add_argument("--latest", default="")
-    p_c6.add_argument("--record-residual", action="store_true")
+    p_c6.add_argument("--record-residual", action="store_true", help="record deferrable findings to docs/technical-debt.md (suppressed with --recommendation-only)")
     p_c6.add_argument("--out-json", default="")
     p_c6.add_argument("--out-md", default="")
-    p_c6.add_argument("--recommendation-only", action="store_true")
+    p_c6.add_argument("--recommendation-only", action="store_true", help="strictly read-only zero-write compact route")
     p_c6.add_argument("--recommendation-format", default="", choices=["", "kv", "json"])
     p_c6.set_defaults(func=cmd_chapter6_route)
 

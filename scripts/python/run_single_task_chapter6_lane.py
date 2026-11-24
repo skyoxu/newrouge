@@ -335,8 +335,8 @@ def _evaluate_route_state(route_payload: dict[str, Any] | None, *, allow_needs_f
     stop_reason = ""
     needs_fix = False
 
-    if not execution_allowed or blocked_by == "chapter5_readiness":
-        stop_reason = "chapter5_readiness"
+    if not execution_allowed or blocked_by in {"chapter5_readiness", "b_route_chapter6_gate", "b_route_chapter6_recovery"} or lane == "blocked-by-b-route-gate":
+        stop_reason = blocked_by or "b_route_chapter6_gate"
     elif has_recovery_signal:
         if blocked_by == "artifact_integrity" or latest_reason == "planned_only_incomplete" or latest_run_type == "planned-only":
             stop_reason = "artifact-integrity"
@@ -966,6 +966,55 @@ def _main_under_gate(
     gate_handle: ch6_gate.Chapter6ExecutionHandle | None,
 ) -> int:
     gate_result = gate_handle.gate_result if gate_handle is not None else None
+    if gate_handle is not None and not gate_handle.legacy_a_passthrough:
+        import _b_route_chapter6_recovery as _ch6_recovery
+
+        rec_check = _ch6_recovery.evaluate_chapter6_recovery(
+            _repo_root(),
+            task_id,
+            operation="chapter6_lane",
+            recommendation_only=False,
+            consumer="run_single_task_chapter6_lane",
+            enforce_durable_stop_loss=not bool(args.self_check),
+            current_run_dir=out_dir,
+        )
+        if not rec_check.get("ok"):
+            reason_code = str(rec_check.get("reason_code") or "conflict")
+            return_stage = str(rec_check.get("return_stage") or "5")
+            is_stop_loss = str(rec_check.get("reason") or "").startswith("durable_stop_loss:")
+            payload = {
+                "cmd": "run-single-task-chapter6",
+                "task_id": task_id,
+                "status": "blocked",
+                "blocked_by": (
+                    str(rec_check.get("stop_loss_blocked_by") or "rerun_guard")
+                    if is_stop_loss
+                    else "b_route_chapter6_recovery"
+                ),
+                "stop_reason": (
+                    str(rec_check.get("reason") or "durable_stop_loss")
+                    if is_stop_loss
+                    else f"b_route_chapter6_recovery:{reason_code}:return_stage={return_stage}"
+                ),
+                "reason_code": reason_code,
+                "return_stage": return_stage,
+                "resume_ref": rec_check.get("resume_ref"),
+                "b_route_recovery": rec_check,
+                "runtime_verified": False,
+                "default_b_enabled": False,
+                "steps": [],
+                "out_dir": str(out_dir).replace("\\", "/"),
+            }
+            _write_json(out_dir / "summary.json", payload)
+            print(f"SINGLE_TASK_CHAPTER6 status=blocked task={task_id} stop={payload['stop_reason']}")
+            return 1 if is_stop_loss else 2
+        if not bool(args.self_check):
+            _ch6_recovery.write_recovery_input_set(
+                _repo_root(),
+                out_dir,
+                rec_check,
+                input_set_snapshot=gate_handle.input_set_snapshot,
+            )
     handoff = validate_handoff(args.frozen_context, args.impact_report, args.revision, repo_root=_repo_root(), consumer="chapter6", task_id=task_id, binding_evidence=args.binding_evidence)
     if not handoff.ok:
         payload = {"cmd": "run-single-task-chapter6", "task_id": task_id, "status": "fail", "stop_reason": handoff.code, "handoff": {"code": handoff.code, "reason": handoff.reason}, "b_route_gate": gate_result, "runtime_verified": False, "default_b_enabled": False, "steps": [], "out_dir": str(out_dir).replace("\\", "/")}

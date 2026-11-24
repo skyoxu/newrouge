@@ -138,10 +138,11 @@ class Chapter6RouteTests(unittest.TestCase):
         }
 
         with (
+            tempfile.TemporaryDirectory() as tmp_dir,
             mock.patch.object(chapter6_route, "build_resume_payload", return_value=(1, payload)),
             mock.patch.object(chapter6_route, "_derive_change_scope", return_value={"changed_paths": ["README.md"]}),
         ):
-            _, route = chapter6_route.route_chapter6(repo_root=REPO_ROOT, task_id="15")
+            _, route = chapter6_route.route_chapter6(repo_root=Path(tmp_dir), task_id="15")
 
         self.assertEqual("inspect-first", route["preferred_lane"])
         self.assertFalse(route["six_eight_worthwhile"])
@@ -168,8 +169,11 @@ class Chapter6RouteTests(unittest.TestCase):
             },
         }
 
-        with mock.patch.object(chapter6_route, "build_resume_payload", return_value=(1, payload)):
-            _, route = chapter6_route.route_chapter6(repo_root=REPO_ROOT, task_id="15")
+        with (
+            tempfile.TemporaryDirectory() as tmp_dir,
+            mock.patch.object(chapter6_route, "build_resume_payload", return_value=(1, payload)),
+        ):
+            _, route = chapter6_route.route_chapter6(repo_root=Path(tmp_dir), task_id="15")
 
         self.assertEqual("repo-noise-stop", route["preferred_lane"])
         self.assertEqual("repo-noise", route["repo_noise_classification"])
@@ -190,8 +194,11 @@ class Chapter6RouteTests(unittest.TestCase):
             },
         }
 
-        with mock.patch.object(chapter6_route, "build_resume_payload", return_value=(1, payload)):
-            _, route = chapter6_route.route_chapter6(repo_root=REPO_ROOT, task_id="15")
+        with (
+            tempfile.TemporaryDirectory() as tmp_dir,
+            mock.patch.object(chapter6_route, "build_resume_payload", return_value=(1, payload)),
+        ):
+            _, route = chapter6_route.route_chapter6(repo_root=Path(tmp_dir), task_id="15")
 
         self.assertEqual("repo-noise-stop", route["preferred_lane"])
         self.assertEqual(
@@ -221,8 +228,11 @@ class Chapter6RouteTests(unittest.TestCase):
             },
         }
 
-        with mock.patch.object(chapter6_route, "build_resume_payload", return_value=(1, payload)):
-            _, route = chapter6_route.route_chapter6(repo_root=REPO_ROOT, task_id="15")
+        with (
+            tempfile.TemporaryDirectory() as tmp_dir,
+            mock.patch.object(chapter6_route, "build_resume_payload", return_value=(1, payload)),
+        ):
+            _, route = chapter6_route.route_chapter6(repo_root=Path(tmp_dir), task_id="15")
 
         self.assertEqual("repo-noise-stop", route["preferred_lane"])
         self.assertEqual(
@@ -249,8 +259,11 @@ class Chapter6RouteTests(unittest.TestCase):
             },
         }
 
-        with mock.patch.object(chapter6_route, "build_resume_payload", return_value=(1, payload)):
-            _, route = chapter6_route.route_chapter6(repo_root=REPO_ROOT, task_id="15")
+        with (
+            tempfile.TemporaryDirectory() as tmp_dir,
+            mock.patch.object(chapter6_route, "build_resume_payload", return_value=(1, payload)),
+        ):
+            _, route = chapter6_route.route_chapter6(repo_root=Path(tmp_dir), task_id="15")
 
         self.assertEqual("fix-deterministic", route["preferred_lane"])
         self.assertEqual("task-issue", route["repo_noise_classification"])
@@ -277,8 +290,11 @@ class Chapter6RouteTests(unittest.TestCase):
             },
         }
 
-        with mock.patch.object(chapter6_route, "build_resume_payload", return_value=(1, payload)):
-            _, route = chapter6_route.route_chapter6(repo_root=REPO_ROOT, task_id="15")
+        with (
+            tempfile.TemporaryDirectory() as tmp_dir,
+            mock.patch.object(chapter6_route, "build_resume_payload", return_value=(1, payload)),
+        ):
+            _, route = chapter6_route.route_chapter6(repo_root=Path(tmp_dir), task_id="15")
 
         self.assertEqual("inspect-first", route["preferred_lane"])
         self.assertFalse(route["full_67_recommended"])

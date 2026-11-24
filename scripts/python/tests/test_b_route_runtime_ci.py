@@ -35,7 +35,7 @@ class RuntimeCITests(unittest.TestCase):
                      'adoption_projection', 'adoption_r10_capture', 'adoption_r10_reader',
                      'adoption_r19_reader', 'adoption_review', 'operation_leases',
                      'operation_scope', 'public_context', 'qualified_public_context', 'task_preview',
-                     'task_compilation', 'task_resolver', 'chapter4_binding', 'input_set', 'stage5_obligations', 'chapter5_readiness', 'chapter6_gate'):
+                     'task_compilation', 'task_resolver', 'chapter4_binding', 'input_set', 'stage5_obligations', 'chapter5_readiness', 'chapter6_gate', 'chapter6_recovery'):
             selector = 'scripts.python.tests.test_b_route_' + name
             self.assertEqual(1, selected.count(selector))
             self.assertFalse(any(value.startswith(selector + '.') for value in selected))
@@ -225,6 +225,7 @@ class RuntimeCITests(unittest.TestCase):
         self.assertIn('timeout-minutes: 90', workflow)
         self.assertIn("- name: Verify clean-clone published adoption read and tamper rejection", workflow)
         self.assertIn("empty stdout (rc={proc.returncode})", workflow)
+        self.assertIn("- 'scripts/python/_b_route_chapter6_recovery.py'", workflow)
         path_block = workflow.split('    paths:\n', 1)[1].split('  workflow_dispatch:', 1)[0]
         patterns = [line.strip()[3:-1] for line in path_block.splitlines()
             if line.strip().startswith("- '") and line.strip().endswith("'")]
@@ -252,6 +253,11 @@ class RuntimeCITests(unittest.TestCase):
             'scripts/python/bind_b_route_stage5_obligations.py',
             'scripts/python/reconcile_b_route_chapter5_readiness.py',
             'scripts/python/check_b_route_chapter6_gate.py',
+            'scripts/python/_b_route_chapter6_recovery.py',
+            'scripts/python/resume_task.py',
+            'scripts/python/chapter6_route.py',
+            'scripts/python/inspect_run.py',
+            'scripts/python/_chapter6_recovery_common.py',
             'scripts/python/run_single_task_chapter6_lane.py',
             'scripts/python/update_task_test_refs_from_acceptance_refs.py',
             'scripts/python/apply_chapter7_status_patch.py',

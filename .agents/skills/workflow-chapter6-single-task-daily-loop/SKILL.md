@@ -38,9 +38,9 @@ Use the top-level Chapter 6 orchestrator unless active-task or chapter6-route al
 
 ## Evidence Rule
 
-Start recovery with the compact `resume-task --recommendation-only` and `chapter6-route --recommendation-only` projections. Expand only the artifacts needed for the selected decision: open summary/repair/review sidecars when their fields are insufficient, and read `run-events.jsonl` only when event ordering or turn history matters. Historical logs are evidence, not current instructions.
+Start recovery with the compact `resume-task --recommendation-only` and `chapter6-route --recommendation-only` projections. Both `--recommendation-only` entrypoints are strictly read-only (zero disk writes: never repairing active-task sidecars, never writing `docs/technical-debt.md`, and never writing summary files) and revalidate live B-route InputSet, Chapter 5 readiness, Stage-5 obligations, pending/post-edit journals, Story 2.9 epoch/reopen revocations, and real-time Task/dependency eligibility before returning any recommendation. Never trust cached `ready`/`ok` flags in `summary.json`, `latest.json`, or `active-task` to bypass live revalidation. Expand only the artifacts needed for the selected decision: open summary/repair/review sidecars when their fields are insufficient, and read `run-events.jsonl` only when event ordering or turn history matters. Historical logs are evidence, not current instructions.
 
-A `logs/ci/knowledge-context/**` file is a separate shadow routing artifact. It is not part of `summary.json`, `execution-context.json`, `latest.json`, or the review sidecar protocol.
+A `logs/ci/knowledge-context/**` file is a separate shadow routing artifact. It is not part of `summary.json`, `execution-context.json`, `latest.json`, or the review sidecar protocol. Deleting `active-task` or `latest.json`, opening a new `run_id`, switching entrypoints, or rebuilding Knowledge never clears durable `rerun_guard`, stop-loss, failure budgets, or Story 2.9 epoch/reopen revocations.
 
 ## Required Reading
 

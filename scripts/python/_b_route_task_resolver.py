@@ -356,6 +356,73 @@ def _check_adr_0040_not_enabled(
     )
 
 
+def _snapshot_legacy_journal_tree(
+    root: Path,
+    observations: preflight.Observations | None,
+) -> tuple[dict[str, list[str]], dict[str, bool]]:
+    """Snapshot ONLY top-level entries and apply-journal presence under legacy planning dirs."""
+    top_entries: dict[str, list[str]] = {}
+    journal_presence: dict[str, bool] = {}
+    for legacy_dir in ("logs/ci/capability-planning", "logs/ci/mvg-planning"):
+        try:
+            cand = inventory.safe_input(root, legacy_dir, allow_logs=True)
+        except (ValueError, OSError):
+            _fail(
+                codec.ReasonCode.UNSAFE_PATH,
+                stage=codec.Stage.PATH,
+                expected=f"safe contained legacy directory {legacy_dir}",
+                actual=legacy_dir,
+                resume_ref=legacy_dir,
+            )
+        if not cand.exists():
+            top_entries[legacy_dir] = []
+            continue
+        try:
+            inventory.no_reparse(cand)
+        except (ValueError, OSError):
+            _fail(
+                codec.ReasonCode.UNSAFE_PATH,
+                stage=codec.Stage.PATH,
+                expected=f"non-reparse directory {legacy_dir}",
+                actual=legacy_dir,
+                resume_ref=legacy_dir,
+            )
+        if not cand.is_dir():
+            _fail(
+                codec.ReasonCode.INVALID_TYPE,
+                stage=codec.Stage.PATH,
+                expected=f"directory at {legacy_dir}",
+                actual="non-directory",
+                resume_ref=legacy_dir,
+            )
+        names = sorted(p.name for p in cand.iterdir())
+        top_entries[legacy_dir] = names
+        for name in names:
+            child = cand / name
+            try:
+                inventory.no_reparse(child)
+            except (ValueError, OSError):
+                _fail(
+                    codec.ReasonCode.UNSAFE_PATH,
+                    stage=codec.Stage.PATH,
+                    expected=f"non-reparse entry under {legacy_dir}",
+                    actual=f"{legacy_dir}/{name}",
+                    resume_ref=f"{legacy_dir}/{name}",
+                )
+            if child.is_dir():
+                j_rel = f"{legacy_dir}/{name}/apply-journal.json"
+                j_exists = (child / "apply-journal.json").exists()
+                journal_presence[j_rel] = j_exists
+                if observations is not None:
+                    j_raw = observations.read(j_rel, optional=True)
+                    if j_raw is not None:
+                        observations.read(f"{legacy_dir}/{name}/run.json", optional=True)
+                        observations.read(f"{legacy_dir}/{name}/apply-summary.json", optional=True)
+            elif observations is not None:
+                observations.read(f"{legacy_dir}/{name}", optional=True)
+    return top_entries, journal_presence
+
+
 def _inspect_pending(
     root: Path,
     observations: preflight.Observations,
@@ -367,9 +434,9 @@ def _inspect_pending(
     """Read-only zero-write pending inspection across legacy and B-route operations."""
     # 1. Legacy pending marker and unfinished legacy apply journals (no scope_id).
     observations.read(CAP_PENDING, optional=True)
-    for legacy_dir in ("logs/ci/capability-planning", "logs/ci/mvg-planning"):
-        for rel in observations.scan(legacy_dir):
-            observations.read(rel, optional=True)
+    legacy_top, legacy_journals = _snapshot_legacy_journal_tree(root, observations)
+    graph_bytes_holder["legacy_top"] = legacy_top
+    graph_bytes_holder["legacy_journals"] = legacy_journals
     op_scope._legacy_pending(root, None)
     pending_summary["legacy_pending_clear"] = True
 
@@ -1625,7 +1692,7 @@ def resolve_task_origin(
     validated_op: str | None = None
     result = _base_result(None, None)
     observations: preflight.Observations | None = None
-    graph_bytes_holder: dict[str, Any] = {"bytes": None}
+    graph_bytes_holder: dict[str, Any] = {"bytes": None, "legacy_top": None}
 
     try:
         root_path = _validate_root(Path(root))
@@ -1970,6 +2037,35 @@ def resolve_task_origin(
         before_reread()
     if observations is not None:
         drift = observations.finish()
+        initial_legacy_top = graph_bytes_holder.get("legacy_top")
+        initial_legacy_journals = graph_bytes_holder.get("legacy_journals")
+        if initial_legacy_top is not None:
+            try:
+                final_legacy_top, final_legacy_journals = _snapshot_legacy_journal_tree(observations.root, None)
+                if final_legacy_top != initial_legacy_top or final_legacy_journals != initial_legacy_journals:
+                    drift.append(
+                        _diag(
+                            codec.ReasonCode.FILE_CHANGED,
+                            stage=codec.Stage.BUNDLE,
+                            entity_id=str(validated_tid) if validated_tid is not None else None,
+                            expected="unchanged legacy planning top-level entries and apply-journal presence during read-only resolution",
+                            actual="legacy planning directory or apply-journal changed during resolution",
+                            resume_ref="logs/ci/capability-planning",
+                        )
+                    )
+            except codec.CodecError as error:
+                drift.append(error.diagnostic.to_dict())
+            except (OSError, ValueError, RuntimeError) as error:
+                drift.append(
+                    _diag(
+                        codec.ReasonCode.FILE_CHANGED,
+                        stage=codec.Stage.BUNDLE,
+                        entity_id=str(validated_tid) if validated_tid is not None else None,
+                        expected="stable legacy planning directory during resolution",
+                        actual=type(error).__name__,
+                        resume_ref="logs/ci/capability-planning",
+                    )
+                )
         initial_graph_bytes = graph_bytes_holder["bytes"]
         if initial_graph_bytes is not None:
             try:

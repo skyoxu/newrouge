@@ -18,6 +18,7 @@ if str(REPO_ROOT / "scripts" / "sc") not in sys.path:
 from inspect_run import inspect_run_artifacts  # noqa: E402
 from validate_recovery_docs import extract_repo_paths, is_readme, is_template, parse_fields  # noqa: E402
 from _active_task_sidecar import write_active_task_sidecar  # noqa: E402
+import _b_route_chapter6_recovery as _ch6_recovery  # noqa: E402
 from _chapter6_recovery_common import (  # noqa: E402
     compact_recommendation_fields,
     candidate_commands as _shared_candidate_commands,
@@ -411,21 +412,125 @@ def _forbidden_commands(
     )
 
 
+def _durable_fallback_inspection(repo_root: Path, task_id: str, durable_signals: dict[str, Any]) -> tuple[int, dict[str, Any]]:
+    latest_dir_rel = str(durable_signals.get("latest_durable_run_dir") or "").strip()
+    run_dir = _resolve_path(repo_root, latest_dir_rel) if latest_dir_rel else None
+    summary = _read_json(run_dir / "summary.json") if (run_dir and (run_dir / "summary.json").is_file()) else {}
+    ctx = _read_json(run_dir / "execution-context.json") if (run_dir and (run_dir / "execution-context.json").is_file()) else {}
+    marathon = _read_json(run_dir / "marathon-state.json") if (run_dir and (run_dir / "marathon-state.json").is_file()) else {}
+    run_id = str(summary.get("run_id") or ctx.get("run_id") or marathon.get("run_id") or durable_signals.get("latest_durable_run_id") or "").strip()
+    status = str(summary.get("status") or marathon.get("status") or "fail").strip().lower()
+    reason = str(summary.get("reason") or marathon.get("stop_reason") or durable_signals.get("blocking_reason") or "").strip()
+    failed_step = str(summary.get("failed_step") or ctx.get("failed_step") or "").strip()
+    blocked_by = str(durable_signals.get("blocked_by") or "").strip()
+    failure_code = "ok" if status == "ok" and not blocked_by else ("step-failed" if failed_step else "artifact-missing")
+    hints = {
+        "next_action": "inspect" if blocked_by else ("continue" if failure_code == "ok" else "rerun"),
+        "can_skip_6_7": False,
+        "can_go_to_6_8": False,
+        "blocked_by": blocked_by,
+        "rerun_forbidden": bool(blocked_by),
+        "rerun_override_flag": "",
+    }
+    inspection = {
+        "kind": "pipeline",
+        "status": "ok" if failure_code == "ok" else "fail",
+        "task_id": task_id,
+        "run_id": run_id,
+        "failed_step": failed_step,
+        "failure": {
+            "code": failure_code,
+            "message": f"Recovered durable run directory after latest.json removal: {latest_dir_rel}",
+            "severity": "none" if failure_code == "ok" else "hard",
+        },
+        "latest_summary_signals": {
+            "reason": reason,
+            "run_type": str(summary.get("run_type") or "").strip(),
+            "reuse_mode": str(summary.get("reuse_mode") or "none").strip(),
+            "artifact_integrity_kind": "",
+            "diagnostics_keys": sorted(str(k) for k in (summary.get("diagnostics") or {}).keys()) if isinstance(summary.get("diagnostics"), dict) else [],
+        },
+        "chapter6_hints": hints,
+        "paths": {
+            "latest": "",
+            "out_dir": latest_dir_rel,
+            "summary": f"{latest_dir_rel}/summary.json" if (run_dir and (run_dir / "summary.json").is_file()) else "",
+            "execution_context": f"{latest_dir_rel}/execution-context.json" if (run_dir and (run_dir / "execution-context.json").is_file()) else "",
+        },
+    }
+    return (0 if failure_code == "ok" else 1), inspection
+
+
 def build_resume_payload(
     *,
     repo_root: Path,
     task_id: str,
     latest: str,
     run_id: str,
+    recommendation_only: bool = False,
 ) -> tuple[int, dict[str, Any]]:
     active_task = _load_active_task(repo_root, task_id)
-    inspection_rc, inspection = inspect_run_artifacts(
-        repo_root=repo_root,
-        latest=latest,
-        kind="pipeline",
-        task_id=task_id,
-        run_id=run_id,
-    )
+    recovered_from_durable = False
+    try:
+        inspection_rc, inspection = inspect_run_artifacts(
+            repo_root=repo_root,
+            latest=latest,
+            kind="pipeline",
+            task_id=task_id,
+            run_id=run_id,
+        )
+    except FileNotFoundError:
+        durable_pre = _ch6_recovery.scan_durable_recovery_signals(repo_root, task_id) if task_id else {}
+        if int(durable_pre.get("durable_run_count") or 0) > 0:
+            inspection_rc, inspection = _durable_fallback_inspection(repo_root, task_id, durable_pre)
+            recovered_from_durable = True
+        elif task_id:
+            rec_pre = _ch6_recovery.evaluate_chapter6_recovery(
+                repo_root,
+                task_id,
+                operation="resume",
+                recommendation_only=recommendation_only,
+                consumer="resume_task",
+            )
+            if not rec_pre.get("legacy_a_passthrough") and not rec_pre.get("ok"):
+                cmds = _candidate_commands(task_id, latest)
+                forb = [c for c in (cmds.get("resume"), cmds.get("fork"), cmds.get("rerun"), cmds.get("needs_fix_fast")) if c]
+                return 2, {
+                    "task_id": task_id,
+                    "run_id": run_id,
+                    "recommended_action": "blocked-by-b-route-gate",
+                    "recommended_action_why": _ch6_recovery.format_recovery_block_message("resume-task", rec_pre),
+                    "decision_basis": "b-route-chapter6-recovery",
+                    "blocking_signals": [f"b_route_recovery.reason_code={rec_pre.get('reason_code')}", f"b_route_recovery.return_stage={rec_pre.get('return_stage')}"],
+                    "recommendation_source": "b-route-chapter6-recovery",
+                    "recommendation_reason": str(rec_pre.get("reason") or "blocked"),
+                    "candidate_commands": cmds,
+                    "recommended_command": "",
+                    "forbidden_commands": forb,
+                    "execution_allowed": False,
+                    "blocked_by": "b_route_chapter6_gate",
+                    "reason_code": rec_pre.get("reason_code"),
+                    "return_stage": rec_pre.get("return_stage"),
+                    "resume_ref": rec_pre.get("resume_ref"),
+                    "b_route_recovery": rec_pre,
+                    "runtime_verified": False,
+                    "default_b_enabled": False,
+                    "inspection_exit_code": 2,
+                    "inspection": {"status": "blocked", "failure": {"code": "b-route-gate-blocked", "message": str(rec_pre.get("reason") or "blocked")}, "paths": {}},
+                    "approval": {},
+                    "recent_failure_summary": {},
+                    "latest_summary_signals": {"reason": str(rec_pre.get("reason") or "blocked"), "run_type": "", "reuse_mode": "", "artifact_integrity_kind": "", "diagnostics_keys": []},
+                    "chapter6_hints": {"next_action": "blocked-by-b-route-gate", "can_skip_6_7": False, "can_go_to_6_8": False, "blocked_by": "b_route_chapter6_gate", "rerun_forbidden": True, "rerun_override_flag": ""},
+                    "related_execution_plans": [],
+                    "latest_execution_plan": "",
+                    "related_decision_logs": [],
+                    "latest_decision_log": "",
+                    "agent_review": {"path": "", "review_verdict": "", "recommended_action": "", "summary": ""},
+                    "active_task": _normalized_active_task_snapshot(active_task, inspection_latest=""),
+                }
+            raise
+        else:
+            raise
     resolved_task_id = str(inspection.get("task_id") or task_id or "").strip()
     resolved_run_id = str(inspection.get("run_id") or run_id or "").strip()
     latest_rel = str(((inspection.get("paths") or {}).get("latest")) or "").strip()
@@ -578,6 +683,79 @@ def build_resume_payload(
         "active_task": active_task_snapshot,
         **bottleneck_fields,
     }
+    if resolved_task_id:
+        run_dir_path = _resolve_path(repo_root, out_dir_rel) if out_dir_rel else None
+        rec_eval = _ch6_recovery.evaluate_chapter6_recovery(
+            repo_root,
+            resolved_task_id,
+            run_dir=run_dir_path,
+            operation="resume",
+            recommendation_only=recommendation_only,
+            consumer="resume_task",
+        )
+        if not rec_eval.get("legacy_a_passthrough"):
+            payload["b_route_recovery"] = rec_eval
+            payload["runtime_verified"] = False
+            payload["default_b_enabled"] = False
+            if not rec_eval.get("ok"):
+                forb_cmds = list(payload.get("forbidden_commands") or [])
+                for k in ("resume", "fork", "rerun", "needs_fix_fast"):
+                    cval = str(candidate_commands.get(k) or "").strip()
+                    if cval and cval not in forb_cmds:
+                        forb_cmds.append(cval)
+                payload["recommended_action"] = "blocked-by-b-route-gate"
+                payload["recommended_command"] = ""
+                payload["forbidden_commands"] = forb_cmds
+                payload["execution_allowed"] = False
+                payload["blocked_by"] = "b_route_chapter6_gate"
+                payload["reason_code"] = rec_eval.get("reason_code")
+                payload["return_stage"] = rec_eval.get("return_stage")
+                payload["resume_ref"] = rec_eval.get("resume_ref")
+                payload["recommended_action_why"] = _ch6_recovery.format_recovery_block_message("resume-task", rec_eval)
+                payload["decision_basis"] = "b-route-chapter6-recovery"
+                payload["recommendation_source"] = "b-route-chapter6-recovery"
+                payload["recommendation_reason"] = str(rec_eval.get("reason") or "blocked")
+                payload["blocking_signals"] = list(payload.get("blocking_signals") or []) + [
+                    f"b_route_recovery.reason_code={rec_eval.get('reason_code')}",
+                    f"b_route_recovery.return_stage={rec_eval.get('return_stage')}",
+                ]
+                hints_copy = dict(payload.get("chapter6_hints") or {})
+                hints_copy["next_action"] = "blocked-by-b-route-gate"
+                hints_copy["blocked_by"] = "b_route_chapter6_gate"
+                hints_copy["can_skip_6_7"] = False
+                hints_copy["can_go_to_6_8"] = False
+                hints_copy["rerun_forbidden"] = True
+                payload["chapter6_hints"] = hints_copy
+                inspection_rc = 2
+            elif rec_eval.get("stop_loss_active"):
+                sl_blocked = str(rec_eval.get("stop_loss_blocked_by") or "rerun_guard")
+                hints_copy = dict(payload.get("chapter6_hints") or {})
+                if not str(hints_copy.get("blocked_by") or "").strip():
+                    hints_copy["blocked_by"] = sl_blocked
+                    hints_copy["rerun_forbidden"] = True
+                    if sl_blocked == "llm_retry_stop_loss":
+                        hints_copy["next_action"] = "needs-fix-fast"
+                        hints_copy["can_go_to_6_8"] = True
+                        hints_copy["can_skip_6_7"] = True
+                    elif sl_blocked in {"sc_test_retry_stop_loss", "waste_signals"}:
+                        hints_copy["next_action"] = "fix-and-resume"
+                    else:
+                        hints_copy["next_action"] = "inspect"
+                    payload["chapter6_hints"] = hints_copy
+                payload["blocking_signals"] = list(payload.get("blocking_signals") or []) + [
+                    f"durable_stop_loss.blocked_by={sl_blocked}",
+                    f"durable_stop_loss.reason={rec_eval.get('stop_loss_reason')}",
+                ]
+                rerun_cmd = str(candidate_commands.get("rerun") or "").strip()
+                if rerun_cmd and rerun_cmd not in payload["forbidden_commands"]:
+                    payload["forbidden_commands"] = list(payload["forbidden_commands"]) + [rerun_cmd]
+        elif recovered_from_durable and rec_eval.get("stop_loss_active"):
+            sl_blocked = str(rec_eval.get("stop_loss_blocked_by") or "rerun_guard")
+            hints_copy = dict(payload.get("chapter6_hints") or {})
+            if not str(hints_copy.get("blocked_by") or "").strip():
+                hints_copy["blocked_by"] = sl_blocked
+                hints_copy["rerun_forbidden"] = True
+                payload["chapter6_hints"] = hints_copy
     return inspection_rc, payload
 
 
@@ -739,17 +917,22 @@ def _compact_recommendation_payload(payload: dict[str, Any]) -> dict[str, str]:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Build a task-scoped recovery summary from the latest pipeline artifacts.")
+    parser = argparse.ArgumentParser(
+        description=(
+            "Build a task-scoped recovery summary after live B-route InputSet, Chapter 5 readiness, "
+            "Stage-5 obligations, and Task/dependency eligibility revalidation."
+        )
+    )
     parser.add_argument("--repo-root", default=str(REPO_ROOT))
     parser.add_argument("--task-id", default="", help="Taskmaster task id.")
     parser.add_argument("--run-id", default="", help="Optional run id filter.")
     parser.add_argument("--latest", default="", help="Optional latest.json path.")
-    parser.add_argument("--out-json", default="", help="Optional output JSON path.")
-    parser.add_argument("--out-md", default="", help="Optional output Markdown path.")
+    parser.add_argument("--out-json", default="", help="Optional output JSON path (ignored with --recommendation-only).")
+    parser.add_argument("--out-md", default="", help="Optional output Markdown path (ignored with --recommendation-only).")
     parser.add_argument(
         "--recommendation-only",
         action="store_true",
-        help="Print a compact recovery recommendation without writing default summary files.",
+        help="Strictly read-only zero-write mode: print a compact recovery recommendation without writing active-task or summary files.",
     )
     parser.add_argument(
         "--recommendation-format",
@@ -768,16 +951,28 @@ def main(argv: list[str] | None = None) -> int:
         print("ERROR: pass --task-id or --latest", file=sys.stderr)
         return 2
     root = Path(str(args.repo_root or REPO_ROOT)).resolve()
+    rec_only = bool(args.recommendation_only)
     try:
-        _, payload = build_resume_payload(
+        build_rc, payload = build_resume_payload(
             repo_root=root,
             task_id=task_id,
             latest=latest,
             run_id=str(args.run_id or "").strip(),
+            recommendation_only=rec_only,
         )
     except Exception as exc:
         print(f"ERROR: failed to build task resume summary: {exc}", file=sys.stderr)
         return 2
+
+    is_b_blocked = str(payload.get("recommended_action") or "").strip() == "blocked-by-b-route-gate"
+    if rec_only:
+        # Strictly read-only zero-write mode: NEVER repair active-task or write summary files.
+        if str(args.recommendation_format or "kv").strip().lower() == "json":
+            print(json.dumps(_compact_recommendation_payload(payload), ensure_ascii=False))
+        else:
+            print(_render_recommendation_only(payload), end="")
+        return 2 if is_b_blocked else 0
+
     active_task = payload.get("active_task") if isinstance(payload.get("active_task"), dict) else {}
     repair = _repair_active_task_latest_pointer(
         root,
@@ -791,23 +986,6 @@ def main(argv: list[str] | None = None) -> int:
         active_task["latest_json_repaired"] = True
         payload["active_task"] = active_task
 
-    if bool(args.recommendation_only):
-        explicit_out_json = str(args.out_json or "").strip()
-        explicit_out_md = str(args.out_md or "").strip()
-        if explicit_out_json:
-            out_json = _resolve_path(root, explicit_out_json)
-            out_json.parent.mkdir(parents=True, exist_ok=True)
-            out_json.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8", newline="\n")
-        if explicit_out_md:
-            out_md = _resolve_path(root, explicit_out_md)
-            out_md.parent.mkdir(parents=True, exist_ok=True)
-            out_md.write_text(_render_markdown(payload), encoding="utf-8", newline="\n")
-        if str(args.recommendation_format or "kv").strip().lower() == "json":
-            print(json.dumps(_compact_recommendation_payload(payload), ensure_ascii=False))
-        else:
-            print(_render_recommendation_only(payload), end="")
-        return 0
-
     out_json, out_md = _default_output_paths(root, str(payload.get("task_id") or task_id or "unknown"))
     if str(args.out_json or "").strip():
         out_json = _resolve_path(root, str(args.out_json or "").strip())
@@ -817,8 +995,10 @@ def main(argv: list[str] | None = None) -> int:
     out_md.parent.mkdir(parents=True, exist_ok=True)
     out_json.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8", newline="\n")
     out_md.write_text(_render_markdown(payload), encoding="utf-8", newline="\n")
-    print(f"TASK_RESUME status=ok out_json={_repo_rel(root, out_json)} out_md={_repo_rel(root, out_md)}")
-    return 0
+    is_b_blocked = str(payload.get("recommended_action") or "").strip() == "blocked-by-b-route-gate"
+    status_label = "blocked" if is_b_blocked else "ok"
+    print(f"TASK_RESUME status={status_label} out_json={_repo_rel(root, out_json)} out_md={_repo_rel(root, out_md)}")
+    return 2 if is_b_blocked else 0
 
 
 if __name__ == "__main__":

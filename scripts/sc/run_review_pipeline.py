@@ -1904,6 +1904,7 @@ def main() -> int:
 
     requested_run_id = str(args.run_id or "").strip() or uuid.uuid4().hex
     run_id = requested_run_id
+    source_out_dir: Path | None = None
     source_execution_context: dict[str, Any] | None = None
     source_handoff_identity: dict[str, Any] | None = None
 
@@ -1920,6 +1921,21 @@ def main() -> int:
                     source_handoff_identity = None
             source_execution_context = _read_execution_context(out_dir)
             if args.resume:
+                if not args.abort:
+                    import _b_route_chapter6_recovery as _ch6_recovery
+
+                    resume_rec = _ch6_recovery.evaluate_chapter6_recovery(
+                        repo_root(),
+                        task_id,
+                        run_dir=out_dir,
+                        operation="resume",
+                        recommendation_only=False,
+                        consumer="run_review_pipeline",
+                        enforce_durable_stop_loss=not bool(args.allow_full_rerun or args.allow_repeat_deterministic_failures),
+                    )
+                    if not resume_rec.get("legacy_a_passthrough") and not resume_rec.get("ok"):
+                        print(_ch6_recovery.format_recovery_block_message("sc-review-pipeline", resume_rec))
+                        return 12
                 blocked, message = _enforce_approval_contract(
                     action="resume",
                     source_out_dir=out_dir,
@@ -1932,6 +1948,21 @@ def main() -> int:
             requested_run_id = str(summary.get("requested_run_id") or run_id).strip() or run_id
         elif args.fork:
             source_out_dir, source_summary, source_state = _load_source_run(task_id, (args.fork_from_run_id or "").strip() or None)
+            if not args.abort:
+                import _b_route_chapter6_recovery as _ch6_recovery
+
+                fork_rec = _ch6_recovery.evaluate_chapter6_recovery(
+                    repo_root(),
+                    task_id,
+                    run_dir=source_out_dir,
+                    operation="fork",
+                    recommendation_only=False,
+                    consumer="run_review_pipeline",
+                    enforce_durable_stop_loss=not bool(args.allow_full_rerun or args.allow_repeat_deterministic_failures),
+                )
+                if not fork_rec.get("legacy_a_passthrough") and not fork_rec.get("ok"):
+                    print(_ch6_recovery.format_recovery_block_message("sc-review-pipeline", fork_rec))
+                    return 12
             source_handoff_path = source_out_dir / "impact-analysis-handoff.json"
             if source_handoff_path.exists():
                 try:
@@ -1975,6 +2006,24 @@ def main() -> int:
                 max_wall_time_sec=args.max_wall_time_sec,
             )
         else:
+            import _b_route_chapter6_recovery as _ch6_recovery
+
+            _allow_sl_override = bool(args.allow_full_rerun or args.allow_repeat_deterministic_failures)
+            fresh_rec = _ch6_recovery.evaluate_chapter6_recovery(
+                repo_root(),
+                task_id,
+                run_dir=None,
+                operation="implement",
+                recommendation_only=False,
+                consumer="run_review_pipeline",
+                enforce_durable_stop_loss=not _allow_sl_override,
+            )
+            if not fresh_rec.get("legacy_a_passthrough") and (
+                not fresh_rec.get("ok")
+                or (fresh_rec.get("stop_loss_active") and not _allow_sl_override)
+            ):
+                print(_ch6_recovery.format_recovery_block_message("sc-review-pipeline", fresh_rec))
+                return 12
             run_id, out_dir = _allocate_out_dir(
                 task_id,
                 requested_run_id,
@@ -2409,9 +2458,86 @@ def main() -> int:
             script_start_monotonic=script_start_monotonic,
         ),
     )
-    if not session.persist():
-        return 2
+    from contextlib import nullcontext
+    import _b_route_chapter6_recovery as _ch6_recovery
 
+    _b_route_recovery_active = bool(
+        b_route_gate_res is not None and not b_route_gate_res.get("legacy_a_passthrough")
+    )
+    _rec_baseline_dir = out_dir if args.resume else (source_out_dir if args.fork else None)
+    _rec_operation = "resume" if args.resume else ("fork" if args.fork else "implement")
+    _rec_enforce_sl = not bool(args.allow_full_rerun or args.allow_repeat_deterministic_failures)
+    _rec_cm = (
+        _ch6_recovery.guarded_chapter6_recovery(
+            repo_root(),
+            task_id,
+            run_dir=_rec_baseline_dir,
+            out_dir=out_dir,
+            operation=_rec_operation,
+            consumer="run_review_pipeline",
+            enforce_durable_stop_loss=_rec_enforce_sl,
+        )
+        if _b_route_recovery_active
+        else nullcontext(None)
+    )
+    try:
+        with _rec_cm as rec_handle:
+            if not session.persist():
+                return 2
+            return _execute_review_pipeline_under_recovery(
+                args=args,
+                session=session,
+                out_dir=out_dir,
+                task_id=task_id,
+                run_id=run_id,
+                current_turn_id=current_turn_id,
+                current_turn_seq=current_turn_seq,
+                delivery_profile=delivery_profile,
+                security_profile=security_profile,
+                acceptance_defaults=acceptance_defaults,
+                triplet=triplet,
+                llm_agents=llm_agents,
+                llm_timeout_sec=llm_timeout_sec,
+                llm_agent_timeout_sec=llm_agent_timeout_sec,
+                llm_agent_timeouts=llm_agent_timeouts,
+                llm_semantic_gate=llm_semantic_gate,
+                llm_strict=llm_strict,
+                llm_diff_mode=llm_diff_mode,
+                derived_llm_agent_timeout_overrides=derived_llm_agent_timeout_overrides,
+                current_git=current_git,
+                fix_through=fix_through,
+                rec_handle=rec_handle,
+            )
+    except _ch6_recovery.Chapter6RecoveryBlockedError as exc:
+        print(_ch6_recovery.format_recovery_block_message("sc-review-pipeline", exc.recovery_result))
+        return 12
+
+
+def _execute_review_pipeline_under_recovery(
+    *,
+    args: argparse.Namespace,
+    session: PipelineSession,
+    out_dir: Path,
+    task_id: str,
+    run_id: str,
+    current_turn_id: str,
+    current_turn_seq: int,
+    delivery_profile: str,
+    security_profile: str,
+    acceptance_defaults: dict[str, Any],
+    triplet: Any,
+    llm_agents: str,
+    llm_timeout_sec: int,
+    llm_agent_timeout_sec: int,
+    llm_agent_timeouts: str,
+    llm_semantic_gate: str,
+    llm_strict: bool,
+    llm_diff_mode: str,
+    derived_llm_agent_timeout_overrides: dict[str, Any],
+    current_git: dict[str, Any],
+    fix_through: str,
+    rec_handle: Any,
+) -> int:
     steps = build_pipeline_steps(
         args=args,
         task_id=task_id,
@@ -2637,17 +2763,8 @@ def main() -> int:
                     return 2 if session.schema_error_log.exists() else 1
                 print(f"SC_REVIEW_PIPELINE status={session.summary['status']} out={out_dir}")
                 return session.finish()
-    if b_route_gate_res is not None and not b_route_gate_res.get("legacy_a_passthrough"):
-        expected_digest = b_route_gate_res.get("input_set_digest")
-        recheck_preflight = _ch6_gate.evaluate_chapter6_gate(
-            repo_root(),
-            task_id,
-            expected_input_set_digest=expected_digest,
-            consumer="run_review_pipeline:before_acceptance_preflight",
-        )
-        if not recheck_preflight.get("ok"):
-            print(_ch6_gate.format_gate_block_message("sc-review-pipeline", recheck_preflight))
-            return 12
+    if rec_handle is not None:
+        rec_handle.revalidate_boundary("before_acceptance_preflight", file_write=True)
     preflight_rc = _run_acceptance_preflight(
         session=session,
         args=args,
@@ -2662,30 +2779,17 @@ def main() -> int:
     if preflight_rc is not None:
         print(f"SC_REVIEW_PIPELINE status={session.summary['status']} out={out_dir}")
         return preflight_rc
-    if b_route_gate_res is not None and not b_route_gate_res.get("legacy_a_passthrough"):
-        expected_digest = b_route_gate_res.get("input_set_digest")
-        recheck = _ch6_gate.evaluate_chapter6_gate(
-            repo_root(),
-            task_id,
-            expected_input_set_digest=expected_digest,
-            consumer="run_review_pipeline:before_execute_steps",
+    if rec_handle is not None:
+        rec_handle.revalidate_boundary(
+            "before_execute_steps",
+            model_invocation=not bool(args.skip_llm_review),
+            file_write=True,
         )
-        if not recheck.get("ok"):
-            print(_ch6_gate.format_gate_block_message("sc-review-pipeline", recheck))
-            return 12
     step_rc = session.execute_steps(steps, resume_or_fork=bool(args.resume or args.fork))
     if step_rc is not None:
         return step_rc
-    if b_route_gate_res is not None and not b_route_gate_res.get("legacy_a_passthrough"):
-        recheck_debt = _ch6_gate.evaluate_chapter6_gate(
-            repo_root(),
-            task_id,
-            expected_input_set_digest=b_route_gate_res.get("input_set_digest"),
-            consumer="run_review_pipeline:before_debt_sync",
-        )
-        if not recheck_debt.get("ok"):
-            print(_ch6_gate.format_gate_block_message("sc-review-pipeline", recheck_debt))
-            return 12
+    if rec_handle is not None:
+        rec_handle.revalidate_boundary("before_finish_and_debt_sync", file_write=True)
     final_rc = session.finish()
     try:
         write_low_priority_debt_artifacts(

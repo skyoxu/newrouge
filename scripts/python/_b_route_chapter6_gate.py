@@ -52,6 +52,7 @@ import _b_route_chapter5_readiness as ch5_b
 import _b_route_codec as codec
 import _b_route_input_set as input_set
 import _b_route_inventory as inventory
+import _planning_apply_journal as journal
 import _b_route_operation_leases as op_leases
 import _b_route_operation_scope as op_scope
 import _b_route_preflight as preflight
@@ -245,17 +246,11 @@ def _detect_task_na_labels(root: Path, tid: int | None) -> list[str]:
 
 
 def _has_legacy_pending_journals(root: Path) -> bool:
-    for prefix in ("logs/ci/capability-planning", "logs/ci/mvg-planning"):
-        d = root / prefix
-        if not d.is_dir():
-            continue
-        try:
-            for run in d.iterdir():
-                if run.is_dir() and (run / "apply-journal.json").is_file():
-                    return True
-        except OSError:
-            return True
-    return False
+    try:
+        routes = op_scope.legacy_recovery_routes(root)
+        return bool(routes)
+    except (codec.CodecError, OSError, ValueError):
+        return True
 
 
 def _has_pending_b_route_operations(root: Path) -> bool:
@@ -263,22 +258,15 @@ def _has_pending_b_route_operations(root: Path) -> bool:
     if not ops_dir.is_dir():
         return False
     try:
-        inv = op_scope._operation_inventory(root)
-        if isinstance(inv, list) and len(inv) > 0:
+        graph = journal.operation_state_graph(root)
+    except (codec.CodecError, OSError, ValueError):
+        return True
+    terminals = graph.get("terminals") or {}
+    resolved_by = graph.get("resolved_by") or {}
+    for op in graph.get("operations") or []:
+        op_id = op.get("operation_id")
+        if op_id not in terminals and op_id not in resolved_by:
             return True
-    except Exception:
-        return True
-    try:
-        for child in ops_dir.rglob("*.json"):
-            if child.is_file():
-                doc = _preview_json(child)
-                if doc is None:
-                    return True
-                state = str(doc.get("state") or doc.get("status") or "").strip().lower()
-                if state in ("prepared", "reserved", "pending", "in_progress", "applying"):
-                    return True
-    except OSError:
-        return True
     return False
 
 

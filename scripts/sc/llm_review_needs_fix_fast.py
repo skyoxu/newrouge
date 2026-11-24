@@ -1462,6 +1462,36 @@ def _write_summary(out_dir: Path, summary: dict[str, Any], *, b_route_active: bo
 _STRICT_RAW_TASK_ID_RE = re.compile(r"^[1-9][0-9]*(\.[1-9][0-9]*)?$", re.ASCII)
 
 
+def _resolve_prior_pipeline_run_dir(root: Path, task_id: str, ch6_recovery: Any) -> Path | None:
+    ci_root = root / "logs" / "ci"
+    if ci_root.is_dir():
+        candidates = sorted(
+            (p for p in ci_root.glob(f"*/sc-review-pipeline-task-{task_id}/latest.json") if p.is_file()),
+            key=lambda p: p.stat().st_mtime_ns,
+            reverse=True,
+        )
+        for latest_path in candidates:
+            try:
+                latest_doc = json.loads(latest_path.read_text(encoding="utf-8"))
+            except (OSError, ValueError, json.JSONDecodeError):
+                continue
+            if isinstance(latest_doc, dict):
+                raw_out = str(latest_doc.get("latest_out_dir") or "").strip()
+                if raw_out:
+                    cand = Path(raw_out)
+                    resolved = cand.resolve() if cand.is_absolute() else (root / cand).resolve()
+                    if resolved.is_dir():
+                        return resolved
+    durable = ch6_recovery.scan_durable_recovery_signals(root, task_id)
+    latest_durable = str(durable.get("latest_durable_run_dir") or "").strip()
+    if latest_durable:
+        cand = Path(latest_durable)
+        resolved = cand.resolve() if cand.is_absolute() else (root / cand).resolve()
+        if resolved.is_dir():
+            return resolved
+    return None
+
+
 def main() -> int:
     parsed_args = build_parser().parse_args()
     explicit_flags = {
@@ -1484,7 +1514,9 @@ def main() -> int:
     python_scripts_dir = str(Path(__file__).resolve().parents[1] / "python")
     if python_scripts_dir not in sys.path:
         sys.path.insert(0, python_scripts_dir)
+    from contextlib import nullcontext
     import _b_route_chapter6_gate as _ch6_gate
+    import _b_route_chapter6_recovery as _ch6_recovery
 
     raw_arg_tid = str(args.task_id)
     if _STRICT_RAW_TASK_ID_RE.fullmatch(raw_arg_tid) is None:
@@ -1499,8 +1531,20 @@ def main() -> int:
     if not gate_res.get("ok"):
         print(_ch6_gate.format_gate_block_message("sc-needs-fix-fast", gate_res))
         return 2
+    prior_run_dir = _resolve_prior_pipeline_run_dir(repo_root(), raw_tid, _ch6_recovery)
+    rec_res = _ch6_recovery.evaluate_chapter6_recovery(
+        repo_root(),
+        raw_tid,
+        run_dir=prior_run_dir,
+        operation="resume",
+        recommendation_only=False,
+        consumer="llm_review_needs_fix_fast",
+        enforce_durable_stop_loss=True,
+    )
+    if not rec_res.get("legacy_a_passthrough") and not rec_res.get("ok"):
+        print(_ch6_recovery.format_recovery_block_message("sc-needs-fix-fast", rec_res))
+        return 2
     b_route_active = not bool(gate_res.get("legacy_a_passthrough"))
-    expected_b_digest = gate_res.get("input_set_digest") if b_route_active else None
 
     agents = resolve_configured_agents(args.agents)
     if not agents:
@@ -1510,7 +1554,48 @@ def main() -> int:
     script_start = time.monotonic()
     out_dir = ci_dir(f"sc-needs-fix-fast-task-{args.task_id}")
     write_text(out_dir / "run_id.txt", uuid.uuid4().hex + "\n")
+    rec_cm = (
+        _ch6_recovery.guarded_chapter6_recovery(
+            repo_root(),
+            raw_tid,
+            run_dir=prior_run_dir,
+            out_dir=out_dir,
+            operation="resume",
+            consumer="llm_review_needs_fix_fast",
+            enforce_durable_stop_loss=False,
+        )
+        if b_route_active
+        else nullcontext(None)
+    )
+    try:
+        with rec_cm as rec_handle:
+            return _execute_needs_fix_fast_under_recovery(
+                args=args,
+                explicit_flags=explicit_flags,
+                agents=agents,
+                script_start=script_start,
+                out_dir=out_dir,
+                b_route_active=b_route_active,
+                rec_handle=rec_handle,
+            )
+    except _ch6_recovery.Chapter6RecoveryBlockedError as exc:
+        res = exc.recovery_result
+        if isinstance(res.get("gate_result"), dict) and not res["gate_result"].get("ok"):
+            print(_ch6_gate.format_gate_block_message("sc-needs-fix-fast", res["gate_result"]))
+        print(_ch6_recovery.format_recovery_block_message("sc-needs-fix-fast", res))
+        return 2
 
+
+def _execute_needs_fix_fast_under_recovery(
+    *,
+    args: argparse.Namespace,
+    explicit_flags: dict[str, bool],
+    agents: list[str],
+    script_start: float,
+    out_dir: Path,
+    b_route_active: bool,
+    rec_handle: Any,
+) -> int:
     timeline: list[dict[str, Any]] = []
     route_payload: dict[str, Any] = {}
     py = args.python
@@ -1727,16 +1812,12 @@ def main() -> int:
         )
     participating_agents: set[str] = set(run_agents)
     for round_no in range(1, args.max_rounds + 1):
-        if b_route_active:
-            recheck_round = _ch6_gate.evaluate_chapter6_gate(
-                repo_root(),
-                raw_tid,
-                expected_input_set_digest=expected_b_digest,
-                consumer=f"llm_review_needs_fix_fast:round_{round_no}",
+        if rec_handle is not None:
+            rec_handle.revalidate_boundary(
+                f"round_{round_no}",
+                model_invocation=True,
+                file_write=True,
             )
-            if not recheck_round.get("ok"):
-                print(_ch6_gate.format_gate_block_message("sc-needs-fix-fast", recheck_round))
-                return 2
         if not run_agents:
             break
 
