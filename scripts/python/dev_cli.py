@@ -20,7 +20,7 @@ import sys
 from pathlib import Path
 
 # The read-only command must not create bytecode even without Python -B.
-if len(sys.argv) > 1 and sys.argv[1] in {"b-route-preflight", "b-route-sources", "b-route-adoption", "b-route-task-preview", "b-route-task-compile", "b-route-task-origin", "b-route-chapter4-binding", "b-route-input-set", "b-route-stage5-obligations", "b-route-chapter5-readiness", "b-route-chapter6-gate", "b-route-defect-routing", "b-route-chapter7-slice", "b-route-entrypoint-parity"}:
+if len(sys.argv) > 1 and sys.argv[1] in {"b-route-preflight", "b-route-sources", "b-route-adoption", "b-route-task-preview", "b-route-task-compile", "b-route-task-origin", "b-route-chapter4-binding", "b-route-input-set", "b-route-stage5-obligations", "b-route-chapter5-readiness", "b-route-chapter6-gate", "b-route-defect-routing", "b-route-chapter7-slice", "b-route-entrypoint-parity", "b-route-impact-closure"}:
     sys.dont_write_bytecode = True
 
 if __name__ == "__main__" and len(sys.argv) > 1 and sys.argv[1] == "b-route-sources":
@@ -75,6 +75,10 @@ if __name__ == "__main__" and len(sys.argv) > 1 and sys.argv[1] == "b-route-entr
     from check_b_route_entrypoint_parity import main as entrypoint_parity_main
     raise SystemExit(entrypoint_parity_main(sys.argv[2:]))
 
+if __name__ == "__main__" and len(sys.argv) > 1 and sys.argv[1] == "b-route-impact-closure":
+    from compute_b_route_impact_closure import main as impact_closure_main
+    raise SystemExit(impact_closure_main(sys.argv[2:]))
+
 from dev_cli_builders import (
     DEFAULT_GATE_BUNDLE_TASK_FILES,
     build_check_directory_boundaries_cmd,
@@ -109,6 +113,7 @@ from dev_cli_builders import (
     build_b_route_defect_routing_cmd,
     build_b_route_chapter7_slice_cmd,
     build_b_route_entrypoint_parity_cmd,
+    build_b_route_impact_closure_cmd,
     build_quality_gates_cmd,
     build_run_dotnet_cmd,
     build_run_gdunit_full_cmd,
@@ -832,6 +837,13 @@ def cmd_b_route_entrypoint_parity(args: argparse.Namespace) -> int:
     return entrypoint_parity_main(build_b_route_entrypoint_parity_cmd(args)[3:])
 
 
+def cmd_b_route_impact_closure(args: argparse.Namespace) -> int:
+    """Run the read-only B-route governed reverse impact closure CLI."""
+    from compute_b_route_impact_closure import main as impact_closure_main
+
+    return impact_closure_main(build_b_route_impact_closure_cmd(args)[3:])
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Dev CLI for Godot+C# template (AI-friendly entrypoint)",
@@ -904,6 +916,11 @@ def build_parser() -> argparse.ArgumentParser:
     from check_b_route_entrypoint_parity import register_arguments as register_entrypoint_parity_arguments
     register_entrypoint_parity_arguments(entrypoint_parity_parser)
     entrypoint_parity_parser.set_defaults(func=cmd_b_route_entrypoint_parity)
+
+    impact_closure_parser = sub.add_parser("b-route-impact-closure", help="Read-only B-route governed reverse impact closure and selective proof revalidation")
+    from compute_b_route_impact_closure import register_arguments as register_impact_closure_arguments
+    register_impact_closure_arguments(impact_closure_parser)
+    impact_closure_parser.set_defaults(func=cmd_b_route_impact_closure)
 
     # run-ci-basic
     p_ci = sub.add_parser(
@@ -1509,6 +1526,10 @@ def main(argv: list[str] | None = None) -> int:
         sys.dont_write_bytecode = True
         from check_b_route_entrypoint_parity import main as entrypoint_parity_main
         return entrypoint_parity_main(arguments[1:])
+    if arguments and arguments[0] == "b-route-impact-closure":
+        sys.dont_write_bytecode = True
+        from compute_b_route_impact_closure import main as impact_closure_main
+        return impact_closure_main(arguments[1:])
     parser = build_parser()
     args = parser.parse_args(arguments)
     func = getattr(args, "func", None)

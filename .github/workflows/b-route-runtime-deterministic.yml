@@ -65,6 +65,8 @@ on:
       - 'scripts/python/check_b_route_chapter7_slice.py'
       - 'scripts/python/_b_route_entrypoint_parity.py'
       - 'scripts/python/check_b_route_entrypoint_parity.py'
+      - 'scripts/python/_b_route_impact_closure.py'
+      - 'scripts/python/compute_b_route_impact_closure.py'
       - 'scripts/python/_project_health_http.py'
       - 'scripts/python/project_health_runtime.py'
       - 'scripts/python/project_health_knowledge.py'

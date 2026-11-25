@@ -1209,3 +1209,50 @@ def build_b_route_entrypoint_parity_cmd(args) -> list[str]:
                 raise ValueError(f"b-route-entrypoint-parity optional {flag} must be nonempty when provided")
             cmd += [flag, str(value)]
     return cmd
+
+
+IMPACT_CLOSURE_FORBIDDEN_FLAGS = ("write", "apply", "commit", "mutate_tasks", "publish", "set_status", "retire")
+
+
+def build_b_route_impact_closure_cmd(args) -> list[str]:
+    for flag in IMPACT_CLOSURE_FORBIDDEN_FLAGS:
+        if getattr(args, flag, False):
+            raise ValueError(
+                "b-route-impact-closure is strictly read-only and rejects --apply/--write/--commit/--mutate-tasks flags"
+            )
+    cmd = [
+        sys.executable,
+        "-B",
+        str(Path(__file__).resolve().with_name("compute_b_route_impact_closure.py")),
+    ]
+    root = getattr(args, "root", ".")
+    if root is None or type(root) is bool or not str(root).strip():
+        raise ValueError("b-route-impact-closure requires nonempty --root")
+    cmd += ["--root", str(root)]
+    change_roots = list(getattr(args, "change_root", None) or [])
+    proof = getattr(args, "revalidate_proof", None)
+    if not change_roots and proof is None:
+        raise ValueError("b-route-impact-closure requires at least one --change-root or --revalidate-proof")
+    if change_roots and proof is not None:
+        raise ValueError("b-route-impact-closure accepts either --change-root or --revalidate-proof, not both")
+    for attr, flag in (("change_root", "--change-root"), ("plan_id", "--plan-id"), ("manifest", "--manifest")):
+        for value in list(getattr(args, attr, None) or []):
+            if type(value) is bool:
+                raise ValueError(f"b-route-impact-closure {flag} entries must be strings, not booleans")
+            if not str(value).strip():
+                raise ValueError(f"b-route-impact-closure {flag} entries must be nonempty")
+            cmd += [flag, str(value)]
+    for attr, flag in (
+        ("revalidate_proof", "--revalidate-proof"),
+        ("operation", "--operation"),
+        ("report", "--report"),
+        ("events_log", "--events-log"),
+    ):
+        value = getattr(args, attr, None)
+        if value is not None:
+            if type(value) is bool:
+                raise ValueError(f"b-route-impact-closure optional {flag} must be a string, not a boolean")
+            if not str(value).strip():
+                raise ValueError(f"b-route-impact-closure optional {flag} must be nonempty when provided")
+            cmd += [flag, str(value)]
+    return cmd

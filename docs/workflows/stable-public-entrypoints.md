@@ -36,6 +36,10 @@ Original A entrypoints remain below. Default B and full Story 2.10 remain unacce
 
 Read-only zero-write five-entrypoint parity (`cli`, `direct`, `resume`, `route`, `page`), pre-effect tamper rejection verifier, and honest Epic 3 -> Epic 4 handoff summary. Page triggers via `POST /api/knowledge/b-route` and runtime/MVG verification share the exact same live gate, dynamic `InputSet`, eligibility, and business-scope leases without advancing `current`/`last-known-good`/`latest.json`/`main` during `preview` or `workspace` mode. See [entrypoint parity owner](b-route-entrypoint-parity.md).
 
+### `py -3 -B scripts/python/dev_cli.py b-route-impact-closure (--change-root <root> ... | --revalidate-proof <path>) [--root <root>] [--plan-id <id> ...] [--manifest <path> ...] [--operation <op>] [--report <logs/**/*.json>] [--events-log <logs/**/*.jsonl>]`
+
+Read-only governed reverse-relation transitive impact closure (four-part definitions, committed plans/bindings, contracts, test obligations, triplet dependencies, cumulative MVG manifests including `planned` Flows) with cycle-safe deduplication, conservative expansion on missing edges, and partitioned selective proof revalidation. Never mutates `tasks.json` or publish pointers; `impact_accounting_only=true`, `runtime_verified=false`, `default_b_enabled=false`. See [impact closure owner](b-route-impact-closure.md).
+
 ## Repo Bootstrap And Recovery
 
 ### `py -3 scripts/python/dev_cli.py run-prototype-workflow --prototype-file docs/prototypes/<your-file>.md`
@@ -627,3 +631,7 @@ These are additive modes of the existing Chapter workflow, not a second mileston
 ## B 路线页面实施触发与全入口一致性
 
 稳定入口：`py -3 -B scripts/python/dev_cli.py b-route-entrypoint-parity [--task-id <id>] [--epic3-handoff] [--root <root>] [--operation <op>] [--report <logs/ci/.../*.json>] [--handoff-report <logs/ci/.../*.json>]`。直接 owner 为 `scripts/python/check_b_route_entrypoint_parity.py`，参数相同；回环 HTTP 服务统一经 `POST /api/knowledge/b-route`（并由 `POST /api/knowledge/runtime` 与 `POST /api/knowledge/mvg-run` 在快照或 Godot 启动前先行门禁与持锁）调用 `_b_route_entrypoint_parity.py`。默认无 `--report`/`--handoff-report` 时严格零写盘；`cli`、`direct`、`resume`、`route`、`page` 五入口共用实时 Story 3.8 门禁、Story 3.9 跨目录恢复与止损、Story 3.10 缺陷归属与反伪装、实时 `tasks.json` 任务及多跳传递依赖资格与业务 scope 租约（含父子凭据重入与多任务联合锁），拒信客户端缓存或 `latest.json` 摘要授权，确保 `preview`/`recommendation_only`/`workspace` 零推进 `current`/`last-known-good`/`latest.json`/`main`；含 Windows 已完成操作终端重放保 `done`、未完成预映像冲突停止、共享任务多计划联合锁与诚实 Epic 3→Epic 4 交接校验，恒定 `flow_completed=false`/`runtime_verified=false`/`default_b_enabled=false`。详见[全入口一致性与 Epic3 交接 owner 说明](b-route-entrypoint-parity.md)。
+
+## B 路线从受治理反向关系计算完整传递影响
+
+稳定入口：`py -3 -B scripts/python/dev_cli.py b-route-impact-closure (--change-root <root> ... | --revalidate-proof <path>) [--root <root>] [--plan-id <id> ...] [--manifest <path> ...] [--operation <op>] [--report <logs/**/*.json>] [--events-log <logs/**/*.jsonl>]`。直接 owner 为 `scripts/python/compute_b_route_impact_closure.py`，参数相同。从四部分定义、已提交 `plan`/`binding`、契约、测试义务、三联依赖与累计 MVG manifest（含 active 与 `planned` Flow）以及跨 Capability/共享 Task 传播的受治理反向边，按 `(entity_kind, entity_id)` 环安全去重并记录 `cycle_witnesses`；缺边或未知映射保守扩大且不收缩为空集，不将 `planned` Flow 变为立即回归；类型化输入身份与剥离状态的 Task 投影支持 `--revalidate-proof` 分区选择性复验，独立核对 `catalog`/`HEAD` 稳定性并拒绝损坏或单哈希证明。默认严格零写盘，仅可独占新建 `logs/**` 下 `--report`/`--events-log`，零修改 `tasks.json` 与发布指针，恒定 `impact_accounting_only=true`/`implementation_completed=false`/`runtime_verified=false`/`default_b_enabled=false`。详见[影响闭包 owner 说明](b-route-impact-closure.md)。
