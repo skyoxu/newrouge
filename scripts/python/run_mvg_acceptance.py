@@ -5,17 +5,37 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import shutil
 import subprocess
 import time
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
+import _b_route_inventory as inventory
 from _mvg_manifest import manifest_sha256, read_manifest, recommend, validate_manifest
 from _mvg_execution import execute_test
 from _project_health_runtime_snapshot import prepare_snapshot
 
 DEFAULT_MANIFEST = 'docs/testing/mvg/m1-critical.json'
+_WRAPPER_SUFFIXES = ('.py', '.bat', '.cmd', '.ps1', '.sh')
+
+
+def _is_script_wrapper_bin(bin_path: str) -> bool:
+    if not bin_path or not bin_path.strip():
+        return False
+    raw = bin_path.strip()
+    if raw.lower().endswith(_WRAPPER_SUFFIXES):
+        return True
+    resolved = shutil.which(raw) if not Path(raw).is_file() else raw
+    return bool(resolved and str(resolved).lower().endswith(_WRAPPER_SUFFIXES))
+
+
+def _check_root_no_reparse(raw_root: Path) -> Path:
+    abs_root = raw_root.absolute()
+    for ancestor in reversed((abs_root, *abs_root.parents)):
+        inventory.no_reparse(ancestor)
+    return abs_root.resolve()
 
 
 def write_json(path: Path, payload: dict) -> None:
@@ -43,21 +63,72 @@ def changed_paths(root: Path, base: str, revision: str = 'HEAD', *, workspace: b
 
 
 def register_arguments(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument('--root', default=None, help='Optional repository root override')
     parser.add_argument('--manifest', default=DEFAULT_MANIFEST)
     parser.add_argument('--mode', choices=['plan', 'recommend', 'run'], default='plan')
     parser.add_argument('--snapshot', choices=['workspace', 'commit'], default='workspace')
     parser.add_argument('--revision', default='HEAD')
     parser.add_argument('--base', default='', help='Optional comparison base; recommendations never exclude tests')
     parser.add_argument('--godot-bin', default=os.environ.get('GODOT_BIN', ''))
+    parser.add_argument('--dotnet-bin', default=os.environ.get('DOTNET_BIN', 'dotnet'),
+                        help='Dotnet executable or controlled protocol fixture wrapper')
     parser.add_argument('--timeout-sec', type=int, default=900, help='Global runtime budget')
     parser.add_argument('--challenge-input', action='store_true', help='After baseline passes, prove disconnected UI is detected')
+    parser.add_argument('--verification-scope', default='',
+                        help='Optional repo-relative path to sealed Story 4.2 VerificationScope JSON')
+    parser.add_argument('--execution-strategy', choices=['scoped', 'conservative_superset'], default='scoped',
+                        help='Execution scope strategy when --verification-scope is supplied')
+    parser.add_argument('--protocol-fixture', action='store_true',
+                        help='Explicitly mark runner binary as protocol fixture (never claims real Godot runtime_verified)')
+    parser.add_argument('--stop-on-deterministic-failure', dest='stop_on_deterministic_failure',
+                        action='store_true', default=True,
+                        help='Stop before launching downstream GdUnit4 suites after a deterministic prerequisite fails')
+    parser.add_argument('--no-stop-on-deterministic-failure', dest='stop_on_deterministic_failure',
+                        action='store_false',
+                        help='Continue launching downstream GdUnit4 suites even if a deterministic prerequisite failed')
 
 
 def run(args: argparse.Namespace, root: Path | None = None) -> int:
-    root = (root or Path(__file__).resolve().parents[2]).resolve()
+    if root is None and getattr(args, 'root', None):
+        root = _check_root_no_reparse(Path(args.root))
+    else:
+        root = _check_root_no_reparse(root or Path(__file__).absolute().parents[2])
     run_id = datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ') + '-' + uuid.uuid4().hex[:8]
     out = root / 'logs/ci/mvg-acceptance' / run_id
     out.mkdir(parents=True)
+    scope_arg = str(getattr(args, 'verification_scope', '') or '').strip()
+    if scope_arg:
+        from _b_route_scope_runner import run_scoped_mvg
+        exit_code, summary, _receipt = run_scoped_mvg(
+            root=root,
+            out=out,
+            run_id=run_id,
+            verification_scope_arg=scope_arg,
+            manifest_arg=args.manifest,
+            mode=args.mode,
+            snapshot_mode=args.snapshot,
+            revision_arg=args.revision,
+            base_arg=args.base,
+            godot_bin=args.godot_bin,
+            dotnet_bin=getattr(args, 'dotnet_bin', os.environ.get('DOTNET_BIN', 'dotnet')),
+            timeout_sec=args.timeout_sec,
+            challenge_input=bool(args.challenge_input),
+            execution_strategy=getattr(args, 'execution_strategy', 'scoped'),
+            protocol_fixture=bool(getattr(args, 'protocol_fixture', False)),
+            stop_on_deterministic_failure=bool(getattr(args, 'stop_on_deterministic_failure', True)),
+        )
+        write_json(out / 'summary.json', summary)
+        print(json.dumps({
+            'status': summary['status'],
+            'runtime_verified': summary['runtime_verified'],
+            'automated_scope_passed': summary['automated_scope_passed'],
+            'scope_id': summary.get('scope_id'),
+            'receipt_id': summary.get('receipt_id'),
+            'summary': str(out / 'summary.json'),
+            'coverage_receipt': summary.get('coverage_receipt_path', ''),
+            'reason': summary.get('reason', ''),
+        }))
+        return exit_code
     summary = {'schema_version': 'newrouge.mvg-acceptance.v1', 'run_id': run_id,
                'mode': args.mode, 'status': 'blocked', 'runtime_verified': False, 'steps': [],
                'authorizes_task_status_write': False}
@@ -76,7 +147,7 @@ def run(args: argparse.Namespace, root: Path | None = None) -> int:
             summary['source_revision'] = snapshot['source_revision']
             summary['snapshot_digest'] = snapshot['snapshot_digest']
             summary['input_manifest'] = str(out / 'input-manifest.json')
-        manifest_path = execution_root / args.manifest
+        manifest_path = inventory.safe_input(execution_root, args.manifest, allow_logs=False)
         manifest_sha = manifest_sha256(manifest_path.read_bytes())
         doc = read_manifest(execution_root, args.manifest)
         errors = validate_manifest(execution_root, doc, executable=args.mode == 'run')
@@ -102,6 +173,14 @@ def run(args: argparse.Namespace, root: Path | None = None) -> int:
             summary['status'] = 'planned' if args.mode == 'plan' else 'recommended'
             exit_code = 0
         else:
+            dotnet_bin = getattr(args, 'dotnet_bin', os.environ.get('DOTNET_BIN', 'dotnet'))
+            explicit_fixture = bool(getattr(args, 'protocol_fixture', False))
+            protocol_fixture_only = bool(
+                explicit_fixture
+                or _is_script_wrapper_bin(args.godot_bin)
+                or _is_script_wrapper_bin(dotnet_bin)
+            )
+            summary['protocol_fixture_only'] = protocol_fixture_only
             env = dict(os.environ)
             # Isolate user:// without changing production scene/script bytes.
             env['APPDATA'] = str(out / 'user-data')
@@ -112,8 +191,12 @@ def run(args: argparse.Namespace, root: Path | None = None) -> int:
             for test in doc['tests']:
                 if time.monotonic() >= deadline:
                     raise TimeoutError('Global runtime budget exhausted')
+                exec_kwargs = {'prewarm': not godot_ready}
+                if protocol_fixture_only or dotnet_bin != 'dotnet':
+                    exec_kwargs['dotnet_bin'] = dotnet_bin
+                    exec_kwargs['protocol_fixture'] = protocol_fixture_only
                 result = execute_test(execution_root, test, out / test['id'], args.godot_bin,
-                                      deadline, env, prewarm=not godot_ready)
+                                      deadline, env, **exec_kwargs)
                 summary['steps'].append(result)
                 if result['status'] != 'passed':
                     raise RuntimeError('Required test failed or is unverified: ' + test['id'])
@@ -126,8 +209,12 @@ def run(args: argparse.Namespace, root: Path | None = None) -> int:
                 env['MVG_INPUT_CHALLENGE'] = 'disconnect-reward-input'
                 summary['challenges'] = []
                 for test in targets:
+                    exec_kwargs = {'prewarm': not godot_ready}
+                    if protocol_fixture_only or dotnet_bin != 'dotnet':
+                        exec_kwargs['dotnet_bin'] = dotnet_bin
+                        exec_kwargs['protocol_fixture'] = protocol_fixture_only
                     result = execute_test(execution_root, test, out / ('challenge-' + test['id']),
-                                          args.godot_bin, deadline, env, prewarm=not godot_ready)
+                                          args.godot_bin, deadline, env, **exec_kwargs)
                     # A crash, missing runtime or compilation error is NOT a detected defect.
                     detected = (result['exit_code'] not in {0, 124, 127}
                                 and result['evidence']['failed'] > 0
@@ -139,7 +226,11 @@ def run(args: argparse.Namespace, root: Path | None = None) -> int:
                     summary['challenges'].append(result)
                     if not detected:
                         raise RuntimeError('Disconnected input was not demonstrated by a test assertion')
-            summary.update(status='passed', runtime_verified=True)
+            if protocol_fixture_only:
+                summary.update(status='passed_protocol_fixture_only', runtime_verified=False,
+                               protocol_fixture_only=True)
+            else:
+                summary.update(status='passed', runtime_verified=True, protocol_fixture_only=False)
             exit_code = 0
     except (ValueError, KeyError, TypeError, OSError, RuntimeError, subprocess.SubprocessError, TimeoutError) as exc:
         summary['reason'] = str(exc)

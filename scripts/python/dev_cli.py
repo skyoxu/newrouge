@@ -20,7 +20,7 @@ import sys
 from pathlib import Path
 
 # The read-only command must not create bytecode even without Python -B.
-if len(sys.argv) > 1 and sys.argv[1] in {"b-route-preflight", "b-route-sources", "b-route-adoption", "b-route-task-preview", "b-route-task-compile", "b-route-task-origin", "b-route-chapter4-binding", "b-route-input-set", "b-route-stage5-obligations", "b-route-chapter5-readiness", "b-route-chapter6-gate", "b-route-defect-routing", "b-route-chapter7-slice", "b-route-entrypoint-parity", "b-route-impact-closure", "b-route-verification-scope"}:
+if len(sys.argv) > 1 and sys.argv[1] in {"b-route-preflight", "b-route-sources", "b-route-adoption", "b-route-task-preview", "b-route-task-compile", "b-route-task-origin", "b-route-chapter4-binding", "b-route-input-set", "b-route-stage5-obligations", "b-route-chapter5-readiness", "b-route-chapter6-gate", "b-route-defect-routing", "b-route-chapter7-slice", "b-route-entrypoint-parity", "b-route-impact-closure", "b-route-verification-scope", "run-mvg-acceptance"}:
     sys.dont_write_bytecode = True
 
 if __name__ == "__main__" and len(sys.argv) > 1 and sys.argv[1] == "b-route-sources":
@@ -119,6 +119,7 @@ from dev_cli_builders import (
     build_b_route_entrypoint_parity_cmd,
     build_b_route_impact_closure_cmd,
     build_b_route_verification_scope_cmd,
+    build_run_mvg_acceptance_cmd,
     build_quality_gates_cmd,
     build_run_dotnet_cmd,
     build_run_gdunit_full_cmd,
@@ -1485,10 +1486,15 @@ def build_parser() -> argparse.ArgumentParser:
     p_refresh.add_argument("--readiness", default="logs/ci/chapter5/readiness/latest.json")
     p_refresh.set_defaults(func=cmd_refresh_knowledge)
 
-    from run_mvg_acceptance import register_arguments, run as run_mvg
+    from run_mvg_acceptance import main as run_mvg_main, register_arguments
+
+    def cmd_run_mvg_acceptance(args: argparse.Namespace) -> int:
+        cmd = build_run_mvg_acceptance_cmd(args)
+        return run_mvg_main(cmd[3:])
+
     p_mvg = sub.add_parser("run-mvg-acceptance", help="Plan or run isolated MVG integration evidence")
     register_arguments(p_mvg)
-    p_mvg.set_defaults(func=run_mvg)
+    p_mvg.set_defaults(func=cmd_run_mvg_acceptance)
 
     return parser
 

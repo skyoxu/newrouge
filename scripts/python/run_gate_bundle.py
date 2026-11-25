@@ -179,6 +179,8 @@ B_ROUTE_RUNTIME_DETERMINISTIC_TESTS = (
     "scripts.python.tests.test_b_route_entrypoint_parity",
     "scripts.python.tests.test_b_route_impact_closure",
     "scripts.python.tests.test_b_route_verification_scope",
+    "scripts.python.tests.test_b_route_scope_runner",
+    "scripts.python.tests.test_mvg_acceptance",
     "scripts.python.tests.test_chapter7_backlog_gap",
     "scripts.python.tests.test_inherited_pipe_cleanup",
     "scripts.python.tests.test_planning_main_audit_fixes.PlanningMainAuditFixesTests.test_interrupted_runner_terminates_and_reaps_real_child",

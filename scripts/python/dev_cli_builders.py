@@ -1304,3 +1304,38 @@ def build_b_route_verification_scope_cmd(args) -> list[str]:
                 raise ValueError(f"b-route-verification-scope optional {flag} must be nonempty when provided")
             cmd += [flag, str(value)]
     return cmd
+
+
+def build_run_mvg_acceptance_cmd(args) -> list[str]:
+    cmd = [
+        sys.executable,
+        "-B",
+        str(Path(__file__).resolve().with_name("run_mvg_acceptance.py")),
+    ]
+    if getattr(args, "root", None):
+        cmd += ["--root", str(args.root)]
+    cmd += [
+        "--manifest", str(getattr(args, "manifest", "docs/testing/mvg/m1-critical.json")),
+        "--mode", str(getattr(args, "mode", "plan")),
+        "--snapshot", str(getattr(args, "snapshot", "workspace")),
+        "--revision", str(getattr(args, "revision", "HEAD")),
+    ]
+    if getattr(args, "base", ""):
+        cmd += ["--base", str(args.base)]
+    if getattr(args, "godot_bin", ""):
+        cmd += ["--godot-bin", str(args.godot_bin)]
+    if getattr(args, "dotnet_bin", ""):
+        cmd += ["--dotnet-bin", str(args.dotnet_bin)]
+    if getattr(args, "timeout_sec", None) is not None:
+        cmd += ["--timeout-sec", str(args.timeout_sec)]
+    if getattr(args, "challenge_input", False):
+        cmd.append("--challenge-input")
+    if getattr(args, "verification_scope", ""):
+        cmd += ["--verification-scope", str(args.verification_scope)]
+    if getattr(args, "execution_strategy", ""):
+        cmd += ["--execution-strategy", str(args.execution_strategy)]
+    if getattr(args, "protocol_fixture", False):
+        cmd.append("--protocol-fixture")
+    if getattr(args, "stop_on_deterministic_failure", True) is False:
+        cmd.append("--no-stop-on-deterministic-failure")
+    return cmd
