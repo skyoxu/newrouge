@@ -360,7 +360,18 @@ def status(root: Path, state: dict) -> dict:
                                  'stale': True, 'reason': 'Runtime evidence belongs to another scan revision'}
     else:
         result['runtime'] = {'total': 0, 'runtime_verified': 0, 'runtime_failed': 0}
+    result['b_route_identity'] = b_route_identity(root)
     return result
+
+
+def b_route_identity(root: Path, task_id: str | None = None) -> dict:
+    """Additive read-only B-route identity; never refreshes or publishes Knowledge."""
+    try:
+        from _b_route_knowledge_projection import identity_summary
+        return identity_summary(root, task_id=task_id)
+    except Exception as exc:
+        return {'b_route_projection_available': False, 'read_only': True,
+                'implicit_global_refresh_performed': False, 'reason': str(exc)[:300]}
 
 
 ACTION_GROUP_LIMIT = 8
@@ -703,6 +714,7 @@ def main(argv=None) -> int:
                 if capture_path.exists():
                     result['chapter6_capture'] = read_json(capture_path)
                 attach_published_semantics(root, args.task_id, result['navigation'], state)
+                result['b_route_identity'] = b_route_identity(root, args.task_id)
             elif args.action == 'source':
                 if args.path not in state['sources']:
                     raise ValueError('Source is not in the scanned allowlist')

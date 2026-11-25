@@ -74,6 +74,8 @@ on:
       - 'scripts/python/_b_route_evidence_reuse.py'
       - 'scripts/python/_b_route_completion_verdict.py'
       - 'scripts/python/check_b_route_completion_verdict.py'
+      - 'scripts/python/query_b_route_knowledge_projection.py'
+      - 'scripts/python/_semantic_topology.py'
       - 'scripts/python/milestone_incremental_handoff.py'
       - 'scripts/python/run_mvg_acceptance.py'
       - 'scripts/python/_mvg_execution.py'

@@ -1,6 +1,7 @@
 """Asynchronous planning operations sharing the local host's operation lock."""
 from __future__ import annotations
 
+import hashlib
 import threading
 from datetime import datetime, timezone
 
@@ -58,6 +59,7 @@ def clear_mvg(handler, root, request, operation):
         return
     try:
         from _mvg_capability_recovery import clear
+        before = _formal_adoption_digests(root)
         try:
             result = clear(root)
         except ValueError as exc:
@@ -65,6 +67,27 @@ def clear_mvg(handler, root, request, operation):
                 raise
             handler.send({'reason': 'Another operation is running'}, 409)
             return
+        result = {**result, 'formal_git_adoptions_preserved': before == _formal_adoption_digests(root)}
         handler.send(result)
     finally:
         operation.release()
+
+
+def _formal_adoption_digests(root):
+    """Digest formal Git-governed B-route adoptions and cumulative MVG baselines.
+
+    Covers catalog.v1.json, task-origins.v1.json and policy.v1.json (top-level records),
+    plus the plans/, bindings/, commits/ and receipts/ record trees and docs/testing/mvg/*.json.
+    """
+    paths = []
+    catalog = root / 'docs/planning/b-route'
+    if catalog.is_dir():
+        paths.extend(path for path in catalog.glob('*.json') if path.is_file())
+        for name in ('plans', 'bindings', 'commits', 'receipts'):
+            if (catalog / name).is_dir():
+                paths.extend(path for path in (catalog / name).rglob('*.json') if path.is_file())
+    baseline = root / 'docs/testing/mvg'
+    if baseline.is_dir():
+        paths.extend(path for path in baseline.glob('*.json') if path.is_file())
+    return {path.relative_to(root).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest()
+            for path in sorted(paths)}

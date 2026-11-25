@@ -1,9 +1,13 @@
 """Read-only, provenance-limited GDD version and cumulative MVG projection."""
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 
+from _b_route_codec import strict_json_loads
+from _b_route_knowledge_projection import (normalize_evidence_level, verify_receipt_seal,
+    _receipt_scope_kind as receipt_scope_kind)
 from _mvg_manifest import manifest_sha256
 from _mvg_requirement_routes import FIELD, memberships, trace_errors, authority_ids
 from _mvg_requirement_accounting import (VERIFICATION, EVIDENCE, verification_rows,
@@ -170,16 +174,66 @@ def with_runtime_evidence(overview: dict, root: Path) -> dict:
             continue
         for path in runs:
             try:
-                summary = json.loads(path.read_text(encoding='utf-8'))
+                summary = strict_json_loads(path.read_bytes())
             except (OSError, ValueError):
+                continue
+            if not isinstance(summary, dict):
                 continue
             if (summary.get('manifest') != manifest['path'] or summary.get('manifest_sha256') != manifest['sha256']
                     or summary.get('mode') != 'run' or summary.get('source_revision') != overview.get('revision')
                     or summary.get('base_commit') != overview.get('revision')):
                 continue
-            copy['evidence'] = {'status': 'passed' if summary.get('status') == 'passed' and summary.get('runtime_verified') is True else 'failed',
-                                'run_id': summary.get('run_id'), 'reason': summary.get('reason', ''),
-                                'runtime_verified': summary.get('runtime_verified') is True}
+            fixture_only = summary.get('protocol_fixture_only') is True
+            receipt_path = path.parent / 'coverage-receipt.json'
+            receipt = None
+            receipt_bytes = b''
+            receipt_invalid = False
+            if receipt_path.is_file():
+                try:
+                    receipt_bytes = receipt_path.read_bytes()
+                    receipt = strict_json_loads(receipt_bytes)
+                except (OSError, ValueError):
+                    receipt = None
+                # A present receipt must be sealed; a corrupt or tampered receipt never
+                # falls back to crediting summary.json.
+                receipt_invalid = not (isinstance(receipt, dict) and verify_receipt_seal(receipt))
+                if isinstance(receipt, dict):
+                    fixture_only = fixture_only or (receipt.get('environment') or {}).get('protocol_fixture_only') is True
+            verified = summary.get('runtime_verified') is True and not fixture_only and not receipt_invalid
+            status = 'passed' if summary.get('status') == 'passed' and verified else 'failed'
+            reason = summary.get('reason', '')
+            scope_kind = None
+            if status == 'passed' and summary.get('workspace_dirty'):
+                status, reason = 'not_verified', 'Run executed on a dirty workspace; not a main fact.'
+            if status == 'passed' and isinstance(receipt, dict):
+                scope_kind = receipt_scope_kind(receipt)
+                coverage = manifest.get('coverage') if isinstance(manifest.get('coverage'), dict) else {}
+                if scope_kind != 'cumulative' and coverage.get('mode', 'full') == 'full':
+                    status, reason = 'partial', 'Scoped receipt does not verify the cumulative full manifest.'
+            if receipt_invalid:
+                reason = 'coverage-receipt.json is corrupt, unsealed or tampered.'
+            copy['evidence'] = {'status': status, 'run_id': summary.get('run_id'), 'reason': reason,
+                                'runtime_verified': verified and status == 'passed'}
+            if fixture_only:
+                copy['evidence']['protocol_fixture_only'] = True
+            if receipt_path.is_file():
+                copy['evidence'].update({
+                    'coverage_receipt_path': receipt_path.relative_to(root).as_posix() if receipt_path.is_relative_to(root) else str(receipt_path),
+                    'coverage_receipt_sha256': 'sha256:' + hashlib.sha256(receipt_bytes).hexdigest(),
+                    'coverage_receipt_valid': not receipt_invalid,
+                })
+            if isinstance(receipt, dict) and not receipt_invalid:
+                tiers = receipt.get('evidence_tiers') if isinstance(receipt.get('evidence_tiers'), dict) else {}
+                levels = {normalize_evidence_level(name) for name, bucket in tiers.items()
+                          if isinstance(bucket, dict) and bucket.get('passed')}
+                levels.discard('unverified')
+                copy['evidence'].update({
+                    'verified_scope': scope_kind or receipt_scope_kind(receipt),
+                    'verified_scope_id': receipt.get('scope_id'),
+                    'evidence_levels': sorted(levels),
+                    'protocol_fixture_only': fixture_only,
+                    'original_executed_at': receipt.get('original_executed_at') or receipt.get('finished_at') or summary.get('finished_at'),
+                })
             break
         result['manifests'].append(copy)
     return result

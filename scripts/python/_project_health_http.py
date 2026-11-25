@@ -136,7 +136,7 @@ def handler_factory(root: Path):
             pass
 
         def send(self, data, code=200, content_type='application/json; charset=utf-8'):
-            body = data if isinstance(data, bytes) else data.encode('utf-8') if isinstance(data, str) else json.dumps(data, ensure_ascii=False).encode('utf-8')
+            body = data if isinstance(data, bytes) else data.encode('utf-8') if isinstance(data, str) else json.dumps(data, ensure_ascii=False, allow_nan=False).encode('utf-8')
             self.send_response(code)
             self.send_header('Content-Type', content_type)
             self.send_header('Content-Length', str(len(body)))
@@ -225,6 +225,47 @@ def handler_factory(root: Path):
                             self.send(load_workspace_topology(root, workspace_view))
                     else:
                         self.send({'reason': 'Unknown topology identity'}, 400)
+                elif parsed.path == '/api/knowledge/b-route-projection':
+                    from _b_route_knowledge_projection import VALID_MODES, build_b_route_knowledge_projection
+                    from _b_route_codec import CodecError, Diagnostic, ReasonCode, Stage
+                    query = parse_qs(parsed.query, keep_blank_values=True)
+                    filter_keys = ('scope_id', 'flow_id', 'capability_id', 'task_id')
+                    allowed = {'mode', 'strict', *filter_keys}
+
+                    def invalid(name, expected, actual, code=422):
+                        self.send({'status': 'invalid_arguments', 'ok': False, 'diagnostics': [Diagnostic(
+                            ReasonCode.INVALID_ARGUMENT, Stage.TARGET, name, expected, actual, None).to_dict()]}, code)
+
+                    unknown = sorted(set(query) - allowed)
+                    duplicated = sorted(key for key, values in query.items() if len(values) > 1)
+                    mode = query.get('mode', ['main'])[0]
+                    strict_raw = query.get('strict', ['0'])[0]
+                    blank = sorted(key for key in filter_keys if key in query and not query[key][0].strip())
+                    if unknown:
+                        invalid(unknown[0], sorted(allowed), unknown)
+                    elif 'mode' in duplicated:
+                        invalid('mode', 'single mode value', query['mode'], 400)
+                    elif duplicated:
+                        invalid(duplicated[0], 'single query value', query[duplicated[0]])
+                    elif not mode or mode not in VALID_MODES:
+                        self.send({'reason': 'Unknown B-route projection mode', 'status': 'invalid_arguments',
+                                   'ok': False, 'diagnostics': [Diagnostic(
+                                       ReasonCode.INVALID_ARGUMENT, Stage.TARGET, 'mode', list(VALID_MODES), mode,
+                                       None).to_dict()]}, 400)
+                    elif blank:
+                        invalid(blank[0], 'nonblank filter value', '')
+                    elif strict_raw not in ('0', '1', 'true', 'false'):
+                        invalid('strict', ['0', '1', 'true', 'false'], strict_raw)
+                    else:
+                        filters = {key: query[key][0] for key in filter_keys if key in query}
+                        try:
+                            payload = build_b_route_knowledge_projection(root, mode=mode, **filters)
+                        except CodecError as exc:
+                            self.send({'status': 'invalid_arguments', 'ok': False,
+                                       'diagnostics': [exc.diagnostic.to_dict()]}, 422)
+                        else:
+                            strict = strict_raw in ('1', 'true')
+                            self.send(payload, 422 if strict and not payload.get('ok') else 200)
                 elif parsed.path == '/api/knowledge/scene-graph':
                     snapshot = base_dir(root) / 'latest.json'
                     state = read_json(snapshot) if snapshot.exists() else {}

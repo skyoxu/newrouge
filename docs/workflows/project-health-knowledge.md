@@ -255,3 +255,15 @@ The `/knowledge/` task resource detail shows partial coverage, generation/public
 ### Chapter 6 element capture
 
 `chapter6-knowledge` writes `logs/ci/chapter6-knowledge/task-<id>/knowledge-capture-candidate.json` plus task-local `documentation-gaps.md`. The capture records changed or previously linked Godot scenes, scripts, configs, and assets with `verified`, `inferred`, or `unmapped` status. Scene/static evidence remains evidence only; it must not be promoted to Acceptance proof or global Knowledge automatically.
+
+## B 路线派生规划、实施与运行身份投影
+
+`py -3 scripts/python/dev_cli.py b-route-knowledge-projection --mode workspace_preview|attempt|stable|stabilized|main` 与只读 HTTP `GET /api/knowledge/b-route-projection?mode=<mode>[&scope_id=&flow_id=&capability_id=&task_id=][&strict=1]` 共用 `_b_route_knowledge_projection.build_b_route_knowledge_projection`：
+
+- 从原始权威与已提交 `catalog.v1.json` 链派生来源、Requirement、Capability、Flow、四部分、Task、契约、场景、义务与影响十层关系；结构关系不等于实现，`implementation_state` 永不出现 `implemented`，Taskmaster 状态与 `resource_exists` 并列如实报告。
+- 每个节点分离 `planning_state`、`implementation_state`、`runtime_state` 与六类 `evidence_level`；`summary.json`、`coverage-receipt.json`、`runtime/*.json` 仅作为显式 `backlinks` 回链并保留原始 `original_executed_at`，仅当 revision、manifest 哈希与快照完全一致且非协议夹具时才记入运行状态。
+- `main` 模式从 `refs/heads/main` 已提交树读取，dirty 或 HEAD 不等于 main 时 `trusted_ref_eligible=false`；工作区模式恒 `is_main_fact=false`、`can_advance_canonical=false`；已提交前缀未完成时标 `partial_planning`。
+- 无 Task 正式 3B 采纳标 `3b_adopted_awaiting_3c`，合法非 Flow 标 `non_flow_governed`，`planned` 资源标 `planned_only=true`；损坏、未知 schema、摘要不符、pending 日志、epoch/reopen 撤销分别报 `blocked`/`stale`/`revoked` 与六字段 `Diagnostic` 及 `original_locator`。
+- 投影零写 `current.json`、`last-known-good.json`、`latest.json`、`runtime/latest.json`、`tasks.json` 与 `docs/planning/b-route/**`；`status` 与 `task` 动作仅附加只读 `b_route_identity`。默认 HTTP 返回 `200` 供检查，`strict=1` 在阻断时返回 `422`，未知 `mode` 返回 `400`。
+
+详见[派生知识投影 owner 说明](b-route-knowledge-projection.md)。

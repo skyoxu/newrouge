@@ -182,6 +182,7 @@ B_ROUTE_RUNTIME_DETERMINISTIC_TESTS = (
     "scripts.python.tests.test_b_route_scope_runner",
     "scripts.python.tests.test_b_route_evidence_reuse",
     "scripts.python.tests.test_b_route_completion_verdict",
+    "scripts.python.tests.test_b_route_knowledge_projection",
     "scripts.python.tests.test_milestone_incremental_workflow",
     "scripts.python.tests.test_milestone_authority_regression",
     "scripts.python.tests.test_milestone_incremental_hotfixes",

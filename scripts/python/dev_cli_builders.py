@@ -1403,3 +1403,49 @@ def build_b_route_completion_verdict_cmd(args) -> list[str]:
                 raise ValueError(f"b-route-completion-verdict optional {flag} must be a nonempty string")
             cmd += [flag, str(value)]
     return cmd
+
+
+KNOWLEDGE_PROJECTION_FORBIDDEN_FLAGS = (
+    "write",
+    "apply",
+    "commit",
+    "publish",
+    "mutate_tasks",
+    "set_status",
+)
+KNOWLEDGE_PROJECTION_MODES = ("workspace_preview", "attempt", "stable", "stabilized", "main")
+
+
+def build_b_route_knowledge_projection_cmd(args) -> list[str]:
+    for flag in KNOWLEDGE_PROJECTION_FORBIDDEN_FLAGS:
+        if getattr(args, flag, False):
+            raise ValueError(
+                "b-route-knowledge-projection is strictly read-only and rejects "
+                "--apply/--write/--commit/--publish/--mutate-tasks/--set-status flags"
+            )
+    cmd = [
+        sys.executable,
+        "-B",
+        str(Path(__file__).resolve().with_name("query_b_route_knowledge_projection.py")),
+    ]
+    root = getattr(args, "root", ".")
+    if root is None or type(root) is bool or not str(root).strip():
+        raise ValueError("b-route-knowledge-projection requires nonempty --root")
+    cmd += ["--root", str(root)]
+    mode = getattr(args, "mode", "main")
+    if mode is None or type(mode) is bool or str(mode).strip() not in KNOWLEDGE_PROJECTION_MODES:
+        raise ValueError("b-route-knowledge-projection requires --mode in " + "|".join(KNOWLEDGE_PROJECTION_MODES))
+    cmd += ["--mode", str(mode).strip()]
+    for attr, flag in (
+        ("scope_id", "--scope-id"),
+        ("flow_id", "--flow-id"),
+        ("capability_id", "--capability-id"),
+        ("task_id", "--task-id"),
+        ("report", "--report"),
+    ):
+        value = getattr(args, attr, None)
+        if value is not None:
+            if type(value) is bool or not str(value).strip():
+                raise ValueError(f"b-route-knowledge-projection optional {flag} must be a nonempty string")
+            cmd += [flag, str(value)]
+    return cmd

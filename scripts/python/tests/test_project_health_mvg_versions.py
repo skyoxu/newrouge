@@ -111,7 +111,8 @@ class MvgVersionTests(unittest.TestCase):
                 self.assertEqual('not_verified', with_runtime_evidence(overview, root)['manifests'][0]['evidence']['status'], field)
             dirty_commit = {**run, 'workspace_dirty': True}
             target.write_text(json.dumps(dirty_commit))
-            self.assertEqual('passed', with_runtime_evidence(overview, root)['manifests'][0]['evidence']['status'])
+            # Story 4.6: a run executed on a dirty workspace is never a main fact.
+            self.assertEqual('not_verified', with_runtime_evidence(overview, root)['manifests'][0]['evidence']['status'])
 
 
 if __name__ == '__main__':

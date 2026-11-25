@@ -829,6 +829,14 @@ def load_workspace_topology(root: Path, view: str = "attempt") -> dict[str, Any]
     payload["available"] = bool(payload.get("available", True))
     payload["identity"] = identity
     payload["workspace_view"] = view
+    # Additive provenance: a workspace view is never a main fact and never
+    # advances canonical Knowledge or bypasses the trusted-ref gate.
+    payload["provenance_binding"] = {
+        "workspace_view": view,
+        "is_main_fact": False,
+        "can_advance_canonical": False,
+        "trusted_ref_eligible": False,
+    }
     return payload
 
 
