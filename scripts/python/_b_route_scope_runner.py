@@ -2465,12 +2465,14 @@ def run_scoped_mvg(
                         "blocking_current_delivery": True,
                     })
                     continue
-                ov_dir = out / ("other-" + re.sub(r"[^A-Za-z0-9._-]+", "_", item["test_id"]))
-                ov_env = evidence_reuse.prepare_isolated_test_env(base_env, ov_dir)
+                ov_name = "other-" + re.sub(r"[^A-Za-z0-9._-]+", "_", item["test_id"])
+                ov_dir = out / ov_name
+                ov_iso = out / "_isolated" / ov_name
+                ov_env = evidence_reuse.prepare_isolated_test_env(base_env, ov_iso)
                 ov_res = _run_other_verification_script(execution_root, item, ov_dir, deadline, ov_env)
                 observed_dispatches += 1
                 observed_elapsed += float(ov_res.get("elapsed_seconds") or 0.0)
-                iso = evidence_reuse.verify_post_test_isolation(execution_root, pre_snapshot_hashes, ov_dir)
+                iso = evidence_reuse.verify_post_test_isolation(execution_root, pre_snapshot_hashes, ov_iso)
                 receipt["state_isolation"]["checks"].append({"test_id": item["test_id"], **iso})
                 ov_res["state_isolation"] = iso
                 ov_res["evidence_authenticity"] = evidence_authenticity
@@ -2618,7 +2620,8 @@ def run_scoped_mvg(
                 })
 
                 step_out = out / t["id"]
-                step_env = evidence_reuse.prepare_isolated_test_env(base_env, step_out)
+                step_iso = out / "_isolated" / t["id"]
+                step_env = evidence_reuse.prepare_isolated_test_env(base_env, step_iso)
                 res = execute_test(
                     execution_root,
                     t,
@@ -2636,7 +2639,7 @@ def run_scoped_mvg(
                 observed_elapsed += step_elapsed
                 if not build_eval["reused"]:
                     missed_build_elapsed += step_elapsed
-                iso = evidence_reuse.verify_post_test_isolation(execution_root, pre_snapshot_hashes, step_out)
+                iso = evidence_reuse.verify_post_test_isolation(execution_root, pre_snapshot_hashes, step_iso)
                 receipt["state_isolation"]["checks"].append({"test_id": t["id"], **iso})
 
                 effective_status = res["status"]
@@ -2907,7 +2910,8 @@ def run_scoped_mvg(
                     })
 
                     step_out = out / t["id"]
-                    step_env = evidence_reuse.prepare_isolated_test_env(base_env, step_out)
+                    step_iso = out / "_isolated" / t["id"]
+                    step_env = evidence_reuse.prepare_isolated_test_env(base_env, step_iso)
                     res = execute_test(
                         execution_root,
                         t,
@@ -2924,7 +2928,7 @@ def run_scoped_mvg(
                     observed_elapsed += step_elapsed
                     if not prewarm_eval["reused"]:
                         missed_build_elapsed += step_elapsed
-                    iso = evidence_reuse.verify_post_test_isolation(execution_root, pre_snapshot_hashes, step_out)
+                    iso = evidence_reuse.verify_post_test_isolation(execution_root, pre_snapshot_hashes, step_iso)
                     receipt["state_isolation"]["checks"].append({"test_id": t["id"], **iso})
 
                     ev = res["evidence"]
@@ -3070,7 +3074,8 @@ def run_scoped_mvg(
                             if not godot_ready and c_prewarm_eval["reused"]:
                                 build_reuses += 1
                             c_out = out / ("challenge-" + t["id"])
-                            c_env = evidence_reuse.prepare_isolated_test_env(base_env, c_out)
+                            c_iso_dir = out / "_isolated" / ("challenge-" + t["id"])
+                            c_env = evidence_reuse.prepare_isolated_test_env(base_env, c_iso_dir)
                             c_env["MVG_INPUT_CHALLENGE"] = "disconnect-reward-input"
                             c_res = execute_test(
                                 execution_root,
@@ -3085,7 +3090,7 @@ def run_scoped_mvg(
                             )
                             observed_dispatches += 1
                             observed_elapsed += float(c_res.get("elapsed_seconds") or 0.0)
-                            c_iso = evidence_reuse.verify_post_test_isolation(execution_root, pre_snapshot_hashes, c_out)
+                            c_iso = evidence_reuse.verify_post_test_isolation(execution_root, pre_snapshot_hashes, c_iso_dir)
                             receipt["state_isolation"]["checks"].append({"test_id": "challenge-" + t["id"], **c_iso})
                             if c_iso["pollution_detected"]:
                                 pollution_detected = True

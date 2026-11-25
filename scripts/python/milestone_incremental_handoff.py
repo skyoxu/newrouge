@@ -296,6 +296,7 @@ def build_task_handoff(
     plan_path: Path,
     task_id: str,
     readiness_path: Path,
+    verification_scope_path: Path | None = None,
 ) -> dict[str, Any]:
     plan = _load(plan_path)
     if not isinstance(plan, dict):
@@ -327,7 +328,7 @@ def build_task_handoff(
         raise ValueError("task-local change plan remains unresolved")
     if str(readiness.get("task_id") or "") != str(task_id) or not readiness.get("input_fingerprint"):
         raise ValueError("Chapter 5 readiness identity is incomplete")
-    return {
+    handoff: dict[str, Any] = {
         "schema_version": HANDOFF_SCHEMA,
         "task_id": str(task_id),
         "source_identity": dict(plan.get("source_identity") or {}),
@@ -365,6 +366,47 @@ def build_task_handoff(
             if isinstance(row.get("baseline_delta"), dict)
         ],
     }
+    if verification_scope_path is not None:
+        import _b_route_verification_scope as vs
+        scope_rel = verification_scope_path.resolve().relative_to(root.resolve()).as_posix()
+        val = vs.validate_verification_scope(root, scope_rel)
+        if not val.get("ok"):
+            raise ValueError(f"invalid B-route VerificationScope: {val.get('reason_code')}")
+        reval = vs.revalidate_verification_scope(root, scope_rel)
+        if not reval.get("ok") or not reval.get("valid"):
+            raise ValueError(f"stale B-route VerificationScope: {reval.get('status')}")
+        scope_doc = _load(verification_scope_path)
+        obligations = [o for o in (scope_doc.get("obligations") or []) if isinstance(o, dict)]
+        handoff["b_route_verification_scope"] = {
+            "scope_path": scope_rel,
+            "scope_sha256": _file_sha(verification_scope_path),
+            "scope_id": scope_doc.get("scope_id"),
+            "input_set_digest": scope_doc.get("input_set_digest"),
+            "existing_required_obligations": sorted(
+                o["obligation_id"] for o in obligations if o.get("tier") == "existing_required"
+            ),
+            "current_new_obligations": sorted(
+                o["obligation_id"] for o in obligations if o.get("tier") == "current_new"
+            ),
+            "out_of_scope_future_obligations": sorted(
+                o["obligation_id"] for o in obligations if o.get("tier") == "out_of_scope_future"
+            ),
+            "out_of_scope_future_flows": sorted({
+                str(fc.get("flow_id"))
+                for fc in (scope_doc.get("flow_classifications") or [])
+                if isinstance(fc, dict) and fc.get("flow_id") and (
+                    fc.get("classification") == "out_of_scope_future"
+                    or (
+                        fc.get("has_out_of_scope_future") is True
+                        and not fc.get("in_current_delivery_scope")
+                        and not fc.get("has_existing_required")
+                        and not fc.get("has_current_new")
+                    )
+                )
+            }),
+            "governed_delta_refs": list((scope_doc.get("authority_refs") or {}).get("governed_delta_refs") or []),
+        }
+    return handoff
 
 
 def validate_task_handoff(root: Path, path: Path, task_id: str) -> tuple[bool, str, dict[str, Any]]:
@@ -378,6 +420,8 @@ def validate_task_handoff(root: Path, path: Path, task_id: str) -> tuple[bool, s
         return False, "milestone_handoff_invalid_schema", {}
     if str(payload.get("task_id") or "") != str(task_id):
         return False, "milestone_handoff_task_mismatch", {}
+    import _b_route_inventory as inventory
+
     for path_key, sha_key in (
         ("change_plan_path", "change_plan_sha256"),
         ("chapter5_readiness_path", "chapter5_readiness_sha256"),
@@ -385,8 +429,8 @@ def validate_task_handoff(root: Path, path: Path, task_id: str) -> tuple[bool, s
         rel = str(payload.get(path_key) or "").strip()
         if not rel:
             return False, f"milestone_handoff_missing_{path_key}", {}
-        target = (root / rel).resolve()
         try:
+            target = inventory.safe_input(root.resolve(), rel, allow_logs=True).resolve()
             target.relative_to(root.resolve())
         except ValueError:
             return False, "milestone_handoff_path_escape", {}
@@ -403,12 +447,40 @@ def validate_task_handoff(root: Path, path: Path, task_id: str) -> tuple[bool, s
         return False, "milestone_handoff_readiness_not_closable", {}
     if readiness.get("input_fingerprint") != payload.get("chapter5_input_fingerprint"):
         return False, "milestone_handoff_readiness_fingerprint_drift", {}
+    scope_path_obj: Path | None = None
+    b_scope_meta = payload.get("b_route_verification_scope")
+    if b_scope_meta is not None:
+        if not isinstance(b_scope_meta, dict):
+            return False, "milestone_handoff_invalid_b_route_scope", {}
+        s_rel = str(b_scope_meta.get("scope_path") or "").strip()
+        if not s_rel:
+            return False, "milestone_handoff_missing_scope_path", {}
+        try:
+            s_target = inventory.safe_input(root.resolve(), s_rel, allow_logs=True).resolve()
+            s_target.relative_to(root.resolve())
+        except ValueError:
+            return False, "milestone_handoff_path_escape", {}
+        if not s_target.is_file() or _file_sha(s_target) != str(b_scope_meta.get("scope_sha256") or ""):
+            return False, "milestone_handoff_stale_verification_scope", {}
+        try:
+            s_doc = _load(s_target)
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+            return False, "milestone_handoff_invalid_b_route_scope", {}
+        if (
+            not isinstance(s_doc, dict)
+            or not str(b_scope_meta.get("scope_id") or "").strip()
+            or s_doc.get("scope_id") != b_scope_meta.get("scope_id")
+            or s_doc.get("input_set_digest") != b_scope_meta.get("input_set_digest")
+        ):
+            return False, "milestone_handoff_scope_identity_drift", {}
+        scope_path_obj = s_target
     try:
         expected = build_task_handoff(
             root,
             plan_path=root / str(payload["change_plan_path"]),
             task_id=task_id,
             readiness_path=root / str(payload["chapter5_readiness_path"]),
+            verification_scope_path=scope_path_obj,
         )
     except (ValueError, OSError, KeyError, TypeError):
         return False, "milestone_handoff_invalid_projection", {}
@@ -417,7 +489,100 @@ def validate_task_handoff(root: Path, path: Path, task_id: str) -> tuple[bool, s
     return True, "ok", payload
 
 
-def validate_milestone_regressions(root: Path, handoff: dict[str, Any], summary_path: Path | None) -> tuple[bool, str]:
+def validate_b_route_milestone_completion(
+    root: Path,
+    *,
+    handoff: dict[str, Any] | Path | str | None = None,
+    verification_scope_path: Path | str,
+    receipt_paths: list[Path | str] | Path | str,
+    manifest_path: Path | str | None = None,
+    manual_signoff_path: Path | str | None = None,
+    chapter7_slice_report: Path | str | None = None,
+) -> dict[str, Any]:
+    """Merge milestone handoff, Story 4.2 VerificationScope, and Story 4.3/4.4 receipts for AC-4 verdict."""
+    import _b_route_completion_verdict as verdict_service
+    import _b_route_inventory as inventory
+
+    root_res = Path(root).resolve()
+
+    def _to_rel(raw: Path | str | None, *, allow_logs: bool = True) -> str | None:
+        if raw is None:
+            return None
+        if isinstance(raw, str):
+            p = Path(raw)
+            if p.is_absolute():
+                inventory.no_reparse(p)
+                rel = p.resolve().relative_to(root_res).as_posix()
+            else:
+                rel = raw
+        else:
+            p = raw
+            if p.is_absolute():
+                inventory.no_reparse(p)
+                rel = p.resolve().relative_to(root_res).as_posix()
+            else:
+                rel = p.as_posix()
+        inventory.safe_input(root_res, rel, allow_logs=allow_logs)
+        return rel
+
+    handoff_rel: str | None = None
+    inline_handoff: dict[str, Any] | None = None
+    if isinstance(handoff, (str, Path)):
+        handoff_rel = _to_rel(handoff, allow_logs=True)
+    elif isinstance(handoff, dict):
+        inline_handoff = handoff
+
+    eff_manifest = manifest_path
+    if eff_manifest is None and isinstance(inline_handoff, dict) and inline_handoff.get("baseline_manifest_path"):
+        eff_manifest = str(inline_handoff["baseline_manifest_path"])
+
+    raw_receipts = [receipt_paths] if isinstance(receipt_paths, (str, Path)) else list(receipt_paths)
+    rel_receipts = [_to_rel(r, allow_logs=True) for r in raw_receipts if r is not None]
+
+    return verdict_service.evaluate_completion_verdict(
+        root_res,
+        level="milestone",
+        manifest_path=_to_rel(eff_manifest, allow_logs=False),
+        verification_scope_path=_to_rel(verification_scope_path, allow_logs=True),
+        receipt_paths=rel_receipts,
+        chapter7_slice_report=_to_rel(chapter7_slice_report, allow_logs=True),
+        manual_signoff_path=_to_rel(manual_signoff_path, allow_logs=True),
+        milestone_handoff_path=handoff_rel,
+        inline_handoff=inline_handoff,
+        operation="milestone_handoff_completion",
+    )
+
+
+def validate_milestone_regressions(
+    root: Path,
+    handoff: dict[str, Any],
+    summary_path: Path | None,
+    *,
+    verification_scope_path: Path | str | None = None,
+    receipt_paths: list[Path | str] | Path | str | None = None,
+    manifest_path: Path | str | None = None,
+    manual_signoff_path: Path | str | None = None,
+    chapter7_slice_report: Path | str | None = None,
+) -> tuple[bool, str]:
+    if verification_scope_path is not None or receipt_paths is not None:
+        eff_scope = verification_scope_path
+        if eff_scope is None and isinstance(handoff.get("b_route_verification_scope"), dict):
+            eff_scope = handoff["b_route_verification_scope"].get("scope_path")
+        if eff_scope is None or receipt_paths is None:
+            return False, "milestone_b_route_scope_or_receipt_missing"
+        verdict = validate_b_route_milestone_completion(
+            root,
+            handoff=handoff,
+            verification_scope_path=eff_scope,
+            receipt_paths=receipt_paths,
+            manifest_path=manifest_path,
+            manual_signoff_path=manual_signoff_path,
+            chapter7_slice_report=chapter7_slice_report,
+        )
+        if verdict.get("ok") and verdict.get("milestone_completed"):
+            return True, "ok"
+        return False, str(verdict.get("reason") or verdict.get("reason_code") or "milestone_b_route_blocked")
+
     required = set(map(str, handoff.get("required_regressions") or []))
     if not required:
         return True, "ok"
@@ -429,9 +594,9 @@ def validate_milestone_regressions(root: Path, handoff: dict[str, Any], summary_
             raise ValueError("not a MVG run summary")
         evidence = _load(summary_path)
         manifest_ref = str(evidence.get("manifest") or "")
-        manifest_path = (root / manifest_ref).resolve()
-        manifest_path.relative_to(root.resolve())
-        manifest = _load(manifest_path)
+        manifest_path_obj = (root / manifest_ref).resolve()
+        manifest_path_obj.relative_to(root.resolve())
+        manifest = _load(manifest_path_obj)
     except (OSError, ValueError, KeyError, AttributeError, json.JSONDecodeError):
         return False, "milestone_regression_evidence_invalid"
     if (
@@ -441,7 +606,7 @@ def validate_milestone_regressions(root: Path, handoff: dict[str, Any], summary_
         or evidence.get("status") != "passed"
         or evidence.get("runtime_verified") is not True
         or evidence.get("workspace_dirty")
-        or evidence.get("manifest_sha256") != normalized_file_sha(manifest_path)
+        or evidence.get("manifest_sha256") != normalized_file_sha(manifest_path_obj)
     ):
         return False, "milestone_regression_evidence_stale_or_unverified"
     try:

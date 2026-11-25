@@ -213,14 +213,15 @@ def run(args: argparse.Namespace, root: Path | None = None) -> int:
                 if time.monotonic() >= deadline:
                     raise TimeoutError('Global runtime budget exhausted')
                 step_out = out / test['id']
-                step_env = evidence_reuse.prepare_isolated_test_env(base_env, step_out)
+                step_iso = out / '_isolated' / test['id']
+                step_env = evidence_reuse.prepare_isolated_test_env(base_env, step_iso)
                 exec_kwargs = {'prewarm': not godot_ready}
                 if protocol_fixture_only or dotnet_bin != 'dotnet':
                     exec_kwargs['dotnet_bin'] = dotnet_bin
                     exec_kwargs['protocol_fixture'] = protocol_fixture_only
                 result = dict(execute_test(execution_root, test, step_out, args.godot_bin,
                                            deadline, step_env, **exec_kwargs))
-                iso = evidence_reuse.verify_post_test_isolation(execution_root, pre_snapshot_hashes, step_out)
+                iso = evidence_reuse.verify_post_test_isolation(execution_root, pre_snapshot_hashes, step_iso)
                 summary['state_isolation']['checks'].append({'test_id': test['id'], **iso})
                 result['state_isolation'] = iso
                 if iso['pollution_detected']:
@@ -241,7 +242,8 @@ def run(args: argparse.Namespace, root: Path | None = None) -> int:
                 summary['challenges'] = []
                 for test in targets:
                     step_out = out / ('challenge-' + test['id'])
-                    challenge_env = evidence_reuse.prepare_isolated_test_env(base_env, step_out)
+                    step_iso = out / '_isolated' / ('challenge-' + test['id'])
+                    challenge_env = evidence_reuse.prepare_isolated_test_env(base_env, step_iso)
                     challenge_env['MVG_INPUT_CHALLENGE'] = 'disconnect-reward-input'
                     exec_kwargs = {'prewarm': not godot_ready}
                     if protocol_fixture_only or dotnet_bin != 'dotnet':
@@ -249,7 +251,7 @@ def run(args: argparse.Namespace, root: Path | None = None) -> int:
                         exec_kwargs['protocol_fixture'] = protocol_fixture_only
                     result = dict(execute_test(execution_root, test, step_out,
                                                args.godot_bin, deadline, challenge_env, **exec_kwargs))
-                    c_iso = evidence_reuse.verify_post_test_isolation(execution_root, pre_snapshot_hashes, step_out)
+                    c_iso = evidence_reuse.verify_post_test_isolation(execution_root, pre_snapshot_hashes, step_iso)
                     summary['state_isolation']['checks'].append({'test_id': 'challenge-' + test['id'], **c_iso})
                     result['state_isolation'] = c_iso
                     if c_iso['pollution_detected']:

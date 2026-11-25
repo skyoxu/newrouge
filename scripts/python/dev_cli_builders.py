@@ -1346,3 +1346,60 @@ def build_run_mvg_acceptance_cmd(args) -> list[str]:
     if getattr(args, "events_log", None) is not None:
         cmd += ["--events-log", str(args.events_log)]
     return cmd
+
+
+COMPLETION_VERDICT_FORBIDDEN_FLAGS = (
+    "write",
+    "apply",
+    "commit",
+    "mutate_tasks",
+    "publish",
+    "set_status",
+    "retire",
+    "mark_done",
+    "claim_passed",
+)
+
+
+def build_b_route_completion_verdict_cmd(args) -> list[str]:
+    for flag in COMPLETION_VERDICT_FORBIDDEN_FLAGS:
+        if getattr(args, flag, False):
+            raise ValueError(
+                "b-route-completion-verdict is strictly read-only and rejects "
+                "--apply/--write/--commit/--mutate-tasks/--publish/--set-status flags"
+            )
+    cmd = [
+        sys.executable,
+        "-B",
+        str(Path(__file__).resolve().with_name("check_b_route_completion_verdict.py")),
+    ]
+    root = getattr(args, "root", ".")
+    if root is None or type(root) is bool or not str(root).strip():
+        raise ValueError("b-route-completion-verdict requires nonempty --root")
+    cmd += ["--root", str(root)]
+    level = getattr(args, "level", None)
+    if level is None or type(level) is bool or str(level).strip() not in {"task", "flow", "milestone", "non_flow"}:
+        raise ValueError("b-route-completion-verdict requires --level in {task, flow, milestone, non_flow}")
+    cmd += ["--level", str(level).strip()]
+    for value in list(getattr(args, "receipt", None) or []):
+        if type(value) is bool or not str(value).strip():
+            raise ValueError("b-route-completion-verdict --receipt entries must be nonempty strings")
+        cmd += ["--receipt", str(value)]
+    for attr, flag in (
+        ("task_id", "--task-id"),
+        ("flow_id", "--flow-id"),
+        ("manifest", "--manifest"),
+        ("verification_scope", "--verification-scope"),
+        ("chapter7_slice_report", "--chapter7-slice-report"),
+        ("manual_signoff", "--manual-signoff"),
+        ("milestone_handoff", "--milestone-handoff"),
+        ("operation", "--operation"),
+        ("report", "--report"),
+        ("events_log", "--events-log"),
+    ):
+        value = getattr(args, attr, None)
+        if value is not None:
+            if type(value) is bool or not str(value).strip():
+                raise ValueError(f"b-route-completion-verdict optional {flag} must be a nonempty string")
+            cmd += [flag, str(value)]
+    return cmd

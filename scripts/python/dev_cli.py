@@ -20,7 +20,7 @@ import sys
 from pathlib import Path
 
 # The read-only command must not create bytecode even without Python -B.
-if len(sys.argv) > 1 and sys.argv[1] in {"b-route-preflight", "b-route-sources", "b-route-adoption", "b-route-task-preview", "b-route-task-compile", "b-route-task-origin", "b-route-chapter4-binding", "b-route-input-set", "b-route-stage5-obligations", "b-route-chapter5-readiness", "b-route-chapter6-gate", "b-route-defect-routing", "b-route-chapter7-slice", "b-route-entrypoint-parity", "b-route-impact-closure", "b-route-verification-scope", "run-mvg-acceptance"}:
+if len(sys.argv) > 1 and sys.argv[1] in {"b-route-preflight", "b-route-sources", "b-route-adoption", "b-route-task-preview", "b-route-task-compile", "b-route-task-origin", "b-route-chapter4-binding", "b-route-input-set", "b-route-stage5-obligations", "b-route-chapter5-readiness", "b-route-chapter6-gate", "b-route-defect-routing", "b-route-chapter7-slice", "b-route-entrypoint-parity", "b-route-impact-closure", "b-route-verification-scope", "b-route-completion-verdict", "run-mvg-acceptance"}:
     sys.dont_write_bytecode = True
 
 if __name__ == "__main__" and len(sys.argv) > 1 and sys.argv[1] == "b-route-sources":
@@ -83,6 +83,10 @@ if __name__ == "__main__" and len(sys.argv) > 1 and sys.argv[1] == "b-route-veri
     from build_b_route_verification_scope import main as verification_scope_main
     raise SystemExit(verification_scope_main(sys.argv[2:]))
 
+if __name__ == "__main__" and len(sys.argv) > 1 and sys.argv[1] == "b-route-completion-verdict":
+    from check_b_route_completion_verdict import main as completion_verdict_main
+    raise SystemExit(completion_verdict_main(sys.argv[2:]))
+
 from dev_cli_builders import (
     DEFAULT_GATE_BUNDLE_TASK_FILES,
     build_check_directory_boundaries_cmd,
@@ -119,6 +123,7 @@ from dev_cli_builders import (
     build_b_route_entrypoint_parity_cmd,
     build_b_route_impact_closure_cmd,
     build_b_route_verification_scope_cmd,
+    build_b_route_completion_verdict_cmd,
     build_run_mvg_acceptance_cmd,
     build_quality_gates_cmd,
     build_run_dotnet_cmd,
@@ -857,6 +862,13 @@ def cmd_b_route_verification_scope(args: argparse.Namespace) -> int:
     return verification_scope_main(build_b_route_verification_scope_cmd(args)[3:])
 
 
+def cmd_b_route_completion_verdict(args: argparse.Namespace) -> int:
+    """Run the read-only B-route Task/Flow/Milestone/non-Flow completion verdict CLI."""
+    from check_b_route_completion_verdict import main as completion_verdict_main
+
+    return completion_verdict_main(build_b_route_completion_verdict_cmd(args)[3:])
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Dev CLI for Godot+C# template (AI-friendly entrypoint)",
@@ -939,6 +951,11 @@ def build_parser() -> argparse.ArgumentParser:
     from build_b_route_verification_scope import register_arguments as register_verification_scope_arguments
     register_verification_scope_arguments(verification_scope_parser)
     verification_scope_parser.set_defaults(func=cmd_b_route_verification_scope)
+
+    completion_verdict_parser = sub.add_parser("b-route-completion-verdict", help="Read-only B-route completion verdict separating Task-local, target-Flow, cumulative full-MVG milestone, and legal non-Flow completion")
+    from check_b_route_completion_verdict import register_arguments as register_completion_verdict_arguments
+    register_completion_verdict_arguments(completion_verdict_parser)
+    completion_verdict_parser.set_defaults(func=cmd_b_route_completion_verdict)
 
     # run-ci-basic
     p_ci = sub.add_parser(
@@ -1557,6 +1574,10 @@ def main(argv: list[str] | None = None) -> int:
         sys.dont_write_bytecode = True
         from build_b_route_verification_scope import main as verification_scope_main
         return verification_scope_main(arguments[1:])
+    if arguments and arguments[0] == "b-route-completion-verdict":
+        sys.dont_write_bytecode = True
+        from check_b_route_completion_verdict import main as completion_verdict_main
+        return completion_verdict_main(arguments[1:])
     parser = build_parser()
     args = parser.parse_args(arguments)
     func = getattr(args, "func", None)

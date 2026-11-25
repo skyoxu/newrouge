@@ -118,6 +118,8 @@ py -3 -B scripts/python/dev_cli.py run-mvg-acceptance --mode run --manifest docs
 
 当传入 `--verification-scope` 时，执行器由 `_b_route_scope_runner.py` 接管：先做 `validate_verification_scope` 与运行前后双端 `revalidate_verification_scope`，持有短 metadata 锁→业务 scope 租约（不长占全局 writer 锁），按 `scoped` 或 `conservative_superset` 真实执行并在 `logs/ci/mvg-acceptance/<run-id>/coverage-receipt.json` 输出六类证据等级、未运行原因、人工待办与环境/协议夹具限制；可选通过 `--reuse-evidence-from`、`--reuse-build-from` 与 `--events-log` 启用身份核验的构建/预热复用、同快照多 Flow 共享测试去重与去重事件日志，同时为每个测试步骤提供独立 `isolated-user-data`/`isolated-temp` 目录与运行后快照只读校验；不传该参数时保持既有行为完全兼容（同样享有逐测试独立数据目录隔离）。详见[范围执行器 owner 说明](b-route-scope-runner.md)与[构建与共享证据复用 owner 说明](b-route-evidence-reuse.md)。
 
+收尾分层核对通过只读入口 `py -3 -B scripts/python/dev_cli.py b-route-completion-verdict --level task|flow|milestone|non_flow ...`（`_b_route_completion_verdict.py`）与适配后的 `milestone_incremental_handoff.py` 执行：单 Task 局部通过仅满足本任务局部责任而不宣称所属 Flow 完成；目标 Flow 完成须所有当前义务、受影响旧回归、适用 Chapter 7 与适用人工签收均具精确等级有效证据（严禁低阶代高阶、协议夹具充真实运行或机器代人工，专用集成 owner 免自身先 `done`）；累计 `full-MVG` 里程碑完成仅在 `coverage.mode == "full"` 且所有必测、跨 Flow 组合与人工义务于同一干净整合 snapshot 满足时授予，严禁跨 snapshot 拼接或用单 Flow/pilot/critical 冒充，失败旧 Flow A 阻断而范围外 Flow B 保留后续责任不强迫提前实现，损坏/过期/空/跳测一律拒绝并定位六字段诊断，零修改 `tasks.json` 与 `catalog.v1.json`。详见[分层完成核对 owner 说明](b-route-completion-verdict.md)。
+
 可通过 `--manifest <repo-relative.json>` 选择其他 MVG。正式收尾优先 commit 模式；workspace 模式记录文件内容摘要，不得冒充某个提交的验证。运行器将输入复制到独立快照，隔离 user:// 数据，复用 xUnit 和现有 GdUnit4 Windows Junction 入口。全局预算默认 900 秒，可用 `--timeout-sec` 调整；超时不是缺陷被检测的证据。
 
 每次输出到 `logs/ci/mvg-acceptance/<run-id>/`。plan/recommend 返回成功时 runtime_verified 仍为 false。run 只有所有清单测试实际执行、达到 min_tests、零失败、零跳过且进程成功，才会标记 runtime_verified=true。缺报告、空报告、错误测试选择、计数不一致、重复用例结果和准备失败均阻断。测试类/套件身份精确匹配，不接受近似名称。摘要只代表该清单范围与该输入版本，不能自动写任务 done。
