@@ -1256,3 +1256,51 @@ def build_b_route_impact_closure_cmd(args) -> list[str]:
                 raise ValueError(f"b-route-impact-closure optional {flag} must be nonempty when provided")
             cmd += [flag, str(value)]
     return cmd
+
+
+VERIFICATION_SCOPE_FORBIDDEN_FLAGS = ("write", "apply", "commit", "mutate_tasks", "publish", "set_status", "retire",
+                                      "mark_done", "claim_passed")
+
+
+def build_b_route_verification_scope_cmd(args) -> list[str]:
+    for flag in VERIFICATION_SCOPE_FORBIDDEN_FLAGS:
+        if getattr(args, flag, False):
+            raise ValueError(
+                "b-route-verification-scope is strictly read-only and rejects --apply/--write/--commit/--mutate-tasks flags"
+            )
+    cmd = [
+        sys.executable,
+        "-B",
+        str(Path(__file__).resolve().with_name("build_b_route_verification_scope.py")),
+    ]
+    root = getattr(args, "root", ".")
+    if root is None or type(root) is bool or not str(root).strip():
+        raise ValueError("b-route-verification-scope requires nonempty --root")
+    cmd += ["--root", str(root)]
+    for attr, flag in (("change_root", "--change-root"), ("task_id", "--task-id"), ("plan_id", "--plan-id"),
+                       ("flow_id", "--flow-id"), ("manifest", "--manifest"),
+                       ("cumulative_manifest", "--cumulative-manifest")):
+        for value in list(getattr(args, attr, None) or []):
+            if type(value) is bool:
+                raise ValueError(f"b-route-verification-scope {flag} entries must be strings, not booleans")
+            if not str(value).strip():
+                raise ValueError(f"b-route-verification-scope {flag} entries must be nonempty")
+            cmd += [flag, str(value)]
+    for attr, flag in (
+        ("impact_proof", "--impact-proof"),
+        ("scope_delta", "--scope-delta"),
+        ("validate_scope", "--validate-scope"),
+        ("revalidate_scope", "--revalidate-scope"),
+        ("prior_conclusions", "--prior-conclusions"),
+        ("operation", "--operation"),
+        ("report", "--report"),
+        ("events_log", "--events-log"),
+    ):
+        value = getattr(args, attr, None)
+        if value is not None:
+            if type(value) is bool:
+                raise ValueError(f"b-route-verification-scope optional {flag} must be a string, not a boolean")
+            if not str(value).strip():
+                raise ValueError(f"b-route-verification-scope optional {flag} must be nonempty when provided")
+            cmd += [flag, str(value)]
+    return cmd

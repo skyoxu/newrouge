@@ -35,7 +35,7 @@ class RuntimeCITests(unittest.TestCase):
                      'adoption_projection', 'adoption_r10_capture', 'adoption_r10_reader',
                      'adoption_r19_reader', 'adoption_review', 'operation_leases',
                      'operation_scope', 'public_context', 'qualified_public_context', 'task_preview',
-                     'task_compilation', 'task_resolver', 'chapter4_binding', 'input_set', 'stage5_obligations', 'chapter5_readiness', 'chapter6_gate', 'chapter6_recovery', 'defect_routing', 'chapter7_slice', 'entrypoint_parity', 'impact_closure'):
+                     'task_compilation', 'task_resolver', 'chapter4_binding', 'input_set', 'stage5_obligations', 'chapter5_readiness', 'chapter6_gate', 'chapter6_recovery', 'defect_routing', 'chapter7_slice', 'entrypoint_parity', 'impact_closure', 'verification_scope'):
             selector = 'scripts.python.tests.test_b_route_' + name
             self.assertEqual(1, selected.count(selector))
             self.assertFalse(any(value.startswith(selector + '.') for value in selected))
@@ -235,6 +235,9 @@ class RuntimeCITests(unittest.TestCase):
         self.assertIn("- 'scripts/python/check_b_route_entrypoint_parity.py'", workflow)
         self.assertIn("- 'scripts/python/_b_route_impact_closure.py'", workflow)
         self.assertIn("- 'scripts/python/compute_b_route_impact_closure.py'", workflow)
+        self.assertIn("- 'scripts/python/_b_route_verification_scope.py'", workflow)
+        self.assertIn("- 'scripts/python/build_b_route_verification_scope.py'", workflow)
+        self.assertIn("- 'docs/planning/b-route/schemas/**'", workflow)
         self.assertIn("- 'scripts/python/_project_health_http.py'", workflow)
         self.assertIn("- 'scripts/python/project_health_runtime.py'", workflow)
         self.assertIn("- 'scripts/python/project_health_knowledge.py'", workflow)
@@ -275,6 +278,9 @@ class RuntimeCITests(unittest.TestCase):
             'scripts/python/check_b_route_entrypoint_parity.py',
             'scripts/python/_b_route_impact_closure.py',
             'scripts/python/compute_b_route_impact_closure.py',
+            'scripts/python/_b_route_verification_scope.py',
+            'scripts/python/build_b_route_verification_scope.py',
+            'docs/planning/b-route/schemas/verification-scope.schema.json',
             'scripts/python/_project_health_http.py',
             'scripts/python/project_health_runtime.py',
             'scripts/python/project_health_knowledge.py',

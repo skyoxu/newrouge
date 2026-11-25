@@ -41,7 +41,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 11-03-2026 17:10
-last_updated: '2026-11-25'
+last_updated: '2026-11-26'
 project: newrouge
 project_key: newrouge-b-route
 tracking_system: taskmaster-authoritative-planning-view
@@ -113,7 +113,7 @@ development_status:
 
   epic-4: in-progress
   4-1-从受治理反向关系计算完整传递影响: done
-  4-2-形成可执行的三类义务verificationscope: backlog
+  4-2-形成可执行的三类义务verificationscope: done
   4-3-让真实执行器消费范围并报告实际覆盖: backlog
   4-4-在身份匹配时复用构建与共享测试证据: backlog
   4-5-分别核对task-flow和累计里程碑完成: backlog

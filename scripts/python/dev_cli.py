@@ -20,7 +20,7 @@ import sys
 from pathlib import Path
 
 # The read-only command must not create bytecode even without Python -B.
-if len(sys.argv) > 1 and sys.argv[1] in {"b-route-preflight", "b-route-sources", "b-route-adoption", "b-route-task-preview", "b-route-task-compile", "b-route-task-origin", "b-route-chapter4-binding", "b-route-input-set", "b-route-stage5-obligations", "b-route-chapter5-readiness", "b-route-chapter6-gate", "b-route-defect-routing", "b-route-chapter7-slice", "b-route-entrypoint-parity", "b-route-impact-closure"}:
+if len(sys.argv) > 1 and sys.argv[1] in {"b-route-preflight", "b-route-sources", "b-route-adoption", "b-route-task-preview", "b-route-task-compile", "b-route-task-origin", "b-route-chapter4-binding", "b-route-input-set", "b-route-stage5-obligations", "b-route-chapter5-readiness", "b-route-chapter6-gate", "b-route-defect-routing", "b-route-chapter7-slice", "b-route-entrypoint-parity", "b-route-impact-closure", "b-route-verification-scope"}:
     sys.dont_write_bytecode = True
 
 if __name__ == "__main__" and len(sys.argv) > 1 and sys.argv[1] == "b-route-sources":
@@ -79,6 +79,10 @@ if __name__ == "__main__" and len(sys.argv) > 1 and sys.argv[1] == "b-route-impa
     from compute_b_route_impact_closure import main as impact_closure_main
     raise SystemExit(impact_closure_main(sys.argv[2:]))
 
+if __name__ == "__main__" and len(sys.argv) > 1 and sys.argv[1] == "b-route-verification-scope":
+    from build_b_route_verification_scope import main as verification_scope_main
+    raise SystemExit(verification_scope_main(sys.argv[2:]))
+
 from dev_cli_builders import (
     DEFAULT_GATE_BUNDLE_TASK_FILES,
     build_check_directory_boundaries_cmd,
@@ -114,6 +118,7 @@ from dev_cli_builders import (
     build_b_route_chapter7_slice_cmd,
     build_b_route_entrypoint_parity_cmd,
     build_b_route_impact_closure_cmd,
+    build_b_route_verification_scope_cmd,
     build_quality_gates_cmd,
     build_run_dotnet_cmd,
     build_run_gdunit_full_cmd,
@@ -844,6 +849,13 @@ def cmd_b_route_impact_closure(args: argparse.Namespace) -> int:
     return impact_closure_main(build_b_route_impact_closure_cmd(args)[3:])
 
 
+def cmd_b_route_verification_scope(args: argparse.Namespace) -> int:
+    """Run the read-only B-route three-tier VerificationScope CLI."""
+    from build_b_route_verification_scope import main as verification_scope_main
+
+    return verification_scope_main(build_b_route_verification_scope_cmd(args)[3:])
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Dev CLI for Godot+C# template (AI-friendly entrypoint)",
@@ -921,6 +933,11 @@ def build_parser() -> argparse.ArgumentParser:
     from compute_b_route_impact_closure import register_arguments as register_impact_closure_arguments
     register_impact_closure_arguments(impact_closure_parser)
     impact_closure_parser.set_defaults(func=cmd_b_route_impact_closure)
+
+    verification_scope_parser = sub.add_parser("b-route-verification-scope", help="Read-only B-route executable three-tier VerificationScope build, validation and drift revalidation")
+    from build_b_route_verification_scope import register_arguments as register_verification_scope_arguments
+    register_verification_scope_arguments(verification_scope_parser)
+    verification_scope_parser.set_defaults(func=cmd_b_route_verification_scope)
 
     # run-ci-basic
     p_ci = sub.add_parser(
@@ -1530,6 +1547,10 @@ def main(argv: list[str] | None = None) -> int:
         sys.dont_write_bytecode = True
         from compute_b_route_impact_closure import main as impact_closure_main
         return impact_closure_main(arguments[1:])
+    if arguments and arguments[0] == "b-route-verification-scope":
+        sys.dont_write_bytecode = True
+        from build_b_route_verification_scope import main as verification_scope_main
+        return verification_scope_main(arguments[1:])
     parser = build_parser()
     args = parser.parse_args(arguments)
     func = getattr(args, "func", None)

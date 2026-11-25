@@ -1864,3 +1864,7 @@ Helper modules below are referenced directly by at least two included entry scri
 ## B 路线受治理完整传递影响闭包 owner
 
 `scripts/python/compute_b_route_impact_closure.py` 是 `dev_cli.py b-route-impact-closure` 的直接入口；`_b_route_impact_closure.py` 唯一拥有受治理反向图构建（`build_governed_reverse_graph`）、环安全去重的完整传递影响闭包与保守扩大（`compute_impact_closure`）以及类型化输入身份的分区选择性复验（`revalidate_impact_proof`）。由 `dev_cli.py`、`dev_cli_builders.py` 消费，单测由 `run_gate_bundle.py` 与 `b-route-runtime-deterministic.yml` 纳入；默认零写盘，零修改 `tasks.json` 与发布指针，恒定 `impact_accounting_only=true`/`implementation_completed=false`/`runtime_verified=false`/`default_b_enabled=false`。详见[影响闭包 owner 说明](b-route-impact-closure.md)。
+
+## B 路线可执行三类义务 VerificationScope owner
+
+`scripts/python/build_b_route_verification_scope.py` 是 `dev_cli.py b-route-verification-scope` 的直接入口；`_b_route_verification_scope.py` 唯一拥有三类义务验证合同的构建（`build_verification_scope`）、辅助 schema 与 `scope_id` 校验（`validate_verification_scope`）以及按原请求重建的漂移失效复验（`revalidate_verification_scope`），消费 `_b_route_impact_closure.py`、`_b_route_input_set.py`、`_b_route_schema_resources.py`（`AUXILIARY` 中的 `verification-scope`）与 `_mvg_manifest.py`。由 `dev_cli.py`、`dev_cli_builders.py` 消费，单测由 `run_gate_bundle.py` 与 `b-route-runtime-deterministic.yml` 纳入；默认零写盘，零修改 `tasks.json` 与发布指针，恒定 `scope_authorizes_verification_only=true`/`task_completed=false`/`runtime_verified=false`/`default_b_enabled=false`。详见[VerificationScope owner 说明](b-route-verification-scope.md)。
