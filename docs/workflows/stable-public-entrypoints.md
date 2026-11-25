@@ -32,6 +32,10 @@ checkpoint; it is not a substitute read-only formal reader. No new Task, latest
 context selector, model invocation or 2.9 reuse API is supplied by these views.
 Original A entrypoints remain below. Default B and full Story 2.10 remain unaccepted.
 
+### `py -3 -B scripts/python/dev_cli.py b-route-entrypoint-parity [--task-id <id>] [--epic3-handoff] [--root <root>] [--operation <op>] [--report <logs/ci/.../*.json>] [--handoff-report <logs/ci/.../*.json>]`
+
+Read-only zero-write five-entrypoint parity (`cli`, `direct`, `resume`, `route`, `page`), pre-effect tamper rejection verifier, and honest Epic 3 -> Epic 4 handoff summary. Page triggers via `POST /api/knowledge/b-route` and runtime/MVG verification share the exact same live gate, dynamic `InputSet`, eligibility, and business-scope leases without advancing `current`/`last-known-good`/`latest.json`/`main` during `preview` or `workspace` mode. See [entrypoint parity owner](b-route-entrypoint-parity.md).
+
 ## Repo Bootstrap And Recovery
 
 ### `py -3 scripts/python/dev_cli.py run-prototype-workflow --prototype-file docs/prototypes/<your-file>.md`
@@ -610,7 +614,7 @@ These are additive modes of the existing Chapter workflow, not a second mileston
 
 ## B 路线 Chapter 6 统一实施门禁
 
-稳定入口：`py -3 -B scripts/python/dev_cli.py b-route-chapter6-gate --task-id <id> [--root <root>] [--operation <op>] [--lock-mode none|scope] [--expected-input-set-digest <sha256:...>] [--report <logs/ci/.../*.json>]`。直接 owner 为 `scripts/python/check_b_route_chapter6_gate.py`，参数相同。默认 `--lock-mode none` 且无 `--report` 时严格零写盘；公共 CLI（`dev_cli.py run-single-task-chapter6`/`run-acceptance-preflight`/`chapter6-knowledge`/`publish-chapter6-semantics`）、直接 `run_single_task_chapter6_lane.py`、`_mvg_obligations.py` 及全部 Code Map 内部脚本共用 3.3→3.5 `guarded_input_set`→3.6 `stage="5"` 义务（或零影响非 Flow `other_verification_refs`）→3.7 readiness 统一门禁，拒绝非 ASCII `task_id` 与自由 `N/A` 标签，排除 `docs/planning/b-route/schemas/**` 误判，经密钥哈希与 OS 字节锁实测凭据支持父子业务 scope 租约重入（不持全局写锁、禁信伪造环境变量）并在每步副作用前复验漂移/pending；状态写经短锁写 `tasks.json` 唯一权威并验定义投影不变，强制 `--skip-project-health` 禁隐式刷 Knowledge，恒定 `runtime_verified=false`/`default_b_enabled=false`。详见[Chapter 6 统一实施门禁 owner 说明](b-route-chapter6-gate.md)。
+稳定入口：`py -3 -B scripts/python/dev_cli.py b-route-chapter6-gate --task-id <id> [--root <root>] [--operation <op>] [--lock-mode none|scope] [--expected-input-set-digest <sha256:...>] [--enforce-eligibility] [--report <logs/ci/.../*.json>]`。直接 owner 为 `scripts/python/check_b_route_chapter6_gate.py`，参数相同。默认 `--lock-mode none` 且无 `--report` 时严格零写盘；公共 CLI（`dev_cli.py run-single-task-chapter6`/`run-acceptance-preflight`/`chapter6-knowledge`/`publish-chapter6-semantics`）、直接 `run_single_task_chapter6_lane.py`、`_mvg_obligations.py` 及全部 Code Map 内部脚本共用 3.3→3.5 `guarded_input_set`→3.6 `stage="5"` 义务（或零影响非 Flow `other_verification_refs`）→3.7 readiness 统一门禁，拒绝非 ASCII `task_id` 与自由 `N/A` 标签，排除 `docs/planning/b-route/schemas/**` 误判，经密钥哈希与 OS 字节锁实测凭据支持父子业务 scope 租约重入（不持全局写锁、禁信伪造环境变量）并在每步副作用前复验漂移/pending；状态写经短锁写 `tasks.json` 唯一权威并验定义投影不变，强制 `--skip-project-health` 禁隐式刷 Knowledge，恒定 `runtime_verified=false`/`default_b_enabled=false`。详见[Chapter 6 统一实施门禁 owner 说明](b-route-chapter6-gate.md)。
 
 ## B 路线按缺陷类型复用规划或返回定义所属阶段
 
@@ -619,3 +623,7 @@ These are additive modes of the existing Chapter workflow, not a second mileston
 ## B 路线按目标 slice 收口 Chapter 7 并复用已验证 UI
 
 稳定入口：`py -3 -B scripts/python/dev_cli.py b-route-chapter7-slice [--flow-id <id>] [--slice <bucket>] [--task-id <id>] [--root <root>] [--profile <json>] [--evidence-dir <dir>] [--ui-evidence <json>] [--gap-input <json>] [--operation <op>] [--report <logs/ci/.../*.json>]`。直接 owner 为 `scripts/python/check_b_route_chapter7_slice.py`，参数相同；同时 `run-chapter7-ui-wiring` 与 `run-chapter7-backlog-gap` 支持 `--slice`/`--flow-id` 目标切片参数，`apply-chapter7-status-patch` 在 B 路线仓库禁止清除成熟 `done` 状态。默认无 `--report` 严格零写盘，仅针对目标 Flow/slice 核对入口/返回、真实引擎输入、反馈、四部分绑定与人工义务而无需等待全游完成；仅在具备有效提交非 UI 依据与证明时返回 `not_applicable`；严格按当前 `InputSet` 与测试文件 SHA-256 复用 Chapter 6 真实引擎输入证据（拒过期、异条件、纯静态接线与纯方法调用），诚实定位断链/类型/生命周期不符及空/跳过/planned 证据，独立保留人工视觉手感义务且不宣告 Flow 全完成；UI 定义缺口经 Story 3.10 返 `3A..5`，任务补缺输出 3.1/3.2 只读治理 delta 候选且保护原生 `.tscn` 人工区，输出可回溯四分交接且 `global_knowledge_refresh="not_performed"`、`runtime_verified=false`/`default_b_enabled=false`。详见[目标 slice Chapter 7 收口 owner 说明](b-route-chapter7-slice.md)。
+
+## B 路线页面实施触发与全入口一致性
+
+稳定入口：`py -3 -B scripts/python/dev_cli.py b-route-entrypoint-parity [--task-id <id>] [--epic3-handoff] [--root <root>] [--operation <op>] [--report <logs/ci/.../*.json>] [--handoff-report <logs/ci/.../*.json>]`。直接 owner 为 `scripts/python/check_b_route_entrypoint_parity.py`，参数相同；回环 HTTP 服务统一经 `POST /api/knowledge/b-route`（并由 `POST /api/knowledge/runtime` 与 `POST /api/knowledge/mvg-run` 在快照或 Godot 启动前先行门禁与持锁）调用 `_b_route_entrypoint_parity.py`。默认无 `--report`/`--handoff-report` 时严格零写盘；`cli`、`direct`、`resume`、`route`、`page` 五入口共用实时 Story 3.8 门禁、Story 3.9 跨目录恢复与止损、Story 3.10 缺陷归属与反伪装、实时 `tasks.json` 任务及多跳传递依赖资格与业务 scope 租约（含父子凭据重入与多任务联合锁），拒信客户端缓存或 `latest.json` 摘要授权，确保 `preview`/`recommendation_only`/`workspace` 零推进 `current`/`last-known-good`/`latest.json`/`main`；含 Windows 已完成操作终端重放保 `done`、未完成预映像冲突停止、共享任务多计划联合锁与诚实 Epic 3→Epic 4 交接校验，恒定 `flow_completed=false`/`runtime_verified=false`/`default_b_enabled=false`。详见[全入口一致性与 Epic3 交接 owner 说明](b-route-entrypoint-parity.md)。

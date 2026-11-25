@@ -96,7 +96,7 @@ development_status:
   2-10-从正式规划入口完成零task采纳与跨会话复验: done
   epic-2-retrospective: optional
 
-  epic-3: in-progress
+  epic-3: done
   3-1-从复用盘点形成真实缺口的任务变更预览: done
   3-2-受治理编译三联与3c绑定并保留当前任务状态: done
   3-3-统一判定task来源及完整适用计划集合: done
@@ -108,7 +108,7 @@ development_status:
   3-9-在恢复与route入口重验当前输入和任务资格: done
   3-10-按缺陷类型复用规划或返回定义所属阶段: done
   3-11-按目标slice收口chapter7并复用已验证ui: done
-  3-12-让页面实施触发与全入口决定保持一致: backlog
+  3-12-让页面实施触发与全入口决定保持一致: done
   epic-3-retrospective: optional
 
   epic-4: backlog

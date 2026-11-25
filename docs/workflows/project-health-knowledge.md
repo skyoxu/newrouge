@@ -158,6 +158,14 @@ CLI：`py -3 scripts/python/project_health_runtime.py --godot-bin "$env:GODOT_BI
 
 任务表支持跨分页多选。`Select page` 选择当前页，`Clear selection` 清空全部选择，`Verify selected` 只验证已选且具备运行资格的任务。顶部 `Verify eligible runtime tasks` 遍历已有任务级 Godot 证据线索的任务；`Audit all gameplay tasks` 遍历 `tasks_gameplay.json` 中所有能映射到主任务的任务。有任务级 GdUnit 引用时执行测试，否则写入 `runtime_unverified` 证据并保留静态或 candidate 状态。任务运行、扫描或查询期间，服务公开只读 operation 状态，页面据此锁定全部交互；其他已打开页面也会通过轮询进入锁定状态。
 
+## B 路线页面触发与全入口一致门禁
+
+当仓库存在 B 路线规划/绑定产物或治理标记时，页面触发与运行时执行必须与 `cli`/`direct`/`resume`/`route` 共用同一实时门禁、动态 `InputSet`、任务与传递依赖资格及业务 scope 锁（详见 `docs/workflows/b-route-entrypoint-parity.md`）：
+
+- `POST /api/knowledge/b-route`（受与 `/api/knowledge/runtime` 相同的 loopback `Host`、`Origin`、`X-Project-Health-Token` 与单飞 `operation` 锁保护）复用 `handle_page_b_route_trigger`，支持 `gate`/`execute`/`resume`/`route`，拒绝凭页面摘要、`latest.json`、前端缓存或旧 `readiness` 授权；`preview=true`、`recommendation_only=true` 与 `mode=workspace` 严格零推进 `docs/knowledge/published/current.json`、`last-known-good.json`、`logs/ci/project-health-knowledge/latest.json`、`runtime/latest.json` 与 `refs/heads/main`。
+- `project_health_runtime.py` 在准备快照或启动 Godot 前执行 `enforce_runtime_task_gate` 与业务 scope 租约；`POST /api/knowledge/mvg-run` 在调用 `run-mvg-acceptance` 前执行 `enforce_mvg_manifest_gate`。无 B 路线痕迹的纯 A 仓库保持原有向后兼容行为。
+- 完整 B 路线 Knowledge 进度页与选择性 `VerificationScope` runner 属 Epic 4 能力，不在本阶段提前交付。
+
 全量脚本入口：`py -3 scripts/python/project_health_runtime.py --repo-root . --godot-bin "$env:GODOT_BIN" --all-gameplay`。
 
 ## 配置与来源

@@ -44,6 +44,30 @@ RUNTIME_HOST_TIMEOUT_SECONDS = 3690
 
 def run_mvg_manifest(root: Path, expected_revision: str, godot_bin: str,
                      manifest_path: str) -> tuple[int, dict]:
+    from _b_route_entrypoint_parity import acquire_runtime_scope_leases, enforce_mvg_manifest_gate
+    import _b_route_chapter6_gate as ch6_gate
+    import _b_route_codec as codec
+
+    try:
+        gate_res = enforce_mvg_manifest_gate(root, manifest_path, consumer='project_health_http_mvg')
+    except codec.CodecError as err:
+        d = err.diagnostic.to_dict()
+        return 422, {
+            'status': 'failed',
+            'ok': False,
+            'admitted': False,
+            'route': 'blocked',
+            'reason_code': d['reason_code'],
+            'public_reason_code': d['reason_code'],
+            'reason': f"invalid_manifest_gate:{d['reason_code']}",
+            'blocked_by': 'b_route_chapter6_gate',
+            'return_stage': '5',
+            'diagnostics': [d],
+            'runtime_verified': False,
+            'default_b_enabled': False,
+        }
+    if not gate_res.get('ok'):
+        return 422, {'status': 'failed', **gate_res}
     if not re.fullmatch(r'[0-9a-f]{40}', expected_revision):
         raise ValueError('Current main revision is unavailable; scan local main again')
     def git(*args: str) -> str:
@@ -72,8 +96,28 @@ def run_mvg_manifest(root: Path, expected_revision: str, godot_bin: str,
     if any(test.get('challenge') == 'disconnect-reward-input'
            for test in manifest.get('tests', [])):
         command.append('--challenge-input')
-    result = subprocess.run(command, cwd=root, capture_output=True, text=True,
-                            encoding='utf-8', timeout=RUNTIME_HOST_TIMEOUT_SECONDS)
+    try:
+        with acquire_runtime_scope_leases(root, gate_res, consumer='project_health_http_mvg'):
+            result = subprocess.run(command, cwd=root, capture_output=True, text=True,
+                                    encoding='utf-8', timeout=RUNTIME_HOST_TIMEOUT_SECONDS)
+    except ch6_gate.Chapter6GateBlockedError as err:
+        return 422, {'status': 'failed', **err.gate_result}
+    except codec.CodecError as err:
+        d = err.diagnostic.to_dict()
+        return 422, {
+            'status': 'failed',
+            'ok': False,
+            'admitted': False,
+            'route': 'blocked',
+            'reason_code': d['reason_code'],
+            'public_reason_code': d['reason_code'],
+            'reason': f"mvg_lease_blocked:{d['reason_code']}",
+            'blocked_by': 'b_route_chapter6_gate',
+            'return_stage': '5',
+            'diagnostics': [d],
+            'runtime_verified': False,
+            'default_b_enabled': False,
+        }
     try:
         payload = json.loads(result.stdout.strip().splitlines()[-1])
     except (ValueError, IndexError):
@@ -305,10 +349,33 @@ def handler_factory(root: Path):
                 size = int(self.headers.get('Content-Length', '0'))
                 if not 0 < size <= 65536 or self.headers.get('Content-Type', '').split(';')[0] != 'application/json':
                     raise ValueError('Expected bounded JSON request')
-                request = json.loads(self.rfile.read(size))
+                import _b_route_codec as codec
+                raw_body = self.rfile.read(size)
+                path = urlsplit(self.path).path
+                try:
+                    request = codec.strict_json_loads(raw_body)
+                except codec.CodecError as err:
+                    if path == '/api/knowledge/b-route':
+                        d = err.diagnostic.to_dict()
+                        self.send({
+                            'schema_version': 'newrouge.b-route-page-trigger.v1',
+                            'status': 'failed',
+                            'ok': False,
+                            'admitted': False,
+                            'route': 'blocked',
+                            'reason_code': d['reason_code'],
+                            'public_reason_code': d['reason_code'],
+                            'reason': f"invalid_json_request:{d['reason_code']}",
+                            'blocked_by': 'b_route_chapter6_gate',
+                            'return_stage': '5',
+                            'diagnostics': [d],
+                            'runtime_verified': False,
+                            'default_b_enabled': False,
+                        }, 422)
+                        return
+                    raise ValueError(f"Invalid JSON request: {err.diagnostic.reason_code.value}") from err
                 if not isinstance(request, dict):
                     raise ValueError('Expected JSON object')
-                path = urlsplit(self.path).path
                 if path == '/api/knowledge/scan':
                     self.cli('scan')
                 elif path == '/api/knowledge/planning':
@@ -358,6 +425,34 @@ def handler_factory(root: Path):
                     elif request.get('task_id') is not None:
                         args.extend(['--task-id', str(request['task_id'])])
                     self.cli('runtime', args)
+                elif path == '/api/knowledge/b-route':
+                    if not operation.acquire(blocking=False):
+                        self.send({'reason': 'Another operation is running'}, 409)
+                        return
+                    try:
+                        req_tid = request.get('task_id')
+                        req_mode = str(request.get('mode') or 'main')
+                        with operation_guard:
+                            operation_state.update(
+                                active=True,
+                                action='b-route',
+                                task_ids=[str(req_tid)] if req_tid is not None else [],
+                                verification_mode=req_mode,
+                                started_at=datetime.now(timezone.utc).isoformat(),
+                            )
+                        from _b_route_entrypoint_parity import handle_page_b_route_trigger
+                        payload = handle_page_b_route_trigger(root, request)
+                        self.send(payload, 200 if payload.get('ok') else 422)
+                    finally:
+                        with operation_guard:
+                            operation_state.update(
+                                active=False,
+                                action=None,
+                                task_ids=[],
+                                verification_mode=None,
+                                started_at=None,
+                            )
+                        operation.release()
                 elif path == '/api/knowledge/query':
                     self.cli('query', request=request)
                 elif path == '/api/knowledge/config':

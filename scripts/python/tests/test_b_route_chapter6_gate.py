@@ -1154,18 +1154,19 @@ class Chapter6GateTests(unittest.TestCase):
         self.assertEqual(after_iset["input_set_digest"], before_iset["input_set_digest"])
 
         # apply_chapter7_status_patch routes non-dry-run B-route updates through write_taskmaster_status_guarded!
-        patch_path = flow_root / "logs/ci/ch7-patch.json"
+        patch_root = self._clone(self._flow_base, "status_write_ch7_patch")
+        patch_path = patch_root / "logs/ci/ch7-patch.json"
         _put_json(
-            flow_root,
+            patch_root,
             "logs/ci/ch7-patch.json",
             {
                 "operations": [
                     {
-                        "path": str(flow_root / ".taskmaster/tasks/tasks.json"),
+                        "path": str(patch_root / ".taskmaster/tasks/tasks.json"),
                         "view": "tasks_json",
                         "task_id": 101,
-                        "from_status": "done",
-                        "to_status": "in-progress",
+                        "from_status": "in-progress",
+                        "to_status": "done",
                     }
                 ]
             },
@@ -1174,7 +1175,7 @@ class Chapter6GateTests(unittest.TestCase):
         self.assertEqual(rc, 0)
         self.assertTrue(patch_res["results"][0]["guarded_write"])
         self.assertTrue(patch_res["results"][0]["definition_projection_preserved"])
-        after_patch_iset = input_set.resolve_input_set(flow_root, 101)
+        after_patch_iset = input_set.resolve_input_set(patch_root, 101)
         self.assertEqual(after_patch_iset["input_set_digest"], before_iset["input_set_digest"])
 
     # ------------------------------------------------------------------

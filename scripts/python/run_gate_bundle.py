@@ -176,6 +176,7 @@ B_ROUTE_RUNTIME_DETERMINISTIC_TESTS = (
     "scripts.python.tests.test_b_route_chapter6_recovery",
     "scripts.python.tests.test_b_route_defect_routing",
     "scripts.python.tests.test_b_route_chapter7_slice",
+    "scripts.python.tests.test_b_route_entrypoint_parity",
     "scripts.python.tests.test_chapter7_backlog_gap",
     "scripts.python.tests.test_inherited_pipe_cleanup",
     "scripts.python.tests.test_planning_main_audit_fixes.PlanningMainAuditFixesTests.test_interrupted_runner_terminates_and_reaps_real_child",

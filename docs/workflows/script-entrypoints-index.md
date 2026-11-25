@@ -44,6 +44,7 @@ Generated from source scan on `2026-03-25`. This document inventories recurring 
 - `scripts/python/run_single_task_chapter6_lane.py`
 - `scripts/python/run_prototype_workflow.py`
 - `scripts/python/run_chapter7_ui_wiring.py`
+- `scripts/python/check_b_route_entrypoint_parity.py` (read-only five-entrypoint parity, page/runtime/MVG shared gate verifier, and honest Epic 3 -> Epic 4 handoff; zero-write default)
 
 ### Repo hard gates
 
@@ -134,6 +135,7 @@ Generated from source scan on `2026-03-25`. This document inventories recurring 
 - `scripts/python/check_a11y.py`
 - `scripts/python/check_acceptance_stability_template.py`
 - `scripts/python/check_architecture_boundary.py`
+- `scripts/python/check_b_route_entrypoint_parity.py`
 - `scripts/python/check_contract_interface_docs.py`
 - `scripts/python/check_csharp_test_conventions.py`
 - `scripts/python/check_directory_boundaries.py`
@@ -326,6 +328,16 @@ Generated from source scan on `2026-03-25`. This document inventories recurring 
 - Declared args: `--out`
 - Parameter prerequisites:
   - Windows PowerShell + `py -3` from repo root.
+
+#### `scripts/python/check_b_route_entrypoint_parity.py`
+
+- Direct local deps: `scripts/python/_b_route_codec.py`, `scripts/python/_b_route_entrypoint_parity.py`, `scripts/python/_b_route_task_resolver.py`
+- Transitive local deps: `scripts/python/_b_route_chapter5_readiness.py`, `scripts/python/_b_route_chapter6_gate.py`, `scripts/python/_b_route_chapter6_recovery.py`, `scripts/python/_b_route_codec.py`, `scripts/python/_b_route_commit.py`, `scripts/python/_b_route_defect_routing.py`, `scripts/python/_b_route_entrypoint_parity.py`, `scripts/python/_b_route_input_set.py`, `scripts/python/_b_route_inventory.py`, `scripts/python/_b_route_operation_scope.py`, `scripts/python/_b_route_records.py`, `scripts/python/_b_route_task_resolver.py`, `scripts/python/_planning_apply_journal.py`, `scripts/python/chapter6_route.py`, `scripts/python/check_b_route_chapter6_gate.py`, `scripts/python/resume_task.py`
+- Subcommands: None.
+- Declared args: `--root`, `--task-id`, `--operation`, `--epic3-handoff`, `--report`, `--handoff-report`
+- Parameter prerequisites:
+  - Windows PowerShell + `py -3 -B` from repo root.
+  - Omit `--report` and `--handoff-report` for strictly zero disk writes; when provided, paths must be distinct canonical non-existing `logs/ci/.../*.json` files.
 
 #### `scripts/python/check_contract_interface_docs.py`
 
@@ -1844,3 +1856,7 @@ Helper modules below are referenced directly by at least two included entry scri
 ## B 路线目标 slice Chapter 7 收口 owner
 
 `scripts/python/check_b_route_chapter7_slice.py` 是 `dev_cli.py b-route-chapter7-slice` 的直接入口；`_b_route_chapter7_slice.py` 唯一拥有目标 Flow/slice UI 责任与合法非 UI 核对（`evaluate_chapter7_slice`）、Chapter 6 真实引擎输入证据按当前 `InputSet` 与测试身份复用、确定性 `.tscn`/C#/GD 接线与类型/生命周期检查（`inspect_scene_and_adapter_wiring`）、原生 `.tscn` 人工区保护、Story 3.10 缺口归属与 Story 3.1/3.2 只读治理 delta 候选以及四分可回溯交接。由 `dev_cli.py`、`dev_cli_builders.py`、`run_chapter7_ui_wiring.py`、`run_chapter7_backlog_gap.py` 消费，并与 `apply_chapter7_status_patch.py` 的 B 路线成熟 `done` 保护联动；默认零写盘、`global_knowledge_refresh="not_performed"` 且恒定 `runtime_verified=false`/`default_b_enabled=false`。详见[目标 slice Chapter 7 收口 owner 说明](b-route-chapter7-slice.md)。
+
+## B 路线页面实施触发与全入口一致性 owner
+
+`scripts/python/check_b_route_entrypoint_parity.py` 是 `dev_cli.py b-route-entrypoint-parity` 的直接入口；`_b_route_entrypoint_parity.py` 唯一拥有页面触发服务（`handle_page_b_route_trigger`，由 `_project_health_http.py` `POST /api/knowledge/b-route` 挂载）、运行与 MVG 先行门禁及联合业务 scope 租约（`enforce_runtime_task_gate`、`enforce_mvg_manifest_gate`、`acquire_runtime_scope_leases`，由 `project_health_runtime.py` 与 `_project_health_http.py` `run_mvg_manifest` 在快照或 Godot 启动前消费）、五入口归一化决策一致性校验（`evaluate_entrypoint_parity`）、Windows 并发与日志重放核验（`verify_completed_apply_status_preservation`、`verify_incomplete_apply_raw_preimage_guard`、`verify_projection_vs_irrelevant_change`、`verify_shared_task_union_scope_and_pending_guard`）与动态诚实 Epic 3→Epic 4 交接校验（`build_epic3_to_epic4_handoff`）。默认零写盘，确保 `preview`/`recommendation_only`/`workspace` 零推进发布指针，恒定 `flow_completed=false`/`runtime_verified=false`/`default_b_enabled=false`。详见[全入口一致性与 Epic3 交接 owner 说明](b-route-entrypoint-parity.md)。

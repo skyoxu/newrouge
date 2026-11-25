@@ -254,12 +254,24 @@ def _check_journal_target_post_edits(
                 resume_ref=resume_ref,
             )
         before_hex = _normalize_digest_hex(
-            target.get("before_sha256") or target.get("before_digest") or target.get("pre_image_sha256")
+            target.get("before_sha256")
+            or target.get("before_digest")
+            or target.get("before_raw_digest")
+            or target.get("pre_image_sha256")
+            or target.get("preimage_digest")
         )
         after_hex = _normalize_digest_hex(
-            target.get("after_sha256") or target.get("after_digest") or target.get("post_image_sha256")
+            target.get("after_sha256")
+            or target.get("after_digest")
+            or target.get("after_raw_digest")
+            or target.get("post_image_sha256")
+            or target.get("postimage_digest")
         )
         before_exists = target.get("before_exists")
+        has_before_field = any(
+            k in target
+            for k in ("before_sha256", "before_digest", "before_raw_digest", "pre_image_sha256", "preimage_digest")
+        )
         if not os.path.lexists(target_file):
             if before_hex is not None or before_exists is True:
                 return _diag(
@@ -303,16 +315,105 @@ def _check_journal_target_post_edits(
                 actual={"path": rel, "live_sha256": live_hex, "post_edit_detected": True},
                 resume_ref=resume_ref,
             )
+        if not allowed and (before_exists is False or has_before_field) and live_hex is not None:
+            return _diag(
+                codec.ReasonCode.CONFLICT,
+                stage=codec.Stage.BUNDLE,
+                entity_id=entity_id,
+                expected={"path": rel, "before_exists": False, "after_sha256": None},
+                actual={"path": rel, "live_sha256": live_hex, "post_edit_detected": True},
+                resume_ref=resume_ref,
+            )
     return None
 
 
-def _inspect_pending_and_post_edits(root_path: Path, tid: int) -> dict[str, Any]:
+_INCOMPLETE_EXTERNAL_STATES = frozenset(
+    {
+        "pending",
+        "in_progress",
+        "in-progress",
+        "prepared",
+        "reserved",
+        "applying",
+        "applied",
+        "verifying",
+        "verified",
+        "publishing",
+        "interrupted",
+        "partial",
+    }
+)
+
+
+def _extract_doc_task_ids(doc: dict[str, Any]) -> set[int]:
+    out: set[int] = set()
+    for key in ("task_id",):
+        val = doc.get(key)
+        if type(val) is int and not isinstance(val, bool) and val >= 1:
+            out.add(val)
+        elif type(val) is str and val.isdigit() and val.isascii() and int(val) >= 1:
+            out.add(int(val))
+    for key in ("task_ids",):
+        vals = doc.get(key)
+        if isinstance(vals, list):
+            for v in vals:
+                if type(v) is int and not isinstance(v, bool) and v >= 1:
+                    out.add(v)
+                elif type(v) is str and v.isdigit() and v.isascii() and int(v) >= 1:
+                    out.add(int(v))
+    frozen = doc.get("frozen")
+    if isinstance(frozen, dict):
+        alloc = frozen.get("allocations")
+        if isinstance(alloc, dict):
+            for trow in alloc.get("task_definitions") or []:
+                if isinstance(trow, dict):
+                    out.update(_extract_doc_task_ids(trow))
+        req = frozen.get("request")
+        if isinstance(req, dict):
+            out.update(_extract_doc_task_ids(req))
+    req_top = doc.get("request")
+    if isinstance(req_top, dict):
+        out.update(_extract_doc_task_ids(req_top))
+    return out
+
+
+def _operation_overlaps_scope(doc: dict[str, Any], tid: int, scope_set: set[str] | None) -> bool:
+    if scope_set is None:
+        return True
+    doc_tids = _extract_doc_task_ids(doc)
+    if tid >= 1 and tid in doc_tids:
+        return True
+    raw_scopes: list[Any] = []
+    for src in (doc, doc.get("frozen") if isinstance(doc.get("frozen"), dict) else None):
+        if isinstance(src, dict):
+            for k in ("scope_ids", "scopes"):
+                vals = src.get(k)
+                if isinstance(vals, list):
+                    raw_scopes.extend(vals)
+            pid = src.get("plan_id")
+            if isinstance(pid, str) and pid.strip():
+                raw_scopes.extend(op_scope.resource_scopes(plan_ids=[pid.strip()]))
+    op_scopes = {str(s).strip() for s in raw_scopes if isinstance(s, str) and str(s).strip()}
+    for dtid in doc_tids:
+        op_scopes.update(op_scope.resource_scopes(task_ids=[dtid]))
+    if not op_scopes:
+        return True
+    return bool(op_scopes & scope_set)
+
+
+def _inspect_pending_and_post_edits(
+    root_path: Path,
+    tid: int,
+    *,
+    scope_ids: list[str] | tuple[str, ...] | set[str] | None = None,
+) -> dict[str, Any]:
     """Read-only inspection of pending markers, legacy apply journals, and B-route operations."""
     entity_id = str(tid)
+    scope_set = {str(s) for s in scope_ids if str(s).strip()} if scope_ids is not None else None
     legacy_routes: list[dict[str, Any]] = []
     pending_ops: list[dict[str, Any]] = []
 
-    # 1. Check capability-apply.pending.json and legacy apply-journal.json routes.
+    # 1. Check capability-apply.pending.json and top-level legacy apply-journal.json routes.
     try:
         legacy_routes = list(op_scope.legacy_recovery_routes(root_path))
     except codec.CodecError as err:
@@ -320,11 +421,18 @@ def _inspect_pending_and_post_edits(root_path: Path, tid: int) -> dict[str, Any]
         if diag.get("entity_id") is None:
             diag["entity_id"] = entity_id
         rref = diag.get("resume_ref") or op_scope.CAP_PENDING
+        raw_rc = str(diag.get("reason_code") or codec.ReasonCode.CONFLICT.value)
+        mapped_rc = (
+            codec.ReasonCode.CONFLICT.value
+            if raw_rc in {codec.ReasonCode.INVALID_JSON.value, codec.ReasonCode.SCHEMA_VALIDATION_FAILED.value}
+            else raw_rc
+        )
+        diag["reason_code"] = mapped_rc
         return {
             "ok": False,
             "blocked": True,
-            "reason_code": diag["reason_code"],
-            "reason": f"damaged_legacy_pending_journal:{diag['reason_code']}",
+            "reason_code": mapped_rc,
+            "reason": f"damaged_legacy_pending_journal:{mapped_rc}",
             "return_stage": "3C",
             "resume_ref": rref,
             "post_edit_preserved": True,
@@ -389,7 +497,7 @@ def _inspect_pending_and_post_edits(root_path: Path, tid: int) -> dict[str, Any]
                         "pending_operations": [],
                         "diagnostics": [diag],
                     }
-            targets = list((jdoc or {}).get("entries") or (jdoc or {}).get("targets") or [])
+            targets = list((jdoc or {}).get("entries") or (jdoc or {}).get("targets") or (jdoc or {}).get("writes") or [])
             post_edit_diag = _check_journal_target_post_edits(
                 root_path,
                 targets,
@@ -439,7 +547,7 @@ def _inspect_pending_and_post_edits(root_path: Path, tid: int) -> dict[str, Any]
             "diagnostics": [diag],
         }
 
-    # 2. Check B-route operation store for unfinished or damaged operations and post-edits.
+    # 2. Check hashed B-route operation store for unfinished or damaged operations and post-edits.
     ops_dir = root_path / op_scope.STORE / "operations"
     if ops_dir.is_dir():
         try:
@@ -449,11 +557,18 @@ def _inspect_pending_and_post_edits(root_path: Path, tid: int) -> dict[str, Any]
             if diag.get("entity_id") is None:
                 diag["entity_id"] = entity_id
             rref = diag.get("resume_ref") or op_scope.STORE
+            raw_rc = str(diag.get("reason_code") or codec.ReasonCode.CONFLICT.value)
+            mapped_rc = (
+                raw_rc
+                if raw_rc == codec.ReasonCode.UNSAFE_PATH.value
+                else codec.ReasonCode.CONFLICT.value
+            )
+            diag["reason_code"] = mapped_rc
             return {
                 "ok": False,
                 "blocked": True,
-                "reason_code": diag["reason_code"],
-                "reason": f"damaged_b_route_operation_store:{diag['reason_code']}",
+                "reason_code": mapped_rc,
+                "reason": f"damaged_b_route_operation_store:{mapped_rc}",
                 "return_stage": "3C",
                 "resume_ref": rref,
                 "post_edit_preserved": True,
@@ -474,6 +589,9 @@ def _inspect_pending_and_post_edits(root_path: Path, tid: int) -> dict[str, Any]
             pub_sync_rel = op_dir + "/public-sync-journal.json"
             pub_sync_raw = local_bytes.get(pub_sync_rel)
             targets_to_check: list[dict[str, Any]] = []
+            frozen_doc = op.get("frozen") if isinstance(op.get("frozen"), dict) else {}
+            if isinstance(frozen_doc.get("targets"), list):
+                targets_to_check.extend(r for r in frozen_doc["targets"] if isinstance(r, dict))
             if pub_sync_raw is not None:
                 try:
                     pub_doc = codec.strict_json_loads(pub_sync_raw)
@@ -510,6 +628,8 @@ def _inspect_pending_and_post_edits(root_path: Path, tid: int) -> dict[str, Any]
                     rows = intent_doc.get(key)
                     if isinstance(rows, list):
                         targets_to_check.extend(r for r in rows if isinstance(r, dict))
+            if not _operation_overlaps_scope(op, tid, scope_set):
+                continue
             post_edit_diag = _check_journal_target_post_edits(
                 root_path,
                 targets_to_check,
@@ -534,7 +654,7 @@ def _inspect_pending_and_post_edits(root_path: Path, tid: int) -> dict[str, Any]
                     "operation_id": op_id,
                     "schema_version": op.get("schema_version"),
                     "resume_ref": pub_sync_rel if pub_sync_raw is not None else op_ref,
-                    "scope_ids": list(op.get("scope_ids") or []),
+                    "scope_ids": list(op.get("scope_ids") or frozen_doc.get("scope_ids") or []),
                 }
             )
         if pending_ops:
@@ -566,6 +686,153 @@ def _inspect_pending_and_post_edits(root_path: Path, tid: int) -> dict[str, Any]
                 "diagnostics": [diag],
             }
 
+    # 3. Scan explicit top-level B-route journal directories (never recursive rglob on planning candidate trees).
+    for rel_dir, default_stage in (
+        ("logs/ci/b-route-operations", "3C"),
+        ("logs/ci/b-route-chapter4-binding", "4"),
+        ("logs/ci/b-route-stage5-obligations", "5"),
+    ):
+        base = root_path / rel_dir
+        if not os.path.lexists(base):
+            continue
+        try:
+            inventory.no_reparse(base)
+            if not base.is_dir():
+                continue
+            subdirs = sorted(base.iterdir())
+        except (codec.CodecError, OSError, ValueError) as exc:
+            diag = _diag(
+                codec.ReasonCode.UNSAFE_PATH,
+                stage=codec.Stage.PATH,
+                entity_id=entity_id,
+                expected=f"safe directory {rel_dir}",
+                actual={"error": f"{type(exc).__name__}: {exc}", "return_stage": default_stage},
+                resume_ref=rel_dir,
+            )
+            return {
+                "ok": False,
+                "blocked": True,
+                "reason_code": codec.ReasonCode.UNSAFE_PATH.value,
+                "reason": f"unsafe_journal_dir:{rel_dir}",
+                "return_stage": default_stage,
+                "resume_ref": rel_dir,
+                "post_edit_preserved": True,
+                "legacy_routes": [],
+                "pending_operations": [],
+                "diagnostics": [diag],
+            }
+        for sub in subdirs:
+            if sub.name in {"operations", "locks"}:
+                continue
+            try:
+                inventory.no_reparse(sub)
+                if not sub.is_dir():
+                    continue
+            except (codec.CodecError, OSError, ValueError) as exc:
+                sub_rel = _repo_rel(root_path, sub)
+                diag = _diag(
+                    codec.ReasonCode.UNSAFE_PATH,
+                    stage=codec.Stage.PATH,
+                    entity_id=entity_id,
+                    expected="non-reparse journal directory",
+                    actual={"path": sub_rel, "error": str(exc), "return_stage": default_stage},
+                    resume_ref=sub_rel,
+                )
+                return {
+                    "ok": False,
+                    "blocked": True,
+                    "reason_code": codec.ReasonCode.UNSAFE_PATH.value,
+                    "reason": f"unsafe_journal_subdir:{sub.name}",
+                    "return_stage": default_stage,
+                    "resume_ref": sub_rel,
+                    "post_edit_preserved": True,
+                    "legacy_routes": [],
+                    "pending_operations": [],
+                    "diagnostics": [diag],
+                }
+            for fname in ("apply-journal.json", "public-sync-journal.json", "operation.json"):
+                jfile = sub / fname
+                if not os.path.lexists(jfile):
+                    continue
+                jrel = _repo_rel(root_path, jfile)
+                try:
+                    inventory.no_reparse(jfile)
+                    if not jfile.is_file():
+                        raise ValueError("journal path is not a regular file")
+                    parsed = codec.strict_json_loads(jfile.read_bytes())
+                    if not isinstance(parsed, dict):
+                        raise ValueError("journal root must be a JSON object")
+                except (codec.CodecError, OSError, ValueError) as exc:
+                    diag = _diag(
+                        codec.ReasonCode.CONFLICT,
+                        stage=codec.Stage.DECODE,
+                        entity_id=entity_id,
+                        expected="valid B-route journal JSON",
+                        actual={"path": jrel, "error": f"{type(exc).__name__}: {exc}", "return_stage": default_stage},
+                        resume_ref=jrel,
+                    )
+                    return {
+                        "ok": False,
+                        "blocked": True,
+                        "reason_code": codec.ReasonCode.CONFLICT.value,
+                        "reason": f"damaged_b_route_journal:{sub.name}",
+                        "return_stage": default_stage,
+                        "resume_ref": jrel,
+                        "post_edit_preserved": True,
+                        "legacy_routes": [],
+                        "pending_operations": [{"operation_id": sub.name, "resume_ref": jrel}],
+                        "diagnostics": [diag],
+                    }
+                state = str(parsed.get("state") or parsed.get("status") or "").strip().lower()
+                if state not in _INCOMPLETE_EXTERNAL_STATES:
+                    continue
+                if not _operation_overlaps_scope(parsed, tid, scope_set):
+                    continue
+                ext_targets: list[dict[str, Any]] = []
+                for key in ("targets", "writes", "files", "entries"):
+                    rows = parsed.get(key)
+                    if isinstance(rows, list):
+                        ext_targets.extend(r for r in rows if isinstance(r, dict))
+                post_edit_diag = _check_journal_target_post_edits(
+                    root_path,
+                    ext_targets,
+                    resume_ref=jrel,
+                    entity_id=entity_id,
+                )
+                if post_edit_diag is not None:
+                    return {
+                        "ok": False,
+                        "blocked": True,
+                        "reason_code": codec.ReasonCode.CONFLICT.value,
+                        "reason": f"b_route_journal_post_edit_conflict:{sub.name}",
+                        "return_stage": default_stage,
+                        "resume_ref": jrel,
+                        "post_edit_preserved": True,
+                        "legacy_routes": [],
+                        "pending_operations": [{"operation_id": sub.name, "resume_ref": jrel}],
+                        "diagnostics": [post_edit_diag],
+                    }
+                diag = _diag(
+                    codec.ReasonCode.PENDING,
+                    stage=codec.Stage.BUNDLE,
+                    entity_id=entity_id,
+                    expected="completed B-route journal before Chapter 6 execution",
+                    actual={"operation_id": sub.name, "state": state, "return_stage": default_stage},
+                    resume_ref=jrel,
+                )
+                return {
+                    "ok": False,
+                    "blocked": True,
+                    "reason_code": codec.ReasonCode.PENDING.value,
+                    "reason": f"b_route_pending_operation:{sub.name}",
+                    "return_stage": default_stage,
+                    "resume_ref": jrel,
+                    "post_edit_preserved": True,
+                    "legacy_routes": [],
+                    "pending_operations": [{"operation_id": sub.name, "resume_ref": jrel}],
+                    "diagnostics": [diag],
+                }
+
     return {
         "ok": True,
         "blocked": False,
@@ -580,33 +847,99 @@ def _inspect_pending_and_post_edits(root_path: Path, tid: int) -> dict[str, Any]
     }
 
 
+def _effective_dependencies_for_task(
+    root_path: Path,
+    cur_tid: int,
+    row: dict[str, Any],
+) -> set[int]:
+    deps: set[int] = set()
+    for raw_dep in row.get("dependencies") or []:
+        try:
+            dep_int = int(raw_dep)
+            if dep_int != cur_tid:
+                deps.add(dep_int)
+        except (TypeError, ValueError):
+            continue
+    rec_path = root_path / ch5_b.DEFAULT_RECONCILIATION_DIR / f"task-{cur_tid}.json"
+    rec_doc = _safe_read_json(rec_path)
+    if isinstance(rec_doc, dict):
+        dep_rows = rec_doc.get("dependency_decisions")
+        if not isinstance(dep_rows, list):
+            dep_rows = (
+                (rec_doc.get("decisions") or {}).get("dependency_decisions")
+                if isinstance(rec_doc.get("decisions"), dict)
+                else []
+            )
+        for drow in dep_rows or []:
+            if not isinstance(drow, dict):
+                continue
+            action = str(drow.get("action") or "").strip().lower()
+            raw_dep = drow.get("dependency_id")
+            try:
+                dep_int = int(raw_dep)
+            except (TypeError, ValueError):
+                continue
+            if dep_int == cur_tid:
+                continue
+            if action == "keep":
+                deps.add(dep_int)
+            elif action in {"remove", "drop", "defer"}:
+                deps.discard(dep_int)
+    return deps
+
+
 def _check_task_and_dependency_eligibility(
     root_path: Path,
     tid: int,
     *,
     gate_res: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Recompute live Task and dependency eligibility from tasks.json without requiring self done."""
+    """Recompute live Task and multi-hop transitive dependency eligibility from tasks.json without requiring self done."""
     entity_id = str(tid)
-    master_path = root_path / task_resolver.TRIPLET["master"]
-    master_doc = _safe_read_json(master_path)
-    if master_doc is None:
+    master_rel = task_resolver.TRIPLET["master"]
+    try:
+        master_path = inventory.safe_input(root_path, master_rel, allow_logs=False)
+    except (codec.CodecError, OSError, ValueError) as exc:
         diag = _diag(
-            codec.ReasonCode.FILE_NOT_FOUND,
+            codec.ReasonCode.UNSAFE_PATH,
             stage=codec.Stage.PATH,
             entity_id=entity_id,
-            expected="readable .taskmaster/tasks/tasks.json",
-            actual={"exists": master_path.exists(), "return_stage": "3C"},
-            resume_ref=task_resolver.TRIPLET["master"],
+            expected=master_rel,
+            actual={"error": str(exc), "return_stage": "3C"},
+            resume_ref=master_rel,
         )
         return {
             "ok": False,
             "task_status": None,
             "self_done_required": False,
             "required_dependencies": [],
+            "transitive_dependencies": [],
             "incomplete_dependencies": [],
-            "reason_code": codec.ReasonCode.FILE_NOT_FOUND.value,
-            "reason": "tasks_master_missing",
+            "reason_code": codec.ReasonCode.UNSAFE_PATH.value,
+            "reason": "tasks_master_unsafe_path",
+            "return_stage": "3C",
+            "diagnostics": [diag],
+        }
+    master_doc = _safe_read_json(master_path)
+    if master_doc is None:
+        code = codec.ReasonCode.INVALID_JSON if master_path.is_file() else codec.ReasonCode.FILE_NOT_FOUND
+        diag = _diag(
+            code,
+            stage=codec.Stage.DECODE if master_path.is_file() else codec.Stage.PATH,
+            entity_id=entity_id,
+            expected="readable .taskmaster/tasks/tasks.json",
+            actual={"exists": master_path.exists(), "return_stage": "3C"},
+            resume_ref=master_rel,
+        )
+        return {
+            "ok": False,
+            "task_status": None,
+            "self_done_required": False,
+            "required_dependencies": [],
+            "transitive_dependencies": [],
+            "incomplete_dependencies": [],
+            "reason_code": code.value,
+            "reason": "tasks_master_invalid_json" if master_path.is_file() else "tasks_master_missing",
             "return_stage": "3C",
             "diagnostics": [diag],
         }
@@ -626,13 +959,14 @@ def _check_task_and_dependency_eligibility(
             entity_id=entity_id,
             expected=f"master task {tid} present in tasks.json",
             actual={"present": False, "return_stage": "3C"},
-            resume_ref=task_resolver.TRIPLET["master"],
+            resume_ref=master_rel,
         )
         return {
             "ok": False,
             "task_status": None,
             "self_done_required": False,
             "required_dependencies": [],
+            "transitive_dependencies": [],
             "incomplete_dependencies": [],
             "reason_code": codec.ReasonCode.MAPPING_MISMATCH.value,
             "reason": "task_missing_from_master",
@@ -648,57 +982,38 @@ def _check_task_and_dependency_eligibility(
             entity_id=entity_id,
             expected={"eligible_task_status": True, "return_stage": "3C"},
             actual={"task_status": task_status, "return_stage": "3C"},
-            resume_ref=task_resolver.TRIPLET["master"],
+            resume_ref=master_rel,
         )
         return {
             "ok": False,
             "task_status": task_status,
             "self_done_required": False,
             "required_dependencies": [],
+            "transitive_dependencies": [],
             "incomplete_dependencies": [],
             "reason_code": codec.ReasonCode.CONFLICT.value,
             "reason": f"task_status_ineligible:{task_status}",
             "return_stage": "3C",
             "diagnostics": [diag],
         }
-    req_deps: set[int] = set()
-    for raw_dep in target.get("dependencies") or []:
-        try:
-            dep_int = int(raw_dep)
-            if dep_int != tid:
-                req_deps.add(dep_int)
-        except (TypeError, ValueError):
-            continue
 
-    # Merge explicit live Chapter 5 dependency_decisions (keep vs remove/defer).
-    rec_path = root_path / ch5_b.DEFAULT_RECONCILIATION_DIR / f"task-{tid}.json"
-    rec_doc = _safe_read_json(rec_path)
-    if isinstance(rec_doc, dict):
-        dep_rows = rec_doc.get("dependency_decisions")
-        if not isinstance(dep_rows, list):
-            dep_rows = (rec_doc.get("decisions") or {}).get("dependency_decisions") if isinstance(rec_doc.get("decisions"), dict) else []
-        for row in dep_rows or []:
-            if not isinstance(row, dict):
-                continue
-            action = str(row.get("action") or "").strip().lower()
-            raw_dep = row.get("dependency_id")
-            try:
-                dep_int = int(raw_dep)
-            except (TypeError, ValueError):
-                continue
-            if dep_int == tid:
-                continue
-            if action == "keep":
-                req_deps.add(dep_int)
-            elif action in {"remove", "drop", "defer"}:
-                req_deps.discard(dep_int)
-
+    req_deps = _effective_dependencies_for_task(root_path, tid, target)
+    visited: set[int] = set()
+    queue: list[int] = sorted(req_deps)
     incomplete: list[dict[str, Any]] = []
-    for dep_id in sorted(req_deps):
+    while queue:
+        dep_id = queue.pop(0)
+        if dep_id in visited or dep_id == tid:
+            continue
+        visited.add(dep_id)
         dep_row = by_id.get(dep_id)
         dep_status = str((dep_row or {}).get("status") or "missing").strip().lower()
         if dep_row is None or dep_status != "done":
             incomplete.append({"dependency_id": dep_id, "status": dep_status})
+            continue
+        for nxt_dep in sorted(_effective_dependencies_for_task(root_path, dep_id, dep_row)):
+            if nxt_dep not in visited and nxt_dep != tid:
+                queue.append(nxt_dep)
 
     if incomplete:
         diag = _diag(
@@ -707,13 +1022,14 @@ def _check_task_and_dependency_eligibility(
             entity_id=entity_id,
             expected={"required_dependencies_status": "done", "return_stage": "3C"},
             actual={"incomplete_dependencies": incomplete, "task_status": task_status, "return_stage": "3C"},
-            resume_ref=task_resolver.TRIPLET["master"],
+            resume_ref=master_rel,
         )
         return {
             "ok": False,
             "task_status": task_status,
             "self_done_required": False,
             "required_dependencies": sorted(req_deps),
+            "transitive_dependencies": sorted(visited),
             "incomplete_dependencies": incomplete,
             "reason_code": codec.ReasonCode.CONFLICT.value,
             "reason": f"dependency_not_done:{incomplete[0]['dependency_id']}:{incomplete[0]['status']}",
@@ -727,6 +1043,7 @@ def _check_task_and_dependency_eligibility(
         "task_status": task_status,
         "self_done_required": False,
         "required_dependencies": sorted(req_deps),
+        "transitive_dependencies": sorted(visited),
         "incomplete_dependencies": [],
         "requires_chapter6_reverification": requires_reverify,
         "old_done_covers_new_obligations": False,
@@ -1584,6 +1901,80 @@ def _blocked_recovery_result(
     return payload
 
 
+def _resolve_candidate_task_scopes(root_path: Path, tid: int, operation: str | None) -> set[str] | None:
+    _ = operation
+    has_any_journal_dir = False
+    for rel_dir in (
+        f"{op_scope.STORE}/operations",
+        "logs/ci/b-route-operations",
+        "logs/ci/b-route-chapter4-binding",
+        "logs/ci/b-route-stage5-obligations",
+    ):
+        if os.path.lexists(root_path / rel_dir):
+            has_any_journal_dir = True
+            break
+    if not has_any_journal_dir:
+        return None
+    origins_doc = _safe_read_json(root_path / task_resolver.ORIGINS_PATH)
+    if not isinstance(origins_doc, dict) or not isinstance(origins_doc.get("tasks"), list):
+        return None
+    matched_row: dict[str, Any] | None = None
+    for row in origins_doc["tasks"]:
+        if isinstance(row, dict) and str(row.get("task_id")) == str(tid):
+            matched_row = row
+            break
+    if matched_row is None:
+        return None
+    raw_origin = matched_row.get("origin")
+    if raw_origin is not None and str(raw_origin) not in {"B", "A", "b_route", "compiled"}:
+        return None
+    plan_ids: list[str] = []
+    for k in ("plan_ids",):
+        vals = matched_row.get(k)
+        if isinstance(vals, list):
+            plan_ids.extend(str(v) for v in vals if str(v).strip())
+    for pref in matched_row.get("plan_refs") or []:
+        if isinstance(pref, dict) and pref.get("entity_id"):
+            plan_ids.append(str(pref["entity_id"]))
+    cat_doc = _safe_read_json(root_path / "docs/planning/b-route/catalog.v1.json")
+    scopes = set(op_scope.resource_scopes(plan_ids=plan_ids, task_ids=[tid]))
+    if isinstance(cat_doc, dict):
+        pset = set(plan_ids)
+        for sh in cat_doc.get("scope_heads") or []:
+            if not isinstance(sh, dict):
+                continue
+            sh_plans = {
+                str(pr.get("entity_id"))
+                for pr in (sh.get("plan_refs") or [])
+                if isinstance(pr, dict) and pr.get("entity_id")
+            }
+            sh_binds = [
+                str(br.get("path"))
+                for br in (sh.get("binding_refs") or [])
+                if isinstance(br, dict) and br.get("path")
+            ]
+            overlaps_tid = bool(sh_plans & pset)
+            if not overlaps_tid:
+                for bpath in sh_binds:
+                    bdoc = _safe_read_json(root_path / bpath)
+                    if not isinstance(bdoc, dict):
+                        continue
+                    for trow in list(bdoc.get("task_mappings") or []) + list(bdoc.get("task_bindings") or bdoc.get("tasks") or []):
+                        if isinstance(trow, dict) and str(trow.get("task_id")) == str(tid):
+                            overlaps_tid = True
+                            if bdoc.get("plan_id"):
+                                scopes.update(op_scope.resource_scopes(plan_ids=[str(bdoc["plan_id"])]))
+                            break
+                    if overlaps_tid:
+                        break
+            if overlaps_tid:
+                if sh.get("scope_id"):
+                    scopes.add(str(sh["scope_id"]))
+                if sh_plans:
+                    scopes.update(op_scope.resource_scopes(plan_ids=sorted(sh_plans)))
+    return scopes or None
+
+
 def evaluate_chapter6_recovery(
     root: Path | str,
     task_id: Any,
@@ -1640,7 +2031,8 @@ def evaluate_chapter6_recovery(
     run_baseline = load_run_recovery_baseline(root_path, run_dir_path)
 
     # 1. Inspect pending markers, legacy apply journals, B-route ops, and post-edit conflicts first.
-    pending_check = _inspect_pending_and_post_edits(root_path, validated_tid)
+    candidate_scopes = _resolve_candidate_task_scopes(root_path, validated_tid, operation)
+    pending_check = _inspect_pending_and_post_edits(root_path, validated_tid, scope_ids=candidate_scopes)
     if pending_check["blocked"]:
         return _blocked_recovery_result(
             task_id=validated_tid,
@@ -1806,6 +2198,8 @@ def evaluate_chapter6_recovery(
                 "input_set_digest": gate_res.get("input_set_digest"),
                 "applicable_set_digest": gate_res.get("applicable_set_digest"),
                 "scope_ids": list(gate_res.get("scope_ids") or []),
+                "plan_refs": list(gate_res.get("plan_refs") or []),
+                "binding_refs": list(gate_res.get("binding_refs") or []),
                 "gate_result": gate_res,
             },
         )

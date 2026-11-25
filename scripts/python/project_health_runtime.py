@@ -11,11 +11,17 @@ import sys
 import time
 import uuid
 import hashlib
+from contextlib import nullcontext
 from datetime import datetime, timezone
 from pathlib import Path
 
 from project_health_knowledge import base_dir, read_json, write_json
 from _project_health_runtime_snapshot import prepare_snapshot
+import _b_route_chapter6_gate as _ch6_gate
+import _b_route_codec as _codec
+import _b_route_entrypoint_parity as _b_route_parity
+import _b_route_inventory as _inventory
+import _b_route_records as _records
 
 GODOT_REF = "Tests.Godot/"
 CLEANUP_MARGIN_SECONDS = 30
@@ -23,6 +29,19 @@ REQUIRED_EVIDENCE_FIELDS = {
     "task_id", "source_revision", "test_refs", "scenes", "status",
     "started_at", "finished_at", "evidence_path",
 }
+
+
+class RuntimeGateBlockedError(ValueError):
+    """Raised when live B-route unified execution gate blocks runtime verification pre-snapshot."""
+
+    def __init__(self, gate_payload: dict):
+        self.payload = dict(gate_payload)
+        reason_code = self.payload.get("reason_code") or "conflict"
+        return_stage = self.payload.get("return_stage") or "5"
+        reason = self.payload.get("reason") or "b_route_gate_blocked"
+        super().__init__(
+            f"B-route runtime gate blocked (reason_code={reason_code}, return_stage={return_stage}): {reason}"
+        )
 
 
 def _references(value, sources: dict[str, str]) -> list[str]:
@@ -41,17 +60,171 @@ def _task_id(value) -> str:
     return text
 
 
+def _collect_live_godot_sources(root: Path) -> dict[str, str]:
+    godot_dir = root / "Tests.Godot"
+    if not os.path.lexists(godot_dir):
+        return {}
+    try:
+        _inventory.no_reparse(godot_dir)
+        if not godot_dir.is_dir():
+            return {}
+    except (_codec.CodecError, OSError, ValueError) as exc:
+        raise RuntimeGateBlockedError(
+            {
+                "ok": False,
+                "admitted": False,
+                "route": "blocked",
+                "reason_code": _codec.ReasonCode.UNSAFE_PATH.value,
+                "public_reason_code": _codec.ReasonCode.UNSAFE_PATH.value,
+                "reason": f"unsafe_tests_godot_dir:{exc}",
+                "blocked_by": "b_route_chapter6_gate",
+                "return_stage": "5",
+                "runtime_verified": False,
+                "default_b_enabled": False,
+            }
+        ) from exc
+    out: dict[str, str] = {}
+    stack = [godot_dir]
+    while stack:
+        cur = stack.pop()
+        for entry in sorted(cur.iterdir()):
+            _inventory.no_reparse(entry)
+            if entry.is_dir():
+                if entry.name not in {".godot", "reports"}:
+                    stack.append(entry)
+            elif entry.is_file():
+                out[entry.relative_to(root).as_posix()] = ""
+    return out
+
+
+def _safe_live_json(root: Path, rel: str) -> Any:
+    try:
+        target = _inventory.safe_input(root, rel, allow_logs=False)
+    except (_codec.CodecError, OSError, ValueError) as exc:
+        raise RuntimeGateBlockedError(
+            {
+                "ok": False,
+                "admitted": False,
+                "route": "blocked",
+                "reason_code": _codec.ReasonCode.UNSAFE_PATH.value,
+                "public_reason_code": _codec.ReasonCode.UNSAFE_PATH.value,
+                "reason": f"unsafe_live_authority_path:{rel}",
+                "blocked_by": "b_route_chapter6_gate",
+                "return_stage": "3C",
+                "resume_ref": rel,
+                "runtime_verified": False,
+                "default_b_enabled": False,
+            }
+        ) from exc
+    if not target.is_file():
+        return None
+    try:
+        return _codec.strict_json_loads(target.read_bytes())
+    except _codec.CodecError as err:
+        d = err.diagnostic.to_dict()
+        raise RuntimeGateBlockedError(
+            {
+                "ok": False,
+                "admitted": False,
+                "route": "blocked",
+                "reason_code": d["reason_code"],
+                "public_reason_code": d["reason_code"],
+                "reason": f"invalid_live_authority_json:{rel}",
+                "blocked_by": "b_route_chapter6_gate",
+                "return_stage": "3C",
+                "resume_ref": rel,
+                "diagnostics": [d],
+                "runtime_verified": False,
+                "default_b_enabled": False,
+            }
+        ) from err
+
+
+def _discover_live_all_gameplay_gate_ids(root: Path) -> list[str] | None:
+    """Discover live gameplay + B/blocked origin task IDs from disk BEFORE reading latest.json."""
+    presence = _ch6_gate.detect_b_route_presence(root, None)
+    gp_doc = _safe_live_json(root, ".taskmaster/tasks/tasks_gameplay.json")
+    master_doc = _safe_live_json(root, ".taskmaster/tasks/tasks.json")
+    origins_doc = _safe_live_json(root, "docs/planning/b-route/task-origins.v1.json")
+    if gp_doc is None and master_doc is None and origins_doc is None and not presence.get("should_enforce_gate"):
+        return None
+    discovered: set[str] = set()
+    master_ids: set[str] = set()
+    if isinstance(master_doc, dict) and isinstance(master_doc.get("master"), dict):
+        for mrow in master_doc["master"].get("tasks") or []:
+            if isinstance(mrow, dict) and mrow.get("id") is not None:
+                try:
+                    master_ids.add(_task_id(mrow["id"]))
+                except ValueError:
+                    continue
+    if isinstance(gp_doc, list):
+        for grow in gp_doc:
+            if not isinstance(grow, dict) or grow.get("taskmaster_id") is None:
+                continue
+            tid = _task_id(grow.get("taskmaster_id"))
+            if not master_ids or tid in master_ids:
+                discovered.add(tid)
+    if isinstance(origins_doc, dict) and isinstance(origins_doc.get("tasks"), list):
+        for orow in origins_doc["tasks"]:
+            if not isinstance(orow, dict) or orow.get("task_id") is None:
+                continue
+            tid = _task_id(orow.get("task_id"))
+            orig = orow.get("origin")
+            if orig is not None and str(orig).strip() not in {"B", "A", "b_route", "compiled"}:
+                discovered.add(tid)
+            elif not discovered and (orig is None or str(orig).strip() != "A"):
+                discovered.add(tid)
+    return sorted(discovered, key=int)
+
+
 def _gameplay_tasks(root: Path, state: dict | None = None, include_all: bool = False) -> list[dict]:
-    if state is None:
-        latest = base_dir(root) / "latest.json"
-        if not latest.exists():
-            raise ValueError("A successful local source scan is required before runtime verification")
-        state = read_json(latest)
-    source = state.get("sources", {}).get(".taskmaster/tasks/tasks_gameplay.json")
-    if not isinstance(source, str):
-        raise ValueError("The selected scan does not contain tasks_gameplay.json")
-    rows = json.loads(source)
-    static_by_id = {_task_id(item["task"]["id"]): item.get("godot", {}) for item in state.get("tasks", [])}
+    presence = _ch6_gate.detect_b_route_presence(root, None)
+    live_gp = _safe_live_json(root, ".taskmaster/tasks/tasks_gameplay.json")
+    live_master = _safe_live_json(root, ".taskmaster/tasks/tasks.json")
+    use_live = (live_gp is not None and live_master is not None) or bool(presence.get("has_b_traces"))
+    if use_live:
+        if not isinstance(live_gp, list) or not isinstance(live_master, dict):
+            raise RuntimeGateBlockedError(
+                {
+                    "ok": False,
+                    "admitted": False,
+                    "route": "blocked",
+                    "reason_code": _codec.ReasonCode.FILE_NOT_FOUND.value,
+                    "public_reason_code": _codec.ReasonCode.FILE_NOT_FOUND.value,
+                    "reason": "live_taskmaster_triplet_missing_or_invalid",
+                    "blocked_by": "b_route_chapter6_gate",
+                    "return_stage": "3C",
+                    "resume_ref": ".taskmaster/tasks/tasks_gameplay.json",
+                    "runtime_verified": False,
+                    "default_b_enabled": False,
+                }
+            )
+        rows = live_gp
+        live_sources = _collect_live_godot_sources(root)
+        scan_static = {
+            _task_id(item["task"]["id"]): item.get("godot", {})
+            for item in (state or {}).get("tasks", [])
+            if isinstance(item, dict) and isinstance(item.get("task"), dict) and item["task"].get("id") is not None
+        }
+        static_by_id: dict[str, dict] = {}
+        for mrow in (live_master.get("master") or {}).get("tasks") or []:
+            if isinstance(mrow, dict) and mrow.get("id") is not None:
+                mtid = _task_id(mrow["id"])
+                static_by_id[mtid] = scan_static.get(mtid, {})
+        sources_for_refs = live_sources
+    else:
+        if state is None:
+            latest = base_dir(root) / "latest.json"
+            if not latest.exists():
+                raise ValueError("A successful local source scan is required before runtime verification")
+            state = read_json(latest)
+        source = state.get("sources", {}).get(".taskmaster/tasks/tasks_gameplay.json")
+        if not isinstance(source, str):
+            raise ValueError("The selected scan does not contain tasks_gameplay.json")
+        rows = json.loads(source)
+        static_by_id = {_task_id(item["task"]["id"]): item.get("godot", {}) for item in state.get("tasks", [])}
+        sources_for_refs = state.get("sources", {})
+
     result, seen = [], set()
     for row in rows:
         task_id = _task_id(row.get("taskmaster_id", ""))
@@ -63,7 +236,7 @@ def _gameplay_tasks(root: Path, state: dict | None = None, include_all: bool = F
         refs = _references({"test_refs": row.get("test_refs", []),
                             "acceptance_criteria": row.get("acceptance_criteria", []),
                             "test_strategy": row.get("testStrategy", row.get("test_strategy", []))},
-                           state.get("sources", {}))
+                           sources_for_refs)
         static = static_by_id.get(task_id, {})
         explicit_runtime = "gdunit" in json.dumps(row, ensure_ascii=False).casefold()
         reviewed_mapping = bool(static.get("scenes"))
@@ -204,16 +377,47 @@ def verify(root: Path, godot_bin: str, timeout: int, task_id: str | None = None,
 
 def _verify(root: Path, godot_bin: str, timeout: int, task_id: str | None,
             global_timeout: int, task_ids: list[str] | None, all_gameplay: bool, mode: str) -> dict:
-    scan_path = base_dir(root) / "latest.json"
-    if not scan_path.exists():
-        raise ValueError("A successful local source scan is required before runtime verification")
-    state = read_json(scan_path)
-    scan_revision = state.get("revision")
     if mode not in ('main', 'workspace'):
         raise ValueError('Unknown runtime mode')
-    tasks = _gameplay_tasks(root, state, include_all=all_gameplay)
     if all_gameplay and (task_id is not None or task_ids is not None):
         raise ValueError("--all-gameplay cannot be combined with task selection")
+    pre_gate_ids: list[str] | None = None
+    if task_ids is not None:
+        pre_selected = {_task_id(value) for value in task_ids}
+        if not pre_selected:
+            raise ValueError("At least one task id is required")
+        pre_gate_ids = sorted(pre_selected, key=int)
+    elif task_id is not None:
+        pre_gate_ids = [_task_id(task_id)]
+    else:
+        pre_gate_ids = _discover_live_all_gameplay_gate_ids(root)
+    if pre_gate_ids is not None:
+        pre_gate_res = _b_route_parity.enforce_runtime_task_gate(
+            root,
+            pre_gate_ids,
+            mode=mode,
+            consumer="project_health_runtime",
+        )
+        if not pre_gate_res.get("ok"):
+            raise RuntimeGateBlockedError(pre_gate_res)
+    else:
+        pre_gate_res = None
+
+    scan_path = base_dir(root) / "latest.json"
+    has_live_triplet = (
+        (root / ".taskmaster/tasks/tasks_gameplay.json").is_file()
+        and (root / ".taskmaster/tasks/tasks.json").is_file()
+    )
+    if scan_path.exists():
+        state = read_json(scan_path)
+        scan_revision = state.get("revision")
+    elif mode == "workspace" and has_live_triplet:
+        state = {}
+        scan_revision = _main_revision(root) or "workspace"
+    else:
+        raise ValueError("A successful local source scan is required before runtime verification")
+
+    tasks = _gameplay_tasks(root, state, include_all=all_gameplay)
     selected_ids = None
     if task_ids is not None:
         selected_ids = {_task_id(value) for value in task_ids}
@@ -229,55 +433,100 @@ def _verify(root: Path, godot_bin: str, timeout: int, task_id: str | None,
         tasks = [task for task in tasks if task.get("taskmaster_id") == task_id]
         if not tasks:
             raise ValueError("Runtime-eligible gameplay task not found")
-    deadline = time.monotonic() + global_timeout
-    results = []
-    inputs_match, input_reason = (True, None) if mode == 'workspace' else _runtime_inputs_match(root, scan_revision)
-    manifest = None
-    if not inputs_match:
-        results = [_unverified_evidence(root, task, scan_revision, input_reason) for task in tasks]
-    else:
-        batch = base_dir(root) / 'runtime/batches' / uuid.uuid4().hex
-        manifest = prepare_snapshot(root, batch / 'source', scan_revision, mode, deadline)
-        for task in tasks:
-            task['_execution_root'] = str(batch / 'source')
-        for task in tasks:
-            remaining = int(deadline - time.monotonic())
-            if remaining <= CLEANUP_MARGIN_SECONDS:
-                break
-            inner_timeout = min(timeout, remaining - CLEANUP_MARGIN_SECONDS)
-            results.append(_run_task(root, task, godot_bin, inner_timeout, manifest['source_revision']))
-        for task in tasks[len(results):]:
-            results.append(_unverified_evidence(root, task, scan_revision,
-                           "Global runtime verification timeout reached before this task started"))
-    stable = _scan_revision(root) == scan_revision and _main_revision(root) == scan_revision
-    inputs_unchanged = manifest is not None and all((batch / 'source' / path).is_file() and
-        hashlib.sha256((batch / 'source' / path).read_bytes()).hexdigest() == digest
-        for path, digest in manifest['files'].items())
-    for result in results:
-        result['verification_mode'] = mode
-        result['task_definition_revision'] = scan_revision
-        result['input_snapshot'] = (batch / 'input-manifest.json').relative_to(root).as_posix() if manifest else None
-        result['workspace_verified'] = mode == 'workspace' and result['status'] == 'passed' and inputs_unchanged
-        result["runtime_verified"] = (result["status"] == "passed" and _complete(result)
-                                      and result["source_revision"] == scan_revision and stable and mode == 'main' and inputs_unchanged)
-        if result["status"] == "passed" and (not inputs_unchanged or (mode == 'main' and not stable)):
-            result["status"] = "runtime_unverified"
-            result["reason"] = "Snapshot inputs, scan or local-main revision changed during runtime verification"
-        _persist_result(root, result)
-    timed_out = any((result.get("reason") or "").startswith("Global runtime verification timeout")
-                    for result in results)
-    output = base_dir(root) / "runtime" / ('latest.json' if mode == 'main' else 'workspace-latest.json')
-    merge_ids = selected_ids if selected_ids is not None else ({task_id} if task_id is not None else None)
-    if mode == 'main' and merge_ids is not None and output.exists():
-        previous = read_json(output)
-        if previous.get("source_revision") == scan_revision:
-            results = [row for row in previous.get("tasks", [])
-                       if str(row.get("task_id")) not in merge_ids] + results
-    write_json(output, {"schema_version": "newrouge.project-health-runtime-index.v1",
-                        "source_revision": scan_revision if mode == 'main' else manifest['source_revision'],
-                        "verification_mode": mode, "tasks": results,
-                        "summary": _summary(results, timed_out)})
-    return read_json(output)
+
+    all_gate_ids = sorted(
+        {
+            *(pre_gate_ids or []),
+            *(task.get("taskmaster_id") for task in tasks if task.get("taskmaster_id")),
+        },
+        key=int,
+    )
+    if pre_gate_res is None or all_gate_ids != list(pre_gate_ids or []):
+        pre_gate_res = _b_route_parity.enforce_runtime_task_gate(
+            root,
+            all_gate_ids,
+            mode=mode,
+            consumer="project_health_runtime",
+        )
+        if not pre_gate_res.get("ok"):
+            raise RuntimeGateBlockedError(pre_gate_res)
+
+    before_pointers = _b_route_parity._snapshot_publication_pointers(root) if mode == 'workspace' else None
+    lease_cm = (
+        _b_route_parity.acquire_runtime_scope_leases(root, pre_gate_res, consumer="project_health_runtime")
+        if pre_gate_res and not pre_gate_res.get("legacy_a_passthrough") and pre_gate_res.get("gated_task_ids")
+        else nullcontext({"lease_acquired": False, "scope_ids": [], "uses_global_writer_lock": False})
+    )
+    try:
+        with lease_cm:
+            deadline = time.monotonic() + global_timeout
+            results = []
+            inputs_match, input_reason = (True, None) if mode == 'workspace' else _runtime_inputs_match(root, scan_revision)
+            manifest = None
+            if not inputs_match:
+                results = [_unverified_evidence(root, task, scan_revision, input_reason) for task in tasks]
+            else:
+                batch = base_dir(root) / 'runtime/batches' / uuid.uuid4().hex
+                manifest = prepare_snapshot(root, batch / 'source', scan_revision, mode, deadline)
+                for task in tasks:
+                    task['_execution_root'] = str(batch / 'source')
+                for task in tasks:
+                    remaining = int(deadline - time.monotonic())
+                    if remaining <= CLEANUP_MARGIN_SECONDS:
+                        break
+                    inner_timeout = min(timeout, remaining - CLEANUP_MARGIN_SECONDS)
+                    results.append(_run_task(root, task, godot_bin, inner_timeout, manifest['source_revision']))
+                for task in tasks[len(results):]:
+                    results.append(_unverified_evidence(root, task, scan_revision,
+                                   "Global runtime verification timeout reached before this task started"))
+            stable = _scan_revision(root) == scan_revision and _main_revision(root) == scan_revision
+            inputs_unchanged = manifest is not None and all((batch / 'source' / path).is_file() and
+                hashlib.sha256((batch / 'source' / path).read_bytes()).hexdigest() == digest
+                for path, digest in manifest['files'].items())
+            for result in results:
+                result['verification_mode'] = mode
+                result['task_definition_revision'] = scan_revision
+                result['input_snapshot'] = (batch / 'input-manifest.json').relative_to(root).as_posix() if manifest else None
+                result['workspace_verified'] = mode == 'workspace' and result['status'] == 'passed' and inputs_unchanged
+                result["runtime_verified"] = (result["status"] == "passed" and _complete(result)
+                                              and result["source_revision"] == scan_revision and stable and mode == 'main' and inputs_unchanged)
+                if result["status"] == "passed" and (not inputs_unchanged or (mode == 'main' and not stable)):
+                    result["status"] = "runtime_unverified"
+                    result["reason"] = "Snapshot inputs, scan or local-main revision changed during runtime verification"
+                _persist_result(root, result)
+            timed_out = any((result.get("reason") or "").startswith("Global runtime verification timeout")
+                            for result in results)
+            output = base_dir(root) / "runtime" / ('latest.json' if mode == 'main' else 'workspace-latest.json')
+            merge_ids = selected_ids if selected_ids is not None else ({task_id} if task_id is not None else None)
+            if mode == 'main' and merge_ids is not None and output.exists():
+                previous = read_json(output)
+                if previous.get("source_revision") == scan_revision:
+                    results = [row for row in previous.get("tasks", [])
+                               if str(row.get("task_id")) not in merge_ids] + results
+            write_json(output, {"schema_version": "newrouge.project-health-runtime-index.v1",
+                                "source_revision": scan_revision if mode == 'main' else manifest['source_revision'],
+                                "verification_mode": mode, "tasks": results,
+                                "summary": _summary(results, timed_out)})
+            if before_pointers is not None:
+                pointers_ok, mutated_pointers, _ = _b_route_parity._diff_publication_pointers(root, before_pointers)
+                if not pointers_ok:
+                    raise RuntimeGateBlockedError(
+                        {
+                            "ok": False,
+                            "route": "blocked",
+                            "reason_code": "conflict",
+                            "public_reason_code": "conflict",
+                            "reason": f"workspace_mode_mutated_publication_pointers:{','.join(mutated_pointers)}",
+                            "blocked_by": "b_route_chapter6_gate",
+                            "return_stage": "5",
+                            "mutated_publication_pointers": mutated_pointers,
+                            "runtime_verified": False,
+                            "default_b_enabled": False,
+                        }
+                    )
+            return read_json(output)
+    except _ch6_gate.Chapter6GateBlockedError as exc:
+        raise RuntimeGateBlockedError(exc.gate_result) from exc
 
 
 def main(argv=None) -> int:
@@ -302,6 +551,9 @@ def main(argv=None) -> int:
                                 args.task_id, args.global_timeout_sec, task_ids,
                                 args.all_gameplay, args.mode), ensure_ascii=True))
         return 0
+    except RuntimeGateBlockedError as exc:
+        print(json.dumps({"status": "failed", **exc.payload}, ensure_ascii=True))
+        return 1
     except Exception as exc:
         print(json.dumps({"status": "failed", "reason": str(exc)}, ensure_ascii=True))
         return 1

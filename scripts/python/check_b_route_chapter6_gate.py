@@ -59,6 +59,11 @@ def register_arguments(parser: argparse.ArgumentParser) -> argparse.ArgumentPars
         help="Optional expected sha256:<64 hex> InputSet digest for boundary drift verification",
     )
     parser.add_argument(
+        "--enforce-eligibility",
+        action="store_true",
+        help="Also enforce live tasks.json Task and multi-hop transitive dependency eligibility",
+    )
+    parser.add_argument(
         "--report",
         default=None,
         help="Optional repository-relative logs/ci/.../*.json path; omit for zero disk writes",
@@ -119,6 +124,7 @@ def main(argv=None) -> int:
         expected_input_set_digest=args.expected_input_set_digest,
         consumer="b-route-chapter6-gate",
         lock_mode=lock_mode,
+        enforce_eligibility=bool(args.enforce_eligibility),
     )
 
     if args.report is not None:

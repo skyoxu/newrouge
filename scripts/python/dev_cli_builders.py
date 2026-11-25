@@ -1174,3 +1174,38 @@ def build_b_route_chapter7_slice_cmd(args) -> list[str]:
                 raise ValueError(f"b-route-chapter7-slice optional {flag} must be nonempty when provided")
             cmd += [flag, str(value)]
     return cmd
+
+
+def build_b_route_entrypoint_parity_cmd(args) -> list[str]:
+    if getattr(args, "write", False) or getattr(args, "apply", False):
+        raise ValueError("b-route-entrypoint-parity is strictly read-only and rejects write/apply flags")
+    cmd = [
+        sys.executable,
+        "-B",
+        str(Path(__file__).resolve().with_name("check_b_route_entrypoint_parity.py")),
+    ]
+    root = getattr(args, "root", ".")
+    if root is None or not str(root).strip():
+        raise ValueError("b-route-entrypoint-parity requires nonempty --root")
+    cmd += ["--root", str(root)]
+    task_ids = list(getattr(args, "task_id", None) or [])
+    epic3_handoff = bool(getattr(args, "epic3_handoff", False))
+    if not task_ids and not epic3_handoff:
+        raise ValueError("b-route-entrypoint-parity requires at least one --task-id or --epic3-handoff")
+    for tid in task_ids:
+        if not str(tid).strip():
+            raise ValueError("b-route-entrypoint-parity --task-id entries must be nonempty")
+        cmd += ["--task-id", str(tid)]
+    if epic3_handoff:
+        cmd.append("--epic3-handoff")
+    for attr, flag in (
+        ("operation", "--operation"),
+        ("report", "--report"),
+        ("handoff_report", "--handoff-report"),
+    ):
+        value = getattr(args, attr, None)
+        if value is not None:
+            if not str(value).strip():
+                raise ValueError(f"b-route-entrypoint-parity optional {flag} must be nonempty when provided")
+            cmd += [flag, str(value)]
+    return cmd

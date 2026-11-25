@@ -255,17 +255,62 @@ def _has_legacy_pending_journals(root: Path) -> bool:
 
 def _has_pending_b_route_operations(root: Path) -> bool:
     ops_dir = root / op_scope.STORE / "operations"
-    if not ops_dir.is_dir():
-        return False
-    try:
-        graph = journal.operation_state_graph(root)
-    except (codec.CodecError, OSError, ValueError):
-        return True
-    terminals = graph.get("terminals") or {}
-    resolved_by = graph.get("resolved_by") or {}
-    for op in graph.get("operations") or []:
-        op_id = op.get("operation_id")
-        if op_id not in terminals and op_id not in resolved_by:
+    if ops_dir.is_dir():
+        try:
+            graph = journal.operation_state_graph(root)
+        except (codec.CodecError, OSError, ValueError):
+            return True
+        terminals = graph.get("terminals") or {}
+        resolved_by = graph.get("resolved_by") or {}
+        for op in graph.get("operations") or []:
+            op_id = op.get("operation_id")
+            if op_id not in terminals and op_id not in resolved_by:
+                return True
+    for rel_dir in (
+        "logs/ci/b-route-operations",
+        "logs/ci/b-route-chapter4-binding",
+        "logs/ci/b-route-stage5-obligations",
+    ):
+        base = root / rel_dir
+        if not os.path.lexists(base):
+            continue
+        try:
+            inventory.no_reparse(base)
+            if not base.is_dir():
+                continue
+            for sub in base.iterdir():
+                if sub.name in {"operations", "locks"}:
+                    continue
+                inventory.no_reparse(sub)
+                if not sub.is_dir():
+                    continue
+                for fname in ("apply-journal.json", "public-sync-journal.json", "operation.json"):
+                    jfile = sub / fname
+                    if not os.path.lexists(jfile):
+                        continue
+                    inventory.no_reparse(jfile)
+                    if not jfile.is_file():
+                        return True
+                    doc = codec.strict_json_loads(jfile.read_bytes())
+                    if not isinstance(doc, dict):
+                        return True
+                    st = str(doc.get("state") or doc.get("status") or "").strip().lower()
+                    if st in {
+                        "pending",
+                        "in_progress",
+                        "in-progress",
+                        "prepared",
+                        "reserved",
+                        "applying",
+                        "applied",
+                        "verifying",
+                        "verified",
+                        "publishing",
+                        "interrupted",
+                        "partial",
+                    }:
+                        return True
+        except (codec.CodecError, OSError, ValueError):
             return True
     return False
 
@@ -681,9 +726,32 @@ def _evaluate_gate_core(
     lock_mode: str,
     check_legacy_a_obligations: bool,
     started: float,
+    enforce_eligibility: bool = False,
 ) -> tuple[dict[str, Any], dict[str, Any] | None]:
     """Core read-only gate evaluator returning (gate_result, live_input_set_or_None)."""
     entity_id = str(tid)
+    import _b_route_chapter6_recovery as ch6_recovery
+
+    # 0. Pre-flight inspection of pending markers, damaged journals, and overlapping B-route ops.
+    cand_scopes = ch6_recovery._resolve_candidate_task_scopes(root_path, tid, operation)
+    pending_chk = ch6_recovery._inspect_pending_and_post_edits(root_path, tid, scope_ids=cand_scopes)
+    if pending_chk.get("blocked"):
+        p_diags = list(pending_chk.get("diagnostics") or [])
+        return (
+            _blocked_result(
+                task_id=tid,
+                operation=operation,
+                consumer=consumer,
+                lock_mode=lock_mode,
+                route="blocked",
+                reason_code=str(pending_chk.get("reason_code") or codec.ReasonCode.PENDING.value),
+                reason=str(pending_chk.get("reason") or "pending_journal"),
+                return_stage=str(pending_chk.get("return_stage") or "3C"),
+                diagnostics=p_diags,
+                started=started,
+            ),
+            None,
+        )
 
     # 1. Story 3.3 unified origin classification.
     origin = task_resolver.resolve_task_origin(root_path, tid, operation=operation)
@@ -1022,6 +1090,31 @@ def _evaluate_gate_core(
                 )
             legacy_handoffs = list(leg_detail.get("milestone_handoff_paths") or [])
 
+        elig_a = ch6_recovery._check_task_and_dependency_eligibility(root_path, tid)
+        if not elig_a["ok"] and (
+            enforce_eligibility or str(elig_a.get("reason") or "").startswith("task_status_ineligible:")
+        ):
+            return (
+                _blocked_result(
+                    task_id=tid,
+                    operation=operation,
+                    consumer=consumer,
+                    lock_mode=lock_mode,
+                    route="A",
+                    reason_code=str(elig_a["reason_code"]),
+                    reason=str(elig_a["reason"]),
+                    return_stage=str(elig_a.get("return_stage") or "3C"),
+                    diagnostics=list(elig_a.get("diagnostics") or []),
+                    started=started,
+                    extra={
+                        "input_set_digest": live_iset["input_set_digest"],
+                        "scope_ids": list(live_iset["scope_ids"]),
+                        "frozen_a_boundary": origin.get("frozen_a_boundary"),
+                    },
+                ),
+                live_iset,
+            )
+
         elapsed = round(max(0.0, time.monotonic() - started), 6)
         return (
             {
@@ -1095,6 +1188,11 @@ def _evaluate_gate_core(
                 return_stage=rstage,
                 diagnostics=diags,
                 started=started,
+                extra={
+                    "applicable_set_digest": origin["applicable_set_digest"],
+                    "plan_refs": deepcopy(origin["plan_refs"]),
+                    "binding_refs": deepcopy(origin["binding_refs"]),
+                },
             ),
             None,
         )
@@ -1135,6 +1233,8 @@ def _evaluate_gate_core(
                     "invalidated_items": invalidated,
                     "applicable_set_digest": origin["applicable_set_digest"],
                     "scope_ids": list(live_iset["scope_ids"]),
+                    "plan_refs": deepcopy(origin["plan_refs"]),
+                    "binding_refs": deepcopy(origin["binding_refs"]),
                 },
             ),
             live_iset,
@@ -1164,6 +1264,8 @@ def _evaluate_gate_core(
                     "input_set_digest": live_iset["input_set_digest"],
                     "applicable_set_digest": origin["applicable_set_digest"],
                     "scope_ids": list(live_iset["scope_ids"]),
+                    "plan_refs": deepcopy(origin["plan_refs"]),
+                    "binding_refs": deepcopy(origin["binding_refs"]),
                 },
             ),
             live_iset,
@@ -1212,6 +1314,8 @@ def _evaluate_gate_core(
                     "input_set_digest": live_iset["input_set_digest"],
                     "applicable_set_digest": origin["applicable_set_digest"],
                     "scope_ids": list(live_iset["scope_ids"]),
+                    "plan_refs": deepcopy(origin["plan_refs"]),
+                    "binding_refs": deepcopy(origin["binding_refs"]),
                     "stage5_summary": stage5_summary,
                     "readiness_path": readiness_res.get("readiness_path"),
                     "reconciliation_path": readiness_res.get("reconciliation_path"),
@@ -1295,6 +1399,34 @@ def _evaluate_gate_core(
             live_iset,
         )
 
+    elig_b = ch6_recovery._check_task_and_dependency_eligibility(root_path, tid)
+    if not elig_b["ok"] and (
+        enforce_eligibility or str(elig_b.get("reason") or "").startswith("task_status_ineligible:")
+    ):
+        return (
+            _blocked_result(
+                task_id=tid,
+                operation=operation,
+                consumer=consumer,
+                lock_mode=lock_mode,
+                route="B",
+                reason_code=str(elig_b["reason_code"]),
+                reason=str(elig_b["reason"]),
+                return_stage=str(elig_b.get("return_stage") or "3C"),
+                diagnostics=list(elig_b.get("diagnostics") or []),
+                started=started,
+                extra={
+                    "input_set_digest": live_iset["input_set_digest"],
+                    "applicable_set_digest": origin["applicable_set_digest"],
+                    "scope_ids": list(live_iset["scope_ids"]),
+                    "plan_refs": deepcopy(origin["plan_refs"]),
+                    "binding_refs": deepcopy(origin["binding_refs"]),
+                    "stage5_summary": stage5_summary,
+                },
+            ),
+            live_iset,
+        )
+
     elapsed = round(max(0.0, time.monotonic() - started), 6)
     requires_reverify = bool(
         live_reverification["requires_chapter6_reverification"]
@@ -1354,6 +1486,7 @@ def evaluate_chapter6_gate(
     consumer: str = "chapter6",
     lock_mode: str = "none",
     check_legacy_a_obligations: bool = True,
+    enforce_eligibility: bool = False,
 ) -> dict[str, Any]:
     """Evaluate the unified Chapter 6 execution gate for one master Task ID."""
     started = time.monotonic()
@@ -1428,6 +1561,7 @@ def evaluate_chapter6_gate(
                 lock_mode="scope",
                 check_legacy_a_obligations=check_legacy_a_obligations,
                 started=started,
+                enforce_eligibility=enforce_eligibility,
             )
             if res["ok"] and not set(res.get("scope_ids") or ()).issubset(set(receipt["scope_ids"])):
                 d = _diag(
@@ -1464,6 +1598,7 @@ def evaluate_chapter6_gate(
             lock_mode="none",
             check_legacy_a_obligations=check_legacy_a_obligations,
             started=started,
+            enforce_eligibility=enforce_eligibility,
         )
         if not pre_res["ok"] or pre_res["route"] == "explicit_not_enabled_a":
             pre_res["lock_mode"] = "scope"
@@ -1482,6 +1617,7 @@ def evaluate_chapter6_gate(
                     lock_mode="scope",
                     check_legacy_a_obligations=check_legacy_a_obligations,
                     started=started,
+                    enforce_eligibility=enforce_eligibility,
                 )
                 res["lock_mode"] = "scope"
                 res["uses_global_writer_lock"] = False
@@ -1513,6 +1649,7 @@ def evaluate_chapter6_gate(
         lock_mode="none",
         check_legacy_a_obligations=check_legacy_a_obligations,
         started=started,
+        enforce_eligibility=enforce_eligibility,
     )
     return res
 
@@ -1716,13 +1853,19 @@ def _verify_inherited_lease_receipt(
             resume_ref=rel_clean,
         )
 
-    if receipt.get("task_id") != tid:
+    receipt_tids = receipt.get("task_ids")
+    tid_matched = (receipt.get("task_id") == tid) or (
+        isinstance(receipt_tids, list)
+        and all(type(x) is int and not isinstance(x, bool) for x in receipt_tids)
+        and tid in receipt_tids
+    )
+    if not tid_matched:
         _fail(
             codec.ReasonCode.CONFLICT,
             stage=codec.Stage.BUNDLE,
             entity_id=entity_id,
             expected={"task_id": tid},
-            actual={"task_id": receipt.get("task_id"), "return_stage": "5"},
+            actual={"task_id": receipt.get("task_id"), "task_ids": receipt_tids, "return_stage": "5"},
             resume_ref=rel_clean,
         )
 
@@ -1786,7 +1929,12 @@ def _verify_inherited_lease_receipt(
                 resume_ref=rel_clean,
             )
 
-    digest = receipt.get("input_set_digest")
+    per_task_digests = receipt.get("per_task_input_set_digests")
+    digest = (
+        per_task_digests.get(str(tid))
+        if isinstance(per_task_digests, dict) and str(tid) in per_task_digests
+        else receipt.get("input_set_digest")
+    )
     if type(digest) is not str or _DIGEST_RE.fullmatch(digest) is None:
         _fail(
             codec.ReasonCode.INVALID_DIGEST,
@@ -1797,7 +1945,7 @@ def _verify_inherited_lease_receipt(
             resume_ref=rel_clean,
         )
 
-    return {**receipt, "receipt_rel": rel_clean}
+    return {**receipt, "input_set_digest": digest, "receipt_rel": rel_clean}
 
 
 def _atomic_write_json(path: Path, payload: dict[str, Any]) -> None:
@@ -2753,6 +2901,7 @@ def enforce_internal_script_gate(
         consumer=consumer,
         lock_mode="none",
         check_legacy_a_obligations=True,
+        enforce_eligibility=(consumer != "mvg_obligations"),
     )
 
 

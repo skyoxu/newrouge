@@ -511,7 +511,16 @@ def _collect_bound_obligations(
                 for oref in prow.get("other_verification_refs") or []:
                     for op in _extract_owned_ref_paths(oref):
                         other_verification_refs.add(op)
-        for bref in gate_res.get("binding_refs") or []:
+        candidate_brefs = list(gate_res.get("binding_refs") or [])
+        if not candidate_brefs:
+            cat_doc = ch6_recovery._safe_read_json(root_path / records.CATALOG_PATH)
+            if isinstance(cat_doc, dict):
+                for sh in cat_doc.get("scope_heads") or []:
+                    if isinstance(sh, dict):
+                        for br in sh.get("binding_refs") or []:
+                            if isinstance(br, dict) and br.get("path"):
+                                candidate_brefs.append(br)
+        for bref in candidate_brefs:
             if not isinstance(bref, dict) or not bref.get("path"):
                 continue
             bdoc = ch6_recovery._safe_read_json(root_path / str(bref["path"]))
@@ -631,6 +640,23 @@ def _collect_bound_obligations(
                 bound_test_files.discard(tpath)
             else:
                 bound_test_files.add(tpath)
+
+    # Also consult Chapter 5 reconciliation/readiness planned_summary when a bound MVG manifest was deleted on disk.
+    for ch5_rel in (
+        f"logs/ci/chapter5/reconciliation/task-{tid}.json",
+        f"logs/ci/chapter5/readiness/task-{tid}.json",
+    ):
+        ch5_doc = ch6_recovery._safe_read_json(root_path / ch5_rel)
+        if not isinstance(ch5_doc, dict):
+            continue
+        ps = ch5_doc.get("planned_summary")
+        if isinstance(ps, dict):
+            for pt in ps.get("planned_tests") or []:
+                if isinstance(pt, dict) and str(pt.get("state") or "").strip().lower() == "planned":
+                    pt_path = _norm_rel(str(pt.get("path") or ""))
+                    if pt_path:
+                        planned_test_files.add(pt_path)
+                        bound_test_files.discard(pt_path)
 
     # Remove planned tests from implemented set if explicitly listed as planned.
     implemented_tests = sorted(bound_test_files - planned_test_files - other_verification_refs)
