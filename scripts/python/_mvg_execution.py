@@ -105,10 +105,13 @@ def read_test_evidence(directory: Path, kind: str, expected: str, min_tests: int
 
 
 def execute_test(root: Path, test: dict, out: Path, godot_bin: str, deadline: float,
-                 env: dict | None = None, *, prewarm: bool = True,
+                 env: dict | None = None, *, prewarm: bool = True, no_build: bool = False,
                  dotnet_bin: str = 'dotnet', protocol_fixture: bool = False) -> dict:
-    out.mkdir(parents=True, exist_ok=False)
+    if (out / 'command.json').exists() or (out / 'console.log').exists():
+        raise FileExistsError(f'Test output directory already contains execution artifacts: {out}')
+    out.mkdir(parents=True, exist_ok=True)
     started_at = datetime.now(timezone.utc).isoformat()
+    started_mono = time.monotonic()
     if test['kind'] == 'dotnet':
         dotnet_resolved = (shutil.which(dotnet_bin)
                            if (dotnet_bin and not Path(dotnet_bin).is_file()) else dotnet_bin) or dotnet_bin
@@ -121,9 +124,11 @@ def execute_test(root: Path, test: dict, out: Path, godot_bin: str, deadline: fl
             dotnet_cmd = ['pwsh', '-NoProfile', '-File', str(dotnet_resolved)]
         else:
             dotnet_cmd = [dotnet_bin]
-        command = [*dotnet_cmd, 'test', 'Game.Core.Tests/Game.Core.Tests.csproj', '--configuration', 'Debug',
-                   '--filter', 'FullyQualifiedName~' + test['selector'],
-                   '--logger', 'trx;LogFileName=results.trx', '--results-directory', str(out)]
+        command = [*dotnet_cmd, 'test', 'Game.Core.Tests/Game.Core.Tests.csproj', '--configuration', 'Debug']
+        if no_build:
+            command.append('--no-build')
+        command.extend(['--filter', 'FullyQualifiedName~' + test['selector'],
+                        '--logger', 'trx;LogFileName=results.trx', '--results-directory', str(out)])
         expected = test['selector']
         report_dir = out
     else:
@@ -170,6 +175,7 @@ def execute_test(root: Path, test: dict, out: Path, godot_bin: str, deadline: fl
         rc = 127
     evidence = read_test_evidence(report_dir, test['kind'], expected, test['min_tests'])
     finished_at = datetime.now(timezone.utc).isoformat()
+    elapsed_seconds = round(max(0.0, time.monotonic() - started_mono), 4)
     command_record = out / 'command.json'
     command_payload = {
         'id': test['id'],
@@ -179,15 +185,19 @@ def execute_test(root: Path, test: dict, out: Path, godot_bin: str, deadline: fl
         'min_tests': test.get('min_tests', 1),
         'cwd': str(root),
         'command': command,
+        'no_build': bool(no_build) if test['kind'] == 'dotnet' else False,
+        'prewarm': bool(prewarm) if test['kind'] == 'gdunit' else False,
         'exit_code': rc,
         'protocol_fixture': bool(protocol_fixture),
         'started_at': started_at,
         'finished_at': finished_at,
+        'elapsed_seconds': elapsed_seconds,
         'log_path': str(out / 'console.log'),
         'report_paths': list(evidence.get('reports', [])),
     }
     command_record.write_text(json.dumps(command_payload, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
     return {'id': test['id'], 'evidence_level': test['evidence_level'], 'command': command,
             'command_record': str(command_record),
+            'started_at': started_at, 'finished_at': finished_at, 'elapsed_seconds': elapsed_seconds,
             'exit_code': rc, 'status': 'passed' if rc == 0 and evidence['passed'] else 'failed',
             'evidence': evidence, 'log': str(out / 'console.log')}

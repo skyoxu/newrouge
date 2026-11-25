@@ -70,6 +70,7 @@ on:
       - 'scripts/python/_b_route_verification_scope.py'
       - 'scripts/python/build_b_route_verification_scope.py'
       - 'scripts/python/_b_route_scope_runner.py'
+      - 'scripts/python/_b_route_evidence_reuse.py'
       - 'scripts/python/run_mvg_acceptance.py'
       - 'scripts/python/_mvg_execution.py'
       - 'scripts/python/_project_health_http.py'

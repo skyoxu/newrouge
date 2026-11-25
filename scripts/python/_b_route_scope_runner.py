@@ -27,6 +27,7 @@ from typing import Any
 import _b_route_chapter6_recovery as ch6_recovery
 import _b_route_chapter7_slice as ch7_slice
 import _b_route_codec as codec
+import _b_route_evidence_reuse as evidence_reuse
 import _b_route_inventory as inventory
 import _b_route_operation_scope as op_scope
 import _b_route_verification_scope as verification_scope
@@ -42,6 +43,11 @@ INVARIANT_FLAGS: dict[str, bool] = {
     "flow_completed": False,
     "milestone_completed": False,
     "default_b_enabled": False,
+    "build_reuse_implies_test_pass": False,
+    "manual_satisfied_by_machine_reuse": False,
+    "planning_adoption_interchangeable": False,
+    "speedup_or_cost_gate_enforced": False,
+    "reserved_budget_claimed_as_savings": False,
 }
 
 SIX_EVIDENCE_TIERS: tuple[str, ...] = (
@@ -1085,6 +1091,33 @@ def _validate_manifest_for_scope(
         elif not safe_path(snapshot_root, mrow["path"]).is_file():
             errors.append(f"Scope-required test file missing in snapshot: {mrow['path']}")
             reason_code = "missing_required_test"
+        else:
+            # Verify descriptor compatibility between VerificationScope and manifest (fail closed on conflict!).
+            desc_diffs: list[str] = []
+            if str(item.get("kind") or "") != str(mrow.get("kind") or ""):
+                desc_diffs.append(f"kind({item.get('kind')}!={mrow.get('kind')})")
+            item_path = str(item.get("path") or "").replace("\\", "/")
+            mrow_path = str(mrow.get("path") or "").replace("\\", "/")
+            if item_path and item_path != mrow_path:
+                desc_diffs.append(f"path({item_path}!={mrow_path})")
+            item_sel = str(item.get("selector") or "")
+            mrow_sel = str(mrow.get("selector") or "")
+            if item_sel != mrow_sel:
+                desc_diffs.append(f"selector({item_sel}!={mrow_sel})")
+            if item.get("min_tests") is not None and int(item["min_tests"]) != int(mrow.get("min_tests") or 1):
+                desc_diffs.append(f"min_tests({item.get('min_tests')}!={mrow.get('min_tests')})")
+            item_lvl = item.get("evidence_level")
+            mrow_lvl = mrow.get("evidence_level")
+            if item_lvl and mrow_lvl:
+                norm_item_lvl = normalize_evidence_tier(str(item.get("kind") or ""), str(item_lvl))
+                norm_mrow_lvl = normalize_evidence_tier(str(mrow.get("kind") or ""), str(mrow_lvl))
+                if norm_item_lvl != norm_mrow_lvl:
+                    desc_diffs.append(f"evidence_level({item_lvl}!={mrow_lvl})")
+            if desc_diffs:
+                errors.append(
+                    f"Descriptor mismatch between VerificationScope and manifest for test {tid}: {', '.join(desc_diffs)}"
+                )
+                reason_code = "descriptor_mismatch"
 
     # When running conservative_superset, verify all implemented extra tests exist in snapshot too.
     if is_superset:
@@ -1271,8 +1304,11 @@ def _run_other_verification_script(
     deadline: float,
     env: dict[str, str],
 ) -> dict[str, Any]:
-    out.mkdir(parents=True, exist_ok=False)
+    if (out / "command.json").exists() or (out / "console.log").exists():
+        raise FileExistsError(f"Output directory already contains execution artifacts: {out}")
+    out.mkdir(parents=True, exist_ok=True)
     started_at = _now()
+    started_mono = time.monotonic()
     script_rel = str(item.get("path") or "")
     target = safe_path(snapshot_root, script_rel)
     log_path = out / "console.log"
@@ -1291,6 +1327,7 @@ def _run_other_verification_script(
         command = []
         rc = 127
     finished_at = _now()
+    elapsed_seconds = round(max(0.0, time.monotonic() - started_mono), 4)
     log_text = log_path.read_text(encoding="utf-8", errors="replace") if log_path.is_file() else ""
     non_empty_output = bool(log_text.strip())
     cmd_rec = out / "command.json"
@@ -1304,6 +1341,7 @@ def _run_other_verification_script(
         "non_empty_output": non_empty_output,
         "started_at": started_at,
         "finished_at": finished_at,
+        "elapsed_seconds": elapsed_seconds,
         "log_path": str(log_path),
         "report_paths": [str(log_path)] if non_empty_output else [],
     })
@@ -1331,6 +1369,11 @@ def _run_other_verification_script(
         "report_paths": [str(log_path)] if non_empty_output else [],
         "input_authenticity": {"checked": False, "valid": True, "reason": "not_applicable"},
         "evidence_reason": reason,
+        "reused": False,
+        "freshly_executed": True,
+        "original_executed_at": finished_at,
+        "referencing_flow_ids": sorted(set(item.get("flow_ids") or [])),
+        "elapsed_seconds": elapsed_seconds,
     }
 
 
@@ -1378,9 +1421,33 @@ def run_scoped_mvg(
     execution_strategy: str = "scoped",
     protocol_fixture: bool = False,
     stop_on_deterministic_failure: bool = True,
+    reuse_evidence_from: list[str] | None = None,
+    reuse_build_from: str | None = None,
+    events_log: str | None = None,
 ) -> tuple[int, dict[str, Any], dict[str, Any]]:
     """Consume a VerificationScope, execute tests under business lease & snapshot, emit coverage receipt."""
     started_at = _now()
+    run_started_mono = time.monotonic()
+    observed_elapsed = 0.0
+    missed_build_elapsed = 0.0
+    reserved_dispatches = 0
+    observed_dispatches = 0
+    reused_dispatches = 0
+    build_reuses = 0
+    events_path: Path | None = None
+    events_emitted = 0
+    events_deduplicated = 0
+
+    def _emit_event(payload: dict[str, Any]) -> None:
+        nonlocal events_emitted, events_deduplicated
+        if events_path is None:
+            return
+        appended = evidence_reuse.append_deduplicated_event(events_path, payload)
+        if appended:
+            events_emitted += 1
+        else:
+            events_deduplicated += 1
+
     env_meta = probe_environment(
         dotnet_bin=dotnet_bin,
         godot_bin=godot_bin,
@@ -1418,9 +1485,48 @@ def run_scoped_mvg(
         "stop_loss": {"triggered": False, "source": None, "signals": [], "task_ids": [], "failed_prerequisite_id": None, "skipped_test_ids": []},
         "drift": {"pre_run_valid": False, "post_run_valid": False, "drift_detected": False, "invalidated_obligations": [], "invalidated_flows": [], "replacement_scope_id": None},
         "lease": {"acquired": False, "scope_keys": [], "uses_global_writer_lock": False, "lock_conflict": False},
+        "build_artifacts": {"dotnet_build": None, "godot_prewarm": None},
+        "reuse_rejections": [],
+        "reuse_summary": {
+            "unique_executed_test_count": 0,
+            "freshly_executed_count": 0,
+            "reused_test_count": 0,
+            "reused_test_ids": [],
+            "freshly_executed_test_ids": [],
+            "build_reuse_count": 0,
+            "rejection_count": 0,
+            "events_emitted": 0,
+            "events_deduplicated": 0,
+            "build_reuse_implies_test_pass": False,
+            "manual_satisfied_by_machine_reuse": False,
+            "planning_adoption_interchangeable": False,
+        },
+        "state_isolation": {
+            "per_test_dirs_isolated": True,
+            "pollution_detected": False,
+            "polluted_tests": [],
+            "checks": [],
+        },
+        "metrics": {
+            "observed_elapsed_seconds": 0.0,
+            "total_run_elapsed_seconds": 0.0,
+            "missed_build_elapsed_seconds": 0.0,
+            "reserved_dispatches": 0,
+            "observed_dispatches": 0,
+            "reused_dispatches": 0,
+            "build_reuses": 0,
+            "reserved_budget_claimed_as_savings": False,
+            "speedup_or_cost_gate_enforced": False,
+        },
+        "events_log_path": None,
         "coverage_summary": {
             "requested_count": 0,
             "executed_count": 0,
+            "unique_executed_test_count": 0,
+            "freshly_executed_count": 0,
+            "reused_test_count": 0,
+            "referencing_flow_link_count": 0,
+            "flow_count_inflation_prevented": True,
             "passed_count": 0,
             "failed_count": 0,
             "skipped_count": 0,
@@ -1444,11 +1550,7 @@ def run_scoped_mvg(
         "runtime_verified": False,
         "automated_scope_passed": False,
         "steps": [],
-        "authorizes_task_status_write": False,
-        "task_completed": False,
-        "flow_completed": False,
-        "milestone_completed": False,
-        "default_b_enabled": False,
+        **INVARIANT_FLAGS,
     }
     exit_code = 1
 
@@ -1464,9 +1566,30 @@ def run_scoped_mvg(
         not_run_blocking = sum(1 for item in receipt["not_run"] if item.get("blocking_current_delivery"))
         not_run_future = sum(1 for item in receipt["not_run"] if not item.get("blocking_current_delivery"))
         manual_pending = len(receipt["manual_obligations"])
+        reused_items = [item for item in exec_list if item.get("reused")]
+        fresh_items = [item for item in exec_list if not item.get("reused")]
+        flow_links = sum(len(item.get("referencing_flow_ids") or []) for item in exec_list)
+
+        _emit_event({
+            "event_type": "mvg_run_completed",
+            "scope_id": receipt["scope_id"],
+            "snapshot_digest": receipt["snapshot_digest"],
+            "status": receipt["status"],
+            "reason_code": receipt["reason_code"],
+            "automated_scope_passed": receipt["automated_scope_passed"],
+            "runtime_verified": receipt["runtime_verified"],
+            "reused_test_ids": sorted(item["id"] for item in reused_items),
+            "freshly_executed_test_ids": sorted(item["id"] for item in fresh_items),
+        })
+
         receipt["coverage_summary"] = {
             "requested_count": req_count,
             "executed_count": len(exec_list),
+            "unique_executed_test_count": len(exec_list),
+            "freshly_executed_count": len(fresh_items),
+            "reused_test_count": len(reused_items),
+            "referencing_flow_link_count": flow_links,
+            "flow_count_inflation_prevented": True,
             "passed_count": passed_count,
             "failed_count": failed_count,
             "skipped_count": skipped_cases,
@@ -1474,6 +1597,31 @@ def run_scoped_mvg(
             "not_run_future_count": not_run_future,
             "manual_pending_count": manual_pending,
             "all_requested_automated_passed": bool(receipt["automated_scope_passed"]),
+        }
+        receipt["reuse_summary"] = {
+            "unique_executed_test_count": len(exec_list),
+            "freshly_executed_count": len(fresh_items),
+            "reused_test_count": len(reused_items),
+            "reused_test_ids": sorted(item["id"] for item in reused_items),
+            "freshly_executed_test_ids": sorted(item["id"] for item in fresh_items),
+            "build_reuse_count": build_reuses,
+            "rejection_count": len(receipt["reuse_rejections"]),
+            "events_emitted": events_emitted,
+            "events_deduplicated": events_deduplicated,
+            "build_reuse_implies_test_pass": False,
+            "manual_satisfied_by_machine_reuse": False,
+            "planning_adoption_interchangeable": False,
+        }
+        receipt["metrics"] = {
+            "observed_elapsed_seconds": round(observed_elapsed, 4),
+            "total_run_elapsed_seconds": round(max(0.0, time.monotonic() - run_started_mono), 4),
+            "missed_build_elapsed_seconds": round(missed_build_elapsed, 4),
+            "reserved_dispatches": reserved_dispatches,
+            "observed_dispatches": observed_dispatches,
+            "reused_dispatches": reused_dispatches,
+            "build_reuses": build_reuses,
+            "reserved_budget_claimed_as_savings": False,
+            "speedup_or_cost_gate_enforced": False,
         }
         # Append honest unverified exclusions for manual/future/not_run obligations.
         exclusions = list(receipt["environment"].get("unverified_exclusions") or [])
@@ -1508,6 +1656,12 @@ def run_scoped_mvg(
             "selective_execution_claimed": receipt["selective_execution_claimed"],
             "superset_extra_tests": receipt["superset_extra_tests"],
             "protocol_fixture_only": receipt["environment"]["protocol_fixture_only"],
+            "build_artifacts": receipt["build_artifacts"],
+            "reuse_summary": receipt["reuse_summary"],
+            "reuse_rejections": receipt["reuse_rejections"],
+            "state_isolation": receipt["state_isolation"],
+            "metrics": receipt["metrics"],
+            "events_log_path": receipt["events_log_path"],
             "coverage_receipt_path": str(receipt_path),
             "coverage_receipt": receipt,
             "finished_at": receipt["finished_at"],
@@ -1518,6 +1672,34 @@ def run_scoped_mvg(
         if timeout_sec < 1:
             receipt["reason_code"] = "invalid_argument"
             receipt["reason"] = "timeout-sec must be positive"
+            return _finalize()
+
+        if events_log is not None:
+            try:
+                ev_text = str(events_log).strip()
+                if not ev_text:
+                    raise ValueError("--events-log cannot be empty")
+                ev_path, ev_rel = _normalize_repo_rel(root, ev_text, allow_logs=True)
+                if not ev_rel.startswith("logs/"):
+                    raise ValueError(f"--events-log must reside under logs/: {ev_rel}")
+                if not ev_rel.lower().endswith(".jsonl"):
+                    raise ValueError(f"--events-log must use .jsonl suffix: {ev_rel}")
+                if os.path.lexists(ev_path):
+                    inventory.no_reparse(ev_path)
+                    if ev_path.is_dir():
+                        raise ValueError(f"--events-log cannot be a directory: {ev_rel}")
+                events_path = ev_path
+                receipt["events_log_path"] = ev_rel
+            except ValueError as exc:
+                receipt["reason_code"] = "unsafe_path"
+                receipt["reason"] = str(exc)
+                receipt["diagnostics"].append({"reason_code": "unsafe_path", "message": str(exc)})
+                return _finalize()
+
+        if reuse_build_from is not None and not str(reuse_build_from).strip():
+            receipt["reason_code"] = "unsafe_path"
+            receipt["reason"] = "--reuse-build-from cannot be empty"
+            receipt["diagnostics"].append({"reason_code": "unsafe_path", "message": "--reuse-build-from cannot be empty"})
             return _finalize()
 
         # 1. Validate VerificationScope path, schema, seal, and semantic consistency.
@@ -1795,18 +1977,19 @@ def run_scoped_mvg(
                         scoped_test_ids.add(item["test_id"])
                         selected_flows.update(item_flows & manifest_flow_ids)
 
-            run_test_specs: list[dict[str, Any]] = []
+            raw_test_specs: list[dict[str, Any]] = []
             superset_extra_ids: list[str] = []
             if strategy_used == "conservative_superset":
                 receipt["superset_executed"] = True
                 receipt["selective_execution_claimed"] = False
                 for item in scoped_dotnet_gdunit:
                     mrow = manifest_tests_by_id[item["test_id"]]
-                    run_test_specs.append({
+                    raw_test_specs.append({
                         "test": mrow,
                         "obligation_id": item.get("obligation_id"),
                         "tier": item.get("tier", "existing_required"),
                         "flow_ids": list(item.get("flow_ids") or []),
+                        "requirement_ids": list(item.get("requirement_ids") or []),
                         "is_superset_extra": False,
                     })
                 for mrow in manifest_doc["tests"]:
@@ -1816,11 +1999,12 @@ def run_scoped_mvg(
                         tier = obligation_tier_by_test.get(tid, "existing_required")
                         if tier == "out_of_scope_future":
                             tier = "existing_required"
-                        run_test_specs.append({
+                        raw_test_specs.append({
                             "test": mrow,
                             "obligation_id": f"superset:{tid}",
                             "tier": tier,
                             "flow_ids": [f["id"] for f in manifest_doc["flows"] if tid in f.get("test_ids", [])],
+                            "requirement_ids": [],
                             "is_superset_extra": True,
                         })
                         selected_flows.update(f["id"] for f in manifest_doc["flows"] if tid in f.get("test_ids", []))
@@ -1831,13 +2015,69 @@ def run_scoped_mvg(
                 receipt["superset_extra_tests"] = []
                 for item in scoped_dotnet_gdunit:
                     mrow = manifest_tests_by_id[item["test_id"]]
-                    run_test_specs.append({
+                    raw_test_specs.append({
                         "test": mrow,
                         "obligation_id": item.get("obligation_id"),
                         "tier": item.get("tier", "existing_required"),
                         "flow_ids": list(item.get("flow_ids") or []),
+                        "requirement_ids": list(item.get("requirement_ids") or []),
                         "is_superset_extra": False,
                     })
+
+            # Intra-run multi-Flow deduplication (AC-2): merge ONLY when exact test identity matches.
+            manifest_flows_by_test: dict[str, set[str]] = {}
+            for mf in manifest_doc.get("flows") or []:
+                fid = mf.get("id")
+                if not isinstance(fid, str):
+                    continue
+                for tid in mf.get("test_ids") or []:
+                    manifest_flows_by_test.setdefault(tid, set()).add(fid)
+
+            dedup_map: dict[tuple[Any, ...], dict[str, Any]] = {}
+            run_test_specs: list[dict[str, Any]] = []
+            for spec in raw_test_specs:
+                t = spec["test"]
+                norm_lvl = normalize_evidence_tier(t["kind"], t.get("evidence_level"))
+                dedup_key = (
+                    t["id"],
+                    t["kind"],
+                    t["path"],
+                    str(t.get("selector") or ""),
+                    int(t.get("min_tests") or 1),
+                    norm_lvl,
+                    str(t.get("challenge") or ""),
+                )
+                extra_flows = set(spec.get("flow_ids") or []) | (manifest_flows_by_test.get(t["id"], set()) & selected_flows)
+                if dedup_key in dedup_map:
+                    existing = dedup_map[dedup_key]
+                    existing["flow_ids"] = sorted(set(existing["flow_ids"]) | extra_flows)
+                    existing["requirement_ids"] = sorted(set(existing["requirement_ids"]) | set(spec.get("requirement_ids") or []))
+                    if spec.get("obligation_id") and spec["obligation_id"] not in existing["obligation_ids"]:
+                        existing["obligation_ids"].append(spec["obligation_id"])
+                    if spec.get("tier") == "existing_required":
+                        existing["tier"] = "existing_required"
+                    existing["is_superset_extra"] = existing["is_superset_extra"] and bool(spec.get("is_superset_extra"))
+                else:
+                    merged_flows = sorted(extra_flows)
+                    merged_spec = {
+                        "test": t,
+                        "obligation_id": spec.get("obligation_id"),
+                        "obligation_ids": [spec["obligation_id"]] if spec.get("obligation_id") else [],
+                        "tier": spec.get("tier", "existing_required"),
+                        "flow_ids": merged_flows,
+                        "requirement_ids": sorted(set(spec.get("requirement_ids") or [])),
+                        "is_superset_extra": bool(spec.get("is_superset_extra")),
+                    }
+                    dedup_map[dedup_key] = merged_spec
+                    run_test_specs.append(merged_spec)
+
+            for spec in run_test_specs:
+                spec["requirement_coverage"] = evidence_reuse.collect_requirement_route_coverage(
+                    execution_root,
+                    scope_doc,
+                    spec["flow_ids"],
+                    fallback_requirement_ids=spec["requirement_ids"],
+                )
 
             # Collect static-wiring targets in the isolated snapshot (filtered strictly to scope).
             scene_paths, adapter_paths, binding_objects = _collect_scoped_wiring_targets(
@@ -2031,13 +2271,104 @@ def run_scoped_mvg(
                 return _finalize()
 
             # 9. Deterministic execution order: static-wiring -> other_verification -> domain-xunit -> gdunit.
-            env = dict(os.environ)
-            env["APPDATA"] = str(out / "user-data")
-            env["XDG_DATA_HOME"] = str(out / "user-data")
-            env["GDUNIT_STRICT_EXIT_CODE"] = "1"
-            env.pop("MVG_INPUT_CHALLENGE", None)
+            base_env = dict(os.environ)
+            base_env["GDUNIT_STRICT_EXIT_CODE"] = "1"
+            base_env.pop("MVG_INPUT_CHALLENGE", None)
 
             deterministic_failed_id: str | None = None
+            pollution_detected = False
+            polluted_test_id: str | None = None
+            pre_snapshot_hashes = evidence_reuse.capture_snapshot_file_hashes(execution_root)
+            reserved_dispatches = len(scoped_other_scripts) + len(run_test_specs)
+
+            # Build per-test relevant_paths strictly from the Flows, handoffs[].contract_ref, flow.source_paths,
+            # and Stage-4/5 implementation_objects that apply to THAT test_id (never pooling unrelated Flows!).
+            def _collect_per_test_relevant_paths(spec_row: dict[str, Any]) -> list[str]:
+                t_obj = spec_row["test"]
+                tid = str(t_obj.get("id") or "")
+                t_flows = {f for f in (spec_row.get("flow_ids") or []) if isinstance(f, str) and f}
+                t_tasks: set[int] = set()
+                paths_set: set[str] = set()
+
+                for mf_flow in manifest_doc.get("flows") or []:
+                    if not isinstance(mf_flow, dict):
+                        continue
+                    fid = mf_flow.get("id")
+                    if fid not in t_flows:
+                        continue
+                    for task_id in mf_flow.get("task_ids") or []:
+                        if type(task_id) is int and task_id >= 1:
+                            t_tasks.add(task_id)
+                    for sp in mf_flow.get("source_paths") or []:
+                        if isinstance(sp, str) and sp.strip():
+                            paths_set.add(sp.strip())
+                    cref = mf_flow.get("contract_ref")
+                    if isinstance(cref, str) and cref.strip():
+                        paths_set.add(cref.strip())
+                    for hoff in mf_flow.get("handoffs") or []:
+                        if not isinstance(hoff, dict):
+                            continue
+                        h_tids = hoff.get("test_ids") or []
+                        if not h_tids or tid in h_tids:
+                            h_cref = hoff.get("contract_ref")
+                            if isinstance(h_cref, str) and h_cref.strip():
+                                paths_set.add(h_cref.strip())
+
+                for obl in scope_doc.get("obligations") or []:
+                    if not isinstance(obl, dict) or obl.get("tier") not in {"existing_required", "current_new"}:
+                        continue
+                    o_tids = set(obl.get("test_ids") or [])
+                    o_flows = set(obl.get("flow_ids") or [])
+                    if tid in o_tids or (t_flows and bool(o_flows & t_flows)):
+                        for task_id in obl.get("task_ids") or []:
+                            if type(task_id) is int and task_id >= 1:
+                                t_tasks.add(task_id)
+                        for ref_key in ("source_refs", "implementation_refs"):
+                            for ref_val in obl.get(ref_key) or []:
+                                if isinstance(ref_val, str) and ref_val.strip():
+                                    paths_set.add(ref_val.strip())
+
+                for bref in (scope_doc.get("authority_refs") or {}).get("binding_refs") or []:
+                    bpath = bref.get("path") if isinstance(bref, dict) else None
+                    if not isinstance(bpath, str) or not bpath:
+                        continue
+                    try:
+                        bfp = safe_path(execution_root, bpath)
+                    except ValueError:
+                        continue
+                    if not bfp.is_file():
+                        continue
+                    try:
+                        bdoc = codec.strict_json_loads(bfp.read_bytes())
+                    except Exception:  # noqa: BLE001
+                        continue
+                    b_tasks: set[int] = set()
+                    for tm in bdoc.get("task_mappings") or []:
+                        if not isinstance(tm, dict):
+                            continue
+                        tm_tid = tm.get("task_id")
+                        tm_flows = set(tm.get("flow_ids") or [])
+                        if (type(tm_tid) is int and tm_tid in t_tasks) or bool(tm_flows & t_flows):
+                            if type(tm_tid) is int and tm_tid >= 1:
+                                b_tasks.add(tm_tid)
+                    eff_tasks = t_tasks | b_tasks
+                    if not eff_tasks and not t_flows:
+                        continue
+                    for obj in bdoc.get("implementation_objects") or []:
+                        if not isinstance(obj, dict) or obj.get("availability") != "existing":
+                            continue
+                        resp_tasks = {x for x in (obj.get("responsible_task_ids") or []) if type(x) is int and x >= 1}
+                        obj_flows = {f for f in (obj.get("flow_ids") or []) if isinstance(f, str) and f}
+                        if not (resp_tasks & eff_tasks) and not (obj_flows & t_flows):
+                            continue
+                        tref = obj.get("target_ref")
+                        if isinstance(tref, dict):
+                            for fitem in tref.get("files") or []:
+                                fpath = fitem.get("path") if isinstance(fitem, dict) else None
+                                if isinstance(fpath, str) and fpath.strip():
+                                    paths_set.add(fpath.strip())
+
+                return sorted(paths_set)
 
             # 9a. Static wiring check in isolated snapshot.
             if has_static_wiring:
@@ -2053,12 +2384,15 @@ def run_scoped_mvg(
                         "blocking_current_delivery": True,
                     })
                 else:
+                    sw_mono = time.monotonic()
                     sw_result = inspect_scoped_static_wiring(
                         execution_root,
                         scene_paths=scene_paths,
                         adapter_paths=adapter_paths,
                         binding_objects=binding_objects,
                     )
+                    sw_elapsed = round(max(0.0, time.monotonic() - sw_mono), 4)
+                    sw_finished = _now()
                     receipt["static_wiring"] = sw_result
                     sw_dir = out / "static-wiring"
                     sw_report_path = sw_dir / "report.json"
@@ -2072,6 +2406,8 @@ def run_scoped_mvg(
                         "scenes_inspected": sw_result["scenes_inspected"],
                         "adapters_inspected": sw_result["adapters_inspected"],
                         "exit_code": 0 if sw_result["wiring_static_ok"] else 1,
+                        "finished_at": sw_finished,
+                        "elapsed_seconds": sw_elapsed,
                         "report_paths": [str(sw_report_path)],
                     })
                     sw_ok = bool(sw_result["wiring_static_ok"])
@@ -2094,12 +2430,29 @@ def run_scoped_mvg(
                         "report_paths": [str(sw_report_path)],
                         "input_authenticity": {"checked": False, "valid": True, "reason": "static_wiring"},
                         "evidence_reason": "verified" if sw_ok else "static_wiring_failed",
+                        "reused": False,
+                        "freshly_executed": True,
+                        "original_executed_at": sw_finished,
+                        "referencing_flow_ids": sorted(selected_flows),
+                        "elapsed_seconds": sw_elapsed,
                     })
                     if not sw_ok:
                         deterministic_failed_id = "static-wiring:scoped"
 
-            # 9b. Executable other_verification scripts.
+            # 9b. Executable other_verification scripts (with per-test isolation).
             for item in scoped_other_scripts:
+                if pollution_detected:
+                    receipt["not_run"].append({
+                        "id": item["test_id"],
+                        "obligation_id": item["obligation_id"],
+                        "tier": item.get("tier", "current_new"),
+                        "kind": "other_verification",
+                        "evidence_level": "other-verification",
+                        "reason_code": "mutable_test_state_pollution_detected",
+                        "reason": f"Aborted after mutable snapshot state pollution by {polluted_test_id}",
+                        "blocking_current_delivery": True,
+                    })
+                    continue
                 if time.monotonic() >= deadline:
                     receipt["not_run"].append({
                         "id": item["test_id"],
@@ -2113,8 +2466,21 @@ def run_scoped_mvg(
                     })
                     continue
                 ov_dir = out / ("other-" + re.sub(r"[^A-Za-z0-9._-]+", "_", item["test_id"]))
-                ov_res = _run_other_verification_script(execution_root, item, ov_dir, deadline, env)
+                ov_env = evidence_reuse.prepare_isolated_test_env(base_env, ov_dir)
+                ov_res = _run_other_verification_script(execution_root, item, ov_dir, deadline, ov_env)
+                observed_dispatches += 1
+                observed_elapsed += float(ov_res.get("elapsed_seconds") or 0.0)
+                iso = evidence_reuse.verify_post_test_isolation(execution_root, pre_snapshot_hashes, ov_dir)
+                receipt["state_isolation"]["checks"].append({"test_id": item["test_id"], **iso})
+                ov_res["state_isolation"] = iso
                 ov_res["evidence_authenticity"] = evidence_authenticity
+                if iso["pollution_detected"]:
+                    pollution_detected = True
+                    polluted_test_id = item["test_id"]
+                    receipt["state_isolation"]["pollution_detected"] = True
+                    receipt["state_isolation"]["polluted_tests"].append(item["test_id"])
+                    ov_res["status"] = "failed"
+                    ov_res["evidence_reason"] = "mutable_test_state_pollution_detected"
                 receipt["executed_tests"].append(ov_res)
                 if ov_res["status"] != "passed" and deterministic_failed_id is None:
                     deterministic_failed_id = item["test_id"]
@@ -2122,10 +2488,43 @@ def run_scoped_mvg(
             # Partition dotnet vs gdunit specs so deterministic domain-xunit runs before expensive gdunit.
             dotnet_specs = [s for s in run_test_specs if s["test"]["kind"] == "dotnet"]
             gdunit_specs = [s for s in run_test_specs if s["test"]["kind"] == "gdunit"]
+            reuse_candidates = list(reuse_evidence_from or [])
 
-            # 9c. Run domain-xunit (dotnet) tests.
+            # 9c. Run domain-xunit (dotnet) tests with build reuse, test evidence reuse, & per-test isolation.
+            dotnet_build_record: dict[str, Any] | None = None
+            if dotnet_specs and reuse_build_from:
+                dotnet_build_record, br_rejs = evidence_reuse.load_prior_build_record(
+                    root,
+                    reuse_build_from,
+                    kind="dotnet_build",
+                    execution_root=execution_root,
+                    toolchain_env=receipt["environment"],
+                )
+                for rej in br_rejs:
+                    receipt["reuse_rejections"].append(rej)
+                    _emit_event({
+                        "event_type": "reuse_rejected",
+                        "scope_id": receipt["scope_id"],
+                        "snapshot_digest": receipt["snapshot_digest"],
+                        **rej,
+                    })
+                if dotnet_build_record is not None:
+                    receipt["build_artifacts"]["dotnet_build"] = dotnet_build_record
+
             for spec in dotnet_specs:
                 t = spec["test"]
+                if pollution_detected:
+                    receipt["not_run"].append({
+                        "id": t["id"],
+                        "obligation_id": spec["obligation_id"],
+                        "tier": spec["tier"],
+                        "kind": t["kind"],
+                        "evidence_level": "domain-xunit",
+                        "reason_code": "mutable_test_state_pollution_detected",
+                        "reason": f"Aborted after mutable snapshot state pollution by {polluted_test_id}",
+                        "blocking_current_delivery": True,
+                    })
+                    continue
                 if time.monotonic() >= deadline:
                     receipt["not_run"].append({
                         "id": t["id"],
@@ -2138,23 +2537,147 @@ def run_scoped_mvg(
                         "blocking_current_delivery": True,
                     })
                     continue
+
+                req_cov = spec.get("requirement_coverage") or {}
+                test_relevant_paths = _collect_per_test_relevant_paths(spec)
+                test_identity = evidence_reuse.compute_test_evidence_identity(
+                    execution_root,
+                    test_spec={**t, "relevant_paths": test_relevant_paths},
+                    snapshot_digest=receipt["snapshot_digest"] or "",
+                    source_revision=receipt["source_revision"] or "",
+                    workspace_dirty=receipt["workspace_dirty"],
+                    toolchain_env=receipt["environment"],
+                    verification_semantics={
+                        "challenge": t.get("challenge") or "",
+                        "challenge_input": False,
+                        "input_authenticity_required": False,
+                        "input_authenticity_valid": True,
+                        "evidence_authenticity": evidence_authenticity,
+                        "protocol_fixture_only": receipt["environment"]["protocol_fixture_only"],
+                    },
+                )
+
+                if reuse_candidates:
+                    reuse_eval = evidence_reuse.evaluate_test_evidence_reuse(
+                        root,
+                        execution_root,
+                        test_spec=t,
+                        current_identity=test_identity,
+                        candidate_run_dirs=reuse_candidates,
+                        referencing_flow_ids=spec["flow_ids"],
+                        requirement_routes=req_cov.get("route_memberships"),
+                    )
+                    for rej in reuse_eval["rejections"]:
+                        receipt["reuse_rejections"].append(rej)
+                        _emit_event({
+                            "event_type": "reuse_rejected",
+                            "scope_id": receipt["scope_id"],
+                            "snapshot_digest": receipt["snapshot_digest"],
+                            **rej,
+                        })
+                    if reuse_eval["reused"] and reuse_eval["reused_entry"] is not None:
+                        entry = dict(reuse_eval["reused_entry"])
+                        entry["obligation_id"] = spec["obligation_id"]
+                        entry["obligation_ids"] = list(spec.get("obligation_ids") or [])
+                        entry["tier"] = spec["tier"]
+                        entry["requirement_dispositions"] = dict(req_cov.get("requirement_dispositions") or {})
+                        receipt["executed_tests"].append(entry)
+                        summary["steps"].append(entry)
+                        reused_dispatches += 1
+                        _emit_event({
+                            "event_type": "test_evidence_reused",
+                            "scope_id": receipt["scope_id"],
+                            "snapshot_digest": receipt["snapshot_digest"],
+                            "test_id": t["id"],
+                            "reused_from_run_id": entry["reused_from_run_id"],
+                            "reused_evidence_id": entry["reused_evidence_id"],
+                            "original_executed_at": entry["original_executed_at"],
+                            "match_reason": entry["match_reason"],
+                            "referencing_flow_ids": entry["referencing_flow_ids"],
+                        })
+                        continue
+
+                build_eval = evidence_reuse.evaluate_build_reuse(
+                    execution_root,
+                    kind="dotnet_build",
+                    toolchain_env=receipt["environment"],
+                    prior_build_record=dotnet_build_record,
+                )
+                if build_eval["reused"]:
+                    build_reuses += 1
+                _emit_event({
+                    "event_type": "build_reuse_evaluated",
+                    "scope_id": receipt["scope_id"],
+                    "snapshot_digest": receipt["snapshot_digest"],
+                    "test_id": t["id"],
+                    "kind": "dotnet_build",
+                    "reused": build_eval["reused"],
+                    "artifact_id": build_eval["artifact_id"],
+                    "source_run_id": build_eval["source_run_id"],
+                    "reason_code": build_eval["reason_code"],
+                })
+
+                step_out = out / t["id"]
+                step_env = evidence_reuse.prepare_isolated_test_env(base_env, step_out)
                 res = execute_test(
                     execution_root,
                     t,
-                    out / t["id"],
+                    step_out,
                     godot_bin,
                     deadline,
-                    env,
+                    step_env,
                     prewarm=False,
+                    no_build=bool(build_eval["reused"]),
                     dotnet_bin=dotnet_bin,
                     protocol_fixture=receipt["environment"]["protocol_fixture_only"],
                 )
-                summary["steps"].append(res)
+                observed_dispatches += 1
+                step_elapsed = float(res.get("elapsed_seconds") or 0.0)
+                observed_elapsed += step_elapsed
+                if not build_eval["reused"]:
+                    missed_build_elapsed += step_elapsed
+                iso = evidence_reuse.verify_post_test_isolation(execution_root, pre_snapshot_hashes, step_out)
+                receipt["state_isolation"]["checks"].append({"test_id": t["id"], **iso})
+
+                effective_status = res["status"]
                 ev = res["evidence"]
+                effective_reason = ev.get("reason", "")
+                if iso["pollution_detected"]:
+                    pollution_detected = True
+                    polluted_test_id = t["id"]
+                    receipt["state_isolation"]["pollution_detected"] = True
+                    receipt["state_isolation"]["polluted_tests"].append(t["id"])
+                    effective_status = "failed"
+                    effective_reason = "mutable_test_state_pollution_detected"
+
+                if effective_status == "passed" and not build_eval["reused"]:
+                    post_build = evidence_reuse.compute_build_artifact_identity(
+                        execution_root,
+                        kind="dotnet_build",
+                        toolchain_env=receipt["environment"],
+                    )
+                    if post_build["artifact_present"]:
+                        dotnet_build_record = {
+                            **post_build,
+                            "status": "ready",
+                            "source_run_id": run_id,
+                            "source_step_id": t["id"],
+                            "original_created_at": res.get("finished_at") or _now(),
+                        }
+                        receipt["build_artifacts"]["dotnet_build"] = dotnet_build_record
+
+                res["build_reuse"] = build_eval
+                res["state_isolation"] = iso
+                res["reused"] = False
+                res["freshly_executed"] = True
+                res["original_executed_at"] = res.get("finished_at") or _now()
+                res["referencing_flow_ids"] = list(spec["flow_ids"])
+                summary["steps"].append(res)
                 passed_cases = max(0, int(ev.get("tests", 0)) - int(ev.get("failed", 0)) - int(ev.get("skipped", 0)))
                 receipt["executed_tests"].append({
                     "id": t["id"],
                     "obligation_id": spec["obligation_id"],
+                    "obligation_ids": list(spec.get("obligation_ids") or []),
                     "tier": spec["tier"],
                     "kind": "dotnet",
                     "evidence_level": "domain-xunit",
@@ -2163,20 +2686,59 @@ def run_scoped_mvg(
                     "command": res["command"],
                     "command_record": res.get("command_record"),
                     "exit_code": res["exit_code"],
-                    "status": res["status"],
+                    "status": effective_status,
                     "passed_cases": passed_cases,
                     "failed_cases": int(ev.get("failed", 0)),
                     "skipped_cases": int(ev.get("skipped", 0)),
                     "log_path": res["log"],
                     "report_paths": list(ev.get("reports") or []),
                     "input_authenticity": {"checked": False, "valid": True, "reason": "domain_xunit"},
-                    "evidence_reason": ev.get("reason", ""),
+                    "evidence_reason": effective_reason,
+                    "reused": False,
+                    "freshly_executed": True,
+                    "original_executed_at": res.get("finished_at") or _now(),
+                    "referencing_flow_ids": list(spec["flow_ids"]),
+                    "requirement_ids": list(req_cov.get("requirement_ids") or []),
+                    "requirement_dispositions": dict(req_cov.get("requirement_dispositions") or {}),
+                    "observable_roles": list(req_cov.get("observable_roles") or []),
+                    "requirement_routes": list(req_cov.get("route_memberships") or []),
+                    "test_identity": test_identity,
+                    "build_reuse": build_eval,
+                    "state_isolation": iso,
+                    "elapsed_seconds": step_elapsed,
                 })
-                if res["status"] != "passed" and deterministic_failed_id is None:
+                _emit_event({
+                    "event_type": "test_executed",
+                    "scope_id": receipt["scope_id"],
+                    "snapshot_digest": receipt["snapshot_digest"],
+                    "test_id": t["id"],
+                    "kind": "dotnet",
+                    "status": effective_status,
+                    "build_reused": build_eval["reused"],
+                    "evidence_reason": effective_reason,
+                    "original_executed_at": res.get("finished_at") or _now(),
+                })
+                if effective_status != "passed" and deterministic_failed_id is None:
                     deterministic_failed_id = t["id"]
 
-            # 9d. Intra-run deterministic stop-loss before launching expensive gdunit suites.
-            if deterministic_failed_id is not None and stop_on_deterministic_failure and gdunit_specs:
+            # 9d. Intra-run deterministic stop-loss (or state pollution abort) before launching expensive gdunit suites.
+            godot_prewarm_record: dict[str, Any] | None = None
+            godot_prewarm_loaded = False
+            godot_ready = False
+            if pollution_detected and gdunit_specs:
+                for spec in gdunit_specs:
+                    t = spec["test"]
+                    receipt["not_run"].append({
+                        "id": t["id"],
+                        "obligation_id": spec["obligation_id"],
+                        "tier": spec["tier"],
+                        "kind": "gdunit",
+                        "evidence_level": normalize_evidence_tier("gdunit", t.get("evidence_level")),
+                        "reason_code": "mutable_test_state_pollution_detected",
+                        "reason": f"Aborted after mutable snapshot state pollution by {polluted_test_id}",
+                        "blocking_current_delivery": True,
+                    })
+            elif deterministic_failed_id is not None and stop_on_deterministic_failure and gdunit_specs:
                 skipped_ids: list[str] = []
                 for spec in gdunit_specs:
                     t = spec["test"]
@@ -2200,11 +2762,42 @@ def run_scoped_mvg(
                     "skipped_test_ids": skipped_ids,
                 }
             else:
-                # 9e. Run gdunit tests (with engine-input/backdoor authenticity check).
-                godot_ready = False
+                # 9e. Run gdunit tests (with prewarm reuse, test evidence reuse, authenticity check, & isolation).
+                if gdunit_specs and reuse_build_from:
+                    godot_prewarm_loaded = True
+                    godot_prewarm_record, pr_rejs = evidence_reuse.load_prior_build_record(
+                        root,
+                        reuse_build_from,
+                        kind="godot_prewarm",
+                        execution_root=execution_root,
+                        toolchain_env=receipt["environment"],
+                    )
+                    for rej in pr_rejs:
+                        receipt["reuse_rejections"].append(rej)
+                        _emit_event({
+                            "event_type": "reuse_rejected",
+                            "scope_id": receipt["scope_id"],
+                            "snapshot_digest": receipt["snapshot_digest"],
+                            **rej,
+                        })
+                    if godot_prewarm_record is not None:
+                        receipt["build_artifacts"]["godot_prewarm"] = godot_prewarm_record
+
                 for spec in gdunit_specs:
                     t = spec["test"]
                     ev_tier = normalize_evidence_tier("gdunit", t.get("evidence_level"))
+                    if pollution_detected:
+                        receipt["not_run"].append({
+                            "id": t["id"],
+                            "obligation_id": spec["obligation_id"],
+                            "tier": spec["tier"],
+                            "kind": "gdunit",
+                            "evidence_level": ev_tier,
+                            "reason_code": "mutable_test_state_pollution_detected",
+                            "reason": f"Aborted after mutable snapshot state pollution by {polluted_test_id}",
+                            "blocking_current_delivery": True,
+                        })
+                        continue
                     if not godot_bin:
                         receipt["not_run"].append({
                             "id": t["id"],
@@ -2229,31 +2822,155 @@ def run_scoped_mvg(
                             "blocking_current_delivery": True,
                         })
                         continue
+
                     auth_check = inspect_gdunit_input_authenticity(
                         execution_root, t["path"], t.get("evidence_level") or ""
                     )
+                    req_cov = spec.get("requirement_coverage") or {}
+                    test_relevant_paths = _collect_per_test_relevant_paths(spec)
+                    test_identity = evidence_reuse.compute_test_evidence_identity(
+                        execution_root,
+                        test_spec={**t, "relevant_paths": test_relevant_paths},
+                        snapshot_digest=receipt["snapshot_digest"] or "",
+                        source_revision=receipt["source_revision"] or "",
+                        workspace_dirty=receipt["workspace_dirty"],
+                        toolchain_env=receipt["environment"],
+                        verification_semantics={
+                            "challenge": t.get("challenge") or "",
+                            "challenge_input": False,
+                            "input_authenticity_required": ev_tier == "engine-input",
+                            "input_authenticity_valid": bool(auth_check["valid"]),
+                            "evidence_authenticity": evidence_authenticity,
+                            "protocol_fixture_only": receipt["environment"]["protocol_fixture_only"],
+                        },
+                    )
+
+                    if reuse_candidates and auth_check["valid"]:
+                        reuse_eval = evidence_reuse.evaluate_test_evidence_reuse(
+                            root,
+                            execution_root,
+                            test_spec=t,
+                            current_identity=test_identity,
+                            candidate_run_dirs=reuse_candidates,
+                            referencing_flow_ids=spec["flow_ids"],
+                            requirement_routes=req_cov.get("route_memberships"),
+                        )
+                        for rej in reuse_eval["rejections"]:
+                            receipt["reuse_rejections"].append(rej)
+                            _emit_event({
+                                "event_type": "reuse_rejected",
+                                "scope_id": receipt["scope_id"],
+                                "snapshot_digest": receipt["snapshot_digest"],
+                                **rej,
+                            })
+                        if reuse_eval["reused"] and reuse_eval["reused_entry"] is not None:
+                            entry = dict(reuse_eval["reused_entry"])
+                            entry["obligation_id"] = spec["obligation_id"]
+                            entry["obligation_ids"] = list(spec.get("obligation_ids") or [])
+                            entry["tier"] = spec["tier"]
+                            entry["input_authenticity"] = auth_check
+                            entry["requirement_dispositions"] = dict(req_cov.get("requirement_dispositions") or {})
+                            receipt["executed_tests"].append(entry)
+                            summary["steps"].append(entry)
+                            reused_dispatches += 1
+                            _emit_event({
+                                "event_type": "test_evidence_reused",
+                                "scope_id": receipt["scope_id"],
+                                "snapshot_digest": receipt["snapshot_digest"],
+                                "test_id": t["id"],
+                                "reused_from_run_id": entry["reused_from_run_id"],
+                                "reused_evidence_id": entry["reused_evidence_id"],
+                                "original_executed_at": entry["original_executed_at"],
+                                "match_reason": entry["match_reason"],
+                                "referencing_flow_ids": entry["referencing_flow_ids"],
+                            })
+                            continue
+
+                    prewarm_eval = evidence_reuse.evaluate_build_reuse(
+                        execution_root,
+                        kind="godot_prewarm",
+                        toolchain_env=receipt["environment"],
+                        prior_build_record=godot_prewarm_record,
+                    )
+                    if prewarm_eval["reused"]:
+                        build_reuses += 1
+                    _emit_event({
+                        "event_type": "build_reuse_evaluated",
+                        "scope_id": receipt["scope_id"],
+                        "snapshot_digest": receipt["snapshot_digest"],
+                        "test_id": t["id"],
+                        "kind": "godot_prewarm",
+                        "reused": prewarm_eval["reused"],
+                        "artifact_id": prewarm_eval["artifact_id"],
+                        "source_run_id": prewarm_eval["source_run_id"],
+                        "reason_code": prewarm_eval["reason_code"],
+                    })
+
+                    step_out = out / t["id"]
+                    step_env = evidence_reuse.prepare_isolated_test_env(base_env, step_out)
                     res = execute_test(
                         execution_root,
                         t,
-                        out / t["id"],
+                        step_out,
                         godot_bin,
                         deadline,
-                        env,
-                        prewarm=not godot_ready,
+                        step_env,
+                        prewarm=not bool(prewarm_eval["reused"]),
                         dotnet_bin=dotnet_bin,
                         protocol_fixture=receipt["environment"]["protocol_fixture_only"],
                     )
-                    summary["steps"].append(res)
+                    observed_dispatches += 1
+                    step_elapsed = float(res.get("elapsed_seconds") or 0.0)
+                    observed_elapsed += step_elapsed
+                    if not prewarm_eval["reused"]:
+                        missed_build_elapsed += step_elapsed
+                    iso = evidence_reuse.verify_post_test_isolation(execution_root, pre_snapshot_hashes, step_out)
+                    receipt["state_isolation"]["checks"].append({"test_id": t["id"], **iso})
+
                     ev = res["evidence"]
                     passed_cases = max(0, int(ev.get("tests", 0)) - int(ev.get("failed", 0)) - int(ev.get("skipped", 0)))
                     effective_status = res["status"]
                     effective_reason = ev.get("reason", "")
-                    if not auth_check["valid"]:
+                    if iso["pollution_detected"]:
+                        pollution_detected = True
+                        polluted_test_id = t["id"]
+                        receipt["state_isolation"]["pollution_detected"] = True
+                        receipt["state_isolation"]["polluted_tests"].append(t["id"])
+                        effective_status = "failed"
+                        effective_reason = "mutable_test_state_pollution_detected"
+                    elif not auth_check["valid"]:
                         effective_status = "failed"
                         effective_reason = auth_check["reason"]
+
+                    if effective_status == "passed":
+                        godot_ready = True
+                    if effective_status == "passed" and not prewarm_eval["reused"]:
+                        post_prewarm = evidence_reuse.compute_build_artifact_identity(
+                            execution_root,
+                            kind="godot_prewarm",
+                            toolchain_env=receipt["environment"],
+                        )
+                        if post_prewarm["artifact_present"]:
+                            godot_prewarm_record = {
+                                **post_prewarm,
+                                "status": "ready",
+                                "source_run_id": run_id,
+                                "source_step_id": t["id"],
+                                "original_created_at": res.get("finished_at") or _now(),
+                            }
+                            receipt["build_artifacts"]["godot_prewarm"] = godot_prewarm_record
+
+                    res["build_reuse"] = prewarm_eval
+                    res["state_isolation"] = iso
+                    res["reused"] = False
+                    res["freshly_executed"] = True
+                    res["original_executed_at"] = res.get("finished_at") or _now()
+                    res["referencing_flow_ids"] = list(spec["flow_ids"])
+                    summary["steps"].append(res)
                     receipt["executed_tests"].append({
                         "id": t["id"],
                         "obligation_id": spec["obligation_id"],
+                        "obligation_ids": list(spec.get("obligation_ids") or []),
                         "tier": spec["tier"],
                         "kind": "gdunit",
                         "evidence_level": ev_tier,
@@ -2270,15 +2987,37 @@ def run_scoped_mvg(
                         "report_paths": list(ev.get("reports") or []),
                         "input_authenticity": auth_check,
                         "evidence_reason": effective_reason,
+                        "reused": False,
+                        "freshly_executed": True,
+                        "original_executed_at": res.get("finished_at") or _now(),
+                        "referencing_flow_ids": list(spec["flow_ids"]),
+                        "requirement_ids": list(req_cov.get("requirement_ids") or []),
+                        "requirement_dispositions": dict(req_cov.get("requirement_dispositions") or {}),
+                        "observable_roles": list(req_cov.get("observable_roles") or []),
+                        "requirement_routes": list(req_cov.get("route_memberships") or []),
+                        "test_identity": test_identity,
+                        "build_reuse": prewarm_eval,
+                        "state_isolation": iso,
+                        "elapsed_seconds": step_elapsed,
                     })
-                    if effective_status == "passed":
-                        godot_ready = True
+                    _emit_event({
+                        "event_type": "test_executed",
+                        "scope_id": receipt["scope_id"],
+                        "snapshot_digest": receipt["snapshot_digest"],
+                        "test_id": t["id"],
+                        "kind": "gdunit",
+                        "status": effective_status,
+                        "build_reused": prewarm_eval["reused"],
+                        "evidence_reason": effective_reason,
+                        "original_executed_at": res.get("finished_at") or _now(),
+                    })
 
-            # 9f. Optional --challenge-input verification (gated: only when mode==run, baseline passed without stop-loss, and godot_bin available; sealed in receipt!).
+            # 9f. Optional --challenge-input verification (gated: only when mode==run, baseline passed without stop-loss/pollution, and godot_bin available; sealed in receipt!).
             challenge_failed = False
             if challenge_input:
                 baseline_ok = (
-                    not receipt["stop_loss"]["triggered"]
+                    not pollution_detected
+                    and not receipt["stop_loss"]["triggered"]
                     and bool(receipt["executed_tests"])
                     and all(item.get("status") == "passed" for item in receipt["executed_tests"])
                     and not any(item.get("blocking_current_delivery") for item in receipt["not_run"])
@@ -2300,22 +3039,78 @@ def run_scoped_mvg(
                             "message": "No scoped gdunit test declares challenge=disconnect-reward-input",
                         })
                     else:
-                        env["MVG_INPUT_CHALLENGE"] = "disconnect-reward-input"
+                        if not godot_ready and not godot_prewarm_loaded and reuse_build_from:
+                            godot_prewarm_loaded = True
+                            godot_prewarm_record, pr_rejs = evidence_reuse.load_prior_build_record(
+                                root,
+                                reuse_build_from,
+                                kind="godot_prewarm",
+                                execution_root=execution_root,
+                                toolchain_env=receipt["environment"],
+                            )
+                            for rej in pr_rejs:
+                                receipt["reuse_rejections"].append(rej)
+                                _emit_event({
+                                    "event_type": "reuse_rejected",
+                                    "scope_id": receipt["scope_id"],
+                                    "snapshot_digest": receipt["snapshot_digest"],
+                                    **rej,
+                                })
+                            if godot_prewarm_record is not None:
+                                receipt["build_artifacts"]["godot_prewarm"] = godot_prewarm_record
                         summary["challenges"] = []
                         for t in targets:
+                            c_prewarm_eval = evidence_reuse.evaluate_build_reuse(
+                                execution_root,
+                                kind="godot_prewarm",
+                                toolchain_env=receipt["environment"],
+                                prior_build_record=godot_prewarm_record,
+                            )
+                            need_challenge_prewarm = not (godot_ready or bool(c_prewarm_eval["reused"]))
+                            if not godot_ready and c_prewarm_eval["reused"]:
+                                build_reuses += 1
+                            c_out = out / ("challenge-" + t["id"])
+                            c_env = evidence_reuse.prepare_isolated_test_env(base_env, c_out)
+                            c_env["MVG_INPUT_CHALLENGE"] = "disconnect-reward-input"
                             c_res = execute_test(
                                 execution_root,
                                 t,
-                                out / ("challenge-" + t["id"]),
+                                c_out,
                                 godot_bin,
                                 deadline,
-                                env,
-                                prewarm=False,
+                                c_env,
+                                prewarm=need_challenge_prewarm,
                                 dotnet_bin=dotnet_bin,
                                 protocol_fixture=receipt["environment"]["protocol_fixture_only"],
                             )
+                            observed_dispatches += 1
+                            observed_elapsed += float(c_res.get("elapsed_seconds") or 0.0)
+                            c_iso = evidence_reuse.verify_post_test_isolation(execution_root, pre_snapshot_hashes, c_out)
+                            receipt["state_isolation"]["checks"].append({"test_id": "challenge-" + t["id"], **c_iso})
+                            if c_iso["pollution_detected"]:
+                                pollution_detected = True
+                                polluted_test_id = "challenge-" + t["id"]
+                                receipt["state_isolation"]["pollution_detected"] = True
+                                receipt["state_isolation"]["polluted_tests"].append(polluted_test_id)
+                            elif need_challenge_prewarm and c_res["exit_code"] not in {124, 127}:
+                                godot_ready = True
+                                post_prewarm = evidence_reuse.compute_build_artifact_identity(
+                                    execution_root,
+                                    kind="godot_prewarm",
+                                    toolchain_env=receipt["environment"],
+                                )
+                                if post_prewarm["artifact_present"]:
+                                    godot_prewarm_record = {
+                                        **post_prewarm,
+                                        "status": "ready",
+                                        "source_run_id": run_id,
+                                        "source_step_id": "challenge-" + t["id"],
+                                        "original_created_at": c_res.get("finished_at") or _now(),
+                                    }
+                                    receipt["build_artifacts"]["godot_prewarm"] = godot_prewarm_record
                             detected = (
-                                c_res["exit_code"] not in {0, 124, 127}
+                                not c_iso["pollution_detected"]
+                                and c_res["exit_code"] not in {0, 124, 127}
                                 and c_res["evidence"]["failed"] > 0
                                 and c_res["evidence"]["skipped"] == 0
                                 and any(
@@ -2325,6 +3120,8 @@ def run_scoped_mvg(
                                 and c_res["evidence"]["reason"] == "failed-skipped-or-empty-tests"
                             )
                             c_res["defect_detected"] = detected
+                            c_res["build_reuse"] = c_prewarm_eval
+                            c_res["state_isolation"] = c_iso
                             summary["challenges"].append(c_res)
                             receipt["challenges"].append(c_res)
                             if not detected:
@@ -2377,7 +3174,8 @@ def run_scoped_mvg(
             ]
 
             if (
-                not receipt["requested_tests"]
+                pollution_detected
+                or not receipt["requested_tests"]
                 or not scope_closable
                 or invalid_input_tasks
                 or blocking_not_run
@@ -2391,7 +3189,14 @@ def run_scoped_mvg(
                 receipt["automated_scope_passed"] = False
                 receipt["runtime_verified"] = False
                 exit_code = 1
-                if receipt["stop_loss"]["triggered"]:
+                if pollution_detected:
+                    receipt["status"] = "blocked"
+                    receipt["reason_code"] = "mutable_test_state_pollution_detected"
+                    receipt["reason"] = (
+                        f"Mutable snapshot state pollution detected during test execution ({polluted_test_id}); "
+                        "subsequent tests aborted to prevent state inheritance"
+                    )
+                elif receipt["stop_loss"]["triggered"]:
                     receipt["status"] = "blocked"
                     receipt["reason_code"] = "deterministic_stop_loss"
                     receipt["reason"] = (

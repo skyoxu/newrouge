@@ -116,7 +116,7 @@ py -3 scripts/python/dev_cli.py run-mvg-acceptance --mode run --snapshot workspa
 py -3 -B scripts/python/dev_cli.py run-mvg-acceptance --mode run --manifest docs/testing/mvg/m1-critical.json --verification-scope logs/ci/verification-scope/scope.json --execution-strategy scoped --godot-bin $env:GODOT_BIN
 ```
 
-当传入 `--verification-scope` 时，执行器由 `_b_route_scope_runner.py` 接管：先做 `validate_verification_scope` 与运行前后双端 `revalidate_verification_scope`，持有短 metadata 锁→业务 scope 租约（不长占全局 writer 锁），按 `scoped` 或 `conservative_superset` 真实执行并在 `logs/ci/mvg-acceptance/<run-id>/coverage-receipt.json` 输出六类证据等级、未运行原因、人工待办与环境/协议夹具限制；不传该参数时保持既有行为完全兼容。详见[范围执行器 owner 说明](b-route-scope-runner.md)。
+当传入 `--verification-scope` 时，执行器由 `_b_route_scope_runner.py` 接管：先做 `validate_verification_scope` 与运行前后双端 `revalidate_verification_scope`，持有短 metadata 锁→业务 scope 租约（不长占全局 writer 锁），按 `scoped` 或 `conservative_superset` 真实执行并在 `logs/ci/mvg-acceptance/<run-id>/coverage-receipt.json` 输出六类证据等级、未运行原因、人工待办与环境/协议夹具限制；可选通过 `--reuse-evidence-from`、`--reuse-build-from` 与 `--events-log` 启用身份核验的构建/预热复用、同快照多 Flow 共享测试去重与去重事件日志，同时为每个测试步骤提供独立 `isolated-user-data`/`isolated-temp` 目录与运行后快照只读校验；不传该参数时保持既有行为完全兼容（同样享有逐测试独立数据目录隔离）。详见[范围执行器 owner 说明](b-route-scope-runner.md)与[构建与共享证据复用 owner 说明](b-route-evidence-reuse.md)。
 
 可通过 `--manifest <repo-relative.json>` 选择其他 MVG。正式收尾优先 commit 模式；workspace 模式记录文件内容摘要，不得冒充某个提交的验证。运行器将输入复制到独立快照，隔离 user:// 数据，复用 xUnit 和现有 GdUnit4 Windows Junction 入口。全局预算默认 900 秒，可用 `--timeout-sec` 调整；超时不是缺陷被检测的证据。
 

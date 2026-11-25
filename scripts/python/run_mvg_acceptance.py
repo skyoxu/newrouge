@@ -12,6 +12,7 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
+import _b_route_evidence_reuse as evidence_reuse
 import _b_route_inventory as inventory
 from _mvg_manifest import manifest_sha256, read_manifest, recommend, validate_manifest
 from _mvg_execution import execute_test
@@ -86,6 +87,12 @@ def register_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument('--no-stop-on-deterministic-failure', dest='stop_on_deterministic_failure',
                         action='store_false',
                         help='Continue launching downstream GdUnit4 suites even if a deterministic prerequisite failed')
+    parser.add_argument('--reuse-evidence-from', action='append', default=[],
+                        help='Optional repo-relative prior MVG run directory or coverage-receipt.json for same-snapshot evidence reuse (repeatable)')
+    parser.add_argument('--reuse-build-from', default=None,
+                        help='Optional repo-relative prior MVG run directory for identity-verified build/prewarm artifact reuse')
+    parser.add_argument('--events-log', default=None,
+                        help='Optional repo-relative JSONL path under logs/ for deduplicated execution and reuse events')
 
 
 def run(args: argparse.Namespace, root: Path | None = None) -> int:
@@ -116,6 +123,9 @@ def run(args: argparse.Namespace, root: Path | None = None) -> int:
             execution_strategy=getattr(args, 'execution_strategy', 'scoped'),
             protocol_fixture=bool(getattr(args, 'protocol_fixture', False)),
             stop_on_deterministic_failure=bool(getattr(args, 'stop_on_deterministic_failure', True)),
+            reuse_evidence_from=list(getattr(args, 'reuse_evidence_from', None) or []),
+            reuse_build_from=getattr(args, 'reuse_build_from', None),
+            events_log=getattr(args, 'events_log', None),
         )
         write_json(out / 'summary.json', summary)
         print(json.dumps({
@@ -136,6 +146,13 @@ def run(args: argparse.Namespace, root: Path | None = None) -> int:
     try:
         if args.timeout_sec < 1:
             raise ValueError('timeout-sec must be positive')
+        has_reuse_flags = (
+            bool(getattr(args, 'reuse_evidence_from', None))
+            or getattr(args, 'reuse_build_from', None) is not None
+            or getattr(args, 'events_log', None) is not None
+        )
+        if has_reuse_flags:
+            raise ValueError('--reuse-evidence-from, --reuse-build-from, and --events-log require --verification-scope')
         revision = git(root, 'rev-parse', '--verify', args.revision + '^{commit}')
         summary.update(base_commit=revision, workspace_dirty=bool(git(root, 'status', '--porcelain')))
         deadline = time.monotonic() + args.timeout_sec
@@ -181,22 +198,37 @@ def run(args: argparse.Namespace, root: Path | None = None) -> int:
                 or _is_script_wrapper_bin(dotnet_bin)
             )
             summary['protocol_fixture_only'] = protocol_fixture_only
-            env = dict(os.environ)
-            # Isolate user:// without changing production scene/script bytes.
-            env['APPDATA'] = str(out / 'user-data')
-            env['XDG_DATA_HOME'] = str(out / 'user-data')
-            env['GDUNIT_STRICT_EXIT_CODE'] = '1'
-            env.pop('MVG_INPUT_CHALLENGE', None)
+            base_env = dict(os.environ)
+            base_env['GDUNIT_STRICT_EXIT_CODE'] = '1'
+            base_env.pop('MVG_INPUT_CHALLENGE', None)
+            pre_snapshot_hashes = evidence_reuse.capture_snapshot_file_hashes(execution_root)
+            summary['state_isolation'] = {
+                'per_test_dirs_isolated': True,
+                'pollution_detected': False,
+                'polluted_tests': [],
+                'checks': [],
+            }
             godot_ready = False
             for test in doc['tests']:
                 if time.monotonic() >= deadline:
                     raise TimeoutError('Global runtime budget exhausted')
+                step_out = out / test['id']
+                step_env = evidence_reuse.prepare_isolated_test_env(base_env, step_out)
                 exec_kwargs = {'prewarm': not godot_ready}
                 if protocol_fixture_only or dotnet_bin != 'dotnet':
                     exec_kwargs['dotnet_bin'] = dotnet_bin
                     exec_kwargs['protocol_fixture'] = protocol_fixture_only
-                result = execute_test(execution_root, test, out / test['id'], args.godot_bin,
-                                      deadline, env, **exec_kwargs)
+                result = dict(execute_test(execution_root, test, step_out, args.godot_bin,
+                                           deadline, step_env, **exec_kwargs))
+                iso = evidence_reuse.verify_post_test_isolation(execution_root, pre_snapshot_hashes, step_out)
+                summary['state_isolation']['checks'].append({'test_id': test['id'], **iso})
+                result['state_isolation'] = iso
+                if iso['pollution_detected']:
+                    summary['state_isolation']['pollution_detected'] = True
+                    summary['state_isolation']['polluted_tests'].append(test['id'])
+                    result['status'] = 'failed'
+                    summary['steps'].append(result)
+                    raise RuntimeError('Mutable snapshot state pollution detected: ' + test['id'])
                 summary['steps'].append(result)
                 if result['status'] != 'passed':
                     raise RuntimeError('Required test failed or is unverified: ' + test['id'])
@@ -206,15 +238,26 @@ def run(args: argparse.Namespace, root: Path | None = None) -> int:
                 targets = [test for test in doc['tests'] if test.get('challenge') == 'disconnect-reward-input']
                 if not targets:
                     raise ValueError('Manifest has no input challenge target')
-                env['MVG_INPUT_CHALLENGE'] = 'disconnect-reward-input'
                 summary['challenges'] = []
                 for test in targets:
+                    step_out = out / ('challenge-' + test['id'])
+                    challenge_env = evidence_reuse.prepare_isolated_test_env(base_env, step_out)
+                    challenge_env['MVG_INPUT_CHALLENGE'] = 'disconnect-reward-input'
                     exec_kwargs = {'prewarm': not godot_ready}
                     if protocol_fixture_only or dotnet_bin != 'dotnet':
                         exec_kwargs['dotnet_bin'] = dotnet_bin
                         exec_kwargs['protocol_fixture'] = protocol_fixture_only
-                    result = execute_test(execution_root, test, out / ('challenge-' + test['id']),
-                                          args.godot_bin, deadline, env, **exec_kwargs)
+                    result = dict(execute_test(execution_root, test, step_out,
+                                               args.godot_bin, deadline, challenge_env, **exec_kwargs))
+                    c_iso = evidence_reuse.verify_post_test_isolation(execution_root, pre_snapshot_hashes, step_out)
+                    summary['state_isolation']['checks'].append({'test_id': 'challenge-' + test['id'], **c_iso})
+                    result['state_isolation'] = c_iso
+                    if c_iso['pollution_detected']:
+                        summary['state_isolation']['pollution_detected'] = True
+                        summary['state_isolation']['polluted_tests'].append('challenge-' + test['id'])
+                        result['defect_detected'] = False
+                        summary['challenges'].append(result)
+                        raise RuntimeError('Mutable snapshot state pollution detected: challenge-' + test['id'])
                     # A crash, missing runtime or compilation error is NOT a detected defect.
                     detected = (result['exit_code'] not in {0, 124, 127}
                                 and result['evidence']['failed'] > 0

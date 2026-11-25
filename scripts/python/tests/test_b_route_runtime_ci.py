@@ -35,7 +35,7 @@ class RuntimeCITests(unittest.TestCase):
                      'adoption_projection', 'adoption_r10_capture', 'adoption_r10_reader',
                      'adoption_r19_reader', 'adoption_review', 'operation_leases',
                      'operation_scope', 'public_context', 'qualified_public_context', 'task_preview',
-                     'task_compilation', 'task_resolver', 'chapter4_binding', 'input_set', 'stage5_obligations', 'chapter5_readiness', 'chapter6_gate', 'chapter6_recovery', 'defect_routing', 'chapter7_slice', 'entrypoint_parity', 'impact_closure', 'verification_scope', 'scope_runner'):
+                     'task_compilation', 'task_resolver', 'chapter4_binding', 'input_set', 'stage5_obligations', 'chapter5_readiness', 'chapter6_gate', 'chapter6_recovery', 'defect_routing', 'chapter7_slice', 'entrypoint_parity', 'impact_closure', 'verification_scope', 'scope_runner', 'evidence_reuse'):
             selector = 'scripts.python.tests.test_b_route_' + name
             self.assertEqual(1, selected.count(selector))
             self.assertFalse(any(value.startswith(selector + '.') for value in selected))
@@ -239,6 +239,7 @@ class RuntimeCITests(unittest.TestCase):
         self.assertIn("- 'scripts/python/_b_route_verification_scope.py'", workflow)
         self.assertIn("- 'scripts/python/build_b_route_verification_scope.py'", workflow)
         self.assertIn("- 'scripts/python/_b_route_scope_runner.py'", workflow)
+        self.assertIn("- 'scripts/python/_b_route_evidence_reuse.py'", workflow)
         self.assertIn("- 'scripts/python/run_mvg_acceptance.py'", workflow)
         self.assertIn("- 'scripts/python/_mvg_execution.py'", workflow)
         self.assertIn("- 'docs/planning/b-route/schemas/**'", workflow)
@@ -285,6 +286,7 @@ class RuntimeCITests(unittest.TestCase):
             'scripts/python/_b_route_verification_scope.py',
             'scripts/python/build_b_route_verification_scope.py',
             'scripts/python/_b_route_scope_runner.py',
+            'scripts/python/_b_route_evidence_reuse.py',
             'scripts/python/run_mvg_acceptance.py',
             'scripts/python/_mvg_execution.py',
             'docs/planning/b-route/schemas/verification-scope.schema.json',

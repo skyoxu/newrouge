@@ -14,6 +14,9 @@
   - `--dotnet-bin <path>`：默认 `DOTNET_BIN` 或 `dotnet`；支持受控协议夹具脚本并诚实标记真实性。
   - `--protocol-fixture`：显式标记协议夹具（脚本/wrapper 路径也会自动检测），恒置 `runtime_verified=false`。
   - `--stop-on-deterministic-failure` / `--no-stop-on-deterministic-failure`（默认开启）：确定性前置（`static-wiring` 或 `domain-xunit`）失败后止损，跳过下游昂贵 `gdunit` 进程并在 `not_run` 记录原因。
+  - `--reuse-evidence-from <path>`（可重复）：指定既有同整合快照运行目录或 `coverage-receipt.json` 核验复用共享测试证据（详见[构建与共享证据复用 owner 说明](b-route-evidence-reuse.md)）。
+  - `--reuse-build-from <path>`：指定既有运行目录在源内容、工具链与工件摘要一致时复用只读构建/预热工件（不等于测试通过）。
+  - `--events-log <logs/.../*.jsonl>`：写入按规范化 `event_id` 去重的执行/复用/拒绝事件日志。
 
 ## 消费范围、隔离快照与业务租约
 
@@ -48,5 +51,5 @@
 
 ## 验证
 
-- 单测：`py -3 -B -m unittest scripts.python.tests.test_b_route_scope_runner scripts.python.tests.test_mvg_acceptance -v`。
-- CI：`run_gate_bundle.py` 与 `.github/workflows/b-route-runtime-deterministic.yml` 纳入 `test_b_route_scope_runner`，`test_b_route_runtime_ci.py` 守护接线。
+- 单测：`py -3 -B -m unittest scripts.python.tests.test_b_route_scope_runner scripts.python.tests.test_b_route_evidence_reuse scripts.python.tests.test_mvg_acceptance -v`。
+- CI：`run_gate_bundle.py` 与 `.github/workflows/b-route-runtime-deterministic.yml` 纳入 `test_b_route_scope_runner` 与 `test_b_route_evidence_reuse`，`test_b_route_runtime_ci.py` 守护接线。

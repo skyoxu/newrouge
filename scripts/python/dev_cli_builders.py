@@ -1338,4 +1338,11 @@ def build_run_mvg_acceptance_cmd(args) -> list[str]:
         cmd.append("--protocol-fixture")
     if getattr(args, "stop_on_deterministic_failure", True) is False:
         cmd.append("--no-stop-on-deterministic-failure")
+    for prior in getattr(args, "reuse_evidence_from", None) or []:
+        if prior is not None:
+            cmd += ["--reuse-evidence-from", str(prior)]
+    if getattr(args, "reuse_build_from", None) is not None:
+        cmd += ["--reuse-build-from", str(args.reuse_build_from)]
+    if getattr(args, "events_log", None) is not None:
+        cmd += ["--events-log", str(args.events_log)]
     return cmd
