@@ -186,6 +186,7 @@ B_ROUTE_RUNTIME_DETERMINISTIC_TESTS = (
     "scripts.python.tests.test_b_route_planning_page",
     "scripts.python.tests.test_b_route_observability",
     "scripts.python.tests.test_b_route_consumer_alignment",
+    "scripts.python.tests.test_b_route_e2e_fault_matrix",
     "scripts.python.tests.test_topology_frontend",
     "scripts.python.tests.test_milestone_incremental_workflow",
     "scripts.python.tests.test_milestone_authority_regression",

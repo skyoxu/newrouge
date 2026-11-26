@@ -111,7 +111,7 @@ development_status:
   3-12-让页面实施触发与全入口决定保持一致: done
   epic-3-retrospective: optional
 
-  epic-4: in-progress
+  epic-4: done
   4-1-从受治理反向关系计算完整传递影响: done
   4-2-形成可执行的三类义务verificationscope: done
   4-3-让真实执行器消费范围并报告实际覆盖: done
@@ -121,7 +121,7 @@ development_status:
   4-7-在规划页面按真实阶段操作并定位阻塞与恢复: done
   4-8-汇集可追溯过程观测与统一诊断: done
   4-9-对齐全部生产者消费者与治理文档: done
-  4-10-在windows故障与共享变更下核对端到端结论: backlog
+  4-10-在windows故障与共享变更下核对端到端结论: done
   epic-4-retrospective: optional
 
   epic-5: backlog

@@ -35,7 +35,7 @@ class RuntimeCITests(unittest.TestCase):
                      'adoption_projection', 'adoption_r10_capture', 'adoption_r10_reader',
                      'adoption_r19_reader', 'adoption_review', 'operation_leases',
                      'operation_scope', 'public_context', 'qualified_public_context', 'task_preview',
-                     'task_compilation', 'task_resolver', 'chapter4_binding', 'input_set', 'stage5_obligations', 'chapter5_readiness', 'chapter6_gate', 'chapter6_recovery', 'defect_routing', 'chapter7_slice', 'entrypoint_parity', 'impact_closure', 'verification_scope', 'scope_runner', 'evidence_reuse', 'completion_verdict', 'knowledge_projection', 'planning_page', 'observability', 'consumer_alignment'):
+                     'task_compilation', 'task_resolver', 'chapter4_binding', 'input_set', 'stage5_obligations', 'chapter5_readiness', 'chapter6_gate', 'chapter6_recovery', 'defect_routing', 'chapter7_slice', 'entrypoint_parity', 'impact_closure', 'verification_scope', 'scope_runner', 'evidence_reuse', 'completion_verdict', 'knowledge_projection', 'planning_page', 'observability', 'consumer_alignment', 'e2e_fault_matrix'):
             selector = 'scripts.python.tests.test_b_route_' + name
             self.assertEqual(1, selected.count(selector))
             self.assertFalse(any(value.startswith(selector + '.') for value in selected))
@@ -306,6 +306,8 @@ class RuntimeCITests(unittest.TestCase):
             'scripts/python/query_b_route_observability.py',
             'scripts/python/_b_route_consumer_alignment.py',
             'scripts/python/audit_b_route_consumer_alignment.py',
+            'scripts/python/_b_route_e2e_fault_matrix.py',
+            'scripts/python/verify_b_route_e2e_fault_matrix.py',
             'scripts/python/project_health_planning.js',
             'scripts/python/project_health_topology.js',
             'scripts/python/project_health_topology.html',
@@ -361,6 +363,7 @@ class RuntimeCITests(unittest.TestCase):
             'AGENTS.md',
             'workflow.md',
             'docs/workflows/b-route-consumer-alignment.md',
+            'docs/workflows/b-route-e2e-fault-matrix.md',
             'docs/workflows/stable-public-entrypoints.md',
             'docs/workflows/script-entrypoints-index.md',
             'docs/workflows/mvg-integration-acceptance.md',
