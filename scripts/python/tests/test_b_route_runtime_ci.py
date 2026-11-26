@@ -35,7 +35,7 @@ class RuntimeCITests(unittest.TestCase):
                      'adoption_projection', 'adoption_r10_capture', 'adoption_r10_reader',
                      'adoption_r19_reader', 'adoption_review', 'operation_leases',
                      'operation_scope', 'public_context', 'qualified_public_context', 'task_preview',
-                     'task_compilation', 'task_resolver', 'chapter4_binding', 'input_set', 'stage5_obligations', 'chapter5_readiness', 'chapter6_gate', 'chapter6_recovery', 'defect_routing', 'chapter7_slice', 'entrypoint_parity', 'impact_closure', 'verification_scope', 'scope_runner', 'evidence_reuse', 'completion_verdict', 'knowledge_projection'):
+                     'task_compilation', 'task_resolver', 'chapter4_binding', 'input_set', 'stage5_obligations', 'chapter5_readiness', 'chapter6_gate', 'chapter6_recovery', 'defect_routing', 'chapter7_slice', 'entrypoint_parity', 'impact_closure', 'verification_scope', 'scope_runner', 'evidence_reuse', 'completion_verdict', 'knowledge_projection', 'planning_page'):
             selector = 'scripts.python.tests.test_b_route_' + name
             self.assertEqual(1, selected.count(selector))
             self.assertFalse(any(value.startswith(selector + '.') for value in selected))
@@ -53,6 +53,7 @@ class RuntimeCITests(unittest.TestCase):
                          'scripts.python.tests.test_milestone_incremental_hotfixes',
                          'scripts.python.tests.test_milestone_two_stage_integration',
                          'scripts.python.tests.test_chapter7_backlog_gap',
+                         'scripts.python.tests.test_topology_frontend',
                          'scripts.python.tests.test_inherited_pipe_cleanup'):
             self.assertIn(selector, selected)
 
@@ -299,6 +300,17 @@ class RuntimeCITests(unittest.TestCase):
             'scripts/python/check_b_route_completion_verdict.py',
             'scripts/python/_b_route_knowledge_projection.py',
             'scripts/python/query_b_route_knowledge_projection.py',
+            'scripts/python/_b_route_planning_page.py',
+            'scripts/python/query_b_route_planning_page.py',
+            'scripts/python/project_health_planning.js',
+            'scripts/python/project_health_topology.js',
+            'scripts/python/project_health_topology.html',
+            'scripts/python/project_health_scenes.html',
+            'scripts/python/project_health_mvg_versions.js',
+            'scripts/python/project_health_knowledge.js',
+            'scripts/python/tests/js/test_b_route_planning_page_ui.cjs',
+            'scripts/python/tests/js/test_knowledge_planning.cjs',
+            'scripts/python/tests/js/test_topology_node_kinds.cjs',
             'scripts/python/_semantic_topology.py',
             'scripts/python/milestone_incremental_handoff.py',
             'scripts/python/run_mvg_acceptance.py',

@@ -20,7 +20,7 @@ import sys
 from pathlib import Path
 
 # The read-only command must not create bytecode even without Python -B.
-if len(sys.argv) > 1 and sys.argv[1] in {"b-route-preflight", "b-route-sources", "b-route-adoption", "b-route-task-preview", "b-route-task-compile", "b-route-task-origin", "b-route-chapter4-binding", "b-route-input-set", "b-route-stage5-obligations", "b-route-chapter5-readiness", "b-route-chapter6-gate", "b-route-defect-routing", "b-route-chapter7-slice", "b-route-entrypoint-parity", "b-route-impact-closure", "b-route-verification-scope", "b-route-completion-verdict", "b-route-knowledge-projection", "run-mvg-acceptance"}:
+if len(sys.argv) > 1 and sys.argv[1] in {"b-route-preflight", "b-route-sources", "b-route-adoption", "b-route-task-preview", "b-route-task-compile", "b-route-task-origin", "b-route-chapter4-binding", "b-route-input-set", "b-route-stage5-obligations", "b-route-chapter5-readiness", "b-route-chapter6-gate", "b-route-defect-routing", "b-route-chapter7-slice", "b-route-entrypoint-parity", "b-route-impact-closure", "b-route-verification-scope", "b-route-completion-verdict", "b-route-knowledge-projection", "b-route-planning-page", "run-mvg-acceptance"}:
     sys.dont_write_bytecode = True
 
 if __name__ == "__main__" and len(sys.argv) > 1 and sys.argv[1] == "b-route-sources":
@@ -91,6 +91,10 @@ if __name__ == "__main__" and len(sys.argv) > 1 and sys.argv[1] == "b-route-know
     from query_b_route_knowledge_projection import main as knowledge_projection_main
     raise SystemExit(knowledge_projection_main(sys.argv[2:]))
 
+if __name__ == "__main__" and len(sys.argv) > 1 and sys.argv[1] == "b-route-planning-page":
+    from query_b_route_planning_page import main as planning_page_main
+    raise SystemExit(planning_page_main(sys.argv[2:]))
+
 from dev_cli_builders import (
     DEFAULT_GATE_BUNDLE_TASK_FILES,
     build_check_directory_boundaries_cmd,
@@ -129,6 +133,7 @@ from dev_cli_builders import (
     build_b_route_verification_scope_cmd,
     build_b_route_completion_verdict_cmd,
     build_b_route_knowledge_projection_cmd,
+    build_b_route_planning_page_cmd,
     build_run_mvg_acceptance_cmd,
     build_quality_gates_cmd,
     build_run_dotnet_cmd,
@@ -881,6 +886,13 @@ def cmd_b_route_knowledge_projection(args: argparse.Namespace) -> int:
     return knowledge_projection_main(build_b_route_knowledge_projection_cmd(args)[3:])
 
 
+def cmd_b_route_planning_page(args: argparse.Namespace) -> int:
+    """Run the stage-true B-route planning page CLI."""
+    from query_b_route_planning_page import main as planning_page_main
+
+    return planning_page_main(build_b_route_planning_page_cmd(args)[3:])
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Dev CLI for Godot+C# template (AI-friendly entrypoint)",
@@ -973,6 +985,11 @@ def build_parser() -> argparse.ArgumentParser:
     from query_b_route_knowledge_projection import register_arguments as register_knowledge_projection_arguments
     register_knowledge_projection_arguments(knowledge_projection_parser)
     knowledge_projection_parser.set_defaults(func=cmd_b_route_knowledge_projection)
+
+    planning_page_parser = sub.add_parser("b-route-planning-page", help="Stage-true B-route planning page actions: Task-free 3A/3B, gated 3C and Story 3.12 Chapter 6, budget-preserving resume and verbatim six-field diagnostics")
+    from query_b_route_planning_page import register_arguments as register_planning_page_arguments
+    register_planning_page_arguments(planning_page_parser)
+    planning_page_parser.set_defaults(func=cmd_b_route_planning_page)
 
     # run-ci-basic
     p_ci = sub.add_parser(
@@ -1599,6 +1616,10 @@ def main(argv: list[str] | None = None) -> int:
         sys.dont_write_bytecode = True
         from query_b_route_knowledge_projection import main as knowledge_projection_main
         return knowledge_projection_main(arguments[1:])
+    if arguments and arguments[0] == "b-route-planning-page":
+        sys.dont_write_bytecode = True
+        from query_b_route_planning_page import main as planning_page_main
+        return planning_page_main(arguments[1:])
     parser = build_parser()
     args = parser.parse_args(arguments)
     func = getattr(args, "func", None)

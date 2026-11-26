@@ -1449,3 +1449,48 @@ def build_b_route_knowledge_projection_cmd(args) -> list[str]:
                 raise ValueError(f"b-route-knowledge-projection optional {flag} must be a nonempty string")
             cmd += [flag, str(value)]
     return cmd
+
+
+PLANNING_PAGE_ACTIONS = ("inspect", "3a_sources", "3b_capability", "3b_mvg", "3b_adoption",
+                         "3c_task_preview", "3c_task_compile", "chapter6")
+PLANNING_PAGE_FORBIDDEN_FLAGS = ("allow_unready", "allow_unready_draft", "draft", "skip_gate", "reset_budget",
+                                 "switch_task_origin", "delete_b_origin")
+PLANNING_PAGE_OPTIONAL = (
+    "invocation_mode", "request_json", "stage", "scope_id", "plan_id", "flow_id", "capability_id", "task_id",
+    "run_id", "operation_id", "attempt_id", "audit_ref", "manifest", "source_set", "prepared", "candidate",
+    "accounted", "request_ref", "planning_contract", "prepared_ref", "planning_profile", "runner", "sub_action",
+    "recovery_target", "protection_ref", "change_intents", "expected_model", "completed_extraction_ref",
+    "request_budget", "active_budget_seconds", "timeout_seconds", "citation_guidance", "report",
+)
+
+
+def build_b_route_planning_page_cmd(args) -> list[str]:
+    for flag in PLANNING_PAGE_FORBIDDEN_FLAGS:
+        if getattr(args, flag, False):
+            raise ValueError("b-route-planning-page rejects draft/allow_unready/gate-bypass/budget-reset/origin flags")
+    cmd = [
+        sys.executable,
+        "-B",
+        str(Path(__file__).resolve().with_name("query_b_route_planning_page.py")),
+    ]
+    root = getattr(args, "root", ".")
+    if root is None or type(root) is bool or not str(root).strip():
+        raise ValueError("b-route-planning-page requires nonempty --root")
+    cmd += ["--root", str(root)]
+    action = getattr(args, "action", "inspect")
+    if action is None or type(action) is bool or str(action).strip() not in PLANNING_PAGE_ACTIONS:
+        raise ValueError("b-route-planning-page requires --action in " + "|".join(PLANNING_PAGE_ACTIONS))
+    cmd += ["--action", str(action).strip()]
+    mode = getattr(args, "mode", "workspace_preview")
+    if mode is None or type(mode) is bool or str(mode).strip() not in KNOWLEDGE_PROJECTION_MODES:
+        raise ValueError("b-route-planning-page requires --mode in " + "|".join(KNOWLEDGE_PROJECTION_MODES))
+    cmd += ["--mode", str(mode).strip()]
+    if getattr(args, "recommendation_only", None) is True:
+        cmd.append("--recommendation-only")
+    for attr in PLANNING_PAGE_OPTIONAL:
+        value = getattr(args, attr, None)
+        if value is not None:
+            if type(value) is bool or not str(value).strip():
+                raise ValueError(f"b-route-planning-page optional --{attr.replace('_', '-')} must be a nonempty string")
+            cmd += ["--" + attr.replace("_", "-"), str(value)]
+    return cmd

@@ -32,7 +32,10 @@
     progressEpoch = payload.epoch;
     get('mvg-progress-status').textContent = `${payload.completed}/${payload.total} completed Capabilities · ${payload.status} · current: ${payload.current || 'none'} · runtime not verified${payload.reason ? ' · ' + payload.reason : ''}`;
     const content = JSON.stringify({epoch: payload.epoch, run_id: payload.run_id,
-      items: payload.items || [], proposal: payload.proposal});
+      items: payload.items || [], proposal: payload.proposal,
+      candidate_states: payload.candidate_states || [], budget_exhausted: Boolean(payload.budget_exhausted),
+      selection_block_reason: payload.selection_block_reason || null,
+      revoked: Boolean(payload.revoked), diagnostics: payload.diagnostics || []});
     if (content === progressContent) return;
     const display = get('mvg-progress-items');
     const opened = new Set(sameEpoch ? Array.from(display.children)
@@ -40,6 +43,14 @@
     display.replaceChildren();
     progressContent = content;
     for (const row of payload.items || []) item('p', `${row.capability_id} · ${row.provenance}`, display);
+    // Optional committed/candidate boundary, budget and six-field diagnostics.
+    for (const candidate of payload.candidate_states || []) item('p', `${candidate.status || 'candidate_in_progress'} · not adopted · ${candidate.candidate_id || ''}`, display);
+    if (payload.budget_exhausted) item('p', `budget exhausted · not recoverable${payload.selection_block_reason ? ' · ' + payload.selection_block_reason : ''}`, display);
+    if (payload.revoked) item('p', 'revoked · not recoverable', display);
+    for (const diag of payload.diagnostics || []) {
+      if (window.formatBRouteDiagnostic) display.append(window.formatBRouteDiagnostic(diag));
+      else item('p', JSON.stringify(diag), display);
+    }
     if (payload.proposal) {
       const manifest = payload.proposal.manifest_candidate || {};
       for (const flow of manifest.flows || []) {
@@ -61,9 +72,10 @@
     }
   }
   window.refreshMvgProgress = loadProgress;
-  const progressTimer = window.setInterval(() => loadProgress().catch(error => {
-    get('mvg-progress-status').textContent = error.message;
-  }), 2000);
+  const progressTimer = window.setInterval(() => {
+    loadProgress().catch(error => { get('mvg-progress-status').textContent = error.message; });
+    loadBRouteProgress();
+  }, 2000);
   window.addEventListener('pagehide', () => window.clearInterval(progressTimer), {once: true});
   get('mvg-clear').addEventListener('click', async () => {
     if (runInProgress) return;
@@ -84,6 +96,7 @@
       get('mvg-progress-status').textContent = '0 completed Capabilities · generated MVG cleared · runtime not verified';
       await load();
       await loadProgress();
+      await loadBRouteProgress();
     } catch (error) { get('mvg-progress-status').textContent = error.message; }
     finally { button.disabled = false; }
   });
@@ -230,6 +243,20 @@
       updateRunButton();
     }
   });
+  async function loadBRouteProgress() {
+    const panel = document.querySelector('#b-route-planning-progress');
+    if (!panel || !window.loadBRoutePlanningState) return;
+    const status = get('b-route-progress-status'); const detail = get('b-route-progress-detail');
+    try {
+      const state = await window.loadBRoutePlanningState({mode: 'main'});
+      detail.replaceChildren();
+      const summary = window.renderBRouteProgressSummary(state, detail);
+      for (const diag of state.diagnostics || []) detail.append(window.formatBRouteDiagnostic(diag));
+      item('p', window.B_ROUTE_HONEST_NOTICE, detail);
+      status.textContent = `B-route ${state.status || 'unknown'} · ${state.planning_completeness || 'unknown'} · ${summary.partial ? 'partial_planning (committed prefix only)' : 'no partial prefix'} · ${summary.candidates} uncommitted candidate(s) · runtime not verified`;
+    } catch (error) { status.textContent = error.message; }
+  }
   load().catch(error => { get('mvg-status').textContent = error.message; });
   loadProgress().catch(error => { get('mvg-progress-status').textContent = error.message; });
+  loadBRouteProgress();
 })();

@@ -24,6 +24,14 @@ class TopologyFrontendTests(unittest.TestCase):
         )
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
 
+    @unittest.skipUnless(shutil.which('node'), 'Node.js is required for frontend tests')
+    def test_b_route_planning_page_stage_true_ui_contract(self):
+        result = subprocess.run(
+            ['node', str(ROOT / 'scripts/python/tests/js/test_b_route_planning_page_ui.cjs')],
+            cwd=ROOT, capture_output=True, text=True, encoding='utf-8',
+        )
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+
 
 if __name__ == '__main__':
     unittest.main()

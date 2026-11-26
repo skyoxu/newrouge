@@ -335,11 +335,30 @@ def detect_repo_b_route_presence(
 
     op_dir = root_path / task_resolver.OP_STORE
     if op_dir.is_dir():
-        for path in op_dir.rglob("*"):
-            if path.is_file():
-                repo_has_b = True
-                reasons.append("b_route_operations_present")
+        found_op = False
+        for entry in op_dir.iterdir():
+            if entry.name.casefold() == "locks":
+                continue
+            if entry.is_file() and entry.suffix.casefold() == ".json":
+                found_op = True
                 break
+        if not found_op:
+            ops_sub = op_dir / "operations"
+            if ops_sub.is_dir():
+                for child in ops_sub.iterdir():
+                    if child.is_file() and child.suffix.casefold() == ".json":
+                        found_op = True
+                        break
+                    if child.is_dir():
+                        for sub in child.iterdir():
+                            if sub.is_file() and sub.suffix.casefold() == ".json":
+                                found_op = True
+                                break
+                        if found_op:
+                            break
+        if found_op:
+            repo_has_b = True
+            reasons.append("b_route_operations_present")
 
     if not repo_has_b:
         triplet_docs: dict[str, Any] = {}

@@ -271,6 +271,7 @@ byId('topology-identity').addEventListener('change', () => {
   params.delete('view');
   history.replaceState(null, '', window.location.pathname + (params.toString() ? '?' + params.toString() : ''));
   syncWorkspaceControls();
+  if (window.bRouteStagePanel) window.bRouteStagePanel.refresh();
   load().catch(e => byId('topology-status').textContent = e.message);
 });
 byId('workspace-view').addEventListener('change', () => {
@@ -279,10 +280,12 @@ byId('workspace-view').addEventListener('change', () => {
   params.set('mode', 'workspace');
   params.set('view', currentWorkspaceView());
   history.replaceState(null, '', window.location.pathname + '?' + params.toString());
+  if (window.bRouteStagePanel) window.bRouteStagePanel.refresh();
   load().catch(e => byId('topology-status').textContent = e.message);
 });
 byId('topology-refresh').onclick = () => {
   delete byId('topology-status').dataset.result;
+  if (window.bRouteStagePanel) window.bRouteStagePanel.refresh();
   return load().catch(e => byId('topology-status').textContent = e.message);
 };
 byId('capability-generate').onclick = () => window.knowledgePlanning({
@@ -298,5 +301,14 @@ byId('capability-generate').onclick = () => window.knowledgePlanning({
     await load();
   }
 });
-window.installKnowledgeOperationLock({root: document.querySelector('main')});
+const queryOne = selector => (typeof document.querySelector === 'function' ? document.querySelector(selector) : null);
+if (window.installKnowledgeOperationLock) window.installKnowledgeOperationLock({root: queryOne('main')});
+// The B-route stage panel mounts only when its section exists on the real page.
+if (queryOne('#b-route-stage-panel') && window.mountBRouteStagePanel) {
+  window.bRouteStagePanel = window.mountBRouteStagePanel({
+    host: byId('b-route-stage-host'),
+    getMode: () => window.bRouteModeFor({identity: currentMode(), view: currentWorkspaceView()}),
+    onRefresh: () => load().catch(e => byId('topology-status').textContent = e.message)
+  });
+}
 load().catch(e => byId('topology-status').textContent = e.message);

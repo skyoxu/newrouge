@@ -267,3 +267,13 @@ The `/knowledge/` task resource detail shows partial coverage, generation/public
 - 投影零写 `current.json`、`last-known-good.json`、`latest.json`、`runtime/latest.json`、`tasks.json` 与 `docs/planning/b-route/**`；`status` 与 `task` 动作仅附加只读 `b_route_identity`。默认 HTTP 返回 `200` 供检查，`strict=1` 在阻断时返回 `422`，未知 `mode` 返回 `400`。
 
 详见[派生知识投影 owner 说明](b-route-knowledge-projection.md)。
+
+## B 路线规划页面按真实阶段操作
+
+`py -3 scripts/python/dev_cli.py b-route-planning-page --action inspect|3a_sources|3b_capability|3b_mvg|3b_adoption|3c_task_preview|3c_task_compile|chapter6` 与 HTTP `GET /api/knowledge/b-route-planning`（只读，不取写锁）/ `POST /api/knowledge/b-route-planning`（令牌 + 同源 + 单飞锁）共用 `_b_route_planning_page.py`：
+
+- 无 Task、无 Chapter 5 readiness 时 3A 与 3B（`--input-stage 3b`）按真实来源与 3A 证据门控即可执行，禁 `draft`/`allow_unready`；3C 仅在 `catalog.v1.json` 存在已采纳 3B `plan` 且无 pending 时开放；Chapter 6 统一经 Story 3.12 门禁。
+- 展示已提交前缀（`partial_planning`，恒非 `planning_complete`、非 runtime PASS）、未提交候选（`adopted=false`）、预算耗尽与 epoch/撤销失效 run；`invocation_mode=new` 创建新 run，`resume` 沿用现有可恢复 run 且不重置预算。
+- 六字段诊断原样展示并附 `original_locator`，区分 `recommendation_only` 推荐与执行；身份与 Story 4.6 一致，预览零写发布指针，零隐式全局 refresh；页面只证交互合同，不充 Godot 玩法证据。
+
+详见[规划页面 owner 说明](b-route-planning-page.md)。

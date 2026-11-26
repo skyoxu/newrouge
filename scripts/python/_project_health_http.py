@@ -266,6 +266,52 @@ def handler_factory(root: Path):
                         else:
                             strict = strict_raw in ('1', 'true')
                             self.send(payload, 422 if strict and not payload.get('ok') else 200)
+                elif parsed.path == '/api/knowledge/b-route-planning':
+                    # Read-only state; never takes the operation lock so progress and
+                    # diagnostics stay readable while a planning job is running.
+                    from _b_route_planning_page import (INVARIANTS as PAGE_INVARIANTS, SCHEMA_VERSION as PAGE_SCHEMA,
+                                                        VALID_MODES as PAGE_MODES, inspect_planning_page_state)
+                    from _b_route_codec import CodecError, Diagnostic, ReasonCode, Stage
+                    query = parse_qs(parsed.query, keep_blank_values=True)
+                    filter_keys = ('scope_id', 'flow_id', 'capability_id', 'task_id', 'run_id', 'operation_id')
+                    allowed = {'mode', 'strict', *filter_keys}
+
+                    def invalid_page(name, expected, actual, code=422):
+                        self.send({'schema_version': PAGE_SCHEMA, 'status': 'invalid_arguments', 'ok': False,
+                                   'runtime_verified': False, 'ui_contract_only_not_godot_gameplay': True,
+                                   'invariants': dict(PAGE_INVARIANTS),
+                                   'diagnostics': [Diagnostic(ReasonCode.INVALID_ARGUMENT, Stage.TARGET, name,
+                                                              expected, actual, None).to_dict()]}, code)
+
+                    unknown = sorted(set(query) - allowed)
+                    duplicated = sorted(key for key, values in query.items() if len(values) > 1)
+                    mode = query.get('mode', ['workspace_preview'])[0]
+                    strict_raw = query.get('strict', ['0'])[0]
+                    blank = sorted(key for key in filter_keys if key in query and not query[key][0].strip())
+                    if unknown:
+                        invalid_page(unknown[0], sorted(allowed), unknown)
+                    elif 'mode' in duplicated:
+                        invalid_page('mode', 'single mode value', query['mode'], 400)
+                    elif duplicated:
+                        invalid_page(duplicated[0], 'single query value', query[duplicated[0]])
+                    elif not mode or mode not in PAGE_MODES:
+                        invalid_page('mode', list(PAGE_MODES), mode, 400)
+                    elif blank:
+                        invalid_page(blank[0], 'nonblank filter value', '')
+                    elif strict_raw not in ('0', '1', 'true', 'false'):
+                        invalid_page('strict', ['0', '1', 'true', 'false'], strict_raw)
+                    else:
+                        filters = {key: query[key][0] for key in filter_keys if key in query}
+                        try:
+                            payload = inspect_planning_page_state(root, mode=mode, **filters)
+                        except CodecError as exc:
+                            self.send({'schema_version': PAGE_SCHEMA, 'status': 'invalid_arguments', 'ok': False,
+                                       'runtime_verified': False, 'ui_contract_only_not_godot_gameplay': True,
+                                       'invariants': dict(PAGE_INVARIANTS),
+                                       'diagnostics': [exc.diagnostic.to_dict()]}, 422)
+                        else:
+                            strict = strict_raw in ('1', 'true')
+                            self.send(payload, 422 if strict and not payload.get('ok') else 200)
                 elif parsed.path == '/api/knowledge/scene-graph':
                     snapshot = base_dir(root) / 'latest.json'
                     state = read_json(snapshot) if snapshot.exists() else {}
@@ -384,6 +430,12 @@ def handler_factory(root: Path):
             origin = f'http://127.0.0.1:{self.server.server_port}'
             if (not self.allowed_host() or self.headers.get('Origin') != origin
                     or not secrets.compare_digest(self.headers.get('X-Project-Health-Token', ''), token)):
+                try:
+                    drain = int(self.headers.get('Content-Length', '0'))
+                except ValueError:
+                    drain = 0
+                if 0 < drain <= 65536:
+                    self.rfile.read(drain)
                 self.send({'reason': 'Same-origin session token required'}, 403)
                 return
             try:
@@ -396,6 +448,15 @@ def handler_factory(root: Path):
                 try:
                     request = codec.strict_json_loads(raw_body)
                 except codec.CodecError as err:
+                    if path == '/api/knowledge/b-route-planning':
+                        from _b_route_planning_page import INVARIANTS as PAGE_INVARIANTS, SCHEMA_VERSION as PAGE_SCHEMA
+                        d = err.diagnostic.to_dict()
+                        self.send({'schema_version': PAGE_SCHEMA, 'status': 'invalid_arguments', 'ok': False,
+                                   'reason_code': d['reason_code'], 'diagnostics': [d],
+                                   'recommendation_only': True, 'runtime_verified': False,
+                                   'ui_contract_only_not_godot_gameplay': True,
+                                   'invariants': dict(PAGE_INVARIANTS)}, 422)
+                        return
                     if path == '/api/knowledge/b-route':
                         d = err.diagnostic.to_dict()
                         self.send({
@@ -493,6 +554,32 @@ def handler_factory(root: Path):
                                 verification_mode=None,
                                 started_at=None,
                             )
+                        operation.release()
+                elif path == '/api/knowledge/b-route-planning':
+                    from _b_route_planning_page import execute_planning_page_action, is_read_only_request
+                    if is_read_only_request(root, request):
+                        payload = execute_planning_page_action(root, request)
+                        self.send(payload, 200 if payload.get('ok') else 422)
+                        return
+                    if not operation.acquire(blocking=False):
+                        self.send({'reason': 'Another operation is running'}, 409)
+                        return
+                    try:
+                        req_tid = request.get('task_id')
+                        with operation_guard:
+                            operation_state.update(
+                                active=True,
+                                action='b-route-planning:' + str(request.get('action')),
+                                task_ids=[str(req_tid)] if req_tid is not None else [],
+                                verification_mode=str(request.get('mode') or 'workspace_preview'),
+                                started_at=datetime.now(timezone.utc).isoformat(),
+                            )
+                        payload = execute_planning_page_action(root, request)
+                        self.send(payload, 200 if payload.get('ok') else 422)
+                    finally:
+                        with operation_guard:
+                            operation_state.update(active=False, action=None, task_ids=[],
+                                                   verification_mode=None, started_at=None)
                         operation.release()
                 elif path == '/api/knowledge/query':
                     self.cli('query', request=request)

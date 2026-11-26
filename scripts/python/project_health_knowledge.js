@@ -217,6 +217,36 @@ function renderNavigation(nav, box=el('detail-links'), related=false) {
     }
   }
 }
+function bRouteOrigin(identity) {
+  const node = identity?.task;
+  if (!node) return identity?.status === 'legacy_unmapped' ? 'A (legacy_unmapped)' : 'A';
+  if (node.planning_state === 'non_flow_governed') return 'non_flow_governed';
+  return node.governed ? 'B' : 'A';
+}
+async function bRoutePageCheck(taskId, subAction, mode = 'main') {
+  if (!token) token = (await api('session')).token;
+  const id = /^[1-9][0-9]*$/.test(String(taskId)) ? Number(taskId) : taskId;
+  const response = await fetch('/api/knowledge/b-route-planning', {method: 'POST',
+    headers: {'Content-Type': 'application/json', 'X-Project-Health-Token': token},
+    body: JSON.stringify({action: 'chapter6', sub_action: subAction, task_id: id, mode, recommendation_only: true})});
+  const result = await response.json();
+  show(`B-route ${subAction} (recommendation only, ${mode}) - task ${taskId}`, result);
+}
+function renderBRouteIdentity(detail) {
+  // Read-only origin: no route switch or B-origin delete controls exist here.
+  const identity = detail.b_route_identity;
+  const mode = identity.provenance?.mode || 'main';
+  const box = document.createElement('div'); box.className = 'navigation-group'; box.dataset.bRouteIdentity = 'true';
+  const p = document.createElement('p');
+  p.textContent = `B-route origin (read-only): ${bRouteOrigin(identity)} · ${identity.planning_completeness || identity.status || 'unknown'} · ${mode} · runtime not verified`;
+  box.append(p);
+  const inspect = document.createElement('button'); inspect.type = 'button'; inspect.textContent = 'Inspect recovery/route (read-only)';
+  inspect.onclick = () => run(() => bRoutePageCheck(detail.task.id, 'route', mode));
+  const gate = document.createElement('button'); gate.type = 'button'; gate.textContent = 'Run B-route gate check';
+  gate.onclick = () => run(() => bRoutePageCheck(detail.task.id, 'gate', mode));
+  box.append(inspect, gate);
+  el('detail-links').append(box);
+}
 function renderTaskDetail(detail) {
   activeTaskDetail = detail;
   show('Task ' + detail.task.id, detail);
@@ -230,6 +260,7 @@ function renderTaskDetail(detail) {
   el('detail-links').append(status);
   if(evidence?.reason){const reason=document.createElement('p');reason.className='runtime-reason';reason.textContent=evidence.reason.replace(/GDUNIT_DONE[\s\S]*$/,'').trim();el('detail-links').append(reason);}
   if(detail.godot.workspace_evidence){const result=detail.godot.workspace_evidence;const p=document.createElement('p');p.textContent=`Last workspace snapshot: ${result.status} | ${result.finished_at} | ${result.source_revision}`+(result.reason ? ' | '+result.reason : '');el('detail-links').append(p);}
+  if(detail.b_route_identity) renderBRouteIdentity(detail);
   if(detail.godot.runtime_eligible) {
     el('detail-links').append(button('Verify local main',async()=>{await api('runtime',{task_id:detail.task.id,mode:'main'});await loadStatus();}));
     el('detail-links').append(button('Verify workspace',async()=>{const result=await api('runtime',{task_id:detail.task.id,mode:'workspace'});show('Workspace verification - task '+detail.task.id,result);}));
