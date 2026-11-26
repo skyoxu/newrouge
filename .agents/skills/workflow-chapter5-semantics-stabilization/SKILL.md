@@ -85,7 +85,7 @@ Refresh optional evidence after new business-repo logs are generated:
 ```powershell
 py -3 scripts/python/update_workflow_chapter_skills.py <business-repo>
 py -3 scripts/python/update_workflow_chapter_skills.py <business-repo-a>,<business-repo-b>
-```\n
+```
 
 ## Milestone incremental handoff
 
@@ -94,3 +94,9 @@ py -3 scripts/python/update_workflow_chapter_skills.py <business-repo-a>,<busine
 - Record a hashed disposition for every added/changed source block. Mark requirement-like context explicitly non-delivery with a rationale. Name the cumulative baseline manifest; verify target/owner tasks, shared contract consumers and their old flow tests before handoff. Read the full GDD to judge semantic completeness.
 - A planned test may remain unimplemented at ready-to-implement when its owner and behavior are explicit; it can never count as milestone acceptance evidence.
 - Build the task-local milestone handoff only from a closable, current Chapter 5 readiness document. Source/contract/task-surface drift invalidates it.
+
+## Explicit B-route InputSet, Stage-5 obligations, and readiness boundary (existing A lane remains default until Epic 5)
+
+- Common `InputSet` and freshness attribution (`3A`..`5`): `py -3 -B scripts/python/dev_cli.py b-route-input-set` (`docs/workflows/b-route-input-set-resolution.md`) aggregates Story 3.3 applicable plans, Stage-4/5 bindings, Task definition projections, contracts/ADRs/Overlays/manifests, dependency closure, and environment identity into `input_set_digest`, keeping 3A/3B/3C planning stages separate from Chapter 4–7 binding and implementation stages.
+- Stage-5 obligations and verification basis binding: `py -3 -B scripts/python/dev_cli.py b-route-stage5-obligations` (`docs/workflows/b-route-stage5-obligations.md`) binds verified MVG manifests/reviewed deltas or legal non-Flow `other_verification_refs` with explicit rationale, enforces dedicated integration owner non-self-lock, shared-Task deduplication, anti-weakening, and journal recovery (`public-sync-journal` / `apply-journal.json`) strictly separate from model resume.
+- Chapter 5 same-source reconciliation and readiness: `py -3 -B scripts/python/dev_cli.py b-route-chapter5-readiness` (`docs/workflows/b-route-chapter5-readiness.md`) freezes the common `InputSet` to produce Task readiness without conflating Task readiness with Flow completion or cumulative `full-MVG` milestone completion. Workspace `workspace_preview`/`attempt`/`stabilized` views never advance `knowledge/indexes/current.json`, `last-known-good.json`, or `refs/heads/main`, and `runtime_verified`/`default_b_enabled` remain `false`.

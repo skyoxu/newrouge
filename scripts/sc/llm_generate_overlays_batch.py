@@ -59,9 +59,50 @@ def _find_page_diff(summary: dict[str, object], page: str) -> dict[str, object]:
     return {}
 
 
+def _has_active_b_route_presence(repo_root_path: Path) -> bool:
+    for rel in (
+        "docs/planning/b-route/catalog.v1.json",
+        "docs/planning/b-route/policy.v1.json",
+        "docs/planning/b-route/task-origins.v1.json",
+        "docs/planning/b-route/origins/origins.json",
+    ):
+        if (repo_root_path / rel).exists():
+            return True
+    ops_dir = repo_root_path / "logs/ci/b-route-operations"
+    if ops_dir.is_dir():
+        for item in ops_dir.rglob("*.json"):
+            if not item.name.endswith(".lock.json"):
+                return True
+    return False
+
+
+def _guard_active_b_route_direct_write(repo_root_path: Path) -> None:
+    """Fail-closed guard blocking direct overlay batch --apply when B-route governance is active."""
+    if not _has_active_b_route_presence(repo_root_path):
+        return
+    scripts_py = str(Path(__file__).resolve().parents[1] / "python")
+    if scripts_py not in sys.path:
+        sys.path.insert(0, scripts_py)
+    try:
+        import _b_route_chapter6_gate as _ch6_gate
+    except ImportError as exc:
+        raise SystemExit(
+            f"active B-route governance blocks direct llm_generate_overlays_batch --apply; "
+            f"use dev_cli.py b-route-chapter4-binding ({exc})"
+        ) from exc
+    presence = _ch6_gate.detect_b_route_presence(repo_root_path)
+    if presence.get("b_route_present") or _has_active_b_route_presence(repo_root_path):
+        raise SystemExit(
+            "active B-route governance blocks direct llm_generate_overlays_batch --apply; "
+            "use dev_cli.py b-route-chapter4-binding"
+        )
+
+
 def main() -> int:
     args = _build_parser().parse_args()
     root = repo_root()
+    if args.apply:
+        _guard_active_b_route_direct_write(root)
     prd_path = Path(args.prd)
     if not prd_path.is_absolute():
         prd_path = (root / prd_path).resolve()

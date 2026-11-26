@@ -115,3 +115,9 @@ The generated-state form requires a valid current publication, current generated
 ## Rollback
 
 The migration has no game runtime dependency. If the knowledge system is unavailable, use the repository's existing direct authority routing from `AGENTS.md`, `docs/PROJECT_DOCUMENTATION_INDEX.md`, and `docs/agents/13-rag-sources-and-session-ssot.md`.
+
+## Explicit B-route derived projection, planning page, and observability boundaries (existing A lane remains default until Epic 5)
+
+- Read-only derived B-route Knowledge projection: `py -3 -B scripts/python/dev_cli.py b-route-knowledge-projection` (`docs/workflows/b-route-knowledge-projection.md`, `GET /api/knowledge/b-route-projection`) separates `planning_state`, `implementation_state`, `runtime_state`, and six `evidence_level` classes, keeping Task readiness, Flow completion, and cumulative `full-MVG` milestone completion strictly separate (`default_b_enabled=false`, `runtime_verified=false`).
+- Stage-true B-route planning page actions and process observability: `py -3 -B scripts/python/dev_cli.py b-route-planning-page` (`docs/workflows/b-route-planning-page.md`, `GET`/`POST /api/knowledge/b-route-planning`), `py -3 -B scripts/python/dev_cli.py b-route-observability` (`docs/workflows/b-route-observability.md`, `GET /api/knowledge/b-route-observability`), and pre-switch consumer alignment audit `py -3 -B scripts/python/dev_cli.py b-route-consumer-alignment` (`docs/workflows/b-route-consumer-alignment.md`).
+- Hard publication and indexing boundaries: `workspace_preview`, `attempt`, `stable`, and `stabilized` modes never advance `knowledge/indexes/current.json`, `knowledge/indexes/last-known-good.json`, or `refs/heads/main`; journal recovery stays separate from model resume; 3A/3B/3C planning stays separate from Chapter 4–7 implementation; and `logs/**`, `backup/**`, and `docs/migration/**` are never ingested into global semantic Knowledge search (`knowledge/policies/source-exclusions.v1.json`).

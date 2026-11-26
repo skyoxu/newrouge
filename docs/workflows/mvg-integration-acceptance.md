@@ -34,7 +34,7 @@ Windows 候选进程树由父协调器持有的 kill-on-close Job Object 管理�
 
 `POST /api/knowledge/mvg-clear` 要求现有 same-origin session token、空 JSON 请求和服务操作锁；CLI 生成与清理另共享跨进程 activity 锁。清理持久增加 `logs/ci/mvg-recovery/registry.json` 的 epoch 并清空恢复资格，旧 attempt/latest 指针、旧页面响应和晚到发布不能复活结果。历史账本留在 `logs/**`；正式 manifest、Capability、任务和运行验收历史保留。页面下一次 Generate 创建新 run。独立工作区通过 `SC_MVG_RECOVERY_ROOT`/`SC_MVG_RECOVERY_EPOCH` 绑定同一项目索引；这些变量是宿主内部协议。
 
-本入口验证同一版本中多个功能提交组合后的行为。保留功能任务、Chapter 6 内置 review、现有交付 profile 门禁和 MVG 级知识库刷新节奏。不引入 Epic，也不自动修改任务状态。设计依据见 ADR-0037。
+本入口验证同一版本中多个功能提交组合后的行为。保留功能任务、Chapter 6 内置 review、现有交付 profile 门禁和 MVG 级知识库刷新节奏。不引入 Epic，也不自动修改任务状态。设计草案参考 Proposed ADR-0037（未冻结，非 Accepted 强制口径）。
 
 ## 在现有章节中接入
 

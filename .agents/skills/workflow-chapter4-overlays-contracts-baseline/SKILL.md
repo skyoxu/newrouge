@@ -78,7 +78,7 @@ Refresh optional evidence after new business-repo logs are generated:
 ```powershell
 py -3 scripts/python/update_workflow_chapter_skills.py <business-repo>
 py -3 scripts/python/update_workflow_chapter_skills.py <business-repo-a>,<business-repo-b>
-```\n
+```
 
 ## Milestone incremental scope
 
@@ -86,3 +86,9 @@ py -3 scripts/python/update_workflow_chapter_skills.py <business-repo-a>,<busine
 - Per-page generation reads complete primary/companion sources and the current page. If the combined source context exceeds 180000 characters, narrow the selected page/source scope before model execution; do not proceed with truncated requirements.
 - Restrict `sync_task_overlay_refs.py` to the affected task ids. `--skip-done` is not an impact-analysis substitute.
 - Shared contract changes must name producer/consumer impact and an implementation owner before Chapter 6.
+
+## Explicit B-route Stage-4 binding boundary (existing A lane remains default until Epic 5)
+
+- Unified Task origin resolution (pure read-only, zero-write): `py -3 -B scripts/python/dev_cli.py b-route-task-origin --task-id <id>` (`docs/workflows/b-route-task-origin-resolution.md`) classifies every Task into `B`, bounded frozen `A`, `explicit_not_enabled_a`, or `blocked`, and computes the full applicable plan set and `applicable_set_digest` for shared Tasks spanning multiple plans.
+- Stage-4 binding refinement: `py -3 -B scripts/python/dev_cli.py b-route-chapter4-binding` (`docs/workflows/b-route-chapter4-binding.md`) refines production contracts and four-part definitions (`domain_rules`, `csharp_adapter`, `binding`, `scene`) after 3C compilation, keeping 3A/3B/3C planning stages distinct from Chapter 4–7 binding/implementation stages.
+- Journal recovery (`public-sync-journal` raw bytes with post-edit preservation) is strictly separate from model resume; Task-local binding never implies Flow completion or cumulative `full-MVG` milestone completion; `workspace_preview`/`attempt`/`stable`/`stabilized` never publish to `knowledge/indexes/current.json`, `last-known-good.json`, or `refs/heads/main`; `Accepted` ADRs (`docs/adr/ADR-0038-semantic-delivery-topology.md`, `docs/adr/ADR-0038-mvg-candidate-admission.md`, `docs/adr/ADR-0040-b-route-stages-authority-and-activation.md`) remain strictly separate from `Proposed` ADRs. Stage-4 binding keeps `default_b_enabled=false` and `runtime_verified=false`.

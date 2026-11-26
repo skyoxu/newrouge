@@ -78,6 +78,8 @@ on:
       - 'scripts/python/query_b_route_planning_page.py'
       - 'scripts/python/_b_route_observability.py'
       - 'scripts/python/query_b_route_observability.py'
+      - 'scripts/python/_b_route_consumer_alignment.py'
+      - 'scripts/python/audit_b_route_consumer_alignment.py'
       - 'scripts/python/project_health_planning.js'
       - 'scripts/python/project_health_topology.js'
       - 'scripts/python/project_health_topology.html'
@@ -132,6 +134,17 @@ on:
       - 'docs/planning/b-route/**'
       - 'docs/planning/b-route/schemas/**'
       - 'logs/ci/*/*/published-clone-input/**'
+      - 'AGENTS.md'
+      - 'workflow.md'
+      - 'docs/workflows/b-route-*.md'
+      - 'docs/workflows/stable-public-entrypoints.md'
+      - 'docs/workflows/script-entrypoints-index.md'
+      - 'docs/workflows/mvg-integration-acceptance.md'
+      - 'docs/workflows/chapter3-source-set.json'
+      - '.agents/skills/**/SKILL.md'
+      - 'docs/adr/ADR-*.md'
+      - 'docs/architecture/ADR_INDEX_GODOT.md'
+      - 'knowledge/policies/**'
   workflow_dispatch:
     inputs:
       suite:

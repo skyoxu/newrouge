@@ -21,6 +21,55 @@ from chapter3_task_scope import load_scope, validate_candidate_operations, valid
 TASKS_DIR = Path(".taskmaster/tasks")
 
 
+def _has_active_b_route_presence(repo_root: Path) -> bool:
+    for rel in (
+        "docs/planning/b-route/catalog.v1.json",
+        "docs/planning/b-route/policy.v1.json",
+        "docs/planning/b-route/task-origins.v1.json",
+        "docs/planning/b-route/origins/origins.json",
+    ):
+        if (repo_root / rel).exists():
+            return True
+    ops_dir = repo_root / "logs/ci/b-route-operations"
+    if ops_dir.is_dir():
+        for item in ops_dir.rglob("*.json"):
+            if not item.name.endswith(".lock.json"):
+                return True
+    return False
+
+
+def _guard_active_b_route_direct_write(repo_root: Path, target_task_ids: list[int] | None = None) -> None:
+    """Fail-closed guard blocking direct un-governed triplet writes when B-route governance is active."""
+    if not _has_active_b_route_presence(repo_root):
+        return
+    import sys as _sys
+
+    scripts_py = str(Path(__file__).resolve().parent)
+    if scripts_py not in _sys.path:
+        _sys.path.insert(0, scripts_py)
+    try:
+        import _b_route_chapter6_gate as _ch6_gate
+        import _b_route_task_resolver as _task_resolver
+    except ImportError as exc:
+        raise SystemExit(
+            f"active B-route governance detected on {repo_root}; direct compile_task_triplet --write is blocked "
+            f"(use dev_cli.py b-route-task-compile; helper import failed: {exc})"
+        ) from exc
+    presence = _ch6_gate.detect_b_route_presence(repo_root)
+    for tid in target_task_ids or []:
+        res = _task_resolver.resolve_task_origin(repo_root, tid, operation="implement")
+        if res.get("route") in {"B", "blocked"}:
+            raise SystemExit(
+                f"active B-route governance blocks direct compile_task_triplet --write for Task {tid} "
+                f"(route={res.get('route')}); use dev_cli.py b-route-task-compile"
+            )
+    if presence.get("b_route_present") or _has_active_b_route_presence(repo_root):
+        raise SystemExit(
+            "active B-route governance blocks direct compile_task_triplet --write; "
+            "use dev_cli.py b-route-task-compile"
+        )
+
+
 def load_json(path: Path, default: Any) -> Any:
     if not path.exists():
         return default
@@ -302,6 +351,12 @@ def main() -> int:
     export_ids_path = root / "logs/ci/task-generation/task-triplet.export-ids.json"
     write_json(export_ids_path, export_ids)
     if args.write:
+        target_ids = [
+            int(c["taskmaster_id"])
+            for c in candidates
+            if isinstance(c, dict) and isinstance(c.get("taskmaster_id"), int) and not isinstance(c.get("taskmaster_id"), bool)
+        ]
+        _guard_active_b_route_direct_write(root, target_ids)
         if conflicts:
             raise SystemExit("task triplet patch has conflicts; refusing to write: " + ", ".join(conflicts))
         current_back = load_json(back_path, [])

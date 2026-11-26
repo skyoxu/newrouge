@@ -20,7 +20,7 @@ import sys
 from pathlib import Path
 
 # The read-only command must not create bytecode even without Python -B.
-if len(sys.argv) > 1 and sys.argv[1] in {"b-route-preflight", "b-route-sources", "b-route-adoption", "b-route-task-preview", "b-route-task-compile", "b-route-task-origin", "b-route-chapter4-binding", "b-route-input-set", "b-route-stage5-obligations", "b-route-chapter5-readiness", "b-route-chapter6-gate", "b-route-defect-routing", "b-route-chapter7-slice", "b-route-entrypoint-parity", "b-route-impact-closure", "b-route-verification-scope", "b-route-completion-verdict", "b-route-knowledge-projection", "b-route-planning-page", "b-route-observability", "run-mvg-acceptance"}:
+if len(sys.argv) > 1 and sys.argv[1] in {"b-route-preflight", "b-route-sources", "b-route-adoption", "b-route-task-preview", "b-route-task-compile", "b-route-task-origin", "b-route-chapter4-binding", "b-route-input-set", "b-route-stage5-obligations", "b-route-chapter5-readiness", "b-route-chapter6-gate", "b-route-defect-routing", "b-route-chapter7-slice", "b-route-entrypoint-parity", "b-route-impact-closure", "b-route-verification-scope", "b-route-completion-verdict", "b-route-knowledge-projection", "b-route-planning-page", "b-route-observability", "b-route-consumer-alignment", "run-mvg-acceptance"}:
     sys.dont_write_bytecode = True
 
 if __name__ == "__main__" and len(sys.argv) > 1 and sys.argv[1] == "b-route-sources":
@@ -99,6 +99,10 @@ if __name__ == "__main__" and len(sys.argv) > 1 and sys.argv[1] == "b-route-obse
     from query_b_route_observability import main as observability_main
     raise SystemExit(observability_main(sys.argv[2:]))
 
+if __name__ == "__main__" and len(sys.argv) > 1 and sys.argv[1] == "b-route-consumer-alignment":
+    from audit_b_route_consumer_alignment import main as consumer_alignment_main
+    raise SystemExit(consumer_alignment_main(sys.argv[2:]))
+
 from dev_cli_builders import (
     DEFAULT_GATE_BUNDLE_TASK_FILES,
     build_check_directory_boundaries_cmd,
@@ -139,6 +143,7 @@ from dev_cli_builders import (
     build_b_route_knowledge_projection_cmd,
     build_b_route_planning_page_cmd,
     build_b_route_observability_cmd,
+    build_b_route_consumer_alignment_cmd,
     build_run_mvg_acceptance_cmd,
     build_quality_gates_cmd,
     build_run_dotnet_cmd,
@@ -905,6 +910,13 @@ def cmd_b_route_observability(args: argparse.Namespace) -> int:
     return observability_main(build_b_route_observability_cmd(args)[3:])
 
 
+def cmd_b_route_consumer_alignment(args: argparse.Namespace) -> int:
+    """Run the read-only B-route consumer alignment & pre-switch audit CLI."""
+    from audit_b_route_consumer_alignment import main as consumer_alignment_main
+
+    return consumer_alignment_main(build_b_route_consumer_alignment_cmd(args)[3:])
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Dev CLI for Godot+C# template (AI-friendly entrypoint)",
@@ -1007,6 +1019,11 @@ def build_parser() -> argparse.ArgumentParser:
     from query_b_route_observability import register_arguments as register_observability_arguments
     register_observability_arguments(observability_parser)
     observability_parser.set_defaults(func=cmd_b_route_observability)
+
+    consumer_alignment_parser = sub.add_parser("b-route-consumer-alignment", help="Read-only Story 4.9 ten-group consumer alignment, five-state contract probes, docs/skills/ADR audit, clean-clone layout check, and reconstructable pre-switch coverage report")
+    from audit_b_route_consumer_alignment import register_arguments as register_consumer_alignment_arguments
+    register_consumer_alignment_arguments(consumer_alignment_parser)
+    consumer_alignment_parser.set_defaults(func=cmd_b_route_consumer_alignment)
 
     # run-ci-basic
     p_ci = sub.add_parser(
@@ -1641,6 +1658,10 @@ def main(argv: list[str] | None = None) -> int:
         sys.dont_write_bytecode = True
         from query_b_route_observability import main as observability_main
         return observability_main(arguments[1:])
+    if arguments and arguments[0] == "b-route-consumer-alignment":
+        sys.dont_write_bytecode = True
+        from audit_b_route_consumer_alignment import main as consumer_alignment_main
+        return consumer_alignment_main(arguments[1:])
     parser = build_parser()
     args = parser.parse_args(arguments)
     func = getattr(args, "func", None)

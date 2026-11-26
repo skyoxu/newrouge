@@ -14,7 +14,7 @@
 
 本轮实际验证与限制见 [原始对账](../../logs/ci/2026-11-07/story25-loop2-review-checkpoint/summary/report.md) 和 [归档清单](../../logs/ci/2026-11-07/story25-loop2-review-checkpoint/manifest.json)。184个不同方法分批通过；32项完整运行时/compact控制和63项源码/元数据硬化控制均已自然结束、源码稳定。本轮真实模型调用0，79/290与旧unknown不变；这不是新真实producer资格、托管CI通过或正式Story完成。
 
-全链资源政策见 [ADR-0043](../adr/ADR-0043-b-route-resource-pipeline-preallocation.md)，原329024字节packet的纯compact通过而完整wire保守展开上界拒绝，两项结果同时保留。发布/前缀恢复与写入前见证见 [ADR-0044](../adr/ADR-0044-b-route-metadata-journal-publication.md)，宿主停止/诊断及精确源码边界见 [ADR-0045](../adr/ADR-0045-b-route-host-cancellation-diagnostics.md)、[ADR-0046](../adr/ADR-0046-b-route-host-fault-source-boundaries.md)，合法部分修复、路径与CI入口见 [ADR-0047](../adr/ADR-0047-b-route-legacy-progress-paths-and-ci.md)。包名入口已实际冒烟，两个PowerShell块仅语法解析；无完整YAML解析器或托管CI执行记录。
+全链资源政策见 Proposed [ADR-0043](../adr/ADR-0043-b-route-resource-pipeline-preallocation.md)（未采纳），原329024字节packet的纯compact通过而完整wire保守展开上界拒绝，两项结果同时保留。发布/前缀恢复与写入前见证见 Proposed [ADR-0044](../adr/ADR-0044-b-route-metadata-journal-publication.md)（未采纳），宿主停止/诊断及精确源码边界见 Proposed [ADR-0045](../adr/ADR-0045-b-route-host-cancellation-diagnostics.md)、Proposed [ADR-0046](../adr/ADR-0046-b-route-host-fault-source-boundaries.md)，合法部分修复、路径与CI入口见 Proposed [ADR-0047](../adr/ADR-0047-b-route-legacy-progress-paths-and-ci.md)（均未采纳，仅作回环2离线工程记录）。包名入口已实际冒烟，两个PowerShell块仅语法解析；无完整YAML解析器或托管CI执行记录。
 
 以下R25记录属于原检查点10398b41及其旧源码纪元，不覆盖或改写本轮失败、资源政策拒绝或原R22真实资格。
 

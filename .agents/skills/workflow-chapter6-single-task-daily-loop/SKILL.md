@@ -79,7 +79,7 @@ Refresh optional evidence after new business-repo logs are generated:
 ```powershell
 py -3 scripts/python/update_workflow_chapter_skills.py <business-repo>
 py -3 scripts/python/update_workflow_chapter_skills.py <business-repo-a>,<business-repo-b>
-```\n
+```
 
 ## Milestone incremental consumption
 
@@ -89,3 +89,8 @@ py -3 scripts/python/update_workflow_chapter_skills.py <business-repo-a>,<busine
 - If task/contract scope changes during implementation, stop and regenerate Chapter 5 readiness/handoff instead of widening the current RED/GREEN context.
 - Task-local success is not milestone acceptance; cumulative MVG closure remains a separate same-revision run.
 - Page triggers (`POST /api/knowledge/b-route`, `project_health_runtime.py`, and `/api/knowledge/mvg-run`) must enforce the exact same live Chapter 6 gate, dynamic `InputSet`, eligibility, and business-scope leases as `cli`/`direct`/`resume`/`route`; `preview` and `workspace` triggers must never advance `current.json`, `last-known-good.json`, `latest.json`, or `refs/heads/main`. Verify five-entrypoint parity and Epic 3 -> Epic 4 handoff via `py -3 -B scripts/python/dev_cli.py b-route-entrypoint-parity` (`docs/workflows/b-route-entrypoint-parity.md`).
+
+## Explicit B-route gate, recovery, defect routing, and completion boundaries (existing A lane remains default until Epic 5)
+
+- Unified implementation gate (shared across CLI, direct lane, `_mvg_obligations.py`, and page triggers): `py -3 -B scripts/python/dev_cli.py b-route-chapter6-gate` (`docs/workflows/b-route-chapter6-gate.md`), paired with live recovery/route revalidation (`docs/workflows/b-route-chapter6-recovery.md`) and defect classification/return-stage routing `py -3 -B scripts/python/dev_cli.py b-route-defect-routing` (`docs/workflows/b-route-defect-routing.md`). Stage 3A/3B/3C planning stays separate from Chapter 4–7 implementation, and model/run resume never bypasses durable journal recovery or post-edit preservation.
+- Scoped verification and evidence reuse: synthesize three-tier `VerificationScope` with `py -3 -B scripts/python/dev_cli.py b-route-verification-scope` (`docs/workflows/b-route-verification-scope.md`), execute via `py -3 -B scripts/python/dev_cli.py run-mvg-acceptance --verification-scope <scope.json>` (`docs/workflows/b-route-scope-runner.md`, `docs/workflows/b-route-evidence-reuse.md`), and verify Task-local, target-Flow, cumulative `full-MVG` milestone, and legal non-Flow completion separately via `py -3 -B scripts/python/dev_cli.py b-route-completion-verdict` (`docs/workflows/b-route-completion-verdict.md`). Task-local pass never equals Flow completion or cumulative milestone completion, `workspace_preview`/`workspace` runs never publish to `main`, and `default_b_enabled`/`runtime_verified` remain `false`.

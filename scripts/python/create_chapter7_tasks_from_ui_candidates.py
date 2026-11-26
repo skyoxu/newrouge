@@ -498,12 +498,62 @@ def create_tasks(
         "gameplay_story_id": effective_gameplay_story_id,
     }
     if not dry_run:
+        _guard_active_b_route_direct_write(repo_root, updated_task_ids + created_task_ids)
         if load_scope(repo_root) is not None:
             raise ValueError("Frozen task scope rejects Chapter 7 task creation")
         _write_json(resolved_tasks_json_path, tasks_payload)
         _write_json(tasks_back_path if tasks_back_path.is_absolute() else (repo_root / tasks_back_path), back_tasks)
         _write_json(tasks_gameplay_path if tasks_gameplay_path.is_absolute() else (repo_root / tasks_gameplay_path), gameplay_tasks)
     return 0, payload
+
+
+def _has_active_b_route_presence(repo_root: Path) -> bool:
+    for rel in (
+        "docs/planning/b-route/catalog.v1.json",
+        "docs/planning/b-route/policy.v1.json",
+        "docs/planning/b-route/task-origins.v1.json",
+        "docs/planning/b-route/origins/origins.json",
+    ):
+        if (repo_root / rel).exists():
+            return True
+    ops_dir = repo_root / "logs/ci/b-route-operations"
+    if ops_dir.is_dir():
+        for item in ops_dir.rglob("*.json"):
+            if not item.name.endswith(".lock.json"):
+                return True
+    return False
+
+
+def _guard_active_b_route_direct_write(repo_root: Path, target_task_ids: list[int] | None = None) -> None:
+    """Fail-closed guard blocking direct Chapter 7 triplet creation when B-route governance is active."""
+    if not _has_active_b_route_presence(repo_root):
+        return
+    import sys as _sys
+
+    scripts_py = str(Path(__file__).resolve().parent)
+    if scripts_py not in _sys.path:
+        _sys.path.insert(0, scripts_py)
+    try:
+        import _b_route_chapter6_gate as _ch6_gate
+        import _b_route_task_resolver as _task_resolver
+    except ImportError as exc:
+        raise ValueError(
+            f"Active B-route governance blocks direct Chapter 7 task creation on {repo_root}; "
+            f"use dev_cli.py b-route-chapter7-slice and b-route-task-compile ({exc})"
+        ) from exc
+    for tid in target_task_ids or []:
+        res = _task_resolver.resolve_task_origin(repo_root, tid, operation="implement")
+        if res.get("route") in {"B", "blocked"}:
+            raise ValueError(
+                f"Active B-route governance blocks direct Chapter 7 task mutation for Task {tid} "
+                f"(route={res.get('route')}); use dev_cli.py b-route-chapter7-slice and b-route-task-compile"
+            )
+    presence = _ch6_gate.detect_b_route_presence(repo_root)
+    if presence.get("b_route_present") or _has_active_b_route_presence(repo_root):
+        raise ValueError(
+            "Active B-route governance blocks direct Chapter 7 task creation; "
+            "use dev_cli.py b-route-chapter7-slice and b-route-task-compile"
+        )
 
 
 def main(argv: list[str] | None = None) -> int:

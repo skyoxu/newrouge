@@ -126,17 +126,18 @@ Each fixed proposal has a hash-bound `semantic-review-publication-<proposal-sha2
 
 Generation execution has three admitted candidate slots, with fresh lineage contexts and a separate three-repair budget for each hard issue. A candidate's sections run in its own ephemeral workspace using the selected backend's environment-default model configuration; Windows timeout cleanup terminates the complete child process tree. Retired lineages are replaced from immutable prepared inputs and never share retired prompts, findings, proposals, or segments. Selection has a bounded transport/schema budget and never receives blocked candidates. The independent semantic Review verifies the selected candidate's hash-bound admission evidence; it cannot replace the winner. Identity/transport failures remain execution failures and do not create semantic findings or regenerate Capability.
 
-## Explicit formal B planning context boundary
+## Explicit formal B planning context boundary (existing A lane remains default until Epic 5)
 
-The existing A workflow above remains its own route. For explicit B-route
+The existing A workflow above remains default until Epic 5 (`default_b_enabled=false`). For explicit B-route
 operation inspection or published plan/revision context, use
 `py -3 scripts/python/dev_cli.py b-route-adoption --stage inspect|read --operation-id <original-id> --context`.
 See [adoption owner](../../../docs/workflows/b-route-adoption.md) and
 [native planning/status](../../../docs/workflows/b-route-native-planning-status.md).
 Explicit `--input-stage 3b` runs also support the ADR-0062 `<= 70,000`-byte segmented 3B pipeline (`_b_route_3b_segmented_runtime.py`) and ADR-0063 isolated runner routing via `docs/workflows/llm-routing.json` (`codex_isolated_model_runner.py` / `gemini_isolated_model_runner.py`).
-Formal no-Task 3B depends on its original qualified source/native/review owners;
+Formal no-Task 3B depends on its original qualified source/native/review owners and remains strictly distinct from Stage 3C and Chapter 4–7 implementation;
 this link does not require inventing a Task, authorize a model call, or activate
 B by default. Completed-unit reuse/epoch/reopen is unsupported through this context observation entrypoint.
-A published prefix and retained counts never establish global planning completion,
-Task readiness or runtime acceptance. Keep original IDs/resume_ref and blocked
+Journal recovery (`apply-journal.json` / `public-sync-journal`) stays separate from model resume;
+`workspace_preview`/`attempt`/`stable` never advance `knowledge/indexes/current.json`, `last-known-good.json`, or `refs/heads/main`;
+and a published prefix or Task-local pass never establishes Flow completion, cumulative `full-MVG` milestone completion, or runtime acceptance (`runtime_verified=false`). Keep original IDs/resume_ref and blocked
 reasons; do not replace missing proof with a Knowledge summary or a fresh run.

@@ -206,7 +206,49 @@ def merge_numeric_view_group(rows: List[Dict[str, Any]], num_id: int) -> Dict[st
     return merged
 
 
+def _has_active_b_route_presence(repo_root: Path) -> bool:
+    for rel in (
+        "docs/planning/b-route/catalog.v1.json",
+        "docs/planning/b-route/policy.v1.json",
+        "docs/planning/b-route/task-origins.v1.json",
+        "docs/planning/b-route/origins/origins.json",
+    ):
+        if (repo_root / rel).exists():
+            return True
+    ops_dir = repo_root / "logs/ci/b-route-operations"
+    if ops_dir.is_dir():
+        for item in ops_dir.rglob("*.json"):
+            if not item.name.endswith(".lock.json"):
+                return True
+    return False
+
+
+def _guard_active_b_route_direct_write(repo_root: Path) -> None:
+    """Fail-closed guard blocking direct un-governed tasks.json rebuilds when B-route governance is active."""
+    if not _has_active_b_route_presence(repo_root):
+        return
+    import sys as _sys
+
+    scripts_py = str(Path(__file__).resolve().parent)
+    if scripts_py not in _sys.path:
+        _sys.path.insert(0, scripts_py)
+    try:
+        import _b_route_chapter6_gate as _ch6_gate
+    except ImportError as exc:
+        raise SystemExit(
+            f"active B-route governance detected on {repo_root}; direct build_taskmaster_tasks write is blocked "
+            f"(use dev_cli.py b-route-task-compile; helper import failed: {exc})"
+        ) from exc
+    presence = _ch6_gate.detect_b_route_presence(repo_root)
+    if presence.get("b_route_present") or _has_active_b_route_presence(repo_root):
+        raise SystemExit(
+            "active B-route governance blocks direct build_taskmaster_tasks write; "
+            "use dev_cli.py b-route-task-compile"
+        )
+
+
 def build_taskmaster_tasks(args: argparse.Namespace) -> None:
+    _guard_active_b_route_direct_write(ROOT)
     scope = load_scope(ROOT)
     frozen_ids = validate_master(ROOT, scope) if scope is not None else None
     # 1) 解析任务文件列表（源 SSoT）

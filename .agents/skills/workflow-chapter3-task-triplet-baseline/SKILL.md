@@ -40,7 +40,7 @@ Read the closeout contract through the repository root path `docs/workflows/chap
 ## Required Reading
 
 1. Read the Chapter 3 section in `workflow.md`.
-2. Read `docs/planning/semantic-topology/README.md` and ADR-0038.
+2. Read `docs/planning/semantic-topology/README.md`, `docs/adr/ADR-0038-semantic-delivery-topology.md`, and `docs/adr/ADR-0038-mvg-candidate-admission.md`.
 3. Read `.agents/skills/maintain-knowledge-base/SKILL.md` before any refresh/publication action.
 4. Optional business-repo reference files are regression evidence only and never define generation rules.
 
@@ -122,7 +122,7 @@ Read the closeout contract through the repository root path `docs/workflows/chap
 
 ## Maintenance
 
-Refresh optional business evidence with `py -3 scripts/python/update_workflow_chapter_skills.py <repo>` only after production rules above are updated in the template source.\n
+Refresh optional business evidence with `py -3 scripts/python/update_workflow_chapter_skills.py <repo>` only after production rules above are updated in the template source.
 
 ## Milestone incremental add mode
 
@@ -130,3 +130,8 @@ Refresh optional business evidence with `py -3 scripts/python/update_workflow_ch
 - Reuse intent ids only by stable `intent_key`; reserve every existing string task id.
 - Treat triplet generation as a reviewed create/update/reuse/retire patch. Never let generated defaults overwrite mature status, Acceptance, refs or metadata.
 - Export the reviewed affected ids explicitly and preserve master-native fields.
+
+## Explicit B-route 3A and 3C entrypoints (existing A lane remains default until Epic 5)
+
+- Stage 3A pre-Task source accounting and independent audit: run `py -3 -B scripts/python/dev_cli.py b-route-sources --stage prepare|account|audit|verify` (see `docs/workflows/b-route-source-accounting.md` and `docs/workflows/b-route-source-audit.md`). Stage 3A creates zero Tasks and is distinct from formal no-Task 3B adoption (`py -3 -B scripts/python/dev_cli.py b-route-adoption`, `docs/workflows/b-route-adoption.md`) and 3C triplet compilation.
+- Stage 3C read-only task-change preview and governed triplet compilation: run `py -3 -B scripts/python/dev_cli.py b-route-task-preview` (`docs/workflows/b-route-task-preview.md`) followed by `py -3 -B scripts/python/dev_cli.py b-route-task-compile` (`docs/workflows/b-route-task-compilation.md`). Stage 3C preserves live `.taskmaster/tasks/tasks.json` status, supports shared-Task multi-scope bindings, distinguishes journal recovery (`public-sync-journal` / `apply-journal.json`) from model resume, separates `workspace_preview`/`attempt`/`stable`/`stabilized` from `main` publication, and publishes `catalog.v1.json` last without granting Chapter 5 readiness, Flow/milestone completion, or default B activation (`docs/adr/ADR-0040-b-route-stages-authority-and-activation.md`).

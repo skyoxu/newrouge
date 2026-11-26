@@ -1530,3 +1530,32 @@ def build_b_route_observability_cmd(args) -> list[str]:
                     raise ValueError(f"b-route-observability {flag} entries must be nonempty strings")
                 cmd += [flag, str(item)]
     return cmd
+
+
+CONSUMER_ALIGNMENT_FORBIDDEN_FLAGS = (
+    "apply", "switch_default_b", "retire_a", "write_tasks", "publish",
+    "refresh_knowledge", "write", "commit", "mutate_tasks", "set_status",
+)
+
+
+def build_b_route_consumer_alignment_cmd(args) -> list[str]:
+    for flag in CONSUMER_ALIGNMENT_FORBIDDEN_FLAGS:
+        if getattr(args, flag, False):
+            raise ValueError("b-route-consumer-alignment is strictly read-only and forbids switch/write/publish/refresh flags")
+    cmd = [
+        sys.executable,
+        "-B",
+        str(Path(__file__).resolve().with_name("audit_b_route_consumer_alignment.py")),
+    ]
+    root = getattr(args, "root", ".")
+    if root is None or type(root) is bool or not str(root).strip():
+        raise ValueError("b-route-consumer-alignment requires nonempty --root")
+    cmd += ["--root", str(root)]
+    if getattr(args, "skip_live_probes", False):
+        cmd.append("--skip-live-probes")
+    report = getattr(args, "report", None)
+    if report is not None:
+        if type(report) is bool or not str(report).strip():
+            raise ValueError("b-route-consumer-alignment optional --report must be a nonempty string")
+        cmd += ["--report", str(report)]
+    return cmd
