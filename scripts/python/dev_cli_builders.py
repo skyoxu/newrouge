@@ -1460,7 +1460,7 @@ PLANNING_PAGE_OPTIONAL = (
     "run_id", "operation_id", "attempt_id", "audit_ref", "manifest", "source_set", "prepared", "candidate",
     "accounted", "request_ref", "planning_contract", "prepared_ref", "planning_profile", "runner", "sub_action",
     "recovery_target", "protection_ref", "change_intents", "expected_model", "completed_extraction_ref",
-    "request_budget", "active_budget_seconds", "timeout_seconds", "citation_guidance", "report",
+    "request_budget", "active_budget_seconds", "timeout_seconds", "citation_guidance", "report", "events_log",
 )
 
 
@@ -1493,4 +1493,40 @@ def build_b_route_planning_page_cmd(args) -> list[str]:
             if type(value) is bool or not str(value).strip():
                 raise ValueError(f"b-route-planning-page optional --{attr.replace('_', '-')} must be a nonempty string")
             cmd += ["--" + attr.replace("_", "-"), str(value)]
+    return cmd
+
+
+OBSERVABILITY_FORBIDDEN_FLAGS = (
+    "apply", "write", "commit", "publish", "mutate_tasks", "set_status", "refresh_knowledge",
+)
+
+
+def build_b_route_observability_cmd(args) -> list[str]:
+    for flag in OBSERVABILITY_FORBIDDEN_FLAGS:
+        if getattr(args, flag, False):
+            raise ValueError("b-route-observability is strictly read-only and forbids mutation/publish/refresh flags")
+    cmd = [
+        sys.executable,
+        "-B",
+        str(Path(__file__).resolve().with_name("query_b_route_observability.py")),
+    ]
+    root = getattr(args, "root", ".")
+    if root is None or type(root) is bool or not str(root).strip():
+        raise ValueError("b-route-observability requires nonempty --root")
+    cmd += ["--root", str(root)]
+    for attr in ("operation_id", "run_id", "scope_id", "flow_id", "stage", "task_id", "baseline_ref", "report"):
+        value = getattr(args, attr, None)
+        if value is not None:
+            if type(value) is bool or not str(value).strip():
+                raise ValueError(f"b-route-observability optional --{attr.replace('_', '-')} must be a nonempty string")
+            cmd += ["--" + attr.replace("_", "-"), str(value)]
+    for attr, flag in (("events_logs", "--events-log"), ("verdict_refs", "--verdict-ref")):
+        items = getattr(args, attr, None)
+        if items is not None:
+            if not isinstance(items, (list, tuple)):
+                raise ValueError(f"b-route-observability {flag} must be a list of strings")
+            for item in items:
+                if type(item) is bool or not str(item).strip():
+                    raise ValueError(f"b-route-observability {flag} entries must be nonempty strings")
+                cmd += [flag, str(item)]
     return cmd

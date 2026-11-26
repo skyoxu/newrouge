@@ -277,3 +277,12 @@ The `/knowledge/` task resource detail shows partial coverage, generation/public
 - 六字段诊断原样展示并附 `original_locator`，区分 `recommendation_only` 推荐与执行；身份与 Story 4.6 一致，预览零写发布指针，零隐式全局 refresh；页面只证交互合同，不充 Godot 玩法证据。
 
 详见[规划页面 owner 说明](b-route-planning-page.md)。
+
+## B 路线可追溯过程观测与统一诊断
+
+`py -3 -B scripts/python/dev_cli.py b-route-observability` 与只读 HTTP `GET /api/knowledge/b-route-observability`（不取写锁）共用 `_b_route_observability.py`，并在页面提供只读折叠区 `<details data-b-route-observability data-knowledge-readonly>`：
+
+- 五维（`operation_or_run_id`、`scope_or_flow_id`、`stage`、`attempt`、`event_id`）有界汇集 3A..7、Flow 与返工事件，同 `event_id` 计 1 次而重试分留，协调器预留 + worker 投影 + dispatch 关联为 1 笔，绝不对 `logs/ci/mvg-planning` 或 `logs/ci/capability-planning` 做递归扫描。
+- 分列实测活动耗时、暂停墙钟、预留预算、实际调用与 `"unknown"` 账单，不设提速/降成本/两小时/固定 Task 数/工时门槛；原样展示 `diagnostic_category` 与六字段 `Diagnostic`，三类复用分桶且不刷新 `original_executed_at`，命中五类质量底线退化时必判阻断。
+
+详见[过程观测 owner 说明](b-route-observability.md)。

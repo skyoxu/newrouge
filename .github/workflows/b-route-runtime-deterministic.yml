@@ -76,6 +76,8 @@ on:
       - 'scripts/python/check_b_route_completion_verdict.py'
       - 'scripts/python/query_b_route_knowledge_projection.py'
       - 'scripts/python/query_b_route_planning_page.py'
+      - 'scripts/python/_b_route_observability.py'
+      - 'scripts/python/query_b_route_observability.py'
       - 'scripts/python/project_health_planning.js'
       - 'scripts/python/project_health_topology.js'
       - 'scripts/python/project_health_topology.html'

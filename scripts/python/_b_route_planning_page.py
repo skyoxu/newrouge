@@ -29,6 +29,7 @@ import os
 import re
 import subprocess
 import sys
+import time
 import uuid
 from pathlib import Path
 from typing import Any, Callable
@@ -1399,21 +1400,93 @@ def _finish(clean: dict[str, Any] | None, result: dict[str, Any], *, recommendat
     return payload
 
 
+def _validate_events_log_path(root: Path, events_log: str) -> tuple[Path, str]:
+    from _b_route_observability import validate_reserved_log_write_path
+    target, cleaned, _root_path = validate_reserved_log_write_path(
+        root, events_log, suffix=".jsonl", field="events_log",
+    )
+    return target, cleaned
+
+
+def _emit_page_stage_event(
+    events_target: tuple[Path, str] | None,
+    clean: dict[str, Any] | None,
+    payload: dict[str, Any],
+    started_mono: float,
+) -> dict[str, Any]:
+    if events_target is None:
+        return payload
+    ev_path, ev_rel = events_target
+    from _b_route_evidence_reuse import append_deduplicated_event
+    elapsed = round(max(0.0, time.monotonic() - started_mono), 4)
+    clean_req = clean or {}
+    event_record = {
+        "event_type": "b_route_page_stage_action",
+        "action": payload.get("action") or clean_req.get("action"),
+        "stage": clean_req.get("stage") or (payload.get("delegate") or {}).get("stage") or clean_req.get("sub_action") or "inspect",
+        "mode": payload.get("mode") or clean_req.get("mode"),
+        "run_id": payload.get("run_id") or clean_req.get("run_id"),
+        "operation_id": clean_req.get("operation_id"),
+        "scope_id": clean_req.get("scope_id"),
+        "flow_id": clean_req.get("flow_id"),
+        "task_id": clean_req.get("task_id"),
+        "invocation_mode": payload.get("invocation_mode") or clean_req.get("invocation_mode"),
+        "ok": bool(payload.get("ok")),
+        "status": payload.get("status"),
+        "reason_code": payload.get("reason_code"),
+        "active_elapsed_seconds": elapsed,
+        "recommendation_only": bool(payload.get("recommendation_only")),
+    }
+    try:
+        append_deduplicated_event(ev_path, event_record)
+    except (OSError, ValueError) as exc:
+        diag = _diag(
+            codec.ReasonCode.UNSAFE_PATH,
+            codec.Stage.PATH,
+            ev_rel,
+            "writable non-reserved logs/**/*.jsonl without symlink or reparse point",
+            str(exc)[:200],
+            ev_rel,
+        )
+        diags = list(payload.get("diagnostics") or [])
+        diags.append(diag)
+        payload["diagnostics"] = diags
+        payload["ok"] = False
+        payload["status"] = "blocked"
+        payload["reason_code"] = diag["reason_code"]
+        return payload
+    payload["events_log_path"] = ev_rel
+    return payload
+
+
 def execute_planning_page_action(root: Path, request: dict[str, Any], *,
                                  command_runner: CommandRunner | None = None,
-                                 timeout: int = DELEGATE_TIMEOUT_SECONDS) -> dict[str, Any]:
+                                 timeout: int = DELEGATE_TIMEOUT_SECONDS,
+                                 events_log: str | None = None) -> dict[str, Any]:
     """Validate and delegate one page action to its real owning entrypoint."""
+    started_mono = time.monotonic()
     try:
         root_path = _validate_root(root)
     except codec.CodecError as err:
         return _finish(None, _blocked({}, [err.diagnostic.to_dict()], status="invalid_arguments"),
                        recommendation_only=True, before=None, root=None)
+    events_target: tuple[Path, str] | None = None
+    if events_log is not None:
+        try:
+            events_target = _validate_events_log_path(root_path, events_log)
+        except codec.CodecError as err:
+            return _finish(None, _blocked({}, [err.diagnostic.to_dict()], status="invalid_arguments"),
+                           recommendation_only=True, before=None, root=None)
     try:
         clean = validate_request(root_path, request)
     except codec.CodecError as err:
         action = request.get("action") if isinstance(request, dict) and type(request.get("action")) is str else None
-        return _finish({"action": action}, _blocked({}, [err.diagnostic.to_dict()], status="invalid_arguments"),
-                       recommendation_only=True, before=None, root=None)
+        return _emit_page_stage_event(
+            events_target, {"action": action},
+            _finish({"action": action}, _blocked({}, [err.diagnostic.to_dict()], status="invalid_arguments"),
+                    recommendation_only=True, before=None, root=None),
+            started_mono,
+        )
     read_only = _read_only(clean)
     if clean.get("recommendation_only") is False and clean["action"] == "inspect":
         return _finish(clean, _blocked(clean, [_diag(codec.ReasonCode.INVALID_ARGUMENT, codec.Stage.CONTENT,
@@ -1458,7 +1531,11 @@ def execute_planning_page_action(root: Path, request: dict[str, Any], *,
                                                          "--operation-id", clean["operation_id"], "--context"]
                 result = _run_delegate(root_path, clean, argv, {"stage": "inspect", "cli": "dev_cli.py b-route-adoption"},
                                        command_runner, timeout)
-            return _finish(clean, result, recommendation_only=True, before=before, root=root_path)
+            return _emit_page_stage_event(
+                events_target, clean,
+                _finish(clean, result, recommendation_only=True, before=before, root=root_path),
+                started_mono,
+            )
         if clean["action"] == "chapter6":
             sub_action = clean.get("sub_action")
             if sub_action not in CHAPTER6_SUB_ACTIONS:
@@ -1481,15 +1558,31 @@ def execute_planning_page_action(root: Path, request: dict[str, Any], *,
                                                    "admitted Story 3.12 unified gate",
                                                    {"route": res.get("route"), "reason_code": res.get("reason_code")},
                                                    res.get("resume_ref")))
-            return _finish(clean, result, recommendation_only=read_only, before=before, root=root_path)
+            return _emit_page_stage_event(
+                events_target, clean,
+                _finish(clean, result, recommendation_only=read_only, before=before, root=root_path),
+                started_mono,
+            )
         argv, info = _build_delegate(root_path, clean)
         if argv is None:
-            return _finish(clean, info, recommendation_only=read_only, before=before, root=root_path)
+            return _emit_page_stage_event(
+                events_target, clean,
+                _finish(clean, info, recommendation_only=read_only, before=before, root=root_path),
+                started_mono,
+            )
         result = _run_delegate(root_path, clean, argv, info, command_runner, timeout)
-        return _finish(clean, result, recommendation_only=read_only, before=before, root=root_path)
+        return _emit_page_stage_event(
+            events_target, clean,
+            _finish(clean, result, recommendation_only=read_only, before=before, root=root_path),
+            started_mono,
+        )
     except codec.CodecError as err:
-        return _finish(clean, _blocked(clean, [err.diagnostic.to_dict()], status="invalid_arguments"),
-                       recommendation_only=read_only, before=before, root=root_path)
+        return _emit_page_stage_event(
+            events_target, clean,
+            _finish(clean, _blocked(clean, [err.diagnostic.to_dict()], status="invalid_arguments"),
+                    recommendation_only=read_only, before=before, root=root_path),
+            started_mono,
+        )
 
 
 def _run_delegate(root: Path, clean: dict[str, Any], argv: list[str], info: dict[str, Any],
@@ -1514,5 +1607,6 @@ def _run_delegate(root: Path, clean: dict[str, Any], argv: list[str], info: dict
 
 
 def write_page_report(root: Path, report_rel: str, payload: dict[str, Any]) -> Path:
-    """Optional CLI report strictly under non-reserved logs/** (Story 4.6 rules)."""
-    return projection.write_projection_report(root, report_rel, payload)
+    """Optional CLI report strictly under non-reserved logs/**/*.json."""
+    from _b_route_observability import write_observability_report
+    return write_observability_report(root, report_rel, payload)

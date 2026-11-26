@@ -62,6 +62,8 @@ def register_arguments(parser: argparse.ArgumentParser) -> argparse.ArgumentPars
                             help=f"Optional 3A audit positive integer field {name}")
     parser.add_argument("--report", default=None,
                         help="Optional repository-relative non-reserved logs/**/*.json report path")
+    parser.add_argument("--events-log", default=None, dest="events_log",
+                        help="Optional repository-relative non-reserved logs/**/*.jsonl stage events log")
     return parser
 
 
@@ -119,7 +121,7 @@ def main(argv=None) -> int:
                                                     "nonempty repository root directory path", args.root, None))
         root = Path(args.root)
         request = build_request(args)
-        result = page.execute_planning_page_action(root, request)
+        result = page.execute_planning_page_action(root, request, events_log=args.events_log)
         if args.report is not None:
             path = page.write_page_report(root, args.report, result)
             result["report_path"] = path.relative_to(root.resolve()).as_posix()

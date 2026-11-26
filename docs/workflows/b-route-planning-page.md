@@ -62,7 +62,7 @@
 
 ## 退出码与验证
 
-CLI 在 `ok` 时退出 `0`，阻断或参数无效时退出 `2`；`--report` 仅写入非保留的 `logs/**/*.json`，沿用 Story 4.6 的符号链接与保留目录防护。
+CLI 在 `ok` 时退出 `0`，阻断或参数无效时退出 `2`；`--report` 仅写入非保留的 `logs/**/*.json`，`--events-log <logs/**/*.jsonl>` 按确定性 `event_id` 去重追加阶段事件（均拒绝符号链接/联接点及生产者保留目录/按日保留子树，写入异常折叠为六字段 `Diagnostic`）。
 
 - `scripts/python/tests/test_b_route_planning_page.py`
 - `scripts/python/tests/js/test_b_route_planning_page_ui.cjs`（经 `test_topology_frontend.py` 执行）

@@ -312,6 +312,60 @@ def handler_factory(root: Path):
                         else:
                             strict = strict_raw in ('1', 'true')
                             self.send(payload, 422 if strict and not payload.get('ok') else 200)
+                elif parsed.path == '/api/knowledge/b-route-observability':
+                    # Read-only process observability & unified diagnostics; never takes the operation lock.
+                    from _b_route_observability import (GOVERNANCE_THRESHOLDS as OBS_THRESHOLDS,
+                                                        INVARIANTS as OBS_INVARIANTS,
+                                                        SCHEMA_VERSION as OBS_SCHEMA,
+                                                        build_b_route_observability_report,
+                                                        normalize_unified_diagnostic)
+                    from _b_route_codec import CodecError, Diagnostic, ReasonCode, Stage
+                    query = parse_qs(parsed.query, keep_blank_values=True)
+                    filter_keys = ('operation_id', 'run_id', 'scope_id', 'flow_id', 'stage', 'task_id', 'baseline_ref')
+                    allowed = {'strict', *filter_keys}
+
+                    def invalid_obs(name, expected, actual, code=422):
+                        unified = normalize_unified_diagnostic(
+                            Diagnostic(ReasonCode.INVALID_ARGUMENT, Stage.TARGET, name, expected, actual, None).to_dict(),
+                        )
+                        self.send({'schema_version': OBS_SCHEMA, 'status': 'invalid_arguments', 'ok': False,
+                                   'reason_code': unified['reason_code'],
+                                   'governance_thresholds': dict(OBS_THRESHOLDS),
+                                   'implicit_global_refresh_performed': False,
+                                   'runtime_verified': False, 'default_b_enabled': False,
+                                   'invariants': dict(OBS_INVARIANTS),
+                                   'diagnostics': [unified],
+                                   'categories_present': [unified['diagnostic_category']]}, code)
+
+                    unknown = sorted(set(query) - allowed)
+                    duplicated = sorted(key for key, values in query.items() if len(values) > 1)
+                    strict_raw = query.get('strict', ['0'])[0]
+                    blank = sorted(key for key in filter_keys if key in query and not query[key][0].strip())
+                    if unknown:
+                        invalid_obs(unknown[0], sorted(allowed), unknown)
+                    elif duplicated:
+                        invalid_obs(duplicated[0], 'single query value', query[duplicated[0]])
+                    elif blank:
+                        invalid_obs(blank[0], 'nonblank filter value', '')
+                    elif strict_raw not in ('0', '1', 'true', 'false'):
+                        invalid_obs('strict', ['0', '1', 'true', 'false'], strict_raw)
+                    else:
+                        filters = {key: query[key][0] for key in filter_keys if key in query}
+                        try:
+                            payload = build_b_route_observability_report(root, **filters)
+                        except CodecError as exc:
+                            unified = normalize_unified_diagnostic(exc.diagnostic.to_dict())
+                            self.send({'schema_version': OBS_SCHEMA, 'status': 'invalid_arguments', 'ok': False,
+                                       'reason_code': unified['reason_code'],
+                                       'governance_thresholds': dict(OBS_THRESHOLDS),
+                                       'implicit_global_refresh_performed': False,
+                                       'runtime_verified': False, 'default_b_enabled': False,
+                                       'invariants': dict(OBS_INVARIANTS),
+                                       'diagnostics': [unified],
+                                       'categories_present': [unified['diagnostic_category']]}, 422)
+                        else:
+                            strict = strict_raw in ('1', 'true')
+                            self.send(payload, 422 if strict and not payload.get('ok') else 200)
                 elif parsed.path == '/api/knowledge/scene-graph':
                     snapshot = base_dir(root) / 'latest.json'
                     state = read_json(snapshot) if snapshot.exists() else {}

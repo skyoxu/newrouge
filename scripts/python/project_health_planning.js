@@ -187,6 +187,79 @@ window.renderBRouteProgressSummary = function (state, host) {
   for (const run of progress.revoked_runs || []) add('p', `revoked (not recoverable): ${run.run_id || run.job_id} · ${(run.reasons || []).join(', ')}`, 'revoked');
   return {partial, candidates: candidates.length, budgetExhausted: Boolean(budget.budget_exhausted)};
 };
+window.loadBRouteObservability = async function ({params = {}} = {}) {
+  const query = new URLSearchParams();
+  for (const key of ['operation_id', 'run_id', 'scope_id', 'flow_id', 'stage', 'task_id', 'baseline_ref']) {
+    const value = params ? params[key] : undefined;
+    if (value !== undefined && value !== null && value !== '') query.set(key, String(value));
+  }
+  const suffix = query.toString() ? '?' + query.toString() : '';
+  const response = await fetch('/api/knowledge/b-route-observability' + suffix, {cache: 'no-store'});
+  const payload = await response.json();
+  if (response.status === 404) throw new Error('B-route observability API unavailable. Restart the Project Health service and reload this page.');
+  return payload;
+};
+window.renderBRouteObservability = function (obs, host) {
+  if (!host) return null;
+  host.replaceChildren();
+  const add = (tag, text, key) => {
+    const node = document.createElement(tag);
+    node.textContent = String(text ?? '');
+    if (key) node.dataset.bRouteObs = key;
+    host.append(node);
+    return node;
+  };
+  const hasTiming = Boolean(obs && typeof obs.timing_and_cost_summary === 'object' && obs.timing_and_cost_summary !== null);
+  const timing = hasTiming ? obs.timing_and_cost_summary : null;
+  const active = hasTiming ? (timing.observed_active_elapsed_seconds ?? 'unknown') : 'unknown';
+  const wall = hasTiming ? (timing.paused_or_wall_clock_seconds ?? 'unknown') : 'unknown';
+  const unmeasured = hasTiming ? (timing.unmeasured_event_count ?? 'unknown') : 'unknown';
+  const reserved = hasTiming ? (timing.reserved_request_budget ?? 'unknown') : 'unknown';
+  const actual = hasTiming ? (timing.observed_actual_dispatches ?? 'unknown') : 'unknown';
+  const reservedOnly = hasTiming ? (timing.reserved_only_not_dispatched ?? 'unknown') : 'unknown';
+  const billed = hasTiming ? (timing.billed_cost ?? 'unknown') : 'unknown';
+  add('p', `timing · observed_active_elapsed_seconds ${active} · paused_or_wall_clock_seconds ${wall} (not active) · unmeasured ${unmeasured}`, 'timing');
+  add('p', `budget · reserved_request_budget ${reserved} · observed_actual_dispatches ${actual} · reserved_only_not_dispatched ${reservedOnly} · billed_cost ${billed}`, 'budget');
+  const hasReuse = Boolean(obs && typeof obs.reuse_breakdown === 'object' && obs.reuse_breakdown !== null);
+  if (hasReuse) {
+    const reuse = obs.reuse_breakdown;
+    const counts = reuse.counts || {};
+    add('p', `reuse (cross_class_proof_allowed ${reuse.cross_class_proof_allowed === true}) · planning_adoption_reuse ${counts.planning_adoption_reuse ?? (reuse.planning_adoption_reuse || []).length} · apply_idempotent_noop ${counts.apply_idempotent_noop ?? (reuse.apply_idempotent_noop || []).length} · runtime_build_and_test_reuse ${counts.runtime_build_and_test_reuse ?? (reuse.runtime_build_and_test_reuse || []).length}`, 'reuse');
+  } else {
+    add('p', 'reuse · unknown', 'reuse');
+  }
+  const hasStopLoss = Boolean(obs && typeof obs.stop_loss_signals === 'object' && obs.stop_loss_signals !== null);
+  if (hasStopLoss) {
+    const stopLoss = obs.stop_loss_signals;
+    add('p', `stop_loss_signals · active ${stopLoss.active_count ?? 'unknown'} · rerun_guard ${(stopLoss.rerun_guard || []).length} · llm_retry ${(stopLoss.llm_retry_stop_loss || []).length} · sc_test_retry ${(stopLoss.sc_test_retry_stop_loss || []).length} · waste ${(stopLoss.waste_signals || []).length} · deterministic_stop_loss ${(stopLoss.deterministic_stop_loss || []).length} · no_progress_retries ${(stopLoss.no_progress_retries || []).length}`, 'stop-loss');
+  } else {
+    add('p', 'stop_loss_signals · unknown', 'stop-loss');
+  }
+  const hasQualityFloor = Boolean(obs && typeof obs.quality_floor === 'object' && obs.quality_floor !== null);
+  if (hasQualityFloor) {
+    const qf = obs.quality_floor;
+    add('p', `quality_floor · violated ${qf.violated === true} · process_metrics_can_offset ${qf.process_metrics_can_offset === true}`, 'quality-floor');
+  } else {
+    add('p', 'quality_floor · unknown', 'quality-floor');
+  }
+  for (const diag of obs?.diagnostics || []) {
+    const node = document.createElement('p');
+    node.className = 'b-route-diagnostic';
+    node.dataset.diagnosticCategory = String(diag?.diagnostic_category ?? '');
+    node.dataset.reasonCode = String(diag?.reason_code ?? '');
+    node.dataset.stage = String(diag?.stage ?? '');
+    node.textContent = `[${String(diag?.diagnostic_category ?? 'unknown')}] ${window.bRouteDiagnosticText(diag)}`;
+    host.append(node);
+  }
+  return {
+    active,
+    wall,
+    reserved,
+    actual,
+    billed,
+    diagnosticsCount: (obs?.diagnostics || []).length,
+  };
+};
 window.mountBRouteStagePanel = function ({host, getMode = () => 'workspace_preview', onRefresh = null, getParams = () => ({})} = {}) {
   if (!host) return null;
   let state = null;
@@ -273,6 +346,7 @@ window.mountBRouteStagePanel = function ({host, getMode = () => 'workspace_previ
     try {
       state = await window.loadBRoutePlanningState({mode: getMode(), params: collectFilterParams()});
       render();
+      if (controls.observability?.open) await refreshObservability();
     } catch (error) {
       controls.result.textContent = error.message;
       controls.result.dataset.result = 'failed';
@@ -407,8 +481,27 @@ window.mountBRouteStagePanel = function ({host, getMode = () => 'workspace_previ
   controls.actionDiagnostics = make('div', undefined, diagBox, 'action-diagnostics');
   controls.actionLocator = make('p', '', diagBox, 'action-locator');
   controls.notice = make('p', window.B_ROUTE_HONEST_NOTICE, diagBox, 'notice');
+  const obsBox = markReadonly(make('details', undefined, host, 'observability'));
+  obsBox.setAttribute('data-b-route-observability', 'true');
+  obsBox.dataset.bRouteObservability = 'true';
+  obsBox.open = false;
+  make('summary', 'Process Observability & Unified Diagnostics (read-only)', obsBox);
+  controls.observabilityBody = make('div', undefined, obsBox, 'observability-body');
+  controls.observability = obsBox;
+  async function refreshObservability() {
+    try {
+      const obsPayload = await window.loadBRouteObservability({params: collectFilterParams()});
+      window.renderBRouteObservability(obsPayload, controls.observabilityBody);
+      return obsPayload;
+    } catch (error) {
+      controls.observabilityBody.replaceChildren();
+      make('p', error.message, controls.observabilityBody, 'observability-error');
+      return null;
+    }
+  }
+  obsBox.addEventListener('toggle', () => { if (obsBox.open) refreshObservability(); });
   syncButtons();
-  const panel = {refresh, invoke, controls, state: () => state, syncButtons, selectedRun};
+  const panel = {refresh, refreshObservability, invoke, controls, state: () => state, syncButtons, selectedRun};
   host.bRoutePanel = panel;
   refresh();
   return panel;

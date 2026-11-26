@@ -310,11 +310,129 @@ async function progressSummaryForScenes() {
   assert.ok(texts(host).includes('budget: no exhausted planner run'));
 }
 
+async function observabilityVerbatimDiagnosticsAndReadonlyCollapse() {
+  const obsGets = [];
+  const obsFixture = {
+    schema_version: 'newrouge.b-route-observability.v1',
+    ok: false,
+    status: 'blocked',
+    timing_and_cost_summary: {
+      observed_active_elapsed_seconds: 42.5,
+      unmeasured_event_count: 1,
+      paused_or_wall_clock_seconds: 3600,
+      reserved_request_budget: 64,
+      observed_actual_dispatches: 3,
+      reserved_only_not_dispatched: 2,
+      billed_cost: 'unknown',
+    },
+    reuse_breakdown: {
+      cross_class_proof_allowed: false,
+      counts: {planning_adoption_reuse: 1, apply_idempotent_noop: 2, runtime_build_and_test_reuse: 3},
+    },
+    stop_loss_signals: {
+      active_count: 3,
+      rerun_guard: [{entity_id: '7'}],
+      llm_retry_stop_loss: [],
+      sc_test_retry_stop_loss: [],
+      waste_signals: [],
+      deterministic_stop_loss: [{entity_id: 'FLOW-1'}],
+      no_progress_retries: [{entity_id: '7'}],
+    },
+    quality_floor: {violated: true, process_metrics_can_offset: false},
+    diagnostics: [
+      {...diag('budget_exhausted', 'run-1', 'remaining budget', {used: 64}, 'logs/ci/run-1/run.json'), diagnostic_category: 'budget'},
+      {...diag('dependency_unavailable', 'run-1', 'exit 0', {exit_code: 1}, 'logs/ci/run-1/dispatch-1.json'), diagnostic_category: 'execution_fault'},
+      {reason_code: 'semantic_error', stage: null, entity_id: null, expected: 'zero semantic findings', actual: '<img src=x onerror=alert(1)>', resume_ref: null, diagnostic_category: 'semantic'},
+    ],
+  };
+  const context = harness(async url => {
+    if (url.startsWith('/api/knowledge/b-route-observability')) {
+      obsGets.push(url);
+      return response(obsFixture);
+    }
+    return response(stateFixture());
+  });
+  const obsHost = new Element();
+  const out = context.window.renderBRouteObservability(obsFixture, obsHost);
+  assert.equal(out.active, 42.5);
+  assert.equal(out.wall, 3600);
+  assert.equal(out.reserved, 64);
+  assert.equal(out.actual, 3);
+  assert.equal(out.billed, 'unknown');
+  assert.equal(out.diagnosticsCount, 3);
+  const rendered = texts(obsHost);
+  assert.ok(rendered.includes('observed_active_elapsed_seconds 42.5'));
+  assert.ok(rendered.includes('paused_or_wall_clock_seconds 3600 (not active)'));
+  assert.ok(rendered.includes('reserved_request_budget 64 · observed_actual_dispatches 3'));
+  assert.ok(rendered.includes('billed_cost unknown'));
+  assert.ok(rendered.includes('cross_class_proof_allowed false'));
+  assert.ok(rendered.includes('planning_adoption_reuse 1 · apply_idempotent_noop 2 · runtime_build_and_test_reuse 3'));
+  assert.ok(rendered.includes('stop_loss_signals · active 3'));
+  assert.ok(rendered.includes('deterministic_stop_loss 1'));
+  assert.ok(rendered.includes('quality_floor · violated true · process_metrics_can_offset false'));
+  const diagNodes = obsHost.children.filter(n => n.className === 'b-route-diagnostic');
+  assert.equal(diagNodes.length, 3);
+  assert.equal(diagNodes[0].dataset.diagnosticCategory, 'budget');
+  assert.equal(diagNodes[0].dataset.reasonCode, 'budget_exhausted');
+  assert.equal(diagNodes[1].dataset.diagnosticCategory, 'execution_fault');
+  assert.equal(diagNodes[1].dataset.reasonCode, 'dependency_unavailable');
+  assert.equal(diagNodes[2].dataset.diagnosticCategory, 'semantic');
+  assert.equal(diagNodes[2].dataset.reasonCode, 'semantic_error');
+  assert.ok(diagNodes[1].textContent.includes('[execution_fault] dependency_unavailable | target | run-1'));
+  // Verbatim null fields & XSS literal rendering via textContent (no injected child elements).
+  assert.equal(diagNodes[2].textContent, '[semantic] semantic_error | null | null | zero semantic findings | <img src=x onerror=alert(1)> | null');
+  assert.equal(diagNodes[2].children.length, 0);
+
+  // HTTP 422 / missing-summary payload must render "unknown" instead of fabricating 0 or false.
+  const errHost = new Element();
+  const errOut = context.window.renderBRouteObservability({
+    ok: false,
+    status: 'invalid_arguments',
+    reason_code: 'invalid_argument',
+    diagnostics: [{...diag('invalid_argument', 'run_id', 'single query value', ['a', 'b'], null), diagnostic_category: 'corrupt_reference'}],
+  }, errHost);
+  assert.equal(errOut.active, 'unknown');
+  assert.equal(errOut.actual, 'unknown');
+  assert.equal(errOut.reserved, 'unknown');
+  assert.equal(errOut.billed, 'unknown');
+  const errText = texts(errHost);
+  assert.ok(errText.includes('observed_active_elapsed_seconds unknown'));
+  assert.ok(errText.includes('observed_actual_dispatches unknown'));
+  assert.ok(errText.includes('unmeasured unknown'));
+  assert.ok(errText.includes('reuse · unknown'));
+  assert.ok(errText.includes('stop_loss_signals · unknown'));
+  assert.ok(errText.includes('quality_floor · unknown'));
+
+  // Collapsible read-only details inside mountBRouteStagePanel loads observability on open and refreshes when open.
+  const panelHost = new Element();
+  const panel = context.window.mountBRouteStagePanel({host: panelHost, getMode: () => 'attempt'});
+  await settle();
+  assert.equal(panel.controls.observability.tag, 'details');
+  assert.equal(panel.controls.observability.getAttribute('data-b-route-observability'), 'true');
+  assert.equal(panel.controls.observability.getAttribute('data-knowledge-readonly'), 'true');
+  assert.equal(panel.controls.observability.open, false);
+  assert.equal(obsGets.length, 0, 'Collapsed observability panel does not pollute initial planning GETs');
+  panel.controls.task_id.value = '7';
+  panel.controls.observability.open = true;
+  await panel.controls.observability.listeners.toggle();
+  await settle();
+  assert.equal(obsGets.length, 1);
+  assert.ok(obsGets[0].includes('task_id=7'));
+  assert.ok(texts(panel.controls.observabilityBody).includes('[execution_fault] dependency_unavailable'));
+  // Calling panel.refresh() while observability panel is open automatically refreshes observability with updated filters.
+  panel.controls.task_id.value = '9';
+  await panel.refresh();
+  await settle();
+  assert.equal(obsGets.length, 2);
+  assert.ok(obsGets[1].includes('task_id=9'));
+}
+
 (async () => {
   await diagnosticsAndModes();
   await operationLockInertsStagePanelControls();
   await stageTrueButtonsFilterForwardingAndResume();
   await knowledgePageModeAndTokenParity();
   await progressSummaryForScenes();
-  console.log('B-route planning page UI: stage-true gating, lock inert, filter forwarding, prefix/candidate honesty, new vs resume, verbatim diagnostics passed (UI contract only).');
+  await observabilityVerbatimDiagnosticsAndReadonlyCollapse();
+  console.log('B-route planning page UI: stage-true gating, lock inert, filter forwarding, prefix/candidate honesty, new vs resume, verbatim diagnostics, and observability panel passed (UI contract only).');
 })().catch(error => { console.error(error); process.exitCode = 1; });
